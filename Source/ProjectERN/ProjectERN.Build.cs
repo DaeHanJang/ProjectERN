@@ -44,7 +44,14 @@ public class ProjectERN : ModuleRules
 			"ProjectERN/Variant_SideScrolling/AI",
 			"ProjectERN/Variant_SideScrolling/Gameplay",
 			"ProjectERN/Variant_SideScrolling/Interfaces",
-			"ProjectERN/Variant_SideScrolling/UI"
+			"ProjectERN/Variant_SideScrolling/UI",
+			
+			// Shop System
+			"ProjectERN/Shop",
+			"ProjectERN/Shop/Data",
+			"ProjectERN/Shop/Provider",
+			"ProjectERN/Shop/Components",
+			"ProjectERN/Shop/Actors"
 		});
 
 		// Uncomment if you are using Slate UI
