@@ -8,6 +8,7 @@
 #include "UI/ERNEnemyHealthBarWidget.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Engine/DamageEvents.h"
+#include "MotionWarpingComponent.h"
 
 AERNEnemyCharacter::AERNEnemyCharacter()
 {
@@ -25,6 +26,9 @@ AERNEnemyCharacter::AERNEnemyCharacter()
 	HealthBarWidget->SetWidgetSpace(EWidgetSpace::Screen);
 	HealthBarWidget->SetDrawSize(FVector2D(150.0f, 20.0f));
 	HealthBarWidget->SetVisibility(false);
+
+	// 모션 워핑 컴포넌트
+	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarping"));
 }
 
 void AERNEnemyCharacter::BeginPlay()

@@ -24,7 +24,8 @@ public class ProjectERN : ModuleRules
 			"GameplayTasks",
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
-			"Niagara"
+			"Niagara",
+			"MotionWarping"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

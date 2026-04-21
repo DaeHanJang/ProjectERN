@@ -9,6 +9,7 @@
 class UWidgetComponent;
 class AERNProjectileBase;
 class UBoxComponent;
+class UMotionWarpingComponent;
 
 USTRUCT(BlueprintType)
 struct FEnemyHitboxConfig
@@ -97,6 +98,10 @@ protected:
 	// 머리 위 체력바 위젯 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
 	UWidgetComponent* HealthBarWidget;
+
+	// 모션 워핑 컴포넌트 (공격 시 타겟 방향으로 이동)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	UMotionWarpingComponent* MotionWarpingComponent;
 
 	// 피격 후 체력바 자동 숨김까지 대기 시간 (블루프린트에서 수정 가능)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
