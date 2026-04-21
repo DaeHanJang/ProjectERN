@@ -27,12 +27,32 @@ enum class EItemGrade : uint8
 	Legendary UMETA(DisplayName="Legendary")
 };
 
-// WeaponType
+// Shop Type
+UENUM(BlueprintType)
+enum class EShopType : uint8
+{
+	None  UMETA(Hidden),
+	// 일반 상점
+	World UMETA(DisplayName="World"),
+	// 보스전
+	Boss  UMETA(DisplayName="Boss")
+};
+
+// Weapon Type
 UENUM(BlueprintType)
 enum class EWeaponType : uint8
 {
-	None   UMETA(DisplayName="None"),
+	None   UMETA(Hidden),
 	Sword  UMETA(DisplayName="Sword"),
 	Staff  UMETA(DisplayName="Staff"),
 	Rapier UMETA(DisplayName="Rapier")
+};
+
+// Consumable Type
+UENUM(BlueprintType)
+enum class EConsumableType : uint8
+{
+	None     UMETA(Hidden),
+	Usable   UMETA(DisplayName="Usable"),
+	Unusable UMETA(DisplayName="Unusable")
 };

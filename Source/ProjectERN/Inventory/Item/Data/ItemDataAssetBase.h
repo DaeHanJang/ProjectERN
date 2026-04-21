@@ -15,16 +15,8 @@ class PROJECTERN_API UItemDataAssetBase : public UDataAsset
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName ID = NAME_None;
-	
+	// UI 아이콘 텍스처
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UTexture2D> Icon = nullptr;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSoftObjectPtr<UStaticMesh> StaticMesh = nullptr;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSoftObjectPtr<USkeletalMesh> SkeletalMesh = nullptr;
 	
 };
