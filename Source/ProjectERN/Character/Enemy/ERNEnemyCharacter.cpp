@@ -66,6 +66,8 @@ void AERNEnemyCharacter::BindHitboxOverlaps()
 
 	for (UBoxComponent* Box : Boxes)
 	{
+		// 히트박스 초기 상태를 NoCollision으로 설정
+		Box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Box->OnComponentBeginOverlap.AddDynamic(this, &AERNEnemyCharacter::OnHitboxOverlap);
 	}
 }
