@@ -3,6 +3,7 @@
 #include "Character/Animation/AnimNotify_EnemySpawnProjectile.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Combat/Projectile/ERNProjectileBase.h"
+#include "AIController.h"
 
 void UAnimNotify_EnemySpawnProjectile::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
 	const FAnimNotifyEventReference& EventReference)
@@ -19,9 +20,16 @@ void UAnimNotify_EnemySpawnProjectile::Notify(USkeletalMeshComponent* MeshComp, 
 
 	if (!Config || !Config->ProjectileClass) return;
 
-	// 소켓 위치/회전으로 스폰
+	// 소켓 위치
 	FVector SpawnLocation = Enemy->GetMesh()->GetSocketLocation(Config->SpawnSocket);
-	FRotator SpawnRotation = Enemy->GetActorRotation();
+	
+	// AIC에서 Focus중인 액터 방향
+	AAIController* AIC = Cast<AAIController>(Enemy->GetController());
+	AActor* FocusActor = AIC ? AIC->GetFocusActor() : nullptr;
+	
+	FRotator SpawnRotation = FocusActor ?
+		(FocusActor->GetActorLocation() - SpawnLocation).GetSafeNormal().Rotation()
+		: Enemy->GetActorRotation();	
 
 	FActorSpawnParameters Params;
 	Params.Instigator = Enemy;
