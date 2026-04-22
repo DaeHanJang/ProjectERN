@@ -41,15 +41,6 @@ void AERNEnemyCharacter::BeginPlay()
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	}
 
-	// 체력바 위젯 초기화
-	if (HealthBarWidget)
-	{
-		if (UERNEnemyHealthBarWidget* Widget = Cast<UERNEnemyHealthBarWidget>(HealthBarWidget->GetUserWidgetObject()))
-		{
-			Widget->InitWidget(this);
-		}
-	}
-
 	// 초기 스탯 적용
 	if (AttributeSet)
 	{
@@ -62,6 +53,15 @@ void AERNEnemyCharacter::BeginPlay()
 		AttributeSet->InitAttackPower(InitialAttackPower);
 		AttributeSet->InitDefense(InitialDefense);
 		AttributeSet->InitStaggerResistance(InitialStaggerResistance);
+	}
+
+	// 체력바 위젯 초기화 (스탯 적용 후)
+	if (HealthBarWidget)
+	{
+		if (UERNEnemyHealthBarWidget* Widget = Cast<UERNEnemyHealthBarWidget>(HealthBarWidget->GetUserWidgetObject()))
+		{
+			Widget->InitWidget(this);
+		}
 	}
 
 	// 서버에서만 히트박스 Overlap 바인딩
