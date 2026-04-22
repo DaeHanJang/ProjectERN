@@ -126,8 +126,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
 	int32 ExpReward = 100;
 
-	// 경직 저항력 초기값 (BP마다 다르게 설정, BeginPlay에서 AttributeSet에 적용)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat")
+	// 초기 스탯 (BP마다 다르게 설정, BeginPlay에서 AttributeSet에 적용)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
+	float InitialMaxHealth = 100.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
+	float InitialMaxMana = 100.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
+	float InitialMaxStamina = 100.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
+	float InitialAttackPower = 10.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
+	float InitialDefense = 5.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
 	float InitialStaggerResistance = 10.f;
 
 	// 근접 히트박스 설정 (태그로 구분, 태그별 데미지 값 설정)

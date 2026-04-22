@@ -29,7 +29,7 @@ void UAnimNotify_EnemySpawnProjectile::Notify(USkeletalMeshComponent* MeshComp, 
 	
 	FRotator SpawnRotation = FocusActor ?
 		(FocusActor->GetActorLocation() - SpawnLocation).GetSafeNormal().Rotation()
-		: Enemy->GetActorRotation();	
+		: Enemy->GetActorRotation();
 
 	FActorSpawnParameters Params;
 	Params.Instigator = Enemy;
