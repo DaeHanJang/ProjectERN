@@ -61,5 +61,5 @@ public:
 	// 검증 성공 시 불러올 DataAsset(Icon Texture, Mesh 등)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UItemDataAssetBase> DataAsset = nullptr;
-		
+	
 };

@@ -3,8 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/StreamableManager.h"
+#include "Inventory/Item/Data/ERNItemTable.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "ItemManagerSubsystem.generated.h"
+
+class UConsumableItemDataAsset;
+class UEquipableItemDataAsset;
 
 /**
  * 
@@ -17,17 +22,30 @@ class PROJECTERN_API UItemManagerSubsystem : public UGameInstanceSubsystem
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	
-	// TODO
-	// 1. Spawn Item
-	// 2. Validation
-	// 3. DataAsset → FRuntimeItemState 
+	// TODO: Spawn Item
+	
+	// 아이템 검증
+	bool ItemValid(const FName ItemID) const;
+	
+	// 아이템 데이터 애셋 동기 로드
+	const UItemDataAssetBase* LoadItemDataAssetSync(const FName ItemID);
+	// 아이템 데이터 애셋 비동기 로드
+	void PreloadItemDataAssetAsync(const FName ItemID);
+	
+private:
+	// 데이터 테이블에서 아이템 키에 해당하는 행 가져오기
+	const FERNItemTable* FindItemRow(const FName ItemID) const;
 	
 private:
 	// 아이템 테이블 (핵심 데이터이기 때문에 TObjectPtr로 강하게 참조)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Data", meta=(AllowPrivateAccess="true"))
-	TObjectPtr<UDataTable> ItemTable = nullptr;
+	TObjectPtr<const UDataTable> ItemTable = nullptr;
 	
-	// TODO
-	// 1. Cache TMap<ItemID(=RowName), FRuntimeItemState>
+	// 검증된 아이템 키에 해당하는 고유 데이터를 캐싱한 맵
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<const UItemDataAssetBase>> ItemDataAssetCache;
+	
+	// 비동기 로드 요청 추적 테이블 (중복 요청 방지, 비동기 로드 요청 객체 보관, 로드 완료 시점 관리)
+	TMap<FName, TSharedPtr<FStreamableHandle>> PendingItemDataAssetLoads;
 	
 };
