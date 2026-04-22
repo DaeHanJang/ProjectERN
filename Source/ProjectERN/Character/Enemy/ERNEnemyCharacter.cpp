@@ -50,9 +50,17 @@ void AERNEnemyCharacter::BeginPlay()
 		}
 	}
 
-	// 경직 저항력 초기값 적용
+	// 초기 스탯 적용
 	if (AttributeSet)
 	{
+		AttributeSet->InitMaxHealth(InitialMaxHealth);
+		AttributeSet->InitHealth(InitialMaxHealth);
+		AttributeSet->InitMaxMana(InitialMaxMana);
+		AttributeSet->InitMana(InitialMaxMana);
+		AttributeSet->InitMaxStamina(InitialMaxStamina);
+		AttributeSet->InitStamina(InitialMaxStamina);
+		AttributeSet->InitAttackPower(InitialAttackPower);
+		AttributeSet->InitDefense(InitialDefense);
 		AttributeSet->InitStaggerResistance(InitialStaggerResistance);
 	}
 
