@@ -16,6 +16,7 @@
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
 #include "GAS/ERNGameplayTags.h"
+#include "Shop/Components/ERNShopComponent.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -58,6 +59,9 @@ AProjectERNCharacter::AProjectERNCharacter()
 
 	// Create Equipment Component
 	EquipmentComponent = CreateDefaultSubobject<UERNEquipmentComponent>(TEXT("EquipmentComponent"));
+
+	// Create Shop Component
+	ShopComponent = CreateDefaultSubobject<UERNShopComponent>(TEXT("ShopComponent"));
 
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 

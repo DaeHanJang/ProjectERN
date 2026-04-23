@@ -6,6 +6,7 @@
 #include "Online/OnlineSessionNames.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Shop/Provider/ERNDummyShopProvider.h"
+#include "Shop/Provider/ERNNetworkShopProvider.h"
 
 UERNGameInstance::UERNGameInstance()
 {
@@ -273,8 +274,8 @@ void UERNGameInstance::InitializeShopSystem()
 	else
 	{
 		// Phase 6 이후: NetworkProvider 생성
-		ShopDataProvider = NewObject<UERNDummyShopProvider>(this);
-		UE_LOG(LogShopProvider, Log, TEXT("[GameInstance] Provider 생성 (네트워크 미구현, 더미 대체)"));
+		ShopDataProvider = NewObject<UERNNetworkShopProvider>(this);
+		UE_LOG(LogShopProvider, Log, TEXT("[GameInstance] 네트워크 Provider 생성"));
 	}
 #endif
 

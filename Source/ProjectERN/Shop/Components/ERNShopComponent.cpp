@@ -3,6 +3,7 @@
 #include "Shop/Components/ERNShopComponent.h"
 #include "Shop/Provider/ERNShopDataProvider.h"
 #include "Shop/Provider/ERNDummyShopProvider.h"
+#include "Shop/Provider/ERNNetworkShopProvider.h"
 #include "Core/ERNGameInstance.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "GameFramework/Character.h"
@@ -44,7 +45,12 @@ void UERNShopComponent::AcquireProvider()
                 DummyProvider->OnShopDataReceived.AddDynamic(this, &UERNShopComponent::OnDataReceived);
                 DummyProvider->OnPurchaseComplete.AddDynamic(this, &UERNShopComponent::OnPurchaseComplete);
             }
-            // TODO: NetworkProvider도 동일 방식으로 바인딩 (Phase 6)
+            else if (UERNNetworkShopProvider* NetworkProvider = Cast<UERNNetworkShopProvider>(
+                    GI->GetShopDataProviderObject()))
+            {
+                NetworkProvider->OnShopDataReceived.AddDynamic(this, &UERNShopComponent::OnDataReceived);
+                NetworkProvider->OnPurchaseComplete.AddDynamic(this, &UERNShopComponent::OnPurchaseComplete);
+            }
 
             UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] Provider 획득 성공"));
         }

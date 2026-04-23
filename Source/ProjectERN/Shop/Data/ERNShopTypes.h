@@ -8,6 +8,7 @@
 
 // ===== 로그 카테고리 =====
 DECLARE_LOG_CATEGORY_EXTERN(LogShopModel, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogShopProvider, Log, All);
 
 // ===== 열거형 =====
 

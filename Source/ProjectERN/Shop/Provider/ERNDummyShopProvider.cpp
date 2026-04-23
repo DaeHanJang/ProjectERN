@@ -2,7 +2,7 @@
 
 #include "Shop/Provider/ERNDummyShopProvider.h"
 
-DEFINE_LOG_CATEGORY(LogShopProvider);
+
 
 void UERNDummyShopProvider::Initialize_Implementation(UObject* Owner)
 {
@@ -122,7 +122,10 @@ void UERNDummyShopProvider::GenerateDummyItems(FName ShopID)
     Inventory.ShopID = ShopID;
     Inventory.ShopLevel = 1;
 
-    // ----- 무기 -----
+    Inventory.bIsSharedPool = true;
+
+    // ----- 공통 기본 아이템 (야영지 등 모든 상점 취급) -----
+    // 무기
     {
         FERNShopItemData Item;
         Item.ItemID = FName("ITEM_SWORD_01");
@@ -134,19 +137,8 @@ void UERNDummyShopProvider::GenerateDummyItems(FName ShopID)
         Item.bIsAvailable = true;
         Inventory.Items.Add(Item);
     }
-    {
-        FERNShopItemData Item;
-        Item.ItemID = FName("ITEM_STAFF_01");
-        Item.DisplayName = FText::FromString(TEXT("마법 지팡이"));
-        Item.Description = FText::FromString(TEXT("마력이 깃든 지팡이입니다."));
-        Item.Price = 800;  // 800 룬
-        Item.Category = EERNShopItemCategory::Weapon;
-        Item.StockCount = 1;  // 공유 재고: 1개
-        Item.bIsAvailable = true;
-        Inventory.Items.Add(Item);
-    }
 
-    // ----- 방어구 -----
+    // 방어구
     {
         FERNShopItemData Item;
         Item.ItemID = FName("ITEM_ARMOR_01");
@@ -159,7 +151,7 @@ void UERNDummyShopProvider::GenerateDummyItems(FName ShopID)
         Inventory.Items.Add(Item);
     }
 
-    // ----- 소모품 -----
+    // 소모품
     {
         FERNShopItemData Item;
         Item.ItemID = FName("ITEM_POTION_HP_01");
@@ -181,6 +173,45 @@ void UERNDummyShopProvider::GenerateDummyItems(FName ShopID)
         Item.Category = EERNShopItemCategory::Consumable;
         Item.MaxStack = 99;
         Item.StockCount = -1;
+        Item.bIsAvailable = true;
+        Inventory.Items.Add(Item);
+    }
+
+    // ----- 마을 상점 (Shop_Township) 이상 등급 전용 확장 아이템 -----
+    if (ShopID == FName("Shop_Township") || ShopID == FName("Shop_Boss"))
+    {
+        FERNShopItemData Item;
+        Item.ItemID = FName("ITEM_STAFF_01");
+        Item.DisplayName = FText::FromString(TEXT("마법 지팡이"));
+        Item.Description = FText::FromString(TEXT("마력이 깃든 지팡이입니다."));
+        Item.Price = 800;
+        Item.Category = EERNShopItemCategory::Weapon;
+        Item.StockCount = 1;
+        Item.bIsAvailable = true;
+        Inventory.Items.Add(Item);
+
+        FERNShopItemData ArmorItem;
+        ArmorItem.ItemID = FName("ITEM_ARMOR_02");
+        ArmorItem.DisplayName = FText::FromString(TEXT("기사단 갑옷"));
+        ArmorItem.Description = FText::FromString(TEXT("단단한 철제 갑옷입니다."));
+        ArmorItem.Price = 1200;
+        ArmorItem.Category = EERNShopItemCategory::Armor;
+        ArmorItem.StockCount = 1;
+        ArmorItem.bIsAvailable = true;
+        Inventory.Items.Add(ArmorItem);
+    }
+
+    // ----- 보스방 특수 상점 (Shop_Boss) 전용 아이템 -----
+    if (ShopID == FName("Shop_Boss"))
+    {
+        FERNShopItemData Item;
+        Item.ItemID = FName("ITEM_POTION_SPECIAL");
+        Item.DisplayName = FText::FromString(TEXT("기적의 영약"));
+        Item.Description = FText::FromString(TEXT("보스전을 위한 강력한 영약입니다."));
+        Item.Price = 3000;
+        Item.Category = EERNShopItemCategory::Consumable;
+        Item.MaxStack = 5;
+        Item.StockCount = 3; // 한정 판매
         Item.bIsAvailable = true;
         Inventory.Items.Add(Item);
     }
