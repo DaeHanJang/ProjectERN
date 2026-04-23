@@ -2,12 +2,21 @@
 
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 
+#include "ItemManagerSettings.h"
 #include "Engine/AssetManager.h"
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
 
 void UItemManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	
+	const UItemManagerSettings* Settings = GetDefault<UItemManagerSettings>();
+	if (!Settings)
+	{
+		return;
+	}
+	
+	ItemTable = Settings->ItemTable.LoadSynchronous();
 	
 	// 아이템 테이블은 핵심 데이터이기 때문에 꼭 존재해야 함
 	checkf(ItemTable, TEXT("ItemTable is not assigned in ItemManagerSubsystem."));
