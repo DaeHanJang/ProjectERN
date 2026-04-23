@@ -56,9 +56,13 @@ EBTNodeResult::Type UBTTask_RandomBehavior::ExecuteTask(UBehaviorTreeComponent& 
 	UAnimMontage* SelectedMontage = SelectRandomMontage();
 	if (SelectedMontage)
 	{
+		// 몽타주 길이를 블랙보드에 저장
+		float MontageLength = SelectedMontage->GetPlayLength();
+		OwnerComp.GetBlackboardComponent()->SetValueAsFloat(TEXT("MontageDuration"), MontageLength);
+
 		Enemy->Multicast_PlayAttackMontage(SelectedMontage);
-		UE_LOG(LogTemp, Log, TEXT("[%s] Random behavior: %s on %s"),
-			*Enemy->GetName(), *SelectedMontage->GetName(), *Target->GetName());
+		UE_LOG(LogTemp, Log, TEXT("[%s] Random behavior: %s (%.2fs) on %s"),
+			*Enemy->GetName(), *SelectedMontage->GetName(), MontageLength, *Target->GetName());
 	}
 	else
 	{

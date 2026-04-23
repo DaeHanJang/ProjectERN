@@ -10,8 +10,7 @@ void UItemManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Super::Initialize(Collection);
 	
 	// 아이템 테이블은 핵심 데이터이기 때문에 꼭 존재해야 함
-	// 임시 주석처리
-	// checkf(ItemTable, TEXT("ItemTable is not assigned in ItemManagerSubsystem."));
+	checkf(ItemTable, TEXT("ItemTable is not assigned in ItemManagerSubsystem."));
 }
 
 void UItemManagerSubsystem::Deinitialize()
