@@ -9,6 +9,7 @@
 class UWidgetComponent;
 class AERNProjectileBase;
 class UBoxComponent;
+class UMotionWarpingComponent;
 
 USTRUCT(BlueprintType)
 struct FEnemyHitboxConfig
@@ -98,6 +99,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
 	UWidgetComponent* HealthBarWidget;
 
+	// 모션 워핑 컴포넌트 (공격 시 타겟 방향으로 이동)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	UMotionWarpingComponent* MotionWarpingComponent;
+
 	// 피격 후 체력바 자동 숨김까지 대기 시간 (블루프린트에서 수정 가능)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
 	float HealthBarHideDelay = 15.0f;
@@ -121,8 +126,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
 	int32 ExpReward = 100;
 
-	// 경직 저항력 초기값 (BP마다 다르게 설정, BeginPlay에서 AttributeSet에 적용)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat")
+	// 초기 스탯 (BP마다 다르게 설정, BeginPlay에서 AttributeSet에 적용)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
+	float InitialMaxHealth = 100.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
+	float InitialMaxMana = 100.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
+	float InitialMaxStamina = 100.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
+	float InitialAttackPower = 10.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
+	float InitialDefense = 5.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
 	float InitialStaggerResistance = 10.f;
 
 	// 근접 히트박스 설정 (태그로 구분, 태그별 데미지 값 설정)

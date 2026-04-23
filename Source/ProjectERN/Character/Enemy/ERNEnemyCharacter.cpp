@@ -8,13 +8,13 @@
 #include "UI/ERNEnemyHealthBarWidget.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Engine/DamageEvents.h"
+#include "MotionWarpingComponent.h"
 
 AERNEnemyCharacter::AERNEnemyCharacter()
 {
 	// AI가 자동으로 빙의하도록 설정
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
-	// 적은 기본적으로 회전하지 않음
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 200.0f, 0.0f);
@@ -26,6 +26,9 @@ AERNEnemyCharacter::AERNEnemyCharacter()
 	HealthBarWidget->SetWidgetSpace(EWidgetSpace::Screen);
 	HealthBarWidget->SetDrawSize(FVector2D(150.0f, 20.0f));
 	HealthBarWidget->SetVisibility(false);
+
+	// 모션 워핑 컴포넌트
+	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarping"));
 }
 
 void AERNEnemyCharacter::BeginPlay()
@@ -38,19 +41,27 @@ void AERNEnemyCharacter::BeginPlay()
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	}
 
-	// 체력바 위젯 초기화
+	// 초기 스탯 적용
+	if (AttributeSet)
+	{
+		AttributeSet->InitMaxHealth(InitialMaxHealth);
+		AttributeSet->InitHealth(InitialMaxHealth);
+		AttributeSet->InitMaxMana(InitialMaxMana);
+		AttributeSet->InitMana(InitialMaxMana);
+		AttributeSet->InitMaxStamina(InitialMaxStamina);
+		AttributeSet->InitStamina(InitialMaxStamina);
+		AttributeSet->InitAttackPower(InitialAttackPower);
+		AttributeSet->InitDefense(InitialDefense);
+		AttributeSet->InitStaggerResistance(InitialStaggerResistance);
+	}
+
+	// 체력바 위젯 초기화 (스탯 적용 후)
 	if (HealthBarWidget)
 	{
 		if (UERNEnemyHealthBarWidget* Widget = Cast<UERNEnemyHealthBarWidget>(HealthBarWidget->GetUserWidgetObject()))
 		{
 			Widget->InitWidget(this);
 		}
-	}
-
-	// 경직 저항력 초기값 적용
-	if (AttributeSet)
-	{
-		AttributeSet->InitStaggerResistance(InitialStaggerResistance);
 	}
 
 	// 서버에서만 히트박스 Overlap 바인딩
@@ -67,6 +78,8 @@ void AERNEnemyCharacter::BindHitboxOverlaps()
 
 	for (UBoxComponent* Box : Boxes)
 	{
+		// 히트박스 초기 상태를 NoCollision으로 설정
+		Box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Box->OnComponentBeginOverlap.AddDynamic(this, &AERNEnemyCharacter::OnHitboxOverlap);
 	}
 }
@@ -167,7 +180,7 @@ void AERNEnemyCharacter::OnDeath()
 
 void AERNEnemyCharacter::SpawnDrops()
 {
-	// TODO: 드롭 테이블 기반으로 아이템 스폰
+	// TODO: 드랍 테이블 기반으로 아이템 스폰
 	for (const FDropItemInfo& DropInfo : DropTable)
 	{
 		float RandomValue = FMath::FRand();

@@ -6,6 +6,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AbilitySystemComponent.h"
 #include "GAS/ERNGameplayTags.h"
+#include "MotionWarpingComponent.h"
 
 UBTTask_Attack::UBTTask_Attack()
 {
@@ -43,9 +44,13 @@ EBTNodeResult::Type UBTTask_Attack::ExecuteTask(UBehaviorTreeComponent& OwnerCom
 	}
 
 	// 타겟 방향으로 회전
-	FVector Direction = Target->GetActorLocation() - Enemy->GetActorLocation();
-	Direction.Z = 0.f;
-	Enemy->SetActorRotation(Direction.Rotation());
+	AIController->SetFocus(Target);
+
+	// 모션 워핑 타겟 설정 (공격 시 타겟 방향으로 이동)
+	if (UMotionWarpingComponent* MotionWarping = Enemy->FindComponentByClass<UMotionWarpingComponent>())
+	{
+		MotionWarping->AddOrUpdateWarpTargetFromLocation(TEXT("AttackTarget"), Target->GetActorLocation());
+	}
 
 	// 공격 몽타주 재생 (Multicast로 모든 클라이언트에 동기화)
 	// 데미지는 AnimNotifyState_EnemyMeleeHitbox / AnimNotify_EnemySpawnProjectile에서 처리

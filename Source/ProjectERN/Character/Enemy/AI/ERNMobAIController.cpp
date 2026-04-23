@@ -4,6 +4,7 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AISense_Sight.h"
 #include "Character/Player/ProjectERNCharacter.h"
 
 AERNMobAIController::AERNMobAIController()
@@ -28,6 +29,20 @@ AERNMobAIController::AERNMobAIController()
 void AERNMobAIController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// UPROPERTY 값으로 SightConfig 업데이트
+	if (UAIPerceptionComponent* PerceptionComp = GetPerceptionComponent())
+	{
+		FAISenseID SightSenseID = UAISense::GetSenseID<UAISense_Sight>();
+		if (UAISenseConfig_Sight* SightConfig = Cast<UAISenseConfig_Sight>(
+			PerceptionComp->GetSenseConfig(SightSenseID)))
+		{
+			SightConfig->SightRadius = SightRadius;
+			SightConfig->LoseSightRadius = LoseSightRadius;
+			SightConfig->PeripheralVisionAngleDegrees = DefaultVisionAngle;
+			PerceptionComp->RequestStimuliListenerUpdate();
+		}
+	}
 
 	SetupPerception();
 }
@@ -66,8 +81,7 @@ void AERNMobAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 	{
 		if (Stimulus.WasSuccessfullySensed())
 		{
-			Blackboard->SetValueAsObject(TEXT("TargetActor"), Player);
-			UE_LOG(LogTemp, Log, TEXT("[%s] Player detected: %s"), *GetName(), *Player->GetName());
+			SetTarget(Player);
 		}
 		else
 		{
@@ -75,8 +89,58 @@ void AERNMobAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 			if (CurrentTarget == Player)
 			{
 				Blackboard->ClearValue(TEXT("TargetActor"));
+				SetCombatVision(false);
 				UE_LOG(LogTemp, Log, TEXT("[%s] Player lost: %s"), *GetName(), *Player->GetName());
 			}
 		}
+	}
+}
+
+void AERNMobAIController::SetTarget(AActor* NewTarget)
+{
+	if (!Blackboard)
+	{
+		return;
+	}
+
+	if (NewTarget)
+	{
+		Blackboard->SetValueAsObject(TEXT("TargetActor"), NewTarget);
+		SetCombatVision(true);
+		UE_LOG(LogTemp, Log, TEXT("[%s] Target set: %s"), *GetName(), *NewTarget->GetName());
+	}
+	else
+	{
+		Blackboard->ClearValue(TEXT("TargetActor"));
+		SetCombatVision(false);
+	}
+}
+
+void AERNMobAIController::SetCombatVision(bool bInCombat)
+{
+	if (bIsInCombatMode == bInCombat)
+	{
+		return;
+	}
+
+	bIsInCombatMode = bInCombat;
+
+	UAIPerceptionComponent* PerceptionComp = GetPerceptionComponent();
+	if (!PerceptionComp)
+	{
+		return;
+	}
+
+	FAISenseID SightSenseID = UAISense::GetSenseID<UAISense_Sight>();
+	UAISenseConfig_Sight* SightConfig = Cast<UAISenseConfig_Sight>(
+		PerceptionComp->GetSenseConfig(SightSenseID));
+
+	if (SightConfig)
+	{
+		SightConfig->PeripheralVisionAngleDegrees = bInCombat ? CombatVisionAngle : DefaultVisionAngle;
+		PerceptionComp->RequestStimuliListenerUpdate();
+
+		UE_LOG(LogTemp, Log, TEXT("[%s] Vision changed to %.1f degrees"),
+			*GetName(), SightConfig->PeripheralVisionAngleDegrees);
 	}
 }
