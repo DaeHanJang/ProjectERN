@@ -5,11 +5,21 @@
 #include "CoreMinimal.h"
 #include "Engine/StreamableManager.h"
 #include "Inventory/Item/Data/ERNItemTable.h"
+#include "Inventory/Item/Data/ERNItemAssetLoadTypes.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "ItemManagerSubsystem.generated.h"
 
 class UConsumableItemDataAsset;
 class UEquipableItemDataAsset;
+
+// 정책 플래그에 따른 비동기 로드 요청 추적 구조체
+struct FPendingItemDataAssetLoad
+{
+	// Item 로드 정책 플래그
+	EItemAssetLoadFlags RequestedLoadFlags = EItemAssetLoadFlags::None;
+	// AssetManager에서 보낸 비동기 로드 요청 핸들
+	TSharedPtr<FStreamableHandle> Handle;
+};
 
 /**
  * 
@@ -21,6 +31,7 @@ class PROJECTERN_API UItemManagerSubsystem : public UGameInstanceSubsystem
 	
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	virtual void Deinitialize() override;
 	
 	// TODO: Spawn Item
 	
@@ -28,11 +39,13 @@ public:
 	bool ItemValid(const FName ItemID) const;
 	
 	// 아이템 데이터 애셋 동기 로드
-	const UItemDataAssetBase* LoadItemDataAssetSync(const FName ItemID);
+	const UItemDataAssetBase* LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags);
 	// 아이템 데이터 애셋 비동기 로드
-	void PreloadItemDataAssetAsync(const FName ItemID);
+	void PreloadItemDataAssetAsync(const FName ItemID, const EItemAssetLoadFlags LoadFlags);
 	
 private:
+	// 서버 검증
+	bool CanAccessItemTable() const;
 	// 데이터 테이블에서 아이템 키에 해당하는 행 가져오기
 	const FERNItemTable* FindItemRow(const FName ItemID) const;
 	
@@ -46,6 +59,6 @@ private:
 	TMap<FName, TObjectPtr<const UItemDataAssetBase>> ItemDataAssetCache;
 	
 	// 비동기 로드 요청 추적 테이블 (중복 요청 방지, 비동기 로드 요청 객체 보관, 로드 완료 시점 관리)
-	TMap<FName, TSharedPtr<FStreamableHandle>> PendingItemDataAssetLoads;
+	TMap<FName, FPendingItemDataAssetLoad> PendingItemDataAssetLoads;
 	
 };

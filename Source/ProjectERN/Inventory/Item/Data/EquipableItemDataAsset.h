@@ -18,6 +18,9 @@ class PROJECTERN_API UEquipableItemDataAsset : public UItemDataAssetBase
 	GENERATED_BODY()
 	
 public:
+	virtual void GatherSoftPaths(const EItemAssetLoadFlags LoadFlags, TArray<FSoftObjectPath>& OutPaths) const override;
+	
+public:
 	// 무기 종류
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EWeaponType WeaponType = EWeaponType::None;

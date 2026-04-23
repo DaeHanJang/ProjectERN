@@ -18,6 +18,9 @@ class PROJECTERN_API UConsumableItemDataAsset : public UItemDataAssetBase
 	GENERATED_BODY()
 	
 public:
+	virtual void GatherSoftPaths(const EItemAssetLoadFlags LoadFlags, TArray<FSoftObjectPath>& OutPaths) const override;
+	
+public:
 	// 사용 가능 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EConsumableType ConsumableType = EConsumableType::None; 
