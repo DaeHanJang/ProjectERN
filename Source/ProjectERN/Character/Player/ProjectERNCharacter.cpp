@@ -125,11 +125,12 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
 	// 공격 중이면 이동 불가
+	
 	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking))
 	{
 		return;
 	}
-
+	
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
 

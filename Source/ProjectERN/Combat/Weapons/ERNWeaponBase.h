@@ -39,9 +39,12 @@ public:
 	float HeavyAttackStaggerPower = 25.f;
 
 	// 무기 전용 애니메이션 몽타주
+	
+	/* LightAttack은 일반 공격으로 GA에서 몽타주 받아서 처리.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Animations")
 	UAnimMontage* LightAttackMontage;
+	*/
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Animations")
-	UAnimMontage* HeavyAttackMontage;
+	TObjectPtr<UAnimMontage> HeavyAttackMontage;
 };

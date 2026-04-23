@@ -24,4 +24,7 @@ public:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		const FGameplayEventData* TriggerEventData) override;
 
+	// 몽타주 프로퍼티 (BP에서 편집 가능)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TObjectPtr<UAnimMontage> AttackMontage;
 };
