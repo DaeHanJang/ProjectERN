@@ -65,13 +65,13 @@ void AERNProjectileBase::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 		return;
 	}
 
-	// 적 → 플레이어 투사체
+	// 플레이어 -> 몬스터
 	if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(OtherActor))
 	{
 		Enemy->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), GetOwner());
 		Enemy->TryApplyStagger(StaggerPower);
 	}
-	// 몬스터 → 플레이어 투사체
+	// 몬스터 → 플레이어
 	else if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(OtherActor))
 	{
 		Player->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), GetOwner());

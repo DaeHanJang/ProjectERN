@@ -56,6 +56,10 @@ EBTNodeResult::Type UBTTask_Attack::ExecuteTask(UBehaviorTreeComponent& OwnerCom
 	// 데미지는 AnimNotifyState_EnemyMeleeHitbox / AnimNotify_EnemySpawnProjectile에서 처리
 	if (AttackMontage)
 	{
+		// 몽타주 길이를 블랙보드에 저장
+		float MontageLength = AttackMontage->GetPlayLength();
+		OwnerComp.GetBlackboardComponent()->SetValueAsFloat(TEXT("MontageDuration"), MontageLength);
+
 		Enemy->Multicast_PlayAttackMontage(AttackMontage);
 		UE_LOG(LogTemp, Log, TEXT("[%s] Attack montage multicast on %s"), *Enemy->GetName(), *Target->GetName());
 	}
