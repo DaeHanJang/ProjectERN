@@ -15,6 +15,7 @@ struct FInputActionValue;
 enum class ECharacterType : uint8;
 class UERNInventoryComponent;
 class UERNEquipmentComponent;
+class UERNShopComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -42,6 +43,10 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** Equipment Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UERNEquipmentComponent* EquipmentComponent;
+
+	/** Shop Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UERNShopComponent* ShopComponent;
 
 protected:
 
@@ -134,4 +139,7 @@ public:
 
 	/** Returns EquipmentComponent **/
 	FORCEINLINE class UERNEquipmentComponent* GetEquipmentComponent() const { return EquipmentComponent; }
+
+	/** Returns ShopComponent **/
+	FORCEINLINE class UERNShopComponent* GetShopComponent() const { return ShopComponent; }
 };
