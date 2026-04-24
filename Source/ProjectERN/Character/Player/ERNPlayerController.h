@@ -90,6 +90,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> CharacterSelectionWidgetClass;
 
+	// 상점 메인 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UUserWidget> ShopMainWidgetClass;
+
 	// 준비 상태 토글 (블루프린트에서 호출)
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void ToggleReady();

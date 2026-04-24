@@ -7,7 +7,7 @@
 #include "Interfaces/IInteractable.h"
 #include "ERNShopActor.generated.h"
 
-class UBoxComponent;
+class USphereComponent;
 class UStaticMeshComponent;
 class UWidgetComponent;
 
@@ -37,6 +37,7 @@ public:
     virtual FText GetInteractionText_Implementation() const override;
 
 protected:
+    virtual void BeginPlay() override;
 
     // ===== 컴포넌트 =====
 
@@ -46,7 +47,11 @@ protected:
 
     /** 상호작용 감지 범위 */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-    UBoxComponent* InteractionBox;
+    USphereComponent* InteractionSphere;
+
+    /** 상호작용 프롬프트 위젯 */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UWidgetComponent* InteractionPromptWidget;
 
     // ===== 상점 설정 =====
 
@@ -69,12 +74,12 @@ protected:
     // ===== 오버랩 이벤트 =====
 
     UFUNCTION()
-    void OnInteractionBeginOverlap(UPrimitiveComponent* OverlappedComponent,
+    void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent,
         AActor* OtherActor, UPrimitiveComponent* OtherComp,
         int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
     UFUNCTION()
-    void OnInteractionEndOverlap(UPrimitiveComponent* OverlappedComponent,
+    void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent,
         AActor* OtherActor, UPrimitiveComponent* OtherComp,
         int32 OtherBodyIndex);
 };
