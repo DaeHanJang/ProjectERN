@@ -5,6 +5,8 @@
 #include "OnlineSessionSettings.h"
 #include "Online/OnlineSessionNames.h"
 #include "Interfaces/OnlineSessionInterface.h"
+#include "Shop/Provider/ERNDummyShopProvider.h"
+#include "Shop/Provider/ERNNetworkShopProvider.h"
 
 UERNGameInstance::UERNGameInstance()
 {
@@ -31,6 +33,9 @@ void UERNGameInstance::Init()
 			SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &UERNGameInstance::OnDestroySessionComplete);
 		}
 	}
+
+	// 상점 시스템 초기화
+	InitializeShopSystem();
 }
 
 void UERNGameInstance::HostSession(FString ServerName, int32 MaxPlayers)
@@ -250,4 +255,48 @@ void UERNGameInstance::JoinByIP(FString IPAddress)
 		UE_LOG(LogTemp, Log, TEXT("Joining by IP: %s"), *TravelURL);
 		PC->ClientTravel(TravelURL, TRAVEL_Absolute);
 	}
+}
+
+// ===== 상점 시스템 =====
+
+void UERNGameInstance::InitializeShopSystem()
+{
+#if WITH_EDITOR
+	// 에디터 환경: 항상 더미 Provider 사용
+	ShopDataProvider = NewObject<UERNDummyShopProvider>(this);
+	UE_LOG(LogShopProvider, Log, TEXT("[GameInstance] 더미 Provider 생성 (에디터 모드)"));
+#else
+	if (bUseDummyShopData)
+	{
+		ShopDataProvider = NewObject<UERNDummyShopProvider>(this);
+		UE_LOG(LogShopProvider, Log, TEXT("[GameInstance] 더미 Provider 생성 (설정값)"));
+	}
+	else
+	{
+		// Phase 6 이후: NetworkProvider 생성
+		ShopDataProvider = NewObject<UERNNetworkShopProvider>(this);
+		UE_LOG(LogShopProvider, Log, TEXT("[GameInstance] 네트워크 Provider 생성"));
+	}
+#endif
+
+	if (ShopDataProvider)
+	{
+		IERNShopDataProvider* Provider = Cast<IERNShopDataProvider>(ShopDataProvider);
+		if (Provider)
+		{
+			IERNShopDataProvider::Execute_Initialize(ShopDataProvider, this);
+			UE_LOG(LogShopProvider, Log, TEXT("[GameInstance] 상점 시스템 초기화 완료"));
+		}
+	}
+}
+
+TScriptInterface<IERNShopDataProvider> UERNGameInstance::GetShopDataProvider() const
+{
+	TScriptInterface<IERNShopDataProvider> Result;
+	if (ShopDataProvider)
+	{
+		Result.SetObject(ShopDataProvider);
+		Result.SetInterface(Cast<IERNShopDataProvider>(ShopDataProvider));
+	}
+	return Result;
 }

@@ -6,7 +6,10 @@
 #include "Engine/GameInstance.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Character/Player/ERNPlayerState.h"
+#include "Shop/Provider/ERNShopDataProvider.h"
 #include "ERNGameInstance.generated.h"
+
+class UERNDummyShopProvider;
 
 UCLASS()
 class PROJECTERN_API UERNGameInstance : public UGameInstance
@@ -66,6 +69,15 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Network")
 	ECharacterType CurrentCharacterType;
 
+	// ===== 상점 시스템 =====
+
+	/** 상점 Provider 반환 (인터페이스) */
+	UFUNCTION(BlueprintCallable, Category = "Shop")
+	TScriptInterface<IERNShopDataProvider> GetShopDataProvider() const;
+
+	/** 상점 Provider UObject 반환 (캐스팅용) */
+	UObject* GetShopDataProviderObject() const { return ShopDataProvider; }
+
 protected:
 	// 세션 인터페이스
 	IOnlineSessionPtr SessionInterface;
@@ -108,4 +120,17 @@ protected:
 	// 생성할 세션 정보 임시 저장
 	FString PendingServerName;
 	int32 PendingMaxPlayers;
+
+	// ===== 상점 시스템 =====
+
+	/** 상점 데이터 Provider (UObject, 맵 전환에도 유지) */
+	UPROPERTY()
+	UObject* ShopDataProvider = nullptr;
+
+	/** 더미 데이터 사용 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+	bool bUseDummyShopData = true;
+
+	/** 상점 시스템 초기화 */
+	void InitializeShopSystem();
 };
