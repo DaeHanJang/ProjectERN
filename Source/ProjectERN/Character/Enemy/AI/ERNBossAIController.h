@@ -69,7 +69,7 @@ protected:
 
 	// 어그로 감소율 (초당)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI")
-	float AggroDecayRate = 5.0f;
+	float AggroDecayRate = 0.0f;
 
 	// 어그로 업데이트 타이머
 	FTimerHandle AggroDecayTimerHandle;
