@@ -25,7 +25,8 @@ public class ProjectERN : ModuleRules
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
 			"Niagara",
-			"MotionWarping"
+			"MotionWarping",
+			"PhysicsCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
