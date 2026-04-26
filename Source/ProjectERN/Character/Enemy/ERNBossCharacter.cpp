@@ -46,9 +46,19 @@ float AERNBossCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	// 페이즈 전환 체크
 	if (ActualDamage > 0.0f && HasAuthority())
 	{
+		// 데미지 어그로 추가
+		if (AERNBossAIController* BossAIC = Cast<AERNBossAIController>(GetController()))
+		{
+			AActor* AttackerPawn = EventInstigator ? EventInstigator->GetPawn() : DamageCauser;
+			if (AttackerPawn)
+			{
+				BossAIC->AddAggro(AttackerPawn, ActualDamage);
+			}
+		}
+
+		// 페이즈 전환 체크
 		CheckPhaseTransition();
 	}
 

@@ -69,11 +69,27 @@ protected:
 
 	// 어그로 감소율 (초당)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI")
-	float AggroDecayRate = 0.0f;
+	float AggroDecayRate = 0.5f;
+
+	// 시야 안에 있을 때 초당 누적되는 어그로
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI")
+	float SightAggroPerSecond = 1.0f;
+
+	// 어그로 테이블 화면 표시 (디버그용)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|Debug")
+	bool bShowAggroDebug = false;
 
 	// 어그로 업데이트 타이머
 	FTimerHandle AggroDecayTimerHandle;
+	FTimerHandle SightAggroTimerHandle;
+
+	// 현재 시야에 들어와 있는 플레이어 목록
+	UPROPERTY()
+	TArray<AActor*> PerceivedPlayers;
 
 	// 어그로 감소 처리
 	void DecayAggro();
+
+	// 시야 내 플레이어 어그로 누적 처리 (1초마다 호출)
+	void TickSightAggro();
 };
