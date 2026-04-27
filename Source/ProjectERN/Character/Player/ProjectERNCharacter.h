@@ -123,9 +123,10 @@ public:
 	/** Handles jump pressed inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoJumpEnd();
-
+	
 	UFUNCTION(BlueprintCallable, Category="Action")
 	void ExecuteJumpLaunch();
+
 public:
 
 	/** Returns CameraBoom subobject **/

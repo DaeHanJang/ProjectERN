@@ -9,12 +9,15 @@
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Attacking)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Blocking)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Dodging)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Jumping)
 
 // 경직 상태
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Stagger)       // 현재 경직 중
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_SuperArmor)    // 슈퍼아머 (경직 무시)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_StaggerImmune) // 무적 프레임
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Stagger)			// 현재 경직 중
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_SuperArmor)		// 슈퍼아머 (경직 무시)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_StaggerImmune)		// 무적 프레임
 
 // 어빌리티
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Light)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Heavy)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Move_Jump)		// 점프
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Move_Dodge)		// 회피(구르기)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Light)	// 일반 공격
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Heavy)	// 무기 스킬

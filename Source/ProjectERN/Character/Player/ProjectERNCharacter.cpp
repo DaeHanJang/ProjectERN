@@ -106,8 +106,8 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 
 		// Jumping
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AProjectERNCharacter::DoJumpStart);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AProjectERNCharacter::DoJumpEnd);
 
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AProjectERNCharacter::Move);
@@ -183,14 +183,21 @@ void AProjectERNCharacter::DoLook(float Yaw, float Pitch)
 
 void AProjectERNCharacter::DoJumpStart()
 {
-	// signal the character to jump
-	Jump();
+	if (AbilitySystemComponent)
+	{
+		// 점프 태그를 가진 어빌리티 실행 시도
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Move_Jump));
+	}
 }
 
 void AProjectERNCharacter::DoJumpEnd()
 {
-	// signal the character to stop jumping
 	StopJumping();
+}
+
+void AProjectERNCharacter::ExecuteJumpLaunch()
+{
+	Jump();
 }
 
 void AProjectERNCharacter::LightAttack(const FInputActionValue& Value)

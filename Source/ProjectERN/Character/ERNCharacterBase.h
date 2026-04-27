@@ -33,12 +33,14 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_Controller() override;
 
 	// 기본 어빌리티 목록 (블루프린트에서 설정)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 
 	void GiveDefaultAbilities();
+	void InitializeAbilitySystemActorInfo();
 
 	// GAS 컴포넌트들
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Abilities")

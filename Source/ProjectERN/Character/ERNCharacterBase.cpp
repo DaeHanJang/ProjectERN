@@ -29,12 +29,29 @@ void AERNCharacterBase::BeginPlay()
 void AERNCharacterBase::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
+	InitializeAbilitySystemActorInfo();
 
 	// 서버에서만 어빌리티 부여
 	if (HasAuthority())
 	{
 		GiveDefaultAbilities();
 	}
+}
+
+void AERNCharacterBase::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+	InitializeAbilitySystemActorInfo();
+}
+
+void AERNCharacterBase::InitializeAbilitySystemActorInfo()
+{
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 }
 
 void AERNCharacterBase::GiveDefaultAbilities()
