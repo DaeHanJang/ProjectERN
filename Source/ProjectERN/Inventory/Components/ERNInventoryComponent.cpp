@@ -1,6 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Inventory/Components/ERNInventoryComponent.h"
+
+#include "Inventory/Item/ERNItemActor.h"
+#include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
 UERNInventoryComponent::UERNInventoryComponent()
@@ -14,14 +17,17 @@ void UERNInventoryComponent::BeginPlay()
 	Super::BeginPlay();
 }
 
-bool UERNInventoryComponent::IsServerSide() const
+UItemManagerSubsystem* UERNInventoryComponent::GetItemManager() const
 {
-	if (!GetOwner() || !GetOwner()->HasAuthority())
+	if (const UWorld* World = GetWorld())
 	{
-		return false;
+		if (const UGameInstance* GI = World->GetGameInstance())
+		{
+			return GI->GetSubsystem<UItemManagerSubsystem>();
+		}
 	}
 	
-	return true;
+	return nullptr;
 }
 
 void UERNInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -31,34 +37,50 @@ void UERNInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(UERNInventoryComponent, Inventory);
 }
 
-void UERNInventoryComponent::Server_AddItem_Implementation(FName ItemID, FInventoryItemEntry Item)
+void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemActor)
 {
-	if (!IsServerSide())
+	// 매개 변수 유효성 검사
+	if (!ItemActor)
 	{
 		return;
 	}
 	
-	// TODO: 아이템 추가 로직
+	FItemRuntimeState& ItemRuntimeState = ItemActor->GetItemRuntimeState();
+	// ItemActor의 ItemRuntimeState가 유효하지 않을 때
+	if (!ItemRuntimeState.IsValid())
+	{
+		return;
+	}
+	
+	UItemManagerSubsystem* ItemManager = GetItemManager();
+	if (!ItemManager)
+	{
+		return;
+	}
+	// 서버에서 ItemID 유효성 검사
+	if (!ItemManager->ItemValid(ItemRuntimeState.ItemID))
+	{
+		return;
+	}
+	
+	// Inventory에 넣기 요청
+	const bool bAdded = Inventory.AddItem(ItemRuntimeState, MaxSlotSize, ItemManager->GetItemRow(ItemRuntimeState.ItemID)->MaxStackSize);
+	if (!bAdded)
+	{
+		return;
+	}
+	
+	// ItemManager에 리소스 비동기 로드 요청
+	ItemManager->PreloadItemDataAssetAsync(ItemRuntimeState.ItemID, EItemAssetLoadFlags::All);
+	
+	if (ItemRuntimeState.Quantity <= 0)
+	{
+		ItemActor->Destroy();
+	}
 }
 
-void UERNInventoryComponent::Server_RemoveItem_Implementation(int32 SlotIndex, int32 Count)
+void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIndex, const int32 Count)
 {
-	if (!IsServerSide())
-	{
-		return;
-	}
-	
 	// TODO: 아이템 제거 로직
 	UE_LOG(LogTemp, Log, TEXT("Server_RemoveItem: Slot %d, Count %d"), SlotIndex, Count);
-}
-
-void UERNInventoryComponent::Server_UseItem_Implementation(int32 SlotIndex)
-{
-	if (!IsServerSide())
-	{
-		return;
-	}
-	
-	// TODO: 아이템 사용 로직
-	UE_LOG(LogTemp, Log, TEXT("Server_UseItem: Slot %d"), SlotIndex);
 }

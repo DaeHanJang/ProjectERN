@@ -12,6 +12,8 @@
 class UConsumableItemDataAsset;
 class UEquipableItemDataAsset;
 
+DECLARE_DELEGATE_OneParam(FOnItemDataAssetLoaded, const UItemDataAssetBase*);
+
 // 정책 플래그에 따른 비동기 로드 요청 추적 구조체
 struct FPendingItemDataAssetLoad
 {
@@ -37,16 +39,20 @@ public:
 	
 	// 아이템 검증
 	bool ItemValid(const FName ItemID) const;
+	// 데이터 테이블에서 아이템 키에 해당하는 행 가져오기
+	const FERNItemTable* GetItemRow(const FName ItemID) const;
+	// 아이템 생성
+	void SpawnItem(const FName ItemID, const int32 Quantity, const FVector& Location, const FRotator& Rotation);
 	
 	// 아이템 데이터 애셋 동기 로드
 	const UItemDataAssetBase* LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags);
 	// 아이템 데이터 애셋 비동기 로드
-	void PreloadItemDataAssetAsync(const FName ItemID, const EItemAssetLoadFlags LoadFlags);
+	void PreloadItemDataAssetAsync(const FName ItemID, const EItemAssetLoadFlags LoadFlags, FOnItemDataAssetLoaded OnLoaded = FOnItemDataAssetLoaded());
 	
 private:
 	// 서버 검증
 	bool CanAccessItemTable() const;
-	// 데이터 테이블에서 아이템 키에 해당하는 행 가져오기
+	// 데이터 테이블에서 아이템 키에 해당하는 행 찾기
 	const FERNItemTable* FindItemRow(const FName ItemID) const;
 	
 private:

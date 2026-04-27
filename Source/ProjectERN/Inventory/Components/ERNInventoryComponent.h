@@ -7,6 +7,8 @@
 #include "Inventory/Data/ERNInventoryList.h"
 #include "ERNInventoryComponent.generated.h"
 
+class AERNItemActor;
+class UItemManagerSubsystem;
 /**
  * ERNInventoryComponent - 플레이어 인벤토리 관리
  */
@@ -20,28 +22,29 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	// Add Item
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
+	void Server_AddItem(AERNItemActor* ItemActor);
+	
+	// Remove Item
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
+	void Server_RemoveItem(const int32 SlotIndex, const int32 Count);
+	
 protected:
 	virtual void BeginPlay() override;
-
-public:
-	// 인벤토리
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
-	FInventoryList Inventory;
-
-	// 아이템 추가
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Inventory")
-	void Server_AddItem(FName ItemID, FInventoryItemEntry Item);
-
-	// 아이템 제거
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Inventory")
-	void Server_RemoveItem(int32 SlotIndex, int32 Count);
-
-	// 아이템 사용
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Inventory")
-	void Server_UseItem(int32 SlotIndex);
 	
 private:
-	// Server Check
-	bool IsServerSide() const;
+	// Get ItemManager
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	UItemManagerSubsystem* GetItemManager() const;
+
+public:
+	// Inventory
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="Inventory")
+	FInventoryList Inventory;
+	
+	// Inventory Size
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory")
+	int32 MaxSlotSize = 10;
 	
 };

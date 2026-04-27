@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Net/Serialization/FastArraySerializer.h"
 #include "ERNInventoryList.generated.h"
 
@@ -22,16 +23,20 @@ public:
 	
 public:
 	// 아이템 고유 Key값
-	UPROPERTY()
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	FName ItemID = NAME_None;
 	
 	// 인벤토리 슬롯
-	UPROPERTY()
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	int32 SlotIndex = INDEX_NONE;
 	
 	// 보유 수량
-	UPROPERTY()
-	int32 StackCount = INDEX_NONE;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	int32 Quantity = 0;
+	
+	// 아이템 런타임 상태값 구조체
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FItemRuntimeState ItemRuntimeState;
 	
 };
 
@@ -47,16 +52,22 @@ public:
 		return FastArrayDeltaSerialize<FInventoryItemEntry, FInventoryList>(Items, DeltaParams, *this);
 	}
 	
-	// 아이템 추가
-	void AddItem();
-	// 아이템 제거
+	// Add Item
+	bool AddItem(FItemRuntimeState& ItemRuntimeState, const int32 MaxSlotSize, const int32 MaxStackSize);
+	// Remove Item
 	void RemoveItem();
 	
+private:
+	// 비어있는 첫 번재 슬롯 인덱스 반환
+	const int32 FindFirstEmptySlot(const int32 MaxSlotSize) const;
+	
 public:
-	// 인벤토리
-	UPROPERTY()
+	// Inventory Container
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TArray<FInventoryItemEntry> Items;
 	
+	// 현재 사용중인 슬롯 집합
+	TSet<int32> OccupiedSlots;
 };
 
 template<>
