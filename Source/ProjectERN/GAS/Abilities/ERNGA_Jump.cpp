@@ -8,8 +8,10 @@
 
 UERNGA_Jump::UERNGA_Jump()
 {
+	// 점프 중 태그 자동 부여/제거
 	ActivationOwnedTags.AddTag(TAG_State_Combat_Jumping);
 	
+	// 재발동 차단
 	ActivationBlockedTags.AddTag(TAG_State_Combat_Jumping);
 	
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;

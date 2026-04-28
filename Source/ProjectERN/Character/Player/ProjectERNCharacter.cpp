@@ -116,6 +116,9 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AProjectERNCharacter::Look);
 
+		// Rolling
+		EnhancedInputComponent->BindAction(RollAction, ETriggerEvent::Started, this, &AProjectERNCharacter::Roll);
+		
 		// Attacking
 		EnhancedInputComponent->BindAction(LightAttackAction, ETriggerEvent::Started, this, &AProjectERNCharacter::LightAttack);
 		EnhancedInputComponent->BindAction(HeavyAttackAction, ETriggerEvent::Started, this, &AProjectERNCharacter::HeavyAttack);
@@ -149,6 +152,15 @@ void AProjectERNCharacter::Look(const FInputActionValue& Value)
 
 	// route the inputS
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
+}
+
+void AProjectERNCharacter::Roll(const FInputActionValue& Value)
+{
+	if (AbilitySystemComponent)
+	{
+		// 구르기 태그를 가진 어빌리티 실행 시도
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Move_Roll));
+	}
 }
 
 void AProjectERNCharacter::DoMove(float Right, float Forward)

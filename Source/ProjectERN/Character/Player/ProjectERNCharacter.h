@@ -80,6 +80,10 @@ protected:
 	/** Heavy Attack Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* HeavyAttackAction;
+	
+	/** Roll Input Action */
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* RollAction;
 
 public:
 
@@ -101,6 +105,9 @@ protected:
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
+	/** Called for light attack input */
+	void Roll(const FInputActionValue& Value);
+	
 	/** Called for light attack input */
 	void LightAttack(const FInputActionValue& Value);
 
