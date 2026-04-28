@@ -99,7 +99,7 @@ void FInventoryList::RemoveItem()
 {
 }
 
-const int32 FInventoryList::FindFirstEmptySlot(const int32 MaxSlotSize) const
+int32 FInventoryList::FindFirstEmptySlot(const int32 MaxSlotSize) const
 {
 	for (int32 Slot = 0; Slot < MaxSlotSize; ++Slot)
 	{
@@ -110,4 +110,21 @@ const int32 FInventoryList::FindFirstEmptySlot(const int32 MaxSlotSize) const
 	}
 	
 	return INDEX_NONE;
+}
+
+void FInventoryList::LogInventory() const
+{
+	UE_LOG(LogTemp, Warning, TEXT("=================================================="));
+	if (Items.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Inventory is Empty"));
+	}
+	else
+	{
+		for (const FInventoryItemEntry& Entry : Items)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Slot: %d, ItemID: %s, Quantity: %d"), Entry.SlotIndex, *Entry.ItemID.ToString(), Entry.Quantity);
+		}
+	}
+	UE_LOG(LogTemp, Warning, TEXT("=================================================="));
 }

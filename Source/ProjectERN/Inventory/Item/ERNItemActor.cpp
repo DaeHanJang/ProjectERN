@@ -17,6 +17,7 @@ AERNItemActor::AERNItemActor()
 	PrimaryActorTick.bCanEverTick = false;
 	SetReplicates(true);
 	
+	// Collision
 	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	SetRootComponent(Collision);
 	Collision->InitSphereRadius(150.0f);
@@ -24,6 +25,7 @@ AERNItemActor::AERNItemActor()
 	Collision->SetCollisionResponseToAllChannels(ECR_Ignore);
 	Collision->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	
+	// Mesh
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
 	StaticMesh->SetupAttachment(GetRootComponent());
 	StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -44,23 +46,28 @@ void AERNItemActor::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// Collision Overlap Binding
 	Collision->OnComponentBeginOverlap.AddDynamic(this, &AERNItemActor::OnSphereBeginOverlap);
 	Collision->OnComponentEndOverlap.AddDynamic(this, &AERNItemActor::OnSphereEndOverlap);
 }
 
 void AERNItemActor::Interact_Implementation(APlayerController* PlayerController)
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
 	if (!PlayerController)
 	{
 		return;
 	}
-	
 	const AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(PlayerController->GetCharacter());
 	if (!Player)
 	{
 		return;
 	}
 	
+	// Inventory Component에 아이템 추가 요청
 	if (UERNInventoryComponent* InventoryComponent = Player->GetInventoryComponent())
 	{
 		InventoryComponent->Server_AddItem(this);
@@ -77,20 +84,29 @@ FText AERNItemActor::GetInteractionText_Implementation() const
 	return FText::FromString(TEXT("E키를 눌러 아이템 습득"));
 }
 
-void AERNItemActor::InitRuntimeState(const FName ItemID, const int32 Quantity)
+EInteractionExecutionPolicy AERNItemActor::GetInteractionExecutionPolicy_Implementation() const
 {
-	ItemRuntimeState.ItemID = ItemID;
-	ItemRuntimeState.Quantity = Quantity;
-	RefreshFromItemRuntimeState();
+	return EInteractionExecutionPolicy::ServerAuthority;
 }
 
-void AERNItemActor::ApplyLoadedData(const UItemDataAssetBase* DataAsset)
+void AERNItemActor::InitializeRuntimeState(const FName ItemID, const int32 Quantity)
+{
+	// Item Runtime State Initialization
+	ItemRuntimeState.ItemID = ItemID;
+	ItemRuntimeState.Quantity = Quantity;
+
+	// ItemRuntimeState 기반 DataAsset 비동기 로드
+	LoadItemDataAssetFromRuntimeStateAsync();
+}
+
+void AERNItemActor::ApplyItemDataAsset(const UItemDataAssetBase* DataAsset)
 {
 	if (!IsValid(DataAsset))
 	{
 		return;
 	}
 	
+	// Apply Mesh
 	SetMesh(DataAsset);
 }
 
@@ -124,8 +140,13 @@ void AERNItemActor::SetMesh(const UItemDataAssetBase* DA) const
 	}
 }
 
-void AERNItemActor::RefreshFromItemRuntimeState()
+void AERNItemActor::LoadItemDataAssetFromRuntimeStateAsync()
 {
+	if (GetNetMode() == ENetMode::NM_DedicatedServer)
+	{
+		return;
+	}
+	// ItemRuntimeState 유효성 검사
 	if (!ItemRuntimeState.IsValid())
 	{
 		return;
@@ -134,7 +155,8 @@ void AERNItemActor::RefreshFromItemRuntimeState()
 	if (UItemManagerSubsystem* ItemManager = GetItemManager())
 	{
 		TWeakObjectPtr<AERNItemActor> WeakThis(this);
-		ItemManager->PreloadItemDataAssetAsync(ItemRuntimeState.ItemID, EItemAssetLoadFlags::All, 
+		// ItemDataAsset 비동기 로드
+		ItemManager->PreloadItemDataAssetAsync(ItemRuntimeState.ItemID, EItemAssetLoadFlags::Gameplay, 
 			FOnItemDataAssetLoaded::CreateLambda([WeakThis](const UItemDataAssetBase* LoadedDataAsset)
 			{
 				if (!WeakThis.IsValid() || !LoadedDataAsset)
@@ -142,7 +164,8 @@ void AERNItemActor::RefreshFromItemRuntimeState()
 					return;
 				}
 				
-				WeakThis->ApplyLoadedData(LoadedDataAsset);
+				// 비동기 로드 완료 후 ItemDataAsset의 데이터 적용
+				WeakThis->ApplyItemDataAsset(LoadedDataAsset);
 			})
 		);
 	}
@@ -150,13 +173,13 @@ void AERNItemActor::RefreshFromItemRuntimeState()
 
 void AERNItemActor::OnRep_ItemRuntimeState()
 {
-	RefreshFromItemRuntimeState();
+	// ItemRuntimeState 기반 DataAsset 비동기 로드
+	LoadItemDataAssetFromRuntimeStateAsync();
 }
 
 void AERNItemActor::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                          UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// 플레이어가 범위 안에 들어오면 상호작용 UI 표시
 	if (const APawn* Pawn = Cast<APawn>(OtherActor))
 	{
 		if (AERNPlayerController* PC = Cast<AERNPlayerController>(Pawn->GetController()))
@@ -169,7 +192,6 @@ void AERNItemActor::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponen
 void AERNItemActor::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	// 플레이어가 범위 밖으로 나가면 상호작용 UI 숨김
 	if (const APawn* Pawn = Cast<APawn>(OtherActor))
 	{
 		if (AERNPlayerController* PC = Cast<AERNPlayerController>(Pawn->GetController()))

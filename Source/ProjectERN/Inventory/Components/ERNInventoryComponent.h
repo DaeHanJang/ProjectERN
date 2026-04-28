@@ -9,6 +9,7 @@
 
 class AERNItemActor;
 class UItemManagerSubsystem;
+
 /**
  * ERNInventoryComponent - 플레이어 인벤토리 관리
  */
@@ -29,9 +30,6 @@ public:
 	// Remove Item
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void Server_RemoveItem(const int32 SlotIndex, const int32 Count);
-	
-protected:
-	virtual void BeginPlay() override;
 	
 private:
 	// Get ItemManager

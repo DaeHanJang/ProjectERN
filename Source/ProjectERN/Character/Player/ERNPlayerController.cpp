@@ -294,11 +294,31 @@ void AERNPlayerController::TryInteract()
 	{
 		if (IInteractable* Interactable = Cast<IInteractable>(CurrentInteractableActor.Get()))
 		{
-			if (Interactable->Execute_CanInteract(CurrentInteractableActor.Get()))
+			if (!Interactable->Execute_CanInteract(CurrentInteractableActor.Get()))
 			{
+				return;
+			}
+			
+			switch (Interactable->Execute_GetInteractionExecutionPolicy(CurrentInteractableActor.Get()))
+			{
+			case EInteractionExecutionPolicy::LocalOnly:
 				Interactable->Execute_Interact(CurrentInteractableActor.Get(), this);
+				break;
+			case EInteractionExecutionPolicy::ServerAuthority:
+				Server_TryInteract(CurrentInteractableActor.Get());
+				break;
 			}
 		}
 	}
 }
 
+void AERNPlayerController::Server_TryInteract_Implementation(AActor* InteractableActor)
+{
+	if (InteractableActor->Implements<UInteractable>())
+	{
+		if (IInteractable::Execute_CanInteract(InteractableActor))
+		{
+			IInteractable::Execute_Interact(InteractableActor, this);
+		}
+	}
+}

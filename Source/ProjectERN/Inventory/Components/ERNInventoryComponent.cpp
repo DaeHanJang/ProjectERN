@@ -12,9 +12,11 @@ UERNInventoryComponent::UERNInventoryComponent()
 	SetIsReplicatedByDefault(true);
 }
 
-void UERNInventoryComponent::BeginPlay()
+void UERNInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::BeginPlay();
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UERNInventoryComponent, Inventory);
 }
 
 UItemManagerSubsystem* UERNInventoryComponent::GetItemManager() const
@@ -28,13 +30,6 @@ UItemManagerSubsystem* UERNInventoryComponent::GetItemManager() const
 	}
 	
 	return nullptr;
-}
-
-void UERNInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(UERNInventoryComponent, Inventory);
 }
 
 void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemActor)
@@ -53,28 +48,24 @@ void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemAc
 	}
 	
 	UItemManagerSubsystem* ItemManager = GetItemManager();
-	if (!ItemManager)
-	{
-		return;
-	}
 	// 서버에서 ItemID 유효성 검사
-	if (!ItemManager->ItemValid(ItemRuntimeState.ItemID))
+	if (!ItemManager || !ItemManager->ItemValid(ItemRuntimeState.ItemID))
 	{
 		return;
 	}
 	
 	// Inventory에 넣기 요청
-	const bool bAdded = Inventory.AddItem(ItemRuntimeState, MaxSlotSize, ItemManager->GetItemRow(ItemRuntimeState.ItemID)->MaxStackSize);
+	const bool bAdded = Inventory.AddItem(ItemRuntimeState, MaxSlotSize, ItemManager->FindItemRow(ItemRuntimeState.ItemID)->MaxStackSize);
 	if (!bAdded)
 	{
 		return;
 	}
 	
-	// ItemManager에 리소스 비동기 로드 요청
-	ItemManager->PreloadItemDataAssetAsync(ItemRuntimeState.ItemID, EItemAssetLoadFlags::All);
+	Inventory.LogInventory();
 	
 	if (ItemRuntimeState.Quantity <= 0)
 	{
+		// TODO: ItemActor 제거 함수 넣기
 		ItemActor->Destroy();
 	}
 }

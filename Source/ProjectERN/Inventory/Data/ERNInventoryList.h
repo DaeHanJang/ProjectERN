@@ -57,9 +57,12 @@ public:
 	// Remove Item
 	void RemoveItem();
 	
+	// Debug Log
+	void LogInventory() const;
+	
 private:
 	// 비어있는 첫 번재 슬롯 인덱스 반환
-	const int32 FindFirstEmptySlot(const int32 MaxSlotSize) const;
+	int32 FindFirstEmptySlot(const int32 MaxSlotSize) const;
 	
 public:
 	// Inventory Container

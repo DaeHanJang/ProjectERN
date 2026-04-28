@@ -17,7 +17,7 @@ class PROJECTERN_API AERNItemActor : public AActor, public IInteractable
 {
 	GENERATED_BODY()
 	
-public:	
+public:
 	// Sets default values for this actor's properties
 	AERNItemActor();
 	
@@ -30,14 +30,17 @@ public:
 	virtual void Interact_Implementation(APlayerController* PlayerController) override;
 	virtual bool CanInteract_Implementation() const override;
 	virtual FText GetInteractionText_Implementation() const override;
+	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
 	
 	// Item RuntimeState Initialization
 	UFUNCTION(BlueprintCallable)
-	void InitRuntimeState(const FName ItemID, const int32 Quantity);
-	// Item Asset Load
+	void InitializeRuntimeState(const FName ItemID, const int32 Quantity);
+	// Item DataAsset 적용 진입점
 	UFUNCTION(BlueprintCallable)
-	void ApplyLoadedData(const UItemDataAssetBase* DataAsset);
+	void ApplyItemDataAsset(const UItemDataAssetBase* DataAsset);
 
+	// TODO: 제거 함수 구현
+	
 protected:
 	virtual void BeginPlay() override;
 	
@@ -48,18 +51,22 @@ private:
 	// Set Mesh
 	void SetMesh(const UItemDataAssetBase* DA) const;
 	
-	void RefreshFromItemRuntimeState();
+	// ItemRuntimeState 기반 DataAsset 비동기 로드 함수
+	void LoadItemDataAssetFromRuntimeStateAsync();
 	
-	UFUNCTION()
-	void OnRep_ItemRuntimeState();
-	
+	// Collision Bind Handler
+	// Begin Overlap
 	UFUNCTION()
 	void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
+	// End Overlap
 	UFUNCTION()
 	void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+	
+	// ItemRuntimeState Replicate Handle
+	UFUNCTION()
+	void OnRep_ItemRuntimeState();
 	
 private:
 	// Collision
@@ -73,7 +80,7 @@ private:
 	TObjectPtr<USkeletalMeshComponent> SkeletalMesh;
 	
 	// Item Runtime State
-	UPROPERTY(ReplicatedUsing="OnRep_ItemRuntimeState", EditDefaultsOnly, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
+	UPROPERTY(ReplicatedUsing="OnRep_ItemRuntimeState", VisibleInstanceOnly, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
 	FItemRuntimeState ItemRuntimeState;
 	
 };

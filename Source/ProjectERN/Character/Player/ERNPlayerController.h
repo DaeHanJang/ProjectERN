@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "ERNPlayerController.generated.h"
 
+class IInteractable;
 class UInputMappingContext;
 class UInputAction;
 class UUserWidget;
@@ -92,7 +93,11 @@ public:
 
 	// 상점 메인 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UUserWidget> ShopMainWidgetClass;
+	TSubclassOf<UUserWidget> ShopMainWidgetClass;
+	
+	// 인벤토리 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> InventoryWidgetClass;
 
 	// 준비 상태 토글 (블루프린트에서 호출)
 	UFUNCTION(BlueprintCallable, Category = "Game")
@@ -101,6 +106,9 @@ public:
 	// 상호작용 시도
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void TryInteract();
+	// ServerSide 상호작용 시도
+	UFUNCTION(Server, Reliable)
+	void Server_TryInteract(AActor* InteractableActor);
 
 	// Pedestal(상호작용가능한액터)에서 호출용
 	void SetCurrentInteractable(AActor* Interactable) { CurrentInteractableActor = Interactable; }
