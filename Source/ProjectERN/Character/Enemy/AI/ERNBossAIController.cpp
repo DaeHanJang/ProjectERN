@@ -39,6 +39,15 @@ void AERNBossAIController::BeginPlay()
 		1.0f,
 		true
 	);
+
+	// 시야 어그로 누적 타이머 시작 (1초마다)
+	GetWorldTimerManager().SetTimer(
+		SightAggroTimerHandle,
+		this,
+		&AERNBossAIController::TickSightAggro,
+		1.0f,
+		true
+	);
 }
 
 void AERNBossAIController::OnPossess(APawn* InPawn)
@@ -75,8 +84,9 @@ void AERNBossAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 	{
 		if (Stimulus.WasSuccessfullySensed())
 		{
-			// 시야에 들어온 플레이어 어그로 추가
+			// 시야 진입: 어그로 추가 + 추적 리스트 등록
 			AddAggro(Player, 10.0f);
+			PerceivedPlayers.AddUnique(Player);
 
 			// 타겟이 없으면 설정
 			AActor* CurrentTarget = Cast<AActor>(Blackboard->GetValueAsObject(TEXT("TargetActor")));
@@ -86,6 +96,11 @@ void AERNBossAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 			}
 
 			UE_LOG(LogTemp, Log, TEXT("[Boss %s] Player detected: %s"), *GetName(), *Player->GetName());
+		}
+		else
+		{
+			// 시야 이탈: 추적 리스트에서 제거
+			PerceivedPlayers.Remove(Player);
 		}
 	}
 }
@@ -158,6 +173,44 @@ AActor* AERNBossAIController::GetHighestAggroTarget() const
 	}
 
 	return HighestTarget;
+}
+
+void AERNBossAIController::TickSightAggro()
+{
+	if (SightAggroPerSecond > 0.f)
+	{
+		// 시야 안 플레이어들에게 매초 어그로 누적
+		for (int32 i = PerceivedPlayers.Num() - 1; i >= 0; --i)
+		{
+			AActor* Player = PerceivedPlayers[i];
+			if (!IsValid(Player))
+			{
+				PerceivedPlayers.RemoveAt(i);
+				continue;
+			}
+			AddAggro(Player, SightAggroPerSecond);
+		}
+	}
+
+	// 디버그 : 어그로 테이블 화면 출력
+	if (bShowAggroDebug && GEngine)
+	{
+		AActor* CurrentTarget = Blackboard ? Cast<AActor>(Blackboard->GetValueAsObject(TEXT("TargetActor"))) : nullptr;
+		const FString Header = FString::Printf(TEXT("=== %s Aggro ==="),
+			GetPawn() ? *GetPawn()->GetName() : TEXT("Boss"));
+		GEngine->AddOnScreenDebugMessage(-1, 1.1f, FColor::Cyan, Header);
+
+		for (const auto& Pair : AggroTable)
+		{
+			if (!IsValid(Pair.Key)) continue;
+			const bool bIsCurrentTarget = (Pair.Key == CurrentTarget);
+			const FColor Color = bIsCurrentTarget ? FColor::Red : FColor::Yellow;
+			const FString Msg = FString::Printf(TEXT("%s: %.1f%s"),
+				*Pair.Key->GetName(), Pair.Value,
+				bIsCurrentTarget ? TEXT(" [TARGET]") : TEXT(""));
+			GEngine->AddOnScreenDebugMessage(-1, 1.1f, Color, Msg);
+		}
+	}
 }
 
 void AERNBossAIController::DecayAggro()

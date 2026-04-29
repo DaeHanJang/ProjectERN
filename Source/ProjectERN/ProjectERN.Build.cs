@@ -26,6 +26,7 @@ public class ProjectERN : ModuleRules
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
 			"Niagara",
+			"PhysicsCore",
 			"MotionWarping",
 			"NetCore"
 		});
