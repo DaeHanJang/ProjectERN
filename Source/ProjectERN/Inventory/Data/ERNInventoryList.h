@@ -5,6 +5,7 @@
 #include "Net/Serialization/FastArraySerializer.h"
 #include "ERNInventoryList.generated.h"
 
+class UERNInventoryComponent;
 struct FInventoryList;
 
 // Inventory Item Entry
@@ -15,9 +16,9 @@ struct FInventoryItemEntry : public FFastArraySerializerItem
 	
 public:
 	// 클라에서 새 아이템 추가됨
-	void PostReplicateAdd(const FInventoryList& InArraySerializer);
+	void PostReplicatedAdd(const FInventoryList& InArraySerializer);
 	// 클라에서 아이템 수정됨
-	void PostReplicateChange(const FInventoryList& InArraySerializer);
+	void PostReplicatedChange(const FInventoryList& InArraySerializer);
 	// 클라에서 아이템 제거 직전
 	void PreReplicatedRemove(const FInventoryList& InArraySerializer);
 	
@@ -52,8 +53,15 @@ public:
 		return FastArrayDeltaSerialize<FInventoryItemEntry, FInventoryList>(Items, DeltaParams, *this);
 	}
 	
+	// Getter/Setter
+	UERNInventoryComponent* GetOwner() const { return Owner.Get(); }
+	void SetOwner(UERNInventoryComponent* NewOwner) { Owner = NewOwner; }
+	const TArray<FInventoryItemEntry>& GetItems() const { return Items; }
+	
 	// Add Item
-	bool AddItem(FItemRuntimeState& ItemRuntimeState, const int32 MaxSlotSize, const int32 MaxStackSize);
+	bool AddItem(FItemRuntimeState& ItemRuntimeState, const int32 MaxSlotSize, const int32 MaxStackSize, TArray<FInventoryItemEntry>& OutChangedEntries);
+	
+	// TODO: RemoveItem 함수 구현
 	// Remove Item
 	void RemoveItem();
 	
@@ -64,13 +72,17 @@ private:
 	// 비어있는 첫 번재 슬롯 인덱스 반환
 	int32 FindFirstEmptySlot(const int32 MaxSlotSize) const;
 	
-public:
+private:
 	// Inventory Container
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess=true))
 	TArray<FInventoryItemEntry> Items;
 	
 	// 현재 사용중인 슬롯 집합
 	TSet<int32> OccupiedSlots;
+	
+	// FInventoryList를 쇼유하고 있는 InventoryComponent
+	UPROPERTY(Transient,NotReplicated)
+	TWeakObjectPtr<UERNInventoryComponent> Owner = nullptr;
 };
 
 template<>

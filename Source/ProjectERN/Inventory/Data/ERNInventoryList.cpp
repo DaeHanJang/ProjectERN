@@ -1,33 +1,29 @@
 #include "Inventory/Data/ERNInventoryList.h"
 
-void FInventoryItemEntry::PostReplicateAdd(const FInventoryList& InArraySerializer)
+#include "Inventory/Components/ERNInventoryComponent.h"
+
+void FInventoryItemEntry::PostReplicatedAdd(const FInventoryList& InArraySerializer)
 {
-	for (const FInventoryItemEntry& Entry : InArraySerializer.Items)
+	if (UERNInventoryComponent* InventoryComponent = InArraySerializer.GetOwner())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("slot: %d, itemID: %s, quantity: %d"), 
-			Entry.SlotIndex, *Entry.ItemID.ToString(), Entry.Quantity);
+		InventoryComponent->OnInventorySlotChanged.Broadcast(*this);
 	}
 }
 
-void FInventoryItemEntry::PostReplicateChange(const FInventoryList& InArraySerializer)
+void FInventoryItemEntry::PostReplicatedChange(const FInventoryList& InArraySerializer)
 {
-	for (const FInventoryItemEntry& Entry : InArraySerializer.Items)
+	if (UERNInventoryComponent* InventoryComponent = InArraySerializer.GetOwner())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("slot: %d, itemID: %s, quantity: %d"), 
-			Entry.SlotIndex, *Entry.ItemID.ToString(), Entry.Quantity);
+		InventoryComponent->OnInventorySlotChanged.Broadcast(*this);
 	}
 }
 
 void FInventoryItemEntry::PreReplicatedRemove(const FInventoryList& InArraySerializer)
 {
-	for (const FInventoryItemEntry& Entry : InArraySerializer.Items)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("slot: %d, itemID: %s, quantity: %d"), 
-			Entry.SlotIndex, *Entry.ItemID.ToString(), Entry.Quantity);
-	}
+	// TODO: RemoveItem이 구현된 후 구현
 }
 
-bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 MaxSlotSize, const int32 MaxStackSize)
+bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 MaxSlotSize, const int32 MaxStackSize, TArray<FInventoryItemEntry>& OutChangedEntries)
 {
 	// 매개 변수 유효성 검사
 	if (ItemRuntimeState.ItemID.IsNone() || ItemRuntimeState.Quantity <= 0 || MaxSlotSize <= 0 || MaxStackSize <= 0)
@@ -35,6 +31,7 @@ bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 Ma
 		return false;
 	}
 	
+	OutChangedEntries.Empty();
 	int32 Remaining = ItemRuntimeState.Quantity;
 	
 	// 기존 슬롯에 추가
@@ -53,6 +50,7 @@ bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 Ma
 		Entry.Quantity += AddQuantity;
 		Remaining -= AddQuantity;
 		
+		OutChangedEntries.Add(Entry);
 		MarkItemDirty(Entry);
 		
 		// 인벤토리에 넣을 아이템을 전부 넣었다면
@@ -80,7 +78,7 @@ bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 Ma
 		Remaining -= NewEntry.Quantity;
 		
 		OccupiedSlots.Add(NewSlotIndex);
-		
+		OutChangedEntries.Add(NewEntry);
 		MarkItemDirty(NewEntry);
 	}
 	
@@ -97,6 +95,7 @@ bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 Ma
 
 void FInventoryList::RemoveItem()
 {
+	// TODO: 인벤토리에서 아이템 제거 코드 작성
 }
 
 int32 FInventoryList::FindFirstEmptySlot(const int32 MaxSlotSize) const
@@ -127,4 +126,18 @@ void FInventoryList::LogInventory() const
 		}
 	}
 	UE_LOG(LogTemp, Warning, TEXT("=================================================="));
+	
+	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("=================================================="));
+	if (Items.IsEmpty())
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("Inventory is Empty"));
+	}
+	else
+	{
+		for (const FInventoryItemEntry& Entry : Items)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, FString::Printf(TEXT("Slot: %d, ItemID: %s, Quantity: %d"), Entry.SlotIndex, *Entry.ItemID.ToString(), Entry.Quantity));
+		}
+	}
+	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("=================================================="));
 }

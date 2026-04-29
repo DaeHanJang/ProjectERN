@@ -10,6 +10,8 @@
 class AERNItemActor;
 class UItemManagerSubsystem;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInventorySlotChanged, const FInventoryItemEntry&, Entry);
+
 /**
  * ERNInventoryComponent - 플레이어 인벤토리 관리
  */
@@ -22,14 +24,22 @@ public:
 	UERNInventoryComponent();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
+	
+	// Getter
+	FORCEINLINE int32 GetMaxStackSize() const { return MaxSlotSize; }
+	const TArray<FInventoryItemEntry>& GetInventoryItems() const { return Inventory.GetItems(); }
+	
 	// Add Item
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void Server_AddItem(AERNItemActor* ItemActor);
 	
+	// TODO: RemoveItem 함수 구현
 	// Remove Item
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void Server_RemoveItem(const int32 SlotIndex, const int32 Count);
+	
+protected:
+	virtual void BeginPlay() override;
 	
 private:
 	// Get ItemManager
@@ -37,12 +47,17 @@ private:
 	UItemManagerSubsystem* GetItemManager() const;
 
 public:
+	// Inventory Changed Event
+	UPROPERTY(BlueprintAssignable)
+	FOnInventorySlotChanged OnInventorySlotChanged;
+	
+private:
 	// Inventory
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="Inventory")
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
 	FInventoryList Inventory;
 	
 	// Inventory Size
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
 	int32 MaxSlotSize = 10;
 	
 };
