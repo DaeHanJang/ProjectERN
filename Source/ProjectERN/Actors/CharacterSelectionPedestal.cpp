@@ -75,8 +75,13 @@ FText ACharacterSelectionPedestal::GetInteractionText_Implementation() const
 	return FText::FromString(TEXT("E키를 눌러 캐릭터 선택"));
 }
 
+EInteractionExecutionPolicy ACharacterSelectionPedestal::GetInteractionExecutionPolicy_Implementation() const
+{
+	return EInteractionExecutionPolicy::LocalOnly;
+}
+
 void ACharacterSelectionPedestal::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+                                                       UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	// 플레이어가 범위 안에 들어오면 상호작용 UI 표시
 	if (APawn* Pawn = Cast<APawn>(OtherActor))

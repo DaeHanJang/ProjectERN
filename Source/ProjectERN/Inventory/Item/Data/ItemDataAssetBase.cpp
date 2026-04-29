@@ -4,8 +4,22 @@
 
 void UItemDataAssetBase::GatherSoftPaths(const EItemAssetLoadFlags LoadFlags, TArray<FSoftObjectPath>& OutPaths) const
 {
-	if (EnumHasAnyFlags(LoadFlags, EItemAssetLoadFlags::UI) && !Icon.IsNull())
+	if (EnumHasAnyFlags(LoadFlags, EItemAssetLoadFlags::UI))
 	{
-		OutPaths.AddUnique(Icon.ToSoftObjectPath());
+		if (!Icon.IsNull())
+		{
+			OutPaths.AddUnique(Icon.ToSoftObjectPath());
+		}
+	}
+	if (EnumHasAnyFlags(LoadFlags, EItemAssetLoadFlags::Gameplay))
+	{
+		if (!StaticMesh.IsNull())
+		{
+			OutPaths.AddUnique(StaticMesh.ToSoftObjectPath());
+		}
+		else if (!SkeletalMesh.IsNull())
+		{
+			OutPaths.AddUnique(SkeletalMesh.ToSoftObjectPath());
+		}
 	}
 }

@@ -12,6 +12,8 @@
 class UConsumableItemDataAsset;
 class UEquipableItemDataAsset;
 
+DECLARE_DELEGATE_OneParam(FOnItemDataAssetLoaded, const UItemDataAssetBase*);
+
 // 정책 플래그에 따른 비동기 로드 요청 추적 구조체
 struct FPendingItemDataAssetLoad
 {
@@ -33,30 +35,28 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 	
-	// TODO: Spawn Item
-	
+	// ItemTable에서 ItemID에 해당하는 RowData 가져오기 
+	const FERNItemTable* FindItemRow(const FName ItemID) const;
 	// 아이템 검증
+	UFUNCTION(BlueprintPure, Category="ItemManager")
 	bool ItemValid(const FName ItemID) const;
+	// 아이템 생성
+	UFUNCTION(BlueprintCallable, Category="ItemManager")
+	void SpawnItem(const FName ItemID, const int32 Quantity, const FVector& Location, const FRotator& Rotation);
 	
 	// 아이템 데이터 애셋 동기 로드
 	const UItemDataAssetBase* LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags);
 	// 아이템 데이터 애셋 비동기 로드
-	void PreloadItemDataAssetAsync(const FName ItemID, const EItemAssetLoadFlags LoadFlags);
-	
-private:
-	// 서버 검증
-	bool CanAccessItemTable() const;
-	// 데이터 테이블에서 아이템 키에 해당하는 행 가져오기
-	const FERNItemTable* FindItemRow(const FName ItemID) const;
-	
+	void PreloadItemDataAssetAsync(const FName ItemID, const EItemAssetLoadFlags LoadFlags, FOnItemDataAssetLoaded OnLoaded = FOnItemDataAssetLoaded());
+		
 private:
 	// 아이템 테이블 (핵심 데이터이기 때문에 TObjectPtr로 강하게 참조)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Data", meta=(AllowPrivateAccess="true"))
-	TObjectPtr<const UDataTable> ItemTable = nullptr;
+	UPROPERTY(Transient)
+	TObjectPtr<UDataTable> ItemTable = nullptr;
 	
 	// 검증된 아이템 키에 해당하는 고유 데이터를 캐싱한 맵
 	UPROPERTY(Transient)
-	TMap<FName, TObjectPtr<const UItemDataAssetBase>> ItemDataAssetCache;
+	TMap<FName, TObjectPtr<UItemDataAssetBase>> ItemDataAssetCache;
 	
 	// 비동기 로드 요청 추적 테이블 (중복 요청 방지, 비동기 로드 요청 객체 보관, 로드 완료 시점 관리)
 	TMap<FName, FPendingItemDataAssetLoad> PendingItemDataAssetLoads;
