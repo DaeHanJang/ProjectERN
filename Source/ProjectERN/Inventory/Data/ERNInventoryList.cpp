@@ -23,6 +23,11 @@ void FInventoryItemEntry::PreReplicatedRemove(const FInventoryList& InArraySeria
 	// TODO: RemoveItem이 구현된 후 구현
 }
 
+void FInventoryList::SetOwner(UERNInventoryComponent* NewOwner)
+{
+	Owner = NewOwner;
+}
+
 bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 MaxSlotSize, const int32 MaxStackSize, TArray<FInventoryItemEntry>& OutChangedEntries)
 {
 	// 매개 변수 유효성 검사

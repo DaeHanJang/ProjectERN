@@ -55,7 +55,7 @@ public:
 	
 	// Getter/Setter
 	UERNInventoryComponent* GetOwner() const { return Owner.Get(); }
-	void SetOwner(UERNInventoryComponent* NewOwner) { Owner = NewOwner; }
+	void SetOwner(UERNInventoryComponent* NewOwner);
 	const TArray<FInventoryItemEntry>& GetItems() const { return Items; }
 	
 	// Add Item
@@ -81,7 +81,7 @@ private:
 	TSet<int32> OccupiedSlots;
 	
 	// FInventoryList를 쇼유하고 있는 InventoryComponent
-	UPROPERTY(Transient,NotReplicated)
+	UPROPERTY(Transient, NotReplicated)
 	TWeakObjectPtr<UERNInventoryComponent> Owner = nullptr;
 };
 
