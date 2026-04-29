@@ -36,6 +36,23 @@ void UAnimNotify_UpdateMotionWarpTarget::Notify(USkeletalMeshComponent* MeshComp
 		return;
 	}
 
+	// 워프 위치 계산
+	FVector WarpLocation = Target->GetActorLocation();
+
+	// 오프셋이 있으면 적용
+	if (RightOffset != 0 || ForwardOffset != 0)
+	{
+		// 타겟 → 보스 방향 벡터
+		FVector DirectionToTarget = (Owner->GetActorLocation() - Target->GetActorLocation()).GetSafeNormal2D();
+
+		// 오른쪽 벡터 (Z축 기준 90도 회전)
+		FVector RightVector = FVector::CrossProduct(FVector::UpVector, DirectionToTarget);
+
+		// 오프셋 적용
+		WarpLocation += RightVector * RightOffset;
+		WarpLocation += DirectionToTarget * ForwardOffset;
+	}
+
 	// Motion Warping 타겟 위치 업데이트
-	MotionWarping->AddOrUpdateWarpTargetFromLocation(WarpTargetName, Target->GetActorLocation());
+	MotionWarping->AddOrUpdateWarpTargetFromLocation(WarpTargetName, WarpLocation);
 }
