@@ -6,10 +6,11 @@ void UConsumableItemDataAsset::GatherSoftPaths(const EItemAssetLoadFlags LoadFla
 {
 	Super::GatherSoftPaths(LoadFlags, OutPaths);
 	
-	if (EnumHasAnyFlags(LoadFlags, EItemAssetLoadFlags::Gameplay) && 
-		ConsumableType == EConsumableType::Usable &&
-		!ConsumableAbility.IsNull())
+	if (EnumHasAnyFlags(LoadFlags, EItemAssetLoadFlags::Gameplay))
 	{
-		OutPaths.AddUnique(ConsumableAbility.ToSoftObjectPath());
+		if (ConsumableType == EConsumableType::Usable && !ConsumableAbility.IsNull())
+		{
+			OutPaths.AddUnique(ConsumableAbility.ToSoftObjectPath());
+		}
 	}
 }

@@ -24,4 +24,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UTexture2D> Icon = nullptr;
 	
+	// 스태틱 메시
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<UStaticMesh> StaticMesh = nullptr;
+	
+	// 스켈레탈 메시 (스태틱 메시가 없을 경우)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<USkeletalMesh> SkeletalMesh = nullptr;
+	
 };

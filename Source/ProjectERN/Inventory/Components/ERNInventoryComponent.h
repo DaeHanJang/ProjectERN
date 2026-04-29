@@ -4,22 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Inventory/Data/ERNInventoryList.h"
 #include "ERNInventoryComponent.generated.h"
 
-/**
- * 인벤토리 슬롯 구조체
- */
-USTRUCT(BlueprintType)
-struct FInventorySlot
-{
-	GENERATED_BODY()
+class AERNItemActor;
+class UItemManagerSubsystem;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName ItemID;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 Count = 0;
-};
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInventorySlotChanged, const FInventoryItemEntry&, Entry);
 
 /**
  * ERNInventoryComponent - 플레이어 인벤토리 관리
@@ -33,27 +24,40 @@ public:
 	UERNInventoryComponent();
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
+	
+	// Getter
+	FORCEINLINE int32 GetMaxStackSize() const { return MaxSlotSize; }
+	const TArray<FInventoryItemEntry>& GetInventoryItems() const { return Inventory.GetItems(); }
+	
+	// Add Item
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
+	void Server_AddItem(AERNItemActor* ItemActor);
+	
+	// TODO: RemoveItem 함수 구현
+	// Remove Item
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
+	void Server_RemoveItem(const int32 SlotIndex, const int32 Count);
+	
 protected:
 	virtual void BeginPlay() override;
+	
+private:
+	// Get ItemManager
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	UItemManagerSubsystem* GetItemManager() const;
 
 public:
-	// 인벤토리 슬롯
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Inventory")
-	TArray<FInventorySlot> Items;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
-	int32 MaxSlots = 20;
-
-	// 아이템 추가
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Inventory")
-	void Server_AddItem(FName ItemID, int32 Count);
-
-	// 아이템 제거
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Inventory")
-	void Server_RemoveItem(int32 SlotIndex, int32 Count);
-
-	// 아이템 사용
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Inventory")
-	void Server_UseItem(int32 SlotIndex);
+	// Inventory Changed Event
+	UPROPERTY(BlueprintAssignable)
+	FOnInventorySlotChanged OnInventorySlotChanged;
+	
+private:
+	// Inventory
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
+	FInventoryList Inventory;
+	
+	// Inventory Size
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
+	int32 MaxSlotSize = 10;
+	
 };

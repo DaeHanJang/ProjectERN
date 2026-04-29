@@ -19,14 +19,16 @@ public class ProjectERN : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
+			"SlateCore",
 			"GameplayAbilities",
 			"GameplayTags",
 			"GameplayTasks",
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
 			"Niagara",
+			"PhysicsCore",
 			"MotionWarping",
-			"PhysicsCore"
+			"NetCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

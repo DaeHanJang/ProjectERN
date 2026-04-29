@@ -6,8 +6,11 @@ void UEquipableItemDataAsset::GatherSoftPaths(const EItemAssetLoadFlags LoadFlag
 {
 	Super::GatherSoftPaths(LoadFlags, OutPaths);
 	
-	if (EnumHasAnyFlags(LoadFlags, EItemAssetLoadFlags::Gameplay) && !WeaponSkillAbility.IsNull())
+	if (EnumHasAnyFlags(LoadFlags, EItemAssetLoadFlags::Gameplay))
 	{
-		OutPaths.AddUnique(WeaponSkillAbility.ToSoftObjectPath());
+		if (!WeaponSkillAbility.IsNull())
+		{
+			OutPaths.AddUnique(WeaponSkillAbility.ToSoftObjectPath());
+		}
 	}
 }

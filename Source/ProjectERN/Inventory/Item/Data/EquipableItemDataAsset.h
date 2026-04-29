@@ -7,6 +7,7 @@
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
 #include "EquipableItemDataAsset.generated.h"
 
+class AERNWeaponBase;
 class UGameplayAbility;
 
 /**
@@ -44,5 +45,9 @@ public:
 	// 무기 고유 스킬
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftClassPtr<UGameplayAbility> WeaponSkillAbility = nullptr;
+	
+	// 무기 class
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftClassPtr<AERNWeaponBase> EquipableClass = nullptr;
 		
 };
