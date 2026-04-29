@@ -61,6 +61,10 @@ EBTNodeResult::Type UBTTask_RandomBehavior::ExecuteTask(UBehaviorTreeComponent& 
 		OwnerComp.GetBlackboardComponent()->SetValueAsFloat(TEXT("MontageDuration"), MontageLength);
 
 		Enemy->Multicast_PlayAttackMontage(SelectedMontage);
+		
+		// Focus 해제
+		AIController->ClearFocus(EAIFocusPriority::Gameplay);
+		
 		UE_LOG(LogTemp, Log, TEXT("[%s] Random behavior: %s (%.2fs) on %s"),
 			*Enemy->GetName(), *SelectedMontage->GetName(), MontageLength, *Target->GetName());
 	}

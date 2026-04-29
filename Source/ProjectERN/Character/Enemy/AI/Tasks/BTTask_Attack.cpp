@@ -61,6 +61,10 @@ EBTNodeResult::Type UBTTask_Attack::ExecuteTask(UBehaviorTreeComponent& OwnerCom
 		OwnerComp.GetBlackboardComponent()->SetValueAsFloat(TEXT("MontageDuration"), MontageLength);
 
 		Enemy->Multicast_PlayAttackMontage(AttackMontage);
+		
+		// Focus 해제
+		AIController->ClearFocus(EAIFocusPriority::Gameplay);
+		
 		UE_LOG(LogTemp, Log, TEXT("[%s] Attack montage multicast on %s"), *Enemy->GetName(), *Target->GetName());
 	}
 
