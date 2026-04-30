@@ -4,20 +4,19 @@
 
 #include "ItemManagerSettings.h"
 #include "Engine/AssetManager.h"
+#include "Inventory/Item/ERNItemActor.h"
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
 
 void UItemManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	
-	const UItemManagerSettings* Settings = GetDefault<UItemManagerSettings>();
-	if (!Settings)
+	// ProjectSettings에 적용되어 있는 ItemTable 적재
+	if (const UItemManagerSettings* Settings = GetDefault<UItemManagerSettings>())
 	{
-		return;
+		ItemTable = Settings->ItemTable.LoadSynchronous();
 	}
-	
-	ItemTable = Settings->ItemTable.LoadSynchronous();
-	
+		
 	// 아이템 테이블은 핵심 데이터이기 때문에 꼭 존재해야 함
 	checkf(ItemTable, TEXT("ItemTable is not assigned in ItemManagerSubsystem."));
 }
@@ -40,44 +39,10 @@ void UItemManagerSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-bool UItemManagerSubsystem::ItemValid(const FName ItemID) const
-{
-	// 서버 검증
-	if (!CanAccessItemTable())
-	{
-		return false;
-	}
-	
-	return FindItemRow(ItemID) != nullptr;
-}
-
-bool UItemManagerSubsystem::CanAccessItemTable() const
-{
-	const UWorld* World = GetWorld();
-	// 월드 생성 이후 사용 가능, 서버 전용
-	if (!World || World->GetNetMode() == ENetMode::NM_Client)
-	{
-		return false;
-	}
-	
-	return true;
-}
-
 const FERNItemTable* UItemManagerSubsystem::FindItemRow(const FName ItemID) const
 {
-	// 서버 검증
-	if (!CanAccessItemTable())
-	{
-		return nullptr;
-	}
-	
-	// ItemTable이 존재하는지 체크 (Shipping에서는 checkf가 사라지기 때문에 한 번 더 체크)
-	if (!ensureMsgf(ItemTable, TEXT("ItemTable is null in FindItemRow.")))
-	{
-		return nullptr;
-	}
-	// ItemID 유효한지 체크
-	if (ItemID.IsNone())
+	// ItemTable과 ItemID가 유효하지 않을 떄
+	if (!ItemTable || ItemID.IsNone())
 	{
 		return nullptr;
 	}
@@ -85,14 +50,32 @@ const FERNItemTable* UItemManagerSubsystem::FindItemRow(const FName ItemID) cons
 	return ItemTable->FindRow<FERNItemTable>(ItemID, TEXT("UItemManagerSubsystem::FindItemRow"));
 }
 
-const UItemDataAssetBase* UItemManagerSubsystem::LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags)
+bool UItemManagerSubsystem::ItemValid(const FName ItemID) const
 {
-	// 서버 검증
-	if (!CanAccessItemTable())
+	return FindItemRow(ItemID) != nullptr;
+}
+
+void UItemManagerSubsystem::SpawnItem(const FName ItemID, const int32 Quantity, const FVector& Location, const FRotator& Rotation)
+{
+	// World가 존재하지 않고 검증되지 않은 아이템일 때
+	if (!GetWorld() || !ItemValid(ItemID))
 	{
-		return nullptr;
+		return;
 	}
 	
+	// ItemActor 생성
+	AERNItemActor* Item = GetWorld()->SpawnActor<AERNItemActor>(AERNItemActor::StaticClass(), Location, Rotation);
+	if (!Item)
+	{
+		return;
+	}
+	
+	// ItemActor 초기화
+	Item->InitializeRuntimeState(ItemID, Quantity);
+}
+
+const UItemDataAssetBase* UItemManagerSubsystem::LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags)
+{
 	const FERNItemTable* Row = FindItemRow(ItemID);
 	// ItemID에 해당하는 테이블 행이 없거나 경로가 존재하지 않는 경우
 	if (!Row || Row->DataAsset.IsNull())
@@ -106,7 +89,7 @@ const UItemDataAssetBase* UItemManagerSubsystem::LoadItemDataAssetSync(const FNa
 	}
 	
 	// 요청받은 아이템 키가 캐싱되어 있다면 캐시 데이터 반환
-	if (const TObjectPtr<const UItemDataAssetBase>* Cached = ItemDataAssetCache.Find(ItemID))
+	if (const TObjectPtr<UItemDataAssetBase>* Cached = ItemDataAssetCache.Find(ItemID))
 	{
 		if (const UItemDataAssetBase* CachedDataAsset = Cached->Get())
 		{
@@ -149,14 +132,8 @@ const UItemDataAssetBase* UItemManagerSubsystem::LoadItemDataAssetSync(const FNa
 	return LoadedDataAsset;
 }
 
-void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const EItemAssetLoadFlags LoadFlags)
+void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const EItemAssetLoadFlags LoadFlags, FOnItemDataAssetLoaded OnLoaded)
 {
-	// 서버 검증
-	if (!CanAccessItemTable())
-	{
-		return;
-	}
-	
 	const FERNItemTable* Row = FindItemRow(ItemID);
 	// ItemID에 해당하는 테이블 행이 없거나 경로가 존재하지 않는 경우
 	if (!Row || Row->DataAsset.IsNull())
@@ -169,20 +146,40 @@ void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const 
 		return;
 	}
 	
-	// 요청받은 아이템 키가 캐싱되어 있다면 데이터 애셋에 정의된 리소스 비동기 로드
-	if (ItemDataAssetCache.Contains(ItemID))
+	auto ExecuteAfterNestedAssetsLoaded = [LoadFlags, OnLoaded](const UItemDataAssetBase* DataAsset)
 	{
-		if (const UItemDataAssetBase* CachedDataAsset = ItemDataAssetCache[ItemID])
+		if (!DataAsset)
 		{
-			TArray<FSoftObjectPath> NestedPaths;
-			CachedDataAsset->GatherSoftPaths(LoadFlags, NestedPaths);
-			
-			if (!NestedPaths.IsEmpty())
-			{
-				UAssetManager::GetStreamableManager().RequestAsyncLoad(NestedPaths);
-			}
+			return;
+		}
+
+		TArray<FSoftObjectPath> NestedPaths;
+		// 데이터 애셋에 존재하는 Soft reference 리소스 경로 추출
+		DataAsset->GatherSoftPaths(LoadFlags, NestedPaths);
+
+		if (NestedPaths.IsEmpty())
+		{
+			OnLoaded.ExecuteIfBound(DataAsset);
+			return;
 		}
 		
+		// 데이터 애셋에 정의된 리소스 비동기 로드
+		UAssetManager::GetStreamableManager().RequestAsyncLoad(
+			NestedPaths,
+			FStreamableDelegate::CreateLambda([OnLoaded, DataAsset]()
+			{
+				OnLoaded.ExecuteIfBound(DataAsset);
+			})
+		);
+	};
+	
+	// 요청받은 아이템 키가 캐싱되어 있다면 데이터 애셋에 정의된 리소스 비동기 로드
+	if (const TObjectPtr<UItemDataAssetBase>* Cached = ItemDataAssetCache.Find(ItemID))
+	{
+		if (const UItemDataAssetBase* CachedDataAsset = Cached->Get())
+		{
+			ExecuteAfterNestedAssetsLoaded(CachedDataAsset);
+		}
 		return;
 	}
 	
@@ -196,14 +193,14 @@ void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const 
 		return;
 	}
 	
-	const TSoftObjectPtr<const UItemDataAssetBase> DataAssetRef = Row->DataAsset;
+	const TSoftObjectPtr<UItemDataAssetBase> DataAssetRef = Row->DataAsset;
 	// 비동기 로드가 나중에 실행될 수 있기 때문에 약한 참조
 	TWeakObjectPtr<UItemManagerSubsystem> WeakThis(this);
 	
 	// 아이템 데이터 애셋 비동기 로드
 	PendingLoad.Handle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
 		DataAssetRef.ToSoftObjectPath(),
-		FStreamableDelegate::CreateLambda([WeakThis, ItemID, DataAssetRef]()
+		FStreamableDelegate::CreateLambda([WeakThis, ItemID, DataAssetRef, ExecuteAfterNestedAssetsLoaded]()
 		{
 			if (!WeakThis.IsValid())
 			{
@@ -230,7 +227,7 @@ void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const 
 			WeakThis->PendingItemDataAssetLoads.Remove(ItemID);
 			
 			// 비동기 로드 완료된 데이터 애셋 가져오기
-			const UItemDataAssetBase* LoadedDataAsset = DataAssetRef.Get();
+			UItemDataAssetBase* LoadedDataAsset = DataAssetRef.Get();
 			if (!LoadedDataAsset)
 			{
 				return;
@@ -239,15 +236,8 @@ void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const 
 			// 캐싱
 			WeakThis->ItemDataAssetCache.Add(ItemID, LoadedDataAsset);
 			
-			TArray<FSoftObjectPath> NestedPaths;
-			// 데이터 애셋에 존재하는 Soft reference 리소스 경로 추출
-			LoadedDataAsset->GatherSoftPaths(RequestedFlags, NestedPaths);
 			
-			if (!NestedPaths.IsEmpty())
-			{
-				// 데이터 애셋에 정의된 리소스 비동기 로드
-				UAssetManager::GetStreamableManager().RequestAsyncLoad(NestedPaths);
-			}
+			ExecuteAfterNestedAssetsLoaded(LoadedDataAsset);
 		})
 	);
 }

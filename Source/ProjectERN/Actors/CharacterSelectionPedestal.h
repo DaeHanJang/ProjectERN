@@ -31,6 +31,7 @@ public:
 	virtual void Interact_Implementation(APlayerController* PlayerController) override;
 	virtual bool CanInteract_Implementation() const override;
 	virtual FText GetInteractionText_Implementation() const override;
+	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -43,4 +44,5 @@ private:
 	UFUNCTION()
 	void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+	
 };

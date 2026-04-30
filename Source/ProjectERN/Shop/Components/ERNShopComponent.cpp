@@ -216,7 +216,7 @@ void UERNShopComponent::OnPurchaseComplete(const FERNShopTransaction& Transactio
         {
             if (UERNInventoryComponent* InvComp = GetOwner()->FindComponentByClass<UERNInventoryComponent>())
             {
-                InvComp->Server_AddItem(Transaction.ItemID, Transaction.Quantity);
+                //InvComp->Server_AddItem(Transaction.ItemID, Transaction.Quantity);
             }
         }
 
