@@ -167,3 +167,23 @@ void AERNCharacterBase::OnDeath()
 
 	// 자식 클래스에서 추가 사망 처리 구현 (애니메이션, 이펙트 등)
 }
+
+void AERNCharacterBase::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
+{
+	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+	
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+	
+	// 공중 상태 태그 On/Off
+	if (GetCharacterMovement()->MovementMode == MOVE_Falling)
+	{
+		AbilitySystemComponent->AddLooseGameplayTag(TAG_State_Movement_Falling);
+	}
+	else
+	{
+		AbilitySystemComponent->RemoveLooseGameplayTag(TAG_State_Movement_Falling);	
+	}
+}

@@ -25,8 +25,13 @@ void UERNGA_Roll::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 {
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
+		// 중복 종료 방어
+		if (!IsActive())
+		{
+			return;
+		}
+		
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
 	}
 
 	ACharacter* Character = CastChecked<ACharacter>(ActorInfo->AvatarActor);
@@ -50,6 +55,7 @@ void UERNGA_Roll::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	Task->OnCompleted.AddDynamic(this, &UERNGA_Roll::K2_EndAbility);
 	Task->OnInterrupted.AddDynamic(this, &UERNGA_Roll::K2_EndAbility);
 	Task->OnCancelled.AddDynamic(this, &UERNGA_Roll::K2_EndAbility);
+	Task->OnBlendOut.AddDynamic(this, &UERNGA_Roll::K2_EndAbility);
 	
 	Task->ReadyForActivation();
 }

@@ -135,7 +135,6 @@ public:
 	void ExecuteJumpLaunch();
 
 public:
-
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 

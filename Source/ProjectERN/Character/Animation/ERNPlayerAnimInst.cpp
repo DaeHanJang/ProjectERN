@@ -24,15 +24,21 @@ void UERNPlayerAnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		return;
 	}
 	
-	// 속도 계산 (멀티플레이에서 Velocity는 서버 동기화됨)
-	Velocity = MovementComp->Velocity;
-	Speed = Velocity.Size();
-	
 	// 공중 확인 (점프/낙하)
 	bIsInAir = MovementComp->IsFalling();
 	
 	// 가속 확인
 	bIsAccelerating = MovementComp->GetCurrentAcceleration().Size() > 0.f;
+	
+	// 속도 계산 (멀티플레이에서 Velocity는 서버 동기화됨)
+	Velocity = MovementComp->Velocity;
+	Speed = Velocity.Size();
+	
+	// 낙하 속도 계산
+	if (bIsInAir)
+	{
+		FallSpeed = FMath::Max(0.f, -Velocity.Z);
+	}
 	
 	// 이동 방향 계산 (캐릭터의 회전 기준으로 상대적 방향)
 	if (Speed > 0.f)

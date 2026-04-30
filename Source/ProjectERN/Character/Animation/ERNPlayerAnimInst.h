@@ -17,17 +17,20 @@ public:
 
 	// 애니메이션 파라미터들 (Blueprint에서 읽기 전용으로 사용)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
+	bool bIsInAir;  // 공중에 있는지 여부 (점프/낙하)
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
+	bool bIsAccelerating;  // 가속 중인지 여부
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
+	FVector Velocity;  // 캐릭터의 속도 벡터 (방향 계산용)
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	float Speed;  // 캐릭터의 이동 속도
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
-	bool bIsInAir;  // 공중에 있는지 여부 (점프/낙하)
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
-	bool bIsAccelerating;  // 가속 중인지 여부
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
-	FVector Velocity;  // 캐릭터의 속도 벡터 (방향 계산용)
-
+	float FallSpeed;	// 낙하 속도 (착지 모션 분기용)
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	float Direction;  // 이동 방향 (Yaw 각도, -180 ~ 180)
 };

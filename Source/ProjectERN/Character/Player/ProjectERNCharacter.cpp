@@ -131,9 +131,10 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
-	// 공격 중이면 이동 불가
-	
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking))
+	// 해당 태그가 있으면 움직이지 못함
+	if (AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking) ||
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing))
 	{
 		return;
 	}

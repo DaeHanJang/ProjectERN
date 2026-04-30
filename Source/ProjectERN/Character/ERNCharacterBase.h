@@ -78,4 +78,8 @@ public:
 	// 히트리액션 몽타주 재생 (모든 클라이언트에 동기화)
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayHitReaction();
+	
+protected:
+	// 움직임 상태태그 변화를 위한 함수
+	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;
 };
