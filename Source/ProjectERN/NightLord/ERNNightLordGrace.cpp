@@ -6,6 +6,9 @@
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Blueprint/UserWidget.h"
+#include "Character/Player/ERNPlayerController.h"
 #include "GAS/ERNAttributeSet.h"
 
 AERNNightLordGrace::AERNNightLordGrace()
@@ -23,6 +26,50 @@ AERNNightLordGrace::AERNNightLordGrace()
 	InteractionComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	InteractionComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
 	InteractionComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	
+	// InteractionOrinotWudget 초기화
+	InteractionPromptWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionPromptWidget"));
+	InteractionPromptWidget->SetupAttachment(RootComponent);
+	InteractionPromptWidget->SetWidgetSpace(EWidgetSpace::World);
+	InteractionPromptWidget->SetVisibility(false);
+	
+}
+
+void AERNNightLordGrace::Interact_Implementation(APlayerController* PlayerController)
+{
+	if (!PlayerController) return;
+	
+	AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PlayerController);
+	if (!ERNPC || !ERNPC->LevelUpWidgetClass) return;
+	
+	if (LevelUpPopupWidget) return;
+	
+	LevelUpPopupWidget = CreateWidget<UUserWidget>(PlayerController, ERNPC->LevelUpWidgetClass);
+	
+	if (LevelUpPopupWidget)
+	{
+		LevelUpPopupWidget->AddToViewport(100);
+		PlayerController->SetShowMouseCursor(true);
+		PlayerController->SetInputMode(FInputModeGameAndUI());
+		
+		//TODO 디버그 로그 (패키징 시 제거)
+		UE_LOG(LogTemp, Warning, TEXT("화톳불 : 레벨업 팝업 알림"));
+	}
+}
+
+bool AERNNightLordGrace::CanInteract_Implementation() const
+{
+	return true;
+}
+
+FText AERNNightLordGrace::GetInteractionText_Implementation() const
+{
+	return FText::FromString(TEXT("E : 휴식"));
+}
+
+EInteractionExecutionPolicy AERNNightLordGrace::GetInteractionExecutionPolicy_Implementation() const
+{
+	return EInteractionExecutionPolicy::LocalOnly;
 }
 
 void AERNNightLordGrace::BeginPlay()
@@ -30,27 +77,66 @@ void AERNNightLordGrace::BeginPlay()
 	Super::BeginPlay();
 	
 	InteractionComponent->OnComponentBeginOverlap.AddDynamic(this, &AERNNightLordGrace::OnSphereBeginOverlap);
-	
+	InteractionComponent->OnComponentEndOverlap.AddDynamic(this, &AERNNightLordGrace::OnSphereEndOverlap);
 }
 
 void AERNNightLordGrace::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// 플레이어 캐릭터를 불러옴 (몬스터와 구분시키기 위해 ProjectERNCharacter에 있는 플레이어 엑터를 불러옴)
+	// 플레이어 캐릭터를 불러옴
 	AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor); 
 	
-	// 플레이어 캐릭터라면
-	if (PlayerCharacter)
+	// 플레이어가 아니면 여기서 즉시 함수 종료 (안전장치)
+	if (!PlayerCharacter) 
 	{
-		// 회복 함수 호출
-		RestoreAttributes(PlayerCharacter);
+		return;
+	}
+
+	// 회복 함수 호출
+	RestoreAttributes(PlayerCharacter);
+	
+	// 상호작용 등록 및 UI 표시
+	AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerCharacter->GetController());
+	
+	if (PC)
+	{
+		PC->SetCurrentInteractable(this);
+		
+		if (InteractionPromptWidget)
+		{
+			InteractionPromptWidget->SetVisibility(true);
+		}
 	}
 }
 
 void AERNNightLordGrace::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	//추후 UI를 숨기는 로직과 상호작용 해제와 관련된 로직 추가 예정
+	AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor);
+	if (!PlayerCharacter) return;
+	
+	AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerCharacter->GetController());
+	if (PC)
+	{
+		// 상호작용 대상을 해제
+		PC->ClearCurrentInteractable();
+		
+		// 프롬프트 숨기기
+		if (InteractionPromptWidget)
+		{
+			InteractionPromptWidget->SetVisibility(false);
+		}
+		
+		// 만약 팝업이 열려 있는 상태라면 닫기
+		if (LevelUpPopupWidget)
+		{
+			LevelUpPopupWidget->RemoveFromParent();
+			LevelUpPopupWidget = nullptr;
+			
+			PC->SetInputMode(FInputModeGameOnly());
+			PC->SetShowMouseCursor(false);
+		}
+	}
 }
 
 void AERNNightLordGrace::RestoreAttributes(AProjectERNCharacter* TargetCharacter)

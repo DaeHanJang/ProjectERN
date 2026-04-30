@@ -5,12 +5,14 @@
 #include "CoreMinimal.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "GameFramework/Actor.h"
+#include "Interfaces/IInteractable.h"
 #include "ERNNightLordGrace.generated.h"
 
 class USphereComponent;
+class UWidgetComponent;
 
 UCLASS()
-class PROJECTERN_API AERNNightLordGrace : public AActor
+class PROJECTERN_API AERNNightLordGrace : public AActor, public IInteractable
 {
 	GENERATED_BODY()
 	
@@ -25,7 +27,20 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Grace | Components")
 	USphereComponent* InteractionComponent;
 	
-
+	// E : 휴식 하기 와 같은 월드 스페이스 위젯
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Grace | Components")
+	UWidgetComponent* InteractionPromptWidget;
+	
+	// 레벨업 위젯 참조
+	UPROPERTY()
+	UUserWidget* LevelUpPopupWidget;
+	
+	// IInteractable 인터페이스 함수 선언
+	virtual void Interact_Implementation(APlayerController* PlayerController) override;
+	virtual bool CanInteract_Implementation() const override;
+	virtual FText GetInteractionText_Implementation() const override;
+	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
+	
 
 protected:
 	virtual void BeginPlay() override;
