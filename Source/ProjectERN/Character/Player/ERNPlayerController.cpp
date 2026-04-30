@@ -11,7 +11,6 @@
 #include "ProjectERN.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Character/Player/ERNPlayerState.h"
-#include "GameFramework/GameStateBase.h"
 #include "Core/ERNGameInstance.h"
 #include "Interfaces/IInteractable.h"
 
@@ -86,6 +85,31 @@ void AERNPlayerController::BeginPlay()
 			if (ReadyButton)
 			{
 				ReadyButton->AddToViewport();
+			}
+		}
+	}
+	
+	// 인벤토리 위젯 생성 (로컬 플레이어만)
+	if (IsLocalPlayerController() && InventoryWidgetClass)
+	{
+		// 숨겨야 할 맵인지 확인
+		bool bShouldHide = false;
+		for (const FString& MapName : HideInventoryWidgetMapNames)
+		{
+			if (CurrentMapName.Contains(MapName))
+			{
+				bShouldHide = true;
+				break;
+			}
+		}
+
+		// 숨겨야 할 맵이 아니면 위젯 생성
+		if (!bShouldHide)
+		{
+			InventoryWidget = CreateWidget<UUserWidget>(this, InventoryWidgetClass);
+			if (InventoryWidget)
+			{
+				InventoryWidget->AddToViewport();
 			}
 		}
 	}
@@ -207,6 +231,11 @@ void AERNPlayerController::SetupInputComponent()
 			{
 				EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AERNPlayerController::TryInteract);
 			}
+			
+			if (InventoryAction)
+			{
+				EnhancedInputComponent->BindAction(InventoryAction, ETriggerEvent::Started, this, &AERNPlayerController::ToggleInventory);
+			}
 		}
 	}
 }
@@ -294,11 +323,58 @@ void AERNPlayerController::TryInteract()
 	{
 		if (IInteractable* Interactable = Cast<IInteractable>(CurrentInteractableActor.Get()))
 		{
-			if (Interactable->Execute_CanInteract(CurrentInteractableActor.Get()))
+			if (!Interactable->Execute_CanInteract(CurrentInteractableActor.Get()))
 			{
+				return;
+			}
+			
+			switch (Interactable->Execute_GetInteractionExecutionPolicy(CurrentInteractableActor.Get()))
+			{
+			case EInteractionExecutionPolicy::LocalOnly:
 				Interactable->Execute_Interact(CurrentInteractableActor.Get(), this);
+				break;
+			case EInteractionExecutionPolicy::ServerAuthority:
+				Server_TryInteract(CurrentInteractableActor.Get());
+				break;
 			}
 		}
 	}
 }
 
+void AERNPlayerController::Server_TryInteract_Implementation(AActor* InteractableActor)
+{
+	if (InteractableActor->Implements<UInteractable>())
+	{
+		if (IInteractable::Execute_CanInteract(InteractableActor))
+		{
+			IInteractable::Execute_Interact(InteractableActor, this);
+		}
+	}
+}
+
+void AERNPlayerController::ToggleInventory()
+{
+	if (!InventoryWidget)
+	{
+		return;
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("ToggleInventory"));
+	
+	if (InventoryWidget->GetVisibility() == ESlateVisibility::Hidden)
+	{
+		InventoryWidget->SetVisibility(ESlateVisibility::Visible);
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(InventoryWidget->TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
+	}
+	else
+	{
+		InventoryWidget->SetVisibility(ESlateVisibility::Hidden);
+		FInputModeGameOnly InputMode;
+		SetInputMode(InputMode);
+		bShowMouseCursor = false;
+	}
+}

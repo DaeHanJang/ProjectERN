@@ -7,6 +7,8 @@
 #include "ERNBossCharacter.generated.h"
 
 class ULevelSequence;
+class UBehaviorTree;
+class UAnimMontage;
 
 // 보스 페이즈 정보
 USTRUCT(BlueprintType)
@@ -20,11 +22,11 @@ struct FBossPhaseInfo
 
 	// 이 페이즈에서 사용할 비헤이비어 트리
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class UBehaviorTree* PhaseBehaviorTree;
+	UBehaviorTree* PhaseBehaviorTree = nullptr;
 
 	// 페이즈 전환 시 재생할 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UAnimMontage* PhaseTransitionMontage;
+	UAnimMontage* PhaseTransitionMontage = nullptr;
 
 	// 페이즈 전환 중 슈퍼아머 적용 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -61,11 +63,11 @@ public:
 
 	// 등장 연출 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Cutscene")
-	UAnimMontage* IntroMontage;
+	UAnimMontage* IntroMontage = nullptr;
 
 	// 사망 연출 몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Cutscene")
-	UAnimMontage* DeathMontage;
+	UAnimMontage* DeathMontage = nullptr;
 
 	// 보스 이름 (UI 표시용)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|UI")
