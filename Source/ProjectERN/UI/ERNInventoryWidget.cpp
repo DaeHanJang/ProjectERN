@@ -13,7 +13,7 @@
 
 UERNInventoryWidget::UERNInventoryWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	bIsFocusable = true;
+	SetIsFocusable(true);
 }
 
 void UERNInventoryWidget::NativeConstruct()
@@ -21,34 +21,80 @@ void UERNInventoryWidget::NativeConstruct()
 	Super::NativeConstruct();
 	
 	SetVisibility(ESlateVisibility::Hidden);
-	if (const AERNPlayerController* PC = GetOwningPlayer<AERNPlayerController>())
+	
+	if (UERNInventoryComponent* InventoryComponent = GetInventoryComponent())
 	{
-		if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(PC->GetCharacter()))
+		CreateSlot(InventoryComponent->GetMaxStackSize(), ColumnSize);
+		
+		InventoryComponent->OnInventorySlotChanged.AddDynamic(this, &UERNInventoryWidget::HandleInventorySlotChanged);
+		
+		for (const FInventoryItemEntry& Entry : InventoryComponent->GetInventoryItems())
 		{
-			if (UERNInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
-			{
-				CreateSlot(InventoryComponent->GetMaxStackSize(), 4);
-				
-				InventoryComponent->OnInventorySlotChanged.AddDynamic(this, &UERNInventoryWidget::HandleInventorySlotChanged);
-				
-				for (const FInventoryItemEntry& Entry : InventoryComponent->GetInventoryItems())
-				{
-					HandleInventorySlotChanged(Entry);
-				}
-			}
+			HandleInventorySlotChanged(Entry);
 		}
 	}
 }
 
 FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
+	// 키보드 I나 Esc를 누를 경우
 	if (InKeyEvent.GetKey() == EKeys::I || InKeyEvent.GetKey() == EKeys::Escape)
 	{
 		if (AERNPlayerController* PC = GetOwningPlayer<AERNPlayerController>())
 		{
+			// 인벤토리 위젯 숨기기
 			PC->ToggleInventory();
+		
 			return FReply::Handled();
 		}
+	}
+	
+	UERNInventoryComponent* InventoryComponent = GetInventoryComponent();
+	if (!InventoryComponent)
+	{
+		return FReply::Handled();
+	}
+	
+	// 키보드 G를 누를 경우
+	if (InKeyEvent.GetKey() == EKeys::G && FocusSlotIndex != -1)
+	{
+		InventoryComponent->Server_RemoveItem(FocusSlotIndex, 1);
+		SetFocusSlotIndex(-1);
+			
+		return FReply::Handled();
+	}
+	// 인벤토리 네비게이션
+	if (InKeyEvent.GetKey() == EKeys::W && FocusSlotIndex != -1)
+	{
+		const int32 UpIndex = (FocusSlotIndex - ColumnSize < 0) ? 
+		FocusSlotIndex + ColumnSize * (((FocusSlotIndex - ColumnSize) * -1 + InventoryComponent->GetMaxStackSize() - 1) / ColumnSize - 1)
+		: FocusSlotIndex - ColumnSize;
+		SetFocusSlotIndex(UpIndex);
+		
+		return FReply::Handled();
+	}
+	if (InKeyEvent.GetKey() == EKeys::S && FocusSlotIndex != -1)
+	{
+		const int32 DownIndex = FocusSlotIndex + ColumnSize >= InventoryComponent->GetMaxStackSize() ?
+		(FocusSlotIndex + ColumnSize) % ColumnSize : FocusSlotIndex + ColumnSize;
+		SetFocusSlotIndex(DownIndex);
+		
+		return FReply::Handled();
+	}
+	if (InKeyEvent.GetKey() == EKeys::A && FocusSlotIndex != -1)
+	{
+		const int32 PreviousIndex = (FocusSlotIndex - 1 < 0) ? 
+		InventoryComponent->GetMaxStackSize() - 1 : FocusSlotIndex - 1;
+		SetFocusSlotIndex(PreviousIndex);
+		
+		return FReply::Handled();
+	}
+	if (InKeyEvent.GetKey() == EKeys::D && FocusSlotIndex != -1)
+	{
+		const int32 NextIndex = (FocusSlotIndex + 1) % InventoryComponent->GetMaxStackSize();
+		SetFocusSlotIndex(NextIndex);
+		
+		return FReply::Handled();
 	}
 
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
@@ -67,6 +113,12 @@ void UERNInventoryWidget::CreateSlot(int32 MaxSlotSize, int32 ColumnCount)
 		int32 Col = i % ColumnCount;
 		
 		InventoryUniformGridPanel->AddChildToUniformGrid(SlotWidgets[i], Row, Col);
+		
+		if (SlotWidgets[i])
+		{
+			SlotWidgets[i]->SetSlotIndex(i);
+			SlotWidgets[i]->OnSlotClicked.AddDynamic(this, &UERNInventoryWidget::SetFocusSlotIndex);
+		}
 	}
 }
 
@@ -74,6 +126,12 @@ void UERNInventoryWidget::HandleInventorySlotChanged(const FInventoryItemEntry& 
 {
 	if (!SlotWidgets.IsValidIndex(Entry.SlotIndex))
 	{
+		return;
+	}
+	
+	if (Entry.Quantity <= 0)
+	{
+		SlotWidgets[Entry.SlotIndex]->ClearItem();
 		return;
 	}
 	
@@ -90,4 +148,32 @@ void UERNInventoryWidget::HandleInventorySlotChanged(const FInventoryItemEntry& 
 	}
 	
 	SlotWidgets[Entry.SlotIndex]->SetItem(ItemData->Icon.Get(), Entry.Quantity);
+}
+
+void UERNInventoryWidget::SetFocusSlotIndex(const int32 NewIndex)
+{
+	if (FocusSlotIndex != -1)
+	{
+		SlotWidgets[FocusSlotIndex]->SetInventorySlotImage(BasicSlotImage.Get());
+	}
+	
+	if (NewIndex != -1)
+	{
+		SlotWidgets[NewIndex]->SetInventorySlotImage(FocusSlotImage.Get());
+	}
+	
+	FocusSlotIndex = NewIndex;
+}
+
+UERNInventoryComponent* UERNInventoryWidget::GetInventoryComponent() const
+{
+	if (AERNPlayerController* PC = GetOwningPlayer<AERNPlayerController>())
+	{
+		if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(PC->GetCharacter()))
+		{
+			return PlayerCharacter->GetInventoryComponent();
+		}
+	}
+	
+	return nullptr;
 }

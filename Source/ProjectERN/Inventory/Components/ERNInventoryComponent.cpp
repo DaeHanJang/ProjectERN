@@ -13,11 +13,6 @@ UERNInventoryComponent::UERNInventoryComponent()
 	Inventory.SetOwner(this);
 }
 
-void UERNInventoryComponent::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
 void UERNInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -69,9 +64,9 @@ void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemAc
 	}
 	
 	// 리슨 서버 인벤토리 변경 이벤트 발신 (UI 갱신)
-	for (const FInventoryItemEntry& ChangedIndex : ChangedSlots)
+	for (const FInventoryItemEntry& ChangedSlot : ChangedSlots)
 	{
-		OnInventorySlotChanged.Broadcast(ChangedIndex);
+		OnInventorySlotChanged.Broadcast(ChangedSlot);
 	}
 	
 	Inventory.LogInventory();
@@ -85,6 +80,28 @@ void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemAc
 
 void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIndex, const int32 Count)
 {
-	UE_LOG(LogTemp, Log, TEXT("Server_RemoveItem: Slot %d, Count %d"), SlotIndex, Count);
-	// TODO: 아이템 제거 로직
+	// 매개 변수 유효성 검사
+	if (SlotIndex < 0 || SlotIndex >= MaxSlotSize)
+	{
+		return;
+	}
+	if (!Inventory.GetItem(SlotIndex) || Count < 0 || Count > Inventory.GetItem(SlotIndex)->Quantity)
+	{
+		return;
+	}
+	
+	// 리슨 서버 UI 갱신용 갱신된 인벤토리 슬롯 배열
+	FInventoryItemEntry ChangedSlot;
+	FItemRuntimeState DropItemRuntimeState;
+	// 인벤토리에서 아이템 제거
+	Inventory.RemoveItem(SlotIndex, Count, DropItemRuntimeState, ChangedSlot);
+	
+	// 리슨 서버 전용 UI 갱신 이벤트
+	OnInventorySlotChanged.Broadcast(ChangedSlot);
+	
+	Inventory.LogInventory();
+	
+	// 인벤토리에서 제거한 아이템 월드에 생성 
+	const FVector& DropLocation = GetOwner()->GetActorLocation() + GetOwner()->GetActorForwardVector() * 50.0f;
+	GetItemManager()->SpawnItem(DropItemRuntimeState.ItemID, DropItemRuntimeState.Quantity, DropLocation, GetOwner()->GetActorRotation());
 }

@@ -2,8 +2,30 @@
 
 #include "UI/ERNInventorySlotWidget.h"
 
+#include "ERNInventoryWidget.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+
+UERNInventorySlotWidget::UERNInventorySlotWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+{
+	SetIsFocusable(true);
+}
+
+FReply UERNInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		OnSlotClicked.Broadcast(SlotIndex);
+		return FReply::Handled();
+	}
+	
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+void UERNInventorySlotWidget::SetInventorySlotImage(UTexture2D* NewTexture) const
+{
+	InventorySlotImage->SetBrushFromTexture(NewTexture);
+}
 
 void UERNInventorySlotWidget::ClearItem() const
 {

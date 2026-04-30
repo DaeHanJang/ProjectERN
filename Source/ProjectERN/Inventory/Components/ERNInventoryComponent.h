@@ -33,13 +33,9 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void Server_AddItem(AERNItemActor* ItemActor);
 	
-	// TODO: RemoveItem 함수 구현
 	// Remove Item
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void Server_RemoveItem(const int32 SlotIndex, const int32 Count);
-	
-protected:
-	virtual void BeginPlay() override;
 	
 private:
 	// Get ItemManager

@@ -23,6 +23,13 @@ void FInventoryItemEntry::PreReplicatedRemove(const FInventoryList& InArraySeria
 	// TODO: RemoveItem이 구현된 후 구현
 }
 
+void FInventoryItemEntry::ClearEntry()
+{
+	ItemID = NAME_None;
+	Quantity = 0;
+	ItemRuntimeState = FItemRuntimeState(); 
+}
+
 void FInventoryList::SetOwner(UERNInventoryComponent* NewOwner)
 {
 	Owner = NewOwner;
@@ -98,9 +105,22 @@ bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 Ma
 	return false;
 }
 
-void FInventoryList::RemoveItem()
+void FInventoryList::RemoveItem(const int32 SlotIndex, const int32 Count, FItemRuntimeState& OutDropRuntimeState, FInventoryItemEntry& OutChangedEntry)
 {
-	// TODO: 인벤토리에서 아이템 제거 코드 작성
+	// 인벤토리에 아이템을 지우고 월드에 생성할 ItemActor의 RuntimeState 값 설정
+	OutDropRuntimeState.ItemID = Items[SlotIndex].ItemID;
+	OutDropRuntimeState.Quantity = Count;
+	Items[SlotIndex].Quantity -= Count;
+	// 슬롯에 남아있는 아이템의 수량이 0이하라면 슬롯 초기화
+	if (Items[SlotIndex].Quantity <= 0)
+	{
+		Items[SlotIndex].ClearEntry();
+		OccupiedSlots.Remove(SlotIndex);
+		MarkItemDirty(Items[SlotIndex]);
+		MarkArrayDirty();
+	}
+	// 리슨 서버 UI 갱신용 슬롯 데이터 적재
+	OutChangedEntry = Items[SlotIndex];
 }
 
 int32 FInventoryList::FindFirstEmptySlot(const int32 MaxSlotSize) const

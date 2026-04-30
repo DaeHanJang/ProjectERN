@@ -22,6 +22,8 @@ public:
 	// 클라에서 아이템 제거 직전
 	void PreReplicatedRemove(const FInventoryList& InArraySerializer);
 	
+	void ClearEntry();
+	
 public:
 	// 아이템 고유 Key값
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
@@ -57,13 +59,20 @@ public:
 	UERNInventoryComponent* GetOwner() const { return Owner.Get(); }
 	void SetOwner(UERNInventoryComponent* NewOwner);
 	const TArray<FInventoryItemEntry>& GetItems() const { return Items; }
+	const FInventoryItemEntry* GetItem(const int32 SlotIndex) const
+	{
+		if (Items.Num() < SlotIndex)
+		{
+			return nullptr;
+		}
+		return &Items[SlotIndex];
+	}
 	
 	// Add Item
 	bool AddItem(FItemRuntimeState& ItemRuntimeState, const int32 MaxSlotSize, const int32 MaxStackSize, TArray<FInventoryItemEntry>& OutChangedEntries);
 	
-	// TODO: RemoveItem 함수 구현
 	// Remove Item
-	void RemoveItem();
+	void RemoveItem(const int32 SlotIndex, const int32 Count, FItemRuntimeState& OutDropRuntimeState, FInventoryItemEntry& OutChangedEntry);
 	
 	// Debug Log
 	void LogInventory() const;
