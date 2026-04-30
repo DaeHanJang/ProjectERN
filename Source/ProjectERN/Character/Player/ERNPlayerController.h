@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "ERNPlayerController.generated.h"
 
+class IInteractable;
 class UInputMappingContext;
 class UInputAction;
 class UUserWidget;
@@ -38,6 +39,10 @@ protected:
 	/** Interact input action */
 	UPROPERTY(EditAnywhere, Category="Input|Actions")
 	UInputAction* InteractAction;
+	
+	/** Inventory input action */
+	UPROPERTY(EditAnywhere, Category="Input|Actions")
+	UInputAction* InventoryAction;
 
 	/** Mobile controls widget to spawn */
 	UPROPERTY(EditAnywhere, Category="Input|Touch Controls")
@@ -67,6 +72,17 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TArray<FString> HideReadyButtonMapNames;
 
+	// 인벤토리 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> InventoryWidgetClass;
+	
+	// 인벤토리 위젯을 숨길 맵 이름 목록 (부분 일치)
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TArray<FString> HideInventoryWidgetMapNames;
+	
+	UPROPERTY()
+	UUserWidget* InventoryWidget;
+	
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
 
@@ -92,7 +108,7 @@ public:
 
 	// 상점 메인 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<class UUserWidget> ShopMainWidgetClass;
+	TSubclassOf<UUserWidget> ShopMainWidgetClass;
 
 	// 준비 상태 토글 (블루프린트에서 호출)
 	UFUNCTION(BlueprintCallable, Category = "Game")
@@ -101,10 +117,17 @@ public:
 	// 상호작용 시도
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void TryInteract();
+	// ServerSide 상호작용 시도
+	UFUNCTION(Server, Reliable)
+	void Server_TryInteract(AActor* InteractableActor);
 
 	// Pedestal(상호작용가능한액터)에서 호출용
 	void SetCurrentInteractable(AActor* Interactable) { CurrentInteractableActor = Interactable; }
 	void ClearCurrentInteractable() { CurrentInteractableActor = nullptr; }
+	
+	// 인벤토리 열기, 닫기
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void ToggleInventory();
 
 private:
 	// 현재 상호작용 가능한 액터
