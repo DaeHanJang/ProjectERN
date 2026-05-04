@@ -13,7 +13,7 @@ UERNGA_Roll::UERNGA_Roll()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 
 	FGameplayTagContainer AssetTags;
-	AssetTags.AddTag(TAG_Ability_Move_Roll);
+	AssetTags.AddTag(TAG_Ability_Movement_Roll);
 	SetAssetTags(AssetTags);
 
 	ActivationOwnedTags.AddTag(TAG_State_Combat_Rolling);

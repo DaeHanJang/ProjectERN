@@ -211,7 +211,7 @@ void AProjectERNCharacter::Roll(const FInputActionValue& Value)
 	if (AbilitySystemComponent)
 	{
 		// 구르기 태그를 가진 어빌리티 실행 시도
-		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Move_Roll));
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Roll));
 	}
 }
 
