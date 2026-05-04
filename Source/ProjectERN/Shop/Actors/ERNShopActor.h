@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Interfaces/IInteractable.h"
+#include "Inventory/Item/Data/ERNItemEnums.h"
 #include "ERNShopActor.generated.h"
 
 class USphereComponent;
@@ -67,9 +68,9 @@ protected:
 
     // ===== 상점 설정 =====
 
-    /** 이 상점의 고유 ID (Provider에서 데이터를 가져올 때 사용) */
+    /** 이 상점의 타입 (World, Boss 등) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    FName ShopID = FName("Shop_Default");
+    EShopType ShopType = EShopType::World;
 
     /** 상점 이름 (UI 표시용) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")

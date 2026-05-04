@@ -50,7 +50,7 @@ void AERNShopActor::Interact_Implementation(APlayerController* PlayerController)
 {
     if (!bIsShopActive)
     {
-        UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] 상점 비활성 상태: %s"), *ShopID.ToString());
+        UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] 상점 비활성 상태: %d"), (int32)ShopType);
         return;
     }
 
@@ -98,9 +98,8 @@ void AERNShopActor::Interact_Implementation(APlayerController* PlayerController)
     }
 
     // 상점 열기 (자신을 TargetNPC로 전달하여 위임 패턴에 사용)
-    UE_LOG(LogShopProvider, Log, TEXT("[ShopActor] 상점 열기 요청: %s (%s)"),
-        *ShopDisplayName.ToString(), *ShopID.ToString());
-    ShopComp->OpenShop(ShopID, this);
+    UE_LOG(LogShopProvider, Log, TEXT("[ShopActor] 상점 열기 요청: %s"), *ShopDisplayName.ToString());
+    ShopComp->OpenShop(ShopType, this);
 }
 
 bool AERNShopActor::CanInteract_Implementation() const

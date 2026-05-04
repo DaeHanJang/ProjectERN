@@ -29,9 +29,9 @@ public:
     // ===== IERNShopDataProvider 구현 =====
 
     virtual void Initialize_Implementation(UObject* Owner) override;
-    virtual void RequestShopData_Implementation(FName ShopID) override;
+    virtual void RequestShopData_Implementation(EShopType ShopType) override;
     virtual void RequestPurchase_Implementation(FERNShopTransaction Transaction) override;
-    virtual FERNShopInventory GetCachedShopData_Implementation(FName ShopID) override;
+    virtual FERNShopInventory GetCachedShopData_Implementation(EShopType ShopType) override;
     virtual bool IsDataReady_Implementation() override;
     virtual void HandleReceivedData_Implementation(const FERNShopInventory& ShopData) override;
     virtual void HandlePurchaseResult_Implementation(const FERNShopTransaction& Transaction) override;
@@ -51,7 +51,7 @@ public:
 
     /** 특정 상점의 캐시 무효화 */
     UFUNCTION(BlueprintCallable, Category = "Shop|Cache")
-    void InvalidateCache(FName ShopID);
+    void InvalidateCache(EShopType ShopType);
 
     /** 전체 캐시 초기화 */
     UFUNCTION(BlueprintCallable, Category = "Shop|Cache")
@@ -59,16 +59,16 @@ public:
 
     /** 캐시가 유효한지 확인 (TTL 기반) */
     UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Shop|Cache")
-    bool IsCacheValid(FName ShopID) const;
+    bool IsCacheValid(EShopType ShopType) const;
 
 protected:
 
-    // 캐시 - ShopID별 상점 인벤토리
+    // 캐시 - ShopType별 상점 인벤토리
     UPROPERTY()
-    TMap<FName, FERNShopInventory> CachedData;
+    TMap<EShopType, FERNShopInventory> CachedData;
 
-    // 캐시 타임스탬프 - ShopID별 마지막 갱신 시각
-    TMap<FName, float> CacheTimestamps;
+    // 캐시 타임스탬프 - ShopType별 마지막 갱신 시각
+    TMap<EShopType, float> CacheTimestamps;
 
     // 캐시 유효 시간 (초)
     UPROPERTY(EditAnywhere, Category = "Shop|Cache")
@@ -79,5 +79,5 @@ protected:
     UObject* OwnerObject = nullptr;
 
     // 데이터 요청 중 여부 (중복 요청 방지)
-    TSet<FName> PendingRequests;
+    TSet<EShopType> PendingRequests;
 };
