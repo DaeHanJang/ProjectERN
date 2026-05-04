@@ -74,8 +74,7 @@ protected:
 
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-protected:
+	
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
 
@@ -83,13 +82,16 @@ protected:
 	void Look(const FInputActionValue& Value);
 
 	/** Called for light attack input */
-	void Roll(const FInputActionValue& Value);
+	void Roll();
 	
 	/** Called for light attack input */
-	void LightAttack(const FInputActionValue& Value);
+	void LightAttack();
 
 	/** Called for heavy attack input */
-	void HeavyAttack(const FInputActionValue& Value);
+	void HeavyAttack();
+	
+	/** Called for lock on input */
+	void LockOn();
 
 public:
 	/** Handles move inputs from either controls or UI interfaces */
@@ -126,4 +128,17 @@ public:
 
 	/** Returns ShopComponent **/
 	FORCEINLINE class UERNShopComponent* GetShopComponent() const { return ShopComponent; }
+	
+	// ************** 임시 락온 기능 구현 **************
+public:
+	UFUNCTION(BlueprintCallable, Category="LockOn")
+	void ToggleTemporaryLockOn();
+
+protected:
+	UPROPERTY(BlueprintReadOnly, Category="LockOn")
+	bool bIsLockOn = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="LockOn")
+	bool bUseCameraYawOnLockOn = true;
+	// ************** 임시 락온 기능 구현 **************
 };

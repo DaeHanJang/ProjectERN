@@ -178,6 +178,13 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::HeavyAttack);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_LockOn,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::LockOn);
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
@@ -185,7 +192,7 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 	// 해당 태그가 있으면 움직이지 못함
 	if (AbilitySystemComponent &&
 		(AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking) ||
-		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing)))
+			AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing)))
 	{
 		return;
 	}
@@ -206,7 +213,7 @@ void AProjectERNCharacter::Look(const FInputActionValue& Value)
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
 }
 
-void AProjectERNCharacter::Roll(const FInputActionValue& Value)
+void AProjectERNCharacter::Roll()
 {
 	if (AbilitySystemComponent)
 	{
@@ -264,7 +271,38 @@ void AProjectERNCharacter::ExecuteJumpLaunch()
 	Jump();
 }
 
-void AProjectERNCharacter::LightAttack(const FInputActionValue& Value)
+void AProjectERNCharacter::ToggleTemporaryLockOn()
+{
+	bIsLockOn = !bIsLockOn;
+
+	if (!Controller)
+	{
+		return;
+	}
+
+	if (bIsLockOn)
+	{
+		// 카메라/컨트롤러가 바라보는 Yaw로 캐릭터 방향을 맞춘다.
+		const FRotator ControlRotation = Controller->GetControlRotation();
+		const FRotator TargetYawRotation(0.f, ControlRotation.Yaw, 0.f);
+
+		SetActorRotation(TargetYawRotation);
+
+		// 락온 중에는 컨트롤러 Yaw가 캐릭터 회전을 직접 제어하게 한다.
+		bUseControllerRotationYaw = true;
+
+		// 이동 방향으로 자동 회전하는 기능은 꺼야 카메라 방향 유지가 쉽다.
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+	}
+	else
+	{
+		// 기존 이동 방식으로 복귀.
+		bUseControllerRotationYaw = false;
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+	}
+}
+
+void AProjectERNCharacter::LightAttack()
 {
 	if (!AbilitySystemComponent)
 	{
@@ -297,10 +335,15 @@ void AProjectERNCharacter::LightAttack(const FInputActionValue& Value)
 		FGameplayTagContainer(TAG_Ability_Attack_Light));
 }
 
-void AProjectERNCharacter::HeavyAttack(const FInputActionValue& Value)
+void AProjectERNCharacter::HeavyAttack()
 {
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Heavy));
 	}
+}
+
+void AProjectERNCharacter::LockOn()
+{
+	ToggleTemporaryLockOn();
 }

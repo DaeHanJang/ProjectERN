@@ -8,13 +8,17 @@
 
 UERNGA_Jump::UERNGA_Jump()
 {
+	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+	
+	FGameplayTagContainer AssetTags;
+	AssetTags.AddTag(TAG_Ability_Movement_Jump);
+	SetAssetTags(AssetTags);
+	
 	// 점프 중 태그 자동 부여/제거
 	ActivationOwnedTags.AddTag(TAG_State_Combat_Jumping);
 	
 	// 재발동 차단
 	ActivationBlockedTags.AddTag(TAG_State_Combat_Jumping);
-	
-	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 }
 
 bool UERNGA_Jump::CanActivateAbility(const FGameplayAbilitySpecHandle Handle,

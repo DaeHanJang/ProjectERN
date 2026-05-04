@@ -10,6 +10,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Input_Jump, "Input.Jump")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_Roll, "Input.Roll")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_LightAttack, "Input.LightAttack")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_HeavyAttack, "Input.HeavyAttack")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Input_LockOn, "Input.LockOn")
 
 // 전투 상태
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Attacking, "State.Combat.Attacking")
