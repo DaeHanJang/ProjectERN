@@ -180,10 +180,10 @@ void AERNCharacterBase::OnMovementModeChanged(EMovementMode PrevMovementMode, ui
 	// 공중 상태 태그 On/Off
 	if (GetCharacterMovement()->MovementMode == MOVE_Falling)
 	{
-		AbilitySystemComponent->AddLooseGameplayTag(TAG_State_Movement_Falling);
+		AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Movement_Falling, 1);
 	}
 	else
 	{
-		AbilitySystemComponent->RemoveLooseGameplayTag(TAG_State_Movement_Falling);	
+		AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Movement_Falling, 0);
 	}
 }

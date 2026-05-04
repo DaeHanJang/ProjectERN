@@ -16,6 +16,7 @@
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
 #include "GAS/ERNGameplayTags.h"
+#include "Input/ERNInputComponent.h"
 #include "Shop/Components/ERNShopComponent.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -102,43 +103,91 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 
 void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	// Set up action bindings
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-		// Jumping
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AProjectERNCharacter::DoJumpStart);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AProjectERNCharacter::DoJumpEnd);
-
-		// Moving
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AProjectERNCharacter::Move);
-		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AProjectERNCharacter::Look);
-
-		// Looking
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AProjectERNCharacter::Look);
-
-		// Rolling
-		EnhancedInputComponent->BindAction(RollAction, ETriggerEvent::Started, this, &AProjectERNCharacter::Roll);
-		
-		// Attacking
-		EnhancedInputComponent->BindAction(LightAttackAction, ETriggerEvent::Started, this, &AProjectERNCharacter::LightAttack);
-		EnhancedInputComponent->BindAction(HeavyAttackAction, ETriggerEvent::Started, this, &AProjectERNCharacter::HeavyAttack);
-	}
-	else
+	UERNInputComponent* InputComp = Cast<UERNInputComponent>(PlayerInputComponent);
+	if (!InputComp)
 	{
-		UE_LOG(LogProjectERN, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
+		UE_LOG(LogProjectERN, Error, TEXT("%s failed to find ERNInputComponent."), *GetNameSafe(this));
+		return;
 	}
+
+	if (!InputConfig)
+	{
+		UE_LOG(LogProjectERN, Warning, TEXT("%s has no InputConfig."), *GetNameSafe(this));
+		return;
+	}
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Move,
+		ETriggerEvent::Triggered,
+		this,
+		&AProjectERNCharacter::Move);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Look,
+		ETriggerEvent::Triggered,
+		this,
+		&AProjectERNCharacter::Look);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_MouseLook,
+		ETriggerEvent::Triggered,
+		this,
+		&AProjectERNCharacter::Look);
+
+	// Jump
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Jump,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::DoJumpStart);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Jump,
+		ETriggerEvent::Completed,
+		this,
+		&AProjectERNCharacter::DoJumpEnd);
+
+	// Tap Shift -> Roll
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Roll,
+		ETriggerEvent::Triggered,
+		this,
+		&AProjectERNCharacter::Roll);
+
+	// Attack
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_LightAttack,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::LightAttack);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_HeavyAttack,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::HeavyAttack);
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
 	// 해당 태그가 있으면 움직이지 못함
 	if (AbilitySystemComponent &&
-		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking) ||
-		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing))
+		(AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking) ||
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing)))
 	{
 		return;
 	}
-	
+
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
 

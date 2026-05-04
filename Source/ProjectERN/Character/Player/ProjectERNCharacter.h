@@ -16,6 +16,7 @@ enum class ECharacterType : uint8;
 class UERNInventoryComponent;
 class UERNEquipmentComponent;
 class UERNShopComponent;
+class UERNInputConfig;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -56,35 +57,11 @@ protected:
 
 	/** Called when character is possessed by a controller */
 	virtual void PossessedBy(AController* NewController) override;
-
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* JumpAction;
-
-	/** Move Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* MoveAction;
-
-	/** Look Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* LookAction;
-
-	/** Mouse Look Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* MouseLookAction;
-
-	/** Light Attack Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* LightAttackAction;
-
-	/** Heavy Attack Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* HeavyAttackAction;
 	
-	/** Roll Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* RollAction;
-
+	// 태그 기반 입력을 위한 InputConfig 부여
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
+	TObjectPtr<UERNInputConfig> InputConfig;
+	
 public:
 
 	/** Constructor */
