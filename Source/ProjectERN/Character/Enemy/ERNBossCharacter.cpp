@@ -6,6 +6,7 @@
 #include "GAS/ERNGameplayTags.h"
 #include "AbilitySystemComponent.h"
 #include "BehaviorTree/BehaviorTree.h"
+#include "Components/CapsuleComponent.h"
 #include "Net/UnrealNetwork.h"
 
 AERNBossCharacter::AERNBossCharacter()
@@ -15,6 +16,12 @@ AERNBossCharacter::AERNBossCharacter()
 
 	// 보스 기본 설정
 	InitialStaggerResistance = 50.f;  // 보스는 경직 저항 높음
+	
+	// 피지컬 에셋 히트 판정 활성화
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	GetMesh()->SetCollisionObjectType(ECC_Pawn);
+	GetMesh()->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+	GetMesh()->SetGenerateOverlapEvents(true);    
 }
 
 void AERNBossCharacter::BeginPlay()
