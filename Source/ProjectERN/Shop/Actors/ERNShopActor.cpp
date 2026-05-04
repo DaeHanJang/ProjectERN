@@ -129,18 +129,22 @@ void AERNShopActor::EndInteract_Implementation(APlayerController* PlayerControll
         InteractionPromptWidget->SetVisibility(false);
     }
     
-    // 띄워진 상점 위젯이 있다면 제거
+    // 즉시 파괴하지 않고, 닫기 애니메이션을 재생하라고 명령
     if (ActiveShopWidget)
     {
-        ActiveShopWidget->RemoveFromParent();
-        ActiveShopWidget = nullptr; // 포인터 안전 초기화
-        
-        // 입력모드를 게임 전용으로 원상복구
-        ERNPC->SetInputMode(FInputModeGameOnly());
-        ERNPC->SetShowMouseCursor(false);
-        
-        // TODO 상점 엑터 디버그 로그
-        UE_LOG(LogShopProvider, Log, TEXT("[ShopActor] : 상점 UI 닫힘 확인"))
+        if (UERNInteractableWidget* InteractableWidget = Cast<UERNInteractableWidget>(ActiveShopWidget))
+        {
+            InteractableWidget->BP_PlayCloseAnimation();
+        }
+        else
+        {
+            // 혹시 베이스 클래스가 아닐 경우 예외 처리
+            ActiveShopWidget->RemoveFromParent();
+            ActiveShopWidget = nullptr;
+            
+            ERNPC->SetInputMode(FInputModeGameOnly());
+            ERNPC->SetShowMouseCursor(false);
+        }
     }
 }
 
@@ -148,10 +152,20 @@ void AERNShopActor::HandleShopClosed()
 {
     if (AProjectERNCharacter* PlayerChar = Cast<AProjectERNCharacter>(GetWorld()->GetFirstPlayerController()->GetCharacter()))
     {
-        AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerChar->GetController());
-        if (PC)
+        AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PlayerChar->GetController());
+        if (ERNPC)
         {
-            EndInteract_Implementation(PC);
+            // 여기서 위젯을 최종 파괴하고, 마우스 시점을 복구합니다.
+            if (ActiveShopWidget)
+            {
+                ActiveShopWidget->RemoveFromParent();
+                ActiveShopWidget = nullptr; 
+                
+                ERNPC->SetInputMode(FInputModeGameOnly());
+                ERNPC->SetShowMouseCursor(false);
+                
+                UE_LOG(LogShopProvider, Log, TEXT("[ShopActor] 상점 UI 애니메이션 종료 및 최종 닫힘"));
+            }
         }
     }
 }
