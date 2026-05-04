@@ -16,7 +16,6 @@ UENUM(BlueprintType)
 enum class EERNShopItemCategory : uint8
 {
     Weapon      UMETA(DisplayName = "무기"),
-    Armor       UMETA(DisplayName = "방어구"),
     Consumable  UMETA(DisplayName = "소모품"),
 };
 

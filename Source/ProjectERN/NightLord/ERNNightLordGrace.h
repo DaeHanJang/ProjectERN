@@ -37,13 +37,18 @@ public:
 	
 	// IInteractable 인터페이스 함수 선언
 	virtual void Interact_Implementation(APlayerController* PlayerController) override;
+	virtual void EndInteract_Implementation(APlayerController* PlayerController) override;
+
 	virtual bool CanInteract_Implementation() const override;
 	virtual FText GetInteractionText_Implementation() const override;
 	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
-	
 
 protected:
 	virtual void BeginPlay() override;
+	
+	// 델리게이트에 바인딩할 함수
+	UFUNCTION()
+	void HandlePopupClosed();
 	
 	// 회복을 담당하는 함수
 	void RestoreAttributes(AProjectERNCharacter* TargetCharacter);

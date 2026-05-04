@@ -10,6 +10,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Character/Player/ERNPlayerController.h"
 #include "GAS/ERNAttributeSet.h"
+#include "UI/ERNInteractableWidget.h"
 
 AERNNightLordGrace::AERNNightLordGrace()
 {
@@ -49,12 +50,55 @@ void AERNNightLordGrace::Interact_Implementation(APlayerController* PlayerContro
 	if (LevelUpPopupWidget)
 	{
 		LevelUpPopupWidget->AddToViewport(100);
+		
+		// 베이스 위젯인지 캐스팅하여 델리게이트 바인딩
+		if (UERNInteractableWidget* InteractableWidget = Cast<UERNInteractableWidget>(LevelUpPopupWidget))
+		{
+			// 혹시 이미 바인드 되어 있을지 모르므로 제거 후 연결 - 예외 처리
+			InteractableWidget->OnWidgetClosed.RemoveDynamic(this, &AERNNightLordGrace::HandlePopupClosed);
+			InteractableWidget->OnWidgetClosed.AddDynamic(this, &AERNNightLordGrace::HandlePopupClosed);
+			
+		}
+		FInputModeGameAndUI InputMode;
+		InputMode.SetWidgetToFocus(LevelUpPopupWidget->TakeWidget()); // 포커스 지정!
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		PlayerController->SetInputMode(InputMode);
+		
 		PlayerController->SetShowMouseCursor(true);
-		PlayerController->SetInputMode(FInputModeGameAndUI());
+		//PlayerController->SetInputMode(FInputModeGameAndUI());
 		
 		//TODO 디버그 로그 (패키징 시 제거)
 		UE_LOG(LogTemp, Warning, TEXT("화톳불 : 레벨업 팝업 알림"));
 	}
+}
+
+void AERNNightLordGrace::EndInteract_Implementation(APlayerController* PlayerController)
+{
+	AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PlayerController);
+	if (!ERNPC) return;
+	
+	// 상호작용 대상 해제
+	ERNPC->ClearCurrentInteractable();
+	
+	// 프롬프트 숨기기
+	if (InteractionPromptWidget)
+	{
+		InteractionPromptWidget->SetVisibility(false);
+	}
+	
+	// 이미 팝업이 열려 있는 상태 일때는 닫기
+	if (LevelUpPopupWidget)
+	{
+		LevelUpPopupWidget->RemoveFromViewport();
+		LevelUpPopupWidget = nullptr; // Dangling Pointer 방지
+		
+		ERNPC->SetInputMode(FInputModeGameOnly());
+		ERNPC->SetShowMouseCursor(false);
+		
+		UE_LOG(LogTemp, Warning, TEXT("화톳불 : 상호작용 종료 및 UI 닫힘"));
+	}
+	
+	
 }
 
 bool AERNNightLordGrace::CanInteract_Implementation() const
@@ -80,8 +124,20 @@ void AERNNightLordGrace::BeginPlay()
 	InteractionComponent->OnComponentEndOverlap.AddDynamic(this, &AERNNightLordGrace::OnSphereEndOverlap);
 }
 
+void AERNNightLordGrace::HandlePopupClosed()
+{
+	if (AProjectERNCharacter* PlayerChar = Cast<AProjectERNCharacter>(GetWorld()->GetFirstPlayerController()->GetCharacter()))
+	{
+		AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerChar->GetController());
+		if (PC)
+		{
+			EndInteract_Implementation(PC);
+		}
+	}
+}
+
 void AERNNightLordGrace::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+                                              UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	// 플레이어 캐릭터를 불러옴
 	AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor); 
@@ -118,24 +174,7 @@ void AERNNightLordGrace::OnSphereEndOverlap(UPrimitiveComponent* OverlappedCompo
 	AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerCharacter->GetController());
 	if (PC)
 	{
-		// 상호작용 대상을 해제
-		PC->ClearCurrentInteractable();
-		
-		// 프롬프트 숨기기
-		if (InteractionPromptWidget)
-		{
-			InteractionPromptWidget->SetVisibility(false);
-		}
-		
-		// 만약 팝업이 열려 있는 상태라면 닫기
-		if (LevelUpPopupWidget)
-		{
-			LevelUpPopupWidget->RemoveFromParent();
-			LevelUpPopupWidget = nullptr;
-			
-			PC->SetInputMode(FInputModeGameOnly());
-			PC->SetShowMouseCursor(false);
-		}
+		EndInteract_Implementation(PC);
 	}
 }
 
