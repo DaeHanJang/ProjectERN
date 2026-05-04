@@ -20,6 +20,13 @@ void UERNInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(UERNInventoryComponent, Inventory);
 }
 
+void UERNInventoryComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	Inventory.Init(MaxSlotSize);
+}
+
 UItemManagerSubsystem* UERNInventoryComponent::GetItemManager() const
 {
 	if (const UWorld* World = GetWorld())
@@ -48,17 +55,16 @@ void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemAc
 		return;
 	}
 	
-	UItemManagerSubsystem* ItemManager = GetItemManager();
+	const UItemManagerSubsystem* ItemManager = GetItemManager();
 	// 서버에서 ItemID 유효성 검사
-	if (!ItemManager || !ItemManager->ItemValid(ItemRuntimeState.ItemID))
+	if (!ItemManager || !ItemManager->ItemValid(ItemRuntimeState.GetItemID()))
 	{
 		return;
 	}
 	
 	TArray<FInventoryItemEntry> ChangedSlots;
 	// Inventory에 넣기 요청
-	const bool bAdded = Inventory.AddItem(ItemRuntimeState, MaxSlotSize, ItemManager->FindItemRow(ItemRuntimeState.ItemID)->MaxStackSize, ChangedSlots);
-	if (!bAdded)
+	if (!Inventory.AddItem(ItemRuntimeState, MaxSlotSize, ItemManager->FindItemRow(ItemRuntimeState.GetItemID())->MaxStackSize, ChangedSlots))
 	{
 		return;
 	}
@@ -71,7 +77,7 @@ void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemAc
 	
 	Inventory.LogInventory();
 	
-	if (ItemRuntimeState.Quantity <= 0)
+	if (ItemRuntimeState.GetQuantity() <= 0)
 	{
 		// TODO: ItemActor 제거 함수 넣기
 		ItemActor->Destroy();
@@ -81,17 +87,18 @@ void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemAc
 void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIndex, const int32 Count)
 {
 	// 매개 변수 유효성 검사
-	if (SlotIndex < 0 || SlotIndex >= MaxSlotSize)
+	if (!Inventory.GetItems().IsValidIndex(SlotIndex))
 	{
 		return;
 	}
-	if (!Inventory.GetItem(SlotIndex) || Count < 0 || Count > Inventory.GetItem(SlotIndex)->Quantity)
+	if (Count <= 0 || Count > GetItemQuantity(SlotIndex))
 	{
 		return;
 	}
 	
 	// 리슨 서버 UI 갱신용 갱신된 인벤토리 슬롯 배열
 	FInventoryItemEntry ChangedSlot;
+	// 인벤토리에서 제거 후 월드에 생성할 아이템 액터의 런타임 상태
 	FItemRuntimeState DropItemRuntimeState;
 	// 인벤토리에서 아이템 제거
 	Inventory.RemoveItem(SlotIndex, Count, DropItemRuntimeState, ChangedSlot);
@@ -103,5 +110,5 @@ void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIn
 	
 	// 인벤토리에서 제거한 아이템 월드에 생성 
 	const FVector& DropLocation = GetOwner()->GetActorLocation() + GetOwner()->GetActorForwardVector() * 50.0f;
-	GetItemManager()->SpawnItem(DropItemRuntimeState.ItemID, DropItemRuntimeState.Quantity, DropLocation, GetOwner()->GetActorRotation());
+	GetItemManager()->SpawnItem(DropItemRuntimeState, DropLocation, GetOwner()->GetActorRotation());
 }

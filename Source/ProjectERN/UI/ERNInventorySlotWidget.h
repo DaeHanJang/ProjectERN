@@ -24,8 +24,8 @@ public:
 	UERNInventorySlotWidget(const FObjectInitializer& ObjectInitializer);
 	
 	// Getter/Setter
-	const int32 GetSlotIndex() const { return SlotIndex; }
-	void SetSlotIndex(const int32 NewIndex) { SlotIndex = NewIndex; }
+	FORCEINLINE const int32 GetSlotIndex() const { return SlotIndex; }
+	FORCEINLINE void SetSlotIndex(const int32 NewIndex) { SlotIndex = NewIndex; }
 	void SetInventorySlotImage(UTexture2D* NewTexture) const;
 	
 	// Clear UI
@@ -34,7 +34,7 @@ public:
 	
 	// Set UI
 	UFUNCTION(BlueprintCallable)
-	void SetItem(UTexture2D* Icon, int32 QuantityText) const;
+	void SetItem(UTexture2D* Icon, const int32 QuantityText) const;
 	
 protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
