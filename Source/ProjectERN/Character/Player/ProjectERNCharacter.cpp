@@ -9,6 +9,7 @@
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameplayAbilitySpec.h"
 #include "InputActionValue.h"
 #include "ProjectERN.h"
 #include "AbilitySystemComponent.h"
@@ -16,6 +17,7 @@
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
 #include "GAS/ERNGameplayTags.h"
+#include "GAS/Abilities/ERNGA_LightAttack.h"
 #include "Input/ERNInputComponent.h"
 #include "Shop/Components/ERNShopComponent.h"
 
@@ -248,7 +250,7 @@ void AProjectERNCharacter::DoJumpStart()
 	if (AbilitySystemComponent)
 	{
 		// 점프 태그를 가진 어빌리티 실행 시도
-		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Move_Jump));
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Jump));
 	}
 }
 
@@ -264,10 +266,35 @@ void AProjectERNCharacter::ExecuteJumpLaunch()
 
 void AProjectERNCharacter::LightAttack(const FInputActionValue& Value)
 {
-	if (AbilitySystemComponent)
+	if (!AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Light));
+		return;
 	}
+
+	// 이미 LightAttack 어빌리티가 활성화되어 있으면
+	// 새로 활성화하지 않고 다음 콤보 입력만 전달한다.
+	const FGameplayTagContainer LightAttackTags(TAG_Ability_Attack_Light);
+	for (const FGameplayAbilitySpec& AbilitySpec : AbilitySystemComponent->GetActivatableAbilities())
+	{
+		if (!AbilitySpec.IsActive() || !AbilitySpec.Ability ||
+			!AbilitySpec.Ability->GetAssetTags().HasAll(LightAttackTags))
+		{
+			continue;
+		}
+
+		for (UGameplayAbility* AbilityInstance : AbilitySpec.GetAbilityInstances())
+		{
+			if (UERNGA_LightAttack* LightAttackAbility = Cast<UERNGA_LightAttack>(AbilityInstance))
+			{
+				LightAttackAbility->CacheComboInput();
+				return;
+			}
+		}
+	}
+
+	// 활성 중인 LightAttack이 없으면 첫 공격을 시작한다.
+	AbilitySystemComponent->TryActivateAbilitiesByTag(
+		FGameplayTagContainer(TAG_Ability_Attack_Light));
 }
 
 void AProjectERNCharacter::HeavyAttack(const FInputActionValue& Value)

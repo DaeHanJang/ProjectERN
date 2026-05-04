@@ -21,8 +21,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Rolling)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Jumping)
 
 // 어빌리티
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Move_Jump)		// 점프
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Move_Roll)		// 회피(구르기)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Jump)		// 점프
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Roll)		// 회피(구르기)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Light)	// 일반 공격
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Heavy)	// 무기 스킬
 

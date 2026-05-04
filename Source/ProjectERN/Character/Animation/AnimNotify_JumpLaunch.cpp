@@ -24,12 +24,12 @@ void UAnimNotify_JumpLaunch::Notify(USkeletalMeshComponent* MeshComp, UAnimSeque
 	}
 
 	FGameplayEventData EventData;
-	EventData.EventTag = TAG_Ability_Move_Jump;
+	EventData.EventTag = TAG_Ability_Movement_Jump;
 	EventData.Instigator = OwnerActor;
 	EventData.Target = OwnerActor;
 
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
-		OwnerActor, TAG_Ability_Move_Jump, EventData);
+		OwnerActor, TAG_Ability_Movement_Jump, EventData);
 }
 
 FString UAnimNotify_JumpLaunch::GetNotifyName_Implementation() const

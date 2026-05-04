@@ -18,8 +18,8 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Rolling, "State.Combat.Rolling")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Jumping, "State.Combat.Jumping")
 
 // 어빌리티
-UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Move_Jump, "Ability.Move.Jump")
-UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Move_Roll, "Ability.Move.Roll")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Jump, "Ability.Movement.Jump")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Roll, "Ability.Movement.Roll")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Attack_Light, "Ability.Attack.Light")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Attack_Heavy, "Ability.Attack.Heavy")
 
