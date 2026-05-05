@@ -36,9 +36,21 @@ public:
     /** 상호작용 UI 텍스트 */
     virtual FText GetInteractionText_Implementation() const override;
 
+    /** 상호작용 종료 */
+    virtual void EndInteract_Implementation(APlayerController* PlayerController) override;
+
+    
 protected:
     virtual void BeginPlay() override;
+    
+    // ==== UI에서 호출될 델리게이트 수신 함수 ====
+    UFUNCTION()
+    void HandleShopClosed();
+    
+    UPROPERTY()
+    class UUserWidget* ActiveShopWidget = nullptr;
 
+    
     // ===== 컴포넌트 =====
 
     /** 상점 외형 메시 */

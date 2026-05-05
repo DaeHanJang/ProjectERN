@@ -109,6 +109,9 @@ public:
 	// 상점 메인 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> ShopMainWidgetClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> LevelUpWidgetClass;
 
 	// 준비 상태 토글 (블루프린트에서 호출)
 	UFUNCTION(BlueprintCallable, Category = "Game")
