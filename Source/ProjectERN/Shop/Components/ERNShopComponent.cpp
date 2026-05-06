@@ -4,6 +4,7 @@
 #include "Shop/Provider/ERNShopDataProvider.h"
 #include "Shop/Provider/ERNDummyShopProvider.h"
 #include "Shop/Provider/ERNNetworkShopProvider.h"
+#include "Shop/Provider/ERNDataTableShopProvider.h" // [Fix] 추가
 #include "Core/ERNGameInstance.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "GameFramework/Character.h"
@@ -38,7 +39,7 @@ void UERNShopComponent::AcquireProvider()
         if (DataProvider)
         {
             // Provider 이벤트 바인딩
-            // DummyProvider의 델리게이트에 직접 바인딩
+            // 각 Provider 클래스로 캐스팅하여 델리게이트 바인딩 진행
             if (UERNDummyShopProvider* DummyProvider = Cast<UERNDummyShopProvider>(
                     GI->GetShopDataProviderObject()))
             {
@@ -50,6 +51,13 @@ void UERNShopComponent::AcquireProvider()
             {
                 NetworkProvider->OnShopDataReceived.AddDynamic(this, &UERNShopComponent::OnDataReceived);
                 NetworkProvider->OnPurchaseComplete.AddDynamic(this, &UERNShopComponent::OnPurchaseComplete);
+            }
+            // [Fix] DataTable Provider 바인딩 추가 (Phase 4 대비)
+            else if (UERNDataTableShopProvider* DataTableProvider = Cast<UERNDataTableShopProvider>(
+                    GI->GetShopDataProviderObject()))
+            {
+                DataTableProvider->OnShopDataReceived.AddDynamic(this, &UERNShopComponent::OnDataReceived);
+                DataTableProvider->OnPurchaseComplete.AddDynamic(this, &UERNShopComponent::OnPurchaseComplete);
             }
 
             UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] Provider 획득 성공"));

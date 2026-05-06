@@ -127,9 +127,9 @@ protected:
 	UPROPERTY()
 	UObject* ShopDataProvider = nullptr;
 
-	/** 더미 데이터 사용 여부 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-	bool bUseDummyShopData = true;
+	/** 블루프린트에서 지정할 DataTable Provider 클래스 */
+	UPROPERTY(EditDefaultsOnly, Category = "Shop")
+	TSubclassOf<class UERNDataTableShopProvider> DataTableProviderClass;
 
 	/** 상점 시스템 초기화 */
 	void InitializeShopSystem();

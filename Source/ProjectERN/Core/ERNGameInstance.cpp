@@ -7,6 +7,7 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Shop/Provider/ERNDummyShopProvider.h"
 #include "Shop/Provider/ERNNetworkShopProvider.h"
+#include "Shop/Provider/ERNDataTableShopProvider.h"
 
 UERNGameInstance::UERNGameInstance()
 {
@@ -261,31 +262,26 @@ void UERNGameInstance::JoinByIP(FString IPAddress)
 
 void UERNGameInstance::InitializeShopSystem()
 {
-#if WITH_EDITOR
-	// 에디터 환경: 항상 더미 Provider 사용
-	ShopDataProvider = NewObject<UERNDummyShopProvider>(this);
-	UE_LOG(LogShopProvider, Log, TEXT("[GameInstance] 더미 Provider 생성 (에디터 모드)"));
-#else
-	if (bUseDummyShopData)
+	// 1. 블루프린트에 할당된 클래스를 기반으로 Provider 객체 생성
+	if (DataTableProviderClass)
 	{
-		ShopDataProvider = NewObject<UERNDummyShopProvider>(this);
-		UE_LOG(LogShopProvider, Log, TEXT("[GameInstance] 더미 Provider 생성 (설정값)"));
+		ShopDataProvider = NewObject<UObject>(this, DataTableProviderClass);
+		UE_LOG(LogTemp, Log, TEXT("[GameInstance] BP_DataTableShopProvider 생성 완료"));
 	}
 	else
 	{
-		// Phase 6 이후: NetworkProvider 생성
-		ShopDataProvider = NewObject<UERNNetworkShopProvider>(this);
-		UE_LOG(LogShopProvider, Log, TEXT("[GameInstance] 네트워크 Provider 생성"));
+		UE_LOG(LogTemp, Warning, TEXT("[GameInstance] DataTableProviderClass가 할당되지 않았습니다! (에디터에서 BP 연결 필요)"));
+		ShopDataProvider = NewObject<UERNDataTableShopProvider>(this); // 에러 방지용 기본 생성
 	}
-#endif
 
+	// 2. 생성된 Provider 초기화 (페이즈 3의 캐싱 로직 실행)
 	if (ShopDataProvider)
 	{
 		IERNShopDataProvider* Provider = Cast<IERNShopDataProvider>(ShopDataProvider);
 		if (Provider)
 		{
 			IERNShopDataProvider::Execute_Initialize(ShopDataProvider, this);
-			UE_LOG(LogShopProvider, Log, TEXT("[GameInstance] 상점 시스템 초기화 완료"));
+			UE_LOG(LogTemp, Log, TEXT("[GameInstance] 상점 시스템 초기화(캐싱) 완료"));
 		}
 	}
 }
