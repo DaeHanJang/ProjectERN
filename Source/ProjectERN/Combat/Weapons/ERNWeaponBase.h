@@ -4,8 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "ERNWeaponBase.generated.h"
 
+class UGameplayAbility;
+class UEquipableItemDataAsset;
 /**
  * ERNWeaponBase - 무기 베이스 클래스
  */
@@ -16,6 +19,13 @@ class PROJECTERN_API AERNWeaponBase : public AActor
 
 public:
 	AERNWeaponBase();
+	
+	// Getter/Setter
+	FORCEINLINE const FItemRuntimeState& GetItemRuntimeState() const { return ItemRuntimeState; }
+	FORCEINLINE void SetItemRuntimeState(const FItemRuntimeState& NewItemRuntimeState) { ItemRuntimeState = NewItemRuntimeState; }
+	
+	// Initialization
+	void Init(const FItemRuntimeState& InItemRuntimeState, const UEquipableItemDataAsset* DA);
 
 protected:
 	virtual void BeginPlay() override;
@@ -33,6 +43,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	USkeletalMeshComponent* SkeletalWeaponMesh;
 
+	// 런타임 상태
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon States")
+	FItemRuntimeState ItemRuntimeState;
+	
 	// 무기 스탯
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
 	float LightAttackDamage = 10.0f;
@@ -45,6 +59,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
 	float HeavyAttackStaggerPower = 25.f;
+	
+	// 무기 스킬
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
+	TSubclassOf<UGameplayAbility> WeaponSkill = nullptr;
 
 	// 무기 전용 애니메이션 몽타주
 	

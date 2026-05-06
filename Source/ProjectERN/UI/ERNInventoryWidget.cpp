@@ -8,6 +8,7 @@
 #include "UI/ERNInventorySlotWidget.h"
 #include "InputCoreTypes.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Inventory/Components/ERNEquipmentComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
@@ -38,6 +39,11 @@ void UERNInventoryWidget::NativeConstruct()
 		}
 	}
 	
+	if (UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent())
+	{
+		EquipmentComponent->OnEquipmentSlotChanged.AddDynamic(this, &UERNInventoryWidget::UpdateEquipmentSlot);
+	}
+	
 	// 슬라이드 위젯 생성
 	WBP_SlideWidget->OnConfirmButtonClicked.AddDynamic(this, &UERNInventoryWidget::UpdateSlideWidget);
 	WBP_SlideWidget->OnCancelButtonClicked.AddDynamic(this, &UERNInventoryWidget::UpdateSlideWidget);
@@ -47,6 +53,11 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 {
 	UERNInventoryComponent* InventoryComponent = GetInventoryComponent();
 	if (!InventoryComponent)
+	{
+		return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+	}
+	UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent();
+	if (!EquipmentComponent)
 	{
 		return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 	}
@@ -82,15 +93,10 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 			
 			return FReply::Handled();
 		}
-		// 인벤토리 네비게이션 (W, A, S, D)
-		if (const int32 NextIndex = GetNavigationTargetSlotIndex(InKeyEvent.GetKey(), InventoryComponent->GetMaxStackSize()))
+		// 키보드 E키를 누를 경우 (=아이템 장착)
+		if (InKeyEvent.GetKey() == EKeys::E)
 		{
-			if (NextIndex == INDEX_NONE)
-			{
-				return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
-			}
-			
-			UpdateFocusSlotIndex(NextIndex);
+			EquipmentComponent->Server_EquipItem(FocusSlotIndex);
 			
 			return FReply::Handled();
 		}
@@ -99,12 +105,36 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
+FReply UERNInventoryWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	UERNInventoryComponent* InventoryComponent = GetInventoryComponent();
+	if (!InventoryComponent)
+	{
+		return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+	}
+	
+	// 활성화된 슬롯 인덱스가 있을 경우
+	if (FocusSlotIndex != -1)
+	{
+		// 인벤토리 네비게이션 (W/Up, A/Left, S/Down, D/Right)
+		const int32 NextIndex = GetNavigationTargetSlotIndex(InKeyEvent.GetKey(), InventoryComponent->GetMaxStackSize());
+		if (NextIndex != INDEX_NONE)
+		{			
+			UpdateFocusSlotIndex(NextIndex);
+			
+			return FReply::Handled();
+		}
+	}
+	
+	return Super::NativeOnPreviewKeyDown(InGeometry, InKeyEvent);
+}
+
 const int32 UERNInventoryWidget::GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize) const
 {
 	int32 NextIndex = INDEX_NONE;
 	
 	// 위
-	if (Key == EKeys::W)
+	if (Key == EKeys::W || Key == EKeys::Up)
 	{
 		NextIndex = (FocusSlotIndex - ColumnSize < 0) ? 
 		FocusSlotIndex + ColumnSize * (((FocusSlotIndex - ColumnSize) * -1 + MaxSlotSize - 1) / ColumnSize - 1) : 
@@ -115,19 +145,19 @@ const int32 UERNInventoryWidget::GetNavigationTargetSlotIndex(const FKey& Key, c
 		 */
 	}
 	// 아래
-	else if (Key == EKeys::S)
+	else if (Key == EKeys::S || Key == EKeys::Down)
 	{
 		NextIndex = FocusSlotIndex + ColumnSize >= MaxSlotSize ?
 		(FocusSlotIndex + ColumnSize) % ColumnSize : 
 		FocusSlotIndex + ColumnSize;
 	}
 	// 왼쪽
-	else if (Key == EKeys::A)
+	else if (Key == EKeys::A || Key == EKeys::Left)
 	{
 		NextIndex = (FocusSlotIndex - 1 < 0) ? MaxSlotSize - 1 : FocusSlotIndex - 1;
 	}
 	// 오른쪽
-	else if (Key == EKeys::D)
+	else if (Key == EKeys::D || Key == EKeys::Right)
 	{
 		NextIndex = (FocusSlotIndex + 1) % MaxSlotSize;
 	}
@@ -185,6 +215,20 @@ void UERNInventoryWidget::UpdateInventorySlot(const FInventoryItemEntry& Entry)
 	}
 }
 
+void UERNInventoryWidget::UpdateEquipmentSlot(const FInventoryItemEntry& Entry)
+{
+	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
+	{
+		// TODO: 비동기 로드 변경
+		// ItemManager에서 동기 로드로 UI 리소스 로드
+		if (const UItemDataAssetBase* ItemData = ItemManager->LoadItemDataAssetSync(Entry.GetItemID(), EItemAssetLoadFlags::UI))
+		{
+			// 슬롯 위젯 갱신
+			EquipableSlotWidget->SetItem(ItemData->Icon.Get(), Entry.GetQuantity());
+		}
+	}
+}
+
 void UERNInventoryWidget::UpdateFocusSlotIndex(const int32 NewIndex)
 {
 	// 매개 변수 유효성 검사 (-1이 아니고 SlotWidgets에 유효하지 않은 인덱스일 경우)
@@ -227,6 +271,19 @@ UERNInventoryComponent* UERNInventoryWidget::GetInventoryComponent() const
 		if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(PC->GetCharacter()))
 		{
 			return PlayerCharacter->GetInventoryComponent();
+		}
+	}
+	
+	return nullptr;
+}
+
+UERNEquipmentComponent* UERNInventoryWidget::GetEquipmentComponent() const
+{
+	if (const AERNPlayerController* PC = GetOwningPlayer<AERNPlayerController>())
+	{
+		if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(PC->GetCharacter()))
+		{
+			return PlayerCharacter->GetEquipmentComponent();
 		}
 	}
 	

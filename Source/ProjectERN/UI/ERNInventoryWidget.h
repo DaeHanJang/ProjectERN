@@ -8,6 +8,7 @@
 #include "Inventory/Data/ERNInventoryList.h"
 #include "ERNInventoryWidget.generated.h"
 
+class UERNEquipmentComponent;
 class UERNSlideWidget;
 class UUniformGridPanel;
 class UERNInventorySlotWidget;
@@ -26,7 +27,6 @@ public:
 	// 활성화된 슬롯 인덱스 초기화
 	FORCEINLINE void InitFocusSlotIndex()
 	{
-		FocusSlotIndex = -1;
 		UpdateFocusSlotIndex(-1);
 	}
 	
@@ -38,17 +38,24 @@ protected:
 	virtual void NativeConstruct() override;
 	
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+	virtual FReply NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	
 private:
 	// 인벤토리 컴포넌트 가져오기
 	UERNInventoryComponent* GetInventoryComponent() const;
+	// 장착 컴포넌트 가져오기
+	UERNEquipmentComponent* GetEquipmentComponent() const;
 	
 	// 인벤토리 내비게이션 처리
 	const int32 GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize) const;
 	
-	// 슬롯 갱신 이벤트 핸들러
+	// 인벤토리 슬롯 갱신 이벤트 핸들러
 	UFUNCTION()
 	void UpdateInventorySlot(const FInventoryItemEntry& Entry);
+	
+	// 장비 슬롯 갱신 이벤트 핸들러
+	UFUNCTION()
+	void UpdateEquipmentSlot(const FInventoryItemEntry& Entry);
 	
 	// 슬롯 활성화 이벤트 핸들러
 	UFUNCTION()

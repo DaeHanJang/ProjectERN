@@ -1,10 +1,15 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Inventory/Components/ERNEquipmentComponent.h"
+
+#include "ERNInventoryComponent.h"
+#include "Character/Player/ProjectERNCharacter.h"
 #include "Combat/Weapons/ERNWeaponBase.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Inventory/Item/Data/EquipableItemDataAsset.h"
+#include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 
 UERNEquipmentComponent::UERNEquipmentComponent()
 {
@@ -17,11 +22,49 @@ void UERNEquipmentComponent::BeginPlay()
 	Super::BeginPlay();
 }
 
+UItemManagerSubsystem* UERNEquipmentComponent::GetItemManagerSubsystem() const
+{
+	if (const UWorld* World = GetWorld())
+	{
+		if (const UGameInstance* GI = World->GetGameInstance())
+		{
+			return GI->GetSubsystem<UItemManagerSubsystem>();
+		}
+	}
+	
+	return nullptr;
+}
+
+UERNInventoryComponent* UERNEquipmentComponent::GetInventoryComponent() const
+{
+	if (const AActor* Owner = GetOwner())
+	{
+		if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(Owner))
+		{
+			if (UERNInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
+			{
+				return InventoryComponent;
+			}
+		}
+	}
+	
+	return nullptr;
+}
+
 void UERNEquipmentComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UERNEquipmentComponent, CurrentWeapon);
+	DOREPLIFETIME(UERNEquipmentComponent, EquipableSlot);
+	// TODO: 현재 장착된 소모품 변수 추가
+	//DOREPLIFETIME(UERNEquipmentComponent, CurrentConsumable);
+	//DOREPLIFETIME(UERNEquipmentComponent, ConsumableSlot);
+}
+
+void UERNEquipmentComponent::OnRep_EquipableSlot()
+{
+	OnEquipmentSlotChanged.Broadcast(EquipableSlot);
 }
 
 void UERNEquipmentComponent::Server_EquipWeapon_Implementation(TSubclassOf<AERNWeaponBase> WeaponClass)
@@ -68,4 +111,112 @@ void UERNEquipmentComponent::Server_UnequipWeapon_Implementation()
 		CurrentWeapon = nullptr;
 		UE_LOG(LogTemp, Log, TEXT("Weapon unequipped"));
 	}
+}
+
+void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotIndex)
+{
+	UERNInventoryComponent* InventoryComponent = GetInventoryComponent();
+	if (!InventoryComponent)
+	{
+		return;
+	}
+	FInventoryList& Inventory = InventoryComponent->GetInventory();
+	// 매개변수 유효성 검사
+	if (!Inventory.GetItems().IsValidIndex(SlotIndex))
+	{
+		return;
+	}
+	
+	UItemManagerSubsystem* ItemManager = GetItemManagerSubsystem();
+	// 현재 장착중인 아이템 검증
+	if (!ItemManager)
+	{
+		return;
+	}
+	
+	const FInventoryItemEntry ItemEntry = Inventory.GetItems()[SlotIndex];
+	// 인벤토리에서 장착할 아이템 검증
+	if (!ItemEntry.IsValid() || !ItemManager->ItemValid(ItemEntry.GetItemID()))
+	{
+		return;
+	}
+	
+	const FERNItemTable* ItemRow = ItemManager->FindItemRow(ItemEntry.GetItemID());
+	if (!ItemRow)
+	{
+		return;
+	}
+	
+	// 장비인 경우
+	if (ItemRow->ItemType == EItemType::Equipable)
+	{
+		// 장착할 아이템의 데이터 애셋 로드
+		const UEquipableItemDataAsset* DA = Cast<UEquipableItemDataAsset>(ItemManager->LoadItemDataAssetSync(ItemEntry.GetItemID(), EItemAssetLoadFlags::Gameplay));
+		if (!DA || DA->EquipableClass.IsNull())
+		{
+			return;
+		}
+		
+		// 로드한 데이터 애셋에 있는 무기 클래스
+		TSubclassOf<AERNWeaponBase> WeaponClass = DA->EquipableClass.Get();
+		if (!WeaponClass)
+		{
+			return;
+		}
+		
+		const ACharacter* Character = Cast<ACharacter>(GetOwner());
+		if (!Character || !Character->GetMesh())
+		{
+			return;
+		}
+		
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = GetOwner();
+		
+		AERNWeaponBase* NewWeapon = GetWorld()->SpawnActor<AERNWeaponBase>(WeaponClass, SpawnParams);
+		if (!NewWeapon)
+		{
+			return;
+		}
+		
+		// 인벤토리에서 현재 장착한 아이템으로 데이터 교체
+		const FItemRuntimeState NewWeaponRuntimeState = ItemEntry.GetItemRuntimeState();
+		NewWeapon->Init(NewWeaponRuntimeState, DA);
+		
+		NewWeapon->AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("WeaponSocket"));
+		
+		FItemRuntimeState InventoryReplacementState;
+		if (EquipableSlot.IsValid())
+		{
+			InventoryReplacementState = EquipableSlot.GetItemRuntimeState();
+		}
+		if (CurrentWeapon)
+		{
+			CurrentWeapon->Destroy();
+		}
+		
+		CurrentWeapon = NewWeapon;
+		
+		Inventory.ChangeItem(SlotIndex, InventoryReplacementState);
+		InventoryComponent->OnInventorySlotChanged.Broadcast(Inventory.GetItems()[SlotIndex]);
+		
+		EquipableSlot = ItemEntry;
+		OnEquipmentSlotChanged.Broadcast(EquipableSlot);
+		
+		UE_LOG(LogTemp, Log, TEXT("Weapon equipped: %s"), *DA->EquipableClass.Get()->GetName());
+	}
+	// 소포품인 경우
+	else if (ItemRow->ItemType == EItemType::Consumable)
+	{
+		// 인벤토리에서 현재 장착한 아이템으로 데이터 교체
+	
+		// 현재 장착한 아이템 제거
+		
+		// 장착할 아이템 설정
+		
+	}
+}
+
+void UERNEquipmentComponent::Server_UnequipItem_Implementation()
+{
 }

@@ -159,6 +159,16 @@ void FInventoryList::RemoveItem(const int32 SlotIndex, const int32 Count, FItemR
 	OutChangedEntry = Items[SlotIndex];
 }
 
+FItemRuntimeState FInventoryList::ChangeItem(const int32 SlotIndex, const FItemRuntimeState& NewItemRuntimeState)
+{
+	FItemRuntimeState OutItemRuntimeState = Items[SlotIndex].GetItemRuntimeState();
+	
+	Items[SlotIndex].SetItemRuntimeState(NewItemRuntimeState);
+	MarkItemDirty(Items[SlotIndex]);
+	
+	return OutItemRuntimeState;
+}
+
 void FInventoryList::LogInventory() const
 {
 	UE_LOG(LogTemp, Warning, TEXT("=================================================="));

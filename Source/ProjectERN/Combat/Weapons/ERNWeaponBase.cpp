@@ -1,8 +1,11 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Combat/Weapons/ERNWeaponBase.h"
+
+#include "Abilities/GameplayAbility.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Inventory/Item/Data/EquipableItemDataAsset.h"
 
 AERNWeaponBase::AERNWeaponBase()
 {
@@ -27,4 +30,17 @@ AERNWeaponBase::AERNWeaponBase()
 void AERNWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void AERNWeaponBase::Init(const FItemRuntimeState& InItemRuntimeState, const UEquipableItemDataAsset* DA)
+{
+	ItemRuntimeState = InItemRuntimeState;
+	LightAttackDamage = DA->LightAttackDamage;
+	LightAttackStaggerPower = DA->LightAttackStaggerPower;
+	HeavyAttackDamage = DA->HeavyAttackDamage;
+	HeavyAttackStaggerPower = DA->HeavyAttackStaggerPower;
+	if (!DA->EquipableAbility.IsNull())
+	{
+		WeaponSkill = DA->EquipableAbility.Get();
+	}
 }

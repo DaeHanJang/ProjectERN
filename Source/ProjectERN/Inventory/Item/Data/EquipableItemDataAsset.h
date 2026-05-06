@@ -44,7 +44,7 @@ public:
 	
 	// 무기 고유 스킬
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSoftClassPtr<UGameplayAbility> WeaponSkillAbility = nullptr;
+	TSoftClassPtr<UGameplayAbility> EquipableAbility = nullptr;
 	
 	// 무기 class
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
