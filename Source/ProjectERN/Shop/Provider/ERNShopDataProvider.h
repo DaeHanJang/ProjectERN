@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 #include "Shop/Data/ERNShopTypes.h"
+#include "Inventory/Item/Data/ERNItemEnums.h"
 #include "ERNShopDataProvider.generated.h"
 
 UINTERFACE(MinimalAPI, Blueprintable)
@@ -43,7 +44,7 @@ public:
      * @param ShopID - 요청할 상점 ID
      */
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Shop|Provider")
-    void RequestShopData(FName ShopID);
+    void RequestShopData(EShopType ShopType);
 
     /**
      * 구매 요청
@@ -57,11 +58,11 @@ public:
 
     /**
      * 캐시된 상점 데이터 반환
-     * @param ShopID - 조회할 상점 ID
+     * @param ShopType - 조회할 상점 타입
      * @return 캐시된 FERNShopInventory (캐시 미스 시 빈 구조체)
      */
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Shop|Provider")
-    FERNShopInventory GetCachedShopData(FName ShopID);
+    FERNShopInventory GetCachedShopData(EShopType ShopType);
 
     /**
      * 데이터 준비 여부 확인
