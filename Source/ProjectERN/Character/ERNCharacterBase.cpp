@@ -29,12 +29,29 @@ void AERNCharacterBase::BeginPlay()
 void AERNCharacterBase::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
+	InitializeAbilitySystemActorInfo();
 
 	// 서버에서만 어빌리티 부여
 	if (HasAuthority())
 	{
 		GiveDefaultAbilities();
 	}
+}
+
+void AERNCharacterBase::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+	InitializeAbilitySystemActorInfo();
+}
+
+void AERNCharacterBase::InitializeAbilitySystemActorInfo()
+{
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 }
 
 void AERNCharacterBase::GiveDefaultAbilities()
@@ -149,4 +166,24 @@ void AERNCharacterBase::OnDeath()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	// 자식 클래스에서 추가 사망 처리 구현 (애니메이션, 이펙트 등)
+}
+
+void AERNCharacterBase::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
+{
+	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+	
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+	
+	// 공중 상태 태그 On/Off
+	if (GetCharacterMovement()->MovementMode == MOVE_Falling)
+	{
+		AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Movement_Falling, 1);
+	}
+	else
+	{
+		AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Movement_Falling, 0);
+	}
 }
