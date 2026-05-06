@@ -5,8 +5,8 @@
 #include "Net/Serialization/FastArraySerializer.h"
 #include "ERNInventoryList.generated.h"
 
-class UERNInventoryComponent;
 struct FInventoryList;
+class UERNInventoryComponent;
 
 // Inventory Item Entry
 USTRUCT(BlueprintType)

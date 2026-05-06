@@ -6,6 +6,7 @@
 #include "GAS/ERNGameplayTags.h"
 #include "AbilitySystemComponent.h"
 #include "BehaviorTree/BehaviorTree.h"
+#include "Components/CapsuleComponent.h"
 #include "Net/UnrealNetwork.h"
 
 AERNBossCharacter::AERNBossCharacter()
@@ -15,6 +16,12 @@ AERNBossCharacter::AERNBossCharacter()
 
 	// 보스 기본 설정
 	InitialStaggerResistance = 50.f;  // 보스는 경직 저항 높음
+	
+	// 피지컬 에셋 히트 판정 활성화
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	GetMesh()->SetCollisionObjectType(ECC_Pawn);
+	GetMesh()->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+	GetMesh()->SetGenerateOverlapEvents(true);    
 }
 
 void AERNBossCharacter::BeginPlay()
@@ -113,31 +120,47 @@ void AERNBossCharacter::TransitionToPhase(int32 NewPhaseIndex)
 	{
 		ApplySuperArmor();
 	}
+	
+	// 현재 몽타주가 재생 중인지 체크
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
+	{
+		// 재생중인 몽타주 종료까지 대기
+		FOnMontageEnded OnCurrentMontageEnded;
+		OnCurrentMontageEnded.BindLambda([this, NewPhase](UAnimMontage* Montage, bool bInterrupted)
+		{
+			// 현재 몽타주 종료 후 페이즈 전환 몽타주 재생
+			PlayPhaseTransitionMontage(NewPhase);
+		});
+		
+		UAnimMontage* CurrentMontage = AnimInstance->GetCurrentActiveMontage();
+		AnimInstance->Montage_SetEndDelegate(OnCurrentMontageEnded, CurrentMontage);
+	}
+	else
+	{
+		// 재생 중인 몽타주가 없으면 바로 재생
+		PlayPhaseTransitionMontage(NewPhase);
+	}
+}
 
+void AERNBossCharacter::PlayPhaseTransitionMontage(const FBossPhaseInfo& PhaseInfo)
+{
 	// 페이즈 전환 몽타주 재생
-	if (NewPhase.PhaseTransitionMontage && GetMesh() && GetMesh()->GetAnimInstance())
+	if (PhaseInfo.PhaseTransitionMontage && GetMesh() && GetMesh()->GetAnimInstance())
 	{
 		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-		AnimInstance->Montage_Play(NewPhase.PhaseTransitionMontage);
+		AnimInstance->Montage_Play(PhaseInfo.PhaseTransitionMontage);
 
 		// 몽타주 종료 델리게이트
 		FOnMontageEnded EndDelegate;
 		EndDelegate.BindUObject(this, &AERNBossCharacter::OnPhaseTransitionMontageEnded);
-		AnimInstance->Montage_SetEndDelegate(EndDelegate, NewPhase.PhaseTransitionMontage);
+		AnimInstance->Montage_SetEndDelegate(EndDelegate, PhaseInfo.PhaseTransitionMontage);
 	}
 	else
 	{
 		// 몽타주 없으면 바로 완료 처리
 		OnPhaseTransitionMontageEnded(nullptr, false);
 	}
-
-	// 새 비헤이비어 트리로 전환
-	if (AERNBossAIController* BossAIC = Cast<AERNBossAIController>(GetController()))
-	{
-		BossAIC->SwitchBehaviorTree(NewPhase.PhaseBehaviorTree);
-	}
-
-	UE_LOG(LogTemp, Log, TEXT("[%s] Transitioned to Phase %d"), *GetName(), CurrentPhaseIndex);
 }
 
 void AERNBossCharacter::OnPhaseTransitionMontageEnded(UAnimMontage* Montage, bool bInterrupted)
@@ -145,7 +168,17 @@ void AERNBossCharacter::OnPhaseTransitionMontageEnded(UAnimMontage* Montage, boo
 	bIsTransitioningPhase = false;
 
 	// 슈퍼아머 해제
-	RemoveSuperArmor();
+	RemoveSuperArmor();	
+	
+	// 페이즈 전환 몽타주 끝난 후 새 BT로 전환
+	if (Phases.IsValidIndex(CurrentPhaseIndex))
+	{
+		const FBossPhaseInfo& CurrentPhase = Phases[CurrentPhaseIndex];
+		if (AERNBossAIController* BossAIC = Cast<AERNBossAIController>(GetController()))
+		{
+			BossAIC->SwitchBehaviorTree(CurrentPhase.PhaseBehaviorTree);
+		}
+	}
 }
 
 void AERNBossCharacter::PlayIntro()
