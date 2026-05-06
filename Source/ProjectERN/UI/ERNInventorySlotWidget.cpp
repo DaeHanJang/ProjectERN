@@ -2,8 +2,36 @@
 
 #include "UI/ERNInventorySlotWidget.h"
 
+#include "ERNInventoryWidget.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+
+UERNInventorySlotWidget::UERNInventorySlotWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+{
+	SetIsFocusable(true);
+}
+
+FReply UERNInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	// 마우스 왼쪽을 클릭했을 경우
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		// 슬롯 클릭 이벤트 브로드캐스트
+		OnSlotClicked.Broadcast(SlotIndex);
+		
+		return FReply::Handled();
+	}
+	
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+void UERNInventorySlotWidget::SetInventorySlotImage(UTexture2D* NewTexture) const
+{
+	if (NewTexture)
+	{
+		InventorySlotImage->SetBrushFromTexture(NewTexture);
+	}
+}
 
 void UERNInventorySlotWidget::ClearItem() const
 {
@@ -14,7 +42,7 @@ void UERNInventorySlotWidget::ClearItem() const
 	ItemQuantityTextBlock->SetVisibility(ESlateVisibility::Hidden);
 }
 
-void UERNInventorySlotWidget::SetItem(UTexture2D* Icon, int32 QuantityText) const
+void UERNInventorySlotWidget::SetItem(UTexture2D* Icon, const int32 QuantityText) const
 {
 	ItemImage->SetBrushFromTexture(Icon);
 	ItemQuantityTextBlock->SetText(FText::AsNumber(QuantityText));

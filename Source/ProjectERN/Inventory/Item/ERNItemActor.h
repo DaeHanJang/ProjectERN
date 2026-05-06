@@ -34,7 +34,7 @@ public:
 	
 	// Item RuntimeState Initialization
 	UFUNCTION(BlueprintCallable)
-	void InitializeRuntimeState(const FName ItemID, const int32 Quantity);
+	void InitializeRuntimeState(const FItemRuntimeState& InItemRuntimeState);
 	// Item DataAsset 적용 진입점
 	UFUNCTION(BlueprintCallable)
 	void ApplyItemDataAsset(const UItemDataAssetBase* DataAsset);
