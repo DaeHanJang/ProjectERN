@@ -46,6 +46,7 @@ public:
 	void SpawnItem(const FItemRuntimeState& ItemRuntimeState, const FVector& Location, const FRotator& Rotation);
 
 	// 아이템 데이터 애셋 동기 로드
+	UFUNCTION(BlueprintCallable, Category="ItemManager")
 	const UItemDataAssetBase* LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags);
 	// 아이템 데이터 애셋 비동기 로드
 	void PreloadItemDataAssetAsync(const FName ItemID, const EItemAssetLoadFlags LoadFlags, FOnItemDataAssetLoaded OnLoaded = FOnItemDataAssetLoaded());
