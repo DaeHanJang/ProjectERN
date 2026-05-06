@@ -57,10 +57,14 @@ EBTNodeResult::Type UBTTask_Attack::ExecuteTask(UBehaviorTreeComponent& OwnerCom
 	if (AttackMontage)
 	{
 		// 몽타주 길이를 블랙보드에 저장
-		float MontageLength = AttackMontage->GetPlayLength();
+		float MontageLength = AttackMontage->GetPlayLength() - 0.15f;
 		OwnerComp.GetBlackboardComponent()->SetValueAsFloat(TEXT("MontageDuration"), MontageLength);
 
 		Enemy->Multicast_PlayAttackMontage(AttackMontage);
+		
+		// Focus 해제
+		AIController->ClearFocus(EAIFocusPriority::Gameplay);
+		
 		UE_LOG(LogTemp, Log, TEXT("[%s] Attack montage multicast on %s"), *Enemy->GetName(), *Target->GetName());
 	}
 
