@@ -55,10 +55,11 @@ bool UItemManagerSubsystem::ItemValid(const FName ItemID) const
 	return FindItemRow(ItemID) != nullptr;
 }
 
-void UItemManagerSubsystem::SpawnItem(const FName ItemID, const int32 Quantity, const FVector& Location, const FRotator& Rotation)
+void UItemManagerSubsystem::SpawnItem(const FItemRuntimeState& ItemRuntimeState, const FVector& Location,
+	const FRotator& Rotation)
 {
 	// World가 존재하지 않고 검증되지 않은 아이템일 때
-	if (!GetWorld() || !ItemValid(ItemID))
+	if (!GetWorld() || !ItemValid(ItemRuntimeState.GetItemID()))
 	{
 		return;
 	}
@@ -71,7 +72,7 @@ void UItemManagerSubsystem::SpawnItem(const FName ItemID, const int32 Quantity, 
 	}
 	
 	// ItemActor 초기화
-	Item->InitializeRuntimeState(ItemID, Quantity);
+	Item->InitializeRuntimeState(ItemRuntimeState);
 }
 
 const UItemDataAssetBase* UItemManagerSubsystem::LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags)

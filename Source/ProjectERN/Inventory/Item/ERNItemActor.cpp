@@ -89,11 +89,9 @@ EInteractionExecutionPolicy AERNItemActor::GetInteractionExecutionPolicy_Impleme
 	return EInteractionExecutionPolicy::ServerAuthority;
 }
 
-void AERNItemActor::InitializeRuntimeState(const FName ItemID, const int32 Quantity)
+void AERNItemActor::InitializeRuntimeState(const FItemRuntimeState& InItemRuntimeState)
 {
-	// Item Runtime State Initialization
-	ItemRuntimeState.ItemID = ItemID;
-	ItemRuntimeState.Quantity = Quantity;
+	ItemRuntimeState = InItemRuntimeState;
 
 	// ItemRuntimeState 기반 DataAsset 비동기 로드
 	LoadItemDataAssetFromRuntimeStateAsync();
@@ -156,7 +154,7 @@ void AERNItemActor::LoadItemDataAssetFromRuntimeStateAsync()
 	{
 		TWeakObjectPtr<AERNItemActor> WeakThis(this);
 		// ItemDataAsset 비동기 로드
-		ItemManager->PreloadItemDataAssetAsync(ItemRuntimeState.ItemID, EItemAssetLoadFlags::Gameplay, 
+		ItemManager->PreloadItemDataAssetAsync(ItemRuntimeState.GetItemID(), EItemAssetLoadFlags::Gameplay, 
 			FOnItemDataAssetLoaded::CreateLambda([WeakThis](const UItemDataAssetBase* LoadedDataAsset)
 			{
 				if (!WeakThis.IsValid() || !LoadedDataAsset)
