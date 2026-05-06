@@ -9,34 +9,34 @@ void UERNNetworkShopProvider::Initialize_Implementation(UObject* Owner)
         Owner ? *Owner->GetName() : TEXT("nullptr"));
 }
 
-void UERNNetworkShopProvider::RequestShopData_Implementation(FName ShopID)
+void UERNNetworkShopProvider::RequestShopData_Implementation(EShopType ShopType)
 {
-    UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 상점 데이터 요청: %s"), *ShopID.ToString());
+    UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 상점 데이터 요청: %d"), (int32)ShopType);
 
     // 캐시 히트 + 유효 → 즉시 반환
-    if (IsCacheValid(ShopID))
+    if (IsCacheValid(ShopType))
     {
         UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 캐시 히트 → 즉시 반환 (아이템 수: %d)"),
-            CachedData[ShopID].Items.Num());
-        OnShopDataReceived.Broadcast(CachedData[ShopID]);
+            CachedData[ShopType].Items.Num());
+        OnShopDataReceived.Broadcast(CachedData[ShopType]);
         return;
     }
 
     // 이미 요청 중이면 중복 요청 방지
-    if (PendingRequests.Contains(ShopID))
+    if (PendingRequests.Contains(ShopType))
     {
-        UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 이미 요청 중: %s (중복 요청 무시)"),
-            *ShopID.ToString());
+        UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 이미 요청 중: %d (중복 요청 무시)"),
+            (int32)ShopType);
         return;
     }
 
     // 캐시 미스 → ShopComponent가 Server RPC로 요청해야 함
     // 여기서는 단순히 요청 중 상태만 마킹
-    PendingRequests.Add(ShopID);
+    PendingRequests.Add(ShopType);
     UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 캐시 미스 → RPC 필요 (ShopComponent가 처리)"));
 
     // 에러 이벤트 발생 (ShopComponent가 이를 감지하고 RPC 발송)
-    OnShopError.Broadcast(FString::Printf(TEXT("CACHE_MISS:%s"), *ShopID.ToString()));
+    OnShopError.Broadcast(FString::Printf(TEXT("CACHE_MISS:%d"), (int32)ShopType));
 }
 
 void UERNNetworkShopProvider::RequestPurchase_Implementation(FERNShopTransaction Transaction)
@@ -80,11 +80,11 @@ void UERNNetworkShopProvider::RequestPurchase_Implementation(FERNShopTransaction
     }
 }
 
-FERNShopInventory UERNNetworkShopProvider::GetCachedShopData_Implementation(FName ShopID)
+FERNShopInventory UERNNetworkShopProvider::GetCachedShopData_Implementation(EShopType ShopType)
 {
-    if (CachedData.Contains(ShopID))
+    if (CachedData.Contains(ShopType))
     {
-        return CachedData[ShopID];
+        return CachedData[ShopType];
     }
     return FERNShopInventory();
 }
@@ -96,20 +96,20 @@ bool UERNNetworkShopProvider::IsDataReady_Implementation()
 
 void UERNNetworkShopProvider::HandleReceivedData_Implementation(const FERNShopInventory& ShopData)
 {
-    UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 데이터 수신 → 캐시 저장 (ShopID: %s, 아이템: %d)"),
-        *ShopData.ShopID.ToString(), ShopData.Items.Num());
+    UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 데이터 수신 → 캐시 저장 (ShopType: %d, 아이템: %d)"),
+        (int32)ShopData.ShopType, ShopData.Items.Num());
 
     // 캐시에 저장
-    CachedData.Add(ShopData.ShopID, ShopData);
+    CachedData.Add(ShopData.ShopType, ShopData);
 
     // 타임스탬프 갱신
     float CurrentTime = OwnerObject && OwnerObject->GetWorld()
         ? OwnerObject->GetWorld()->GetTimeSeconds()
         : 0.f;
-    CacheTimestamps.Add(ShopData.ShopID, CurrentTime);
+    CacheTimestamps.Add(ShopData.ShopType, CurrentTime);
 
     // 요청 대기 상태 해제
-    PendingRequests.Remove(ShopData.ShopID);
+    PendingRequests.Remove(ShopData.ShopType);
 
     // 이벤트 발생
     OnShopDataReceived.Broadcast(ShopData);
@@ -141,11 +141,11 @@ void UERNNetworkShopProvider::HandlePurchaseResult_Implementation(const FERNShop
 
 // ===== 캐시 관리 =====
 
-void UERNNetworkShopProvider::InvalidateCache(FName ShopID)
+void UERNNetworkShopProvider::InvalidateCache(EShopType ShopType)
 {
-    CachedData.Remove(ShopID);
-    CacheTimestamps.Remove(ShopID);
-    UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 캐시 무효화: %s"), *ShopID.ToString());
+    CachedData.Remove(ShopType);
+    CacheTimestamps.Remove(ShopType);
+    UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 캐시 무효화: %d"), (int32)ShopType);
 }
 
 void UERNNetworkShopProvider::ClearAllCache()
@@ -156,9 +156,9 @@ void UERNNetworkShopProvider::ClearAllCache()
     UE_LOG(LogShopProvider, Log, TEXT("[NetworkProvider] 전체 캐시 초기화"));
 }
 
-bool UERNNetworkShopProvider::IsCacheValid(FName ShopID) const
+bool UERNNetworkShopProvider::IsCacheValid(EShopType ShopType) const
 {
-    if (!CachedData.Contains(ShopID) || !CacheTimestamps.Contains(ShopID))
+    if (!CachedData.Contains(ShopType) || !CacheTimestamps.Contains(ShopType))
     {
         return false;
     }
@@ -166,7 +166,7 @@ bool UERNNetworkShopProvider::IsCacheValid(FName ShopID) const
     float CurrentTime = OwnerObject && OwnerObject->GetWorld()
         ? OwnerObject->GetWorld()->GetTimeSeconds()
         : 0.f;
-    float CachedTime = CacheTimestamps[ShopID];
+    float CachedTime = CacheTimestamps[ShopType];
 
     return (CurrentTime - CachedTime) < CacheTTL;
 }

@@ -4,6 +4,7 @@
 
 #include "Character/Player/ERNPlayerController.h"
 #include "Components/SphereComponent.h"
+#include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 
 // Sets default values
@@ -52,7 +53,11 @@ void AChest::Interact_Implementation(APlayerController* PlayerController)
 	
 	if (UItemManagerSubsystem* ItemManager = GetItemManager())
 	{
-		ItemManager->SpawnItem(FName("TEST_STAFF"), 1, GetActorLocation() + FVector(-150.0f, 0.0f, 0.0f), GetActorRotation());
+		FItemRuntimeState ItemRuntimeState;
+		ItemRuntimeState.SetItemID(ItemID);
+		ItemRuntimeState.SetQuantity(1);
+		ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(-150.0f, 0.0f, 0.0f), GetActorRotation());
+		//Destroy();
 	}
 }
 

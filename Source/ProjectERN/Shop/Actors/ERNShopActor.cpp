@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+
 #include "Shop/Actors/ERNShopActor.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -9,6 +10,7 @@
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Shop/Components/ERNShopComponent.h"
 #include "Shop/Provider/ERNDummyShopProvider.h"
+#include "UI/ERNInteractableWidget.h"
 
 AERNShopActor::AERNShopActor()
 {
@@ -48,7 +50,7 @@ void AERNShopActor::Interact_Implementation(APlayerController* PlayerController)
 {
     if (!bIsShopActive)
     {
-        UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] 상점 비활성 상태: %s"), *ShopID.ToString());
+        UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] 상점 비활성 상태: %d"), (int32)ShopType);
         return;
     }
 
@@ -58,15 +60,26 @@ void AERNShopActor::Interact_Implementation(APlayerController* PlayerController)
         UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] 유효하지 않은 PlayerController이거나 ShopMainWidgetClass가 없습니다."));
         return;
     }
+    
+    if (ActiveShopWidget) return;
+    
+    ActiveShopWidget = CreateWidget<UUserWidget>(PlayerController, ERNPC->ShopMainWidgetClass);
 
-    // 위젯 생성 및 뷰포트 추가
-    if (UUserWidget* Widget = CreateWidget<UUserWidget>(PlayerController, ERNPC->ShopMainWidgetClass))
+    if (ActiveShopWidget)
     {
-        Widget->AddToViewport(100);
+        ActiveShopWidget->AddToViewport(100);
 
-        // 마우스 커서 표시 및 입력 모드 변경
+        if (UERNInteractableWidget* InteractableWidget = Cast<UERNInteractableWidget>(ActiveShopWidget))
+        {
+            InteractableWidget->OnWidgetClosed.RemoveDynamic(this, &AERNShopActor::HandleShopClosed);
+            InteractableWidget->OnWidgetClosed.AddDynamic(this, &AERNShopActor::HandleShopClosed);
+        }
+        
         PlayerController->SetShowMouseCursor(true);
-        PlayerController->SetInputMode(FInputModeUIOnly());
+        FInputModeGameAndUI InputMode;
+        InputMode.SetWidgetToFocus(ActiveShopWidget->TakeWidget());
+        InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+        PlayerController->SetInputMode(InputMode);
     }
 
     // 플레이어 캐릭터에서 ShopComponent 획득
@@ -85,9 +98,8 @@ void AERNShopActor::Interact_Implementation(APlayerController* PlayerController)
     }
 
     // 상점 열기 (자신을 TargetNPC로 전달하여 위임 패턴에 사용)
-    UE_LOG(LogShopProvider, Log, TEXT("[ShopActor] 상점 열기 요청: %s (%s)"),
-        *ShopDisplayName.ToString(), *ShopID.ToString());
-    ShopComp->OpenShop(ShopID, this);
+    UE_LOG(LogShopProvider, Log, TEXT("[ShopActor] 상점 열기 요청: %s"), *ShopDisplayName.ToString());
+    ShopComp->OpenShop(ShopType, this);
 }
 
 bool AERNShopActor::CanInteract_Implementation() const
@@ -102,6 +114,59 @@ FText AERNShopActor::GetInteractionText_Implementation() const
         return InteractionPrompt;
     }
     return FText::FromString(TEXT("이용할 수 없음"));
+}
+
+void AERNShopActor::EndInteract_Implementation(APlayerController* PlayerController)
+{
+    AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PlayerController);
+    if (!ERNPC) return;
+    
+    //상호작용 프롬프트 및 대상 해제
+    ERNPC->ClearCurrentInteractable();
+    if (InteractionPromptWidget)
+    {
+        InteractionPromptWidget->SetVisibility(false);
+    }
+    
+    // 즉시 파괴하지 않고, 닫기 애니메이션을 재생하라고 명령
+    if (ActiveShopWidget)
+    {
+        if (UERNInteractableWidget* InteractableWidget = Cast<UERNInteractableWidget>(ActiveShopWidget))
+        {
+            InteractableWidget->BP_PlayCloseAnimation();
+        }
+        else
+        {
+            // 혹시 베이스 클래스가 아닐 경우 예외 처리
+            ActiveShopWidget->RemoveFromParent();
+            ActiveShopWidget = nullptr;
+            
+            ERNPC->SetInputMode(FInputModeGameOnly());
+            ERNPC->SetShowMouseCursor(false);
+        }
+    }
+}
+
+void AERNShopActor::HandleShopClosed()
+{
+    if (AProjectERNCharacter* PlayerChar = Cast<AProjectERNCharacter>(GetWorld()->GetFirstPlayerController()->GetCharacter()))
+    {
+        AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PlayerChar->GetController());
+        if (ERNPC)
+        {
+            // 여기서 위젯을 최종 파괴하고, 마우스 시점을 복구합니다.
+            if (ActiveShopWidget)
+            {
+                ActiveShopWidget->RemoveFromParent();
+                ActiveShopWidget = nullptr; 
+                
+                ERNPC->SetInputMode(FInputModeGameOnly());
+                ERNPC->SetShowMouseCursor(false);
+                
+                UE_LOG(LogShopProvider, Log, TEXT("[ShopActor] 상점 UI 애니메이션 종료 및 최종 닫힘"));
+            }
+        }
+    }
 }
 
 // ===== 오버랩 이벤트 =====
@@ -138,13 +203,10 @@ void AERNShopActor::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent,
     AERNPlayerController* PC = Cast<AERNPlayerController>(Character->GetController());
     if (PC)
     {
-        PC->ClearCurrentInteractable();
+        // 범위를 벗어나면 강제 종료
+        EndInteract_Implementation(PC);
+        
         UE_LOG(LogShopProvider, Verbose, TEXT("[ShopActor] 상호작용 범위 이탈: %s"),
             *Character->GetName());
-            
-        if (InteractionPromptWidget)
-        {
-            InteractionPromptWidget->SetVisibility(false);
-        }
     }
 }

@@ -1,9 +1,9 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "Inventory/Item/Data/ERNItemEnums.h"
 #include "ERNShopTypes.generated.h"
 
 // ===== 로그 카테고리 =====
@@ -11,15 +11,6 @@ DECLARE_LOG_CATEGORY_EXTERN(LogShopModel, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogShopProvider, Log, All);
 
 // ===== 열거형 =====
-
-UENUM(BlueprintType)
-enum class EERNShopItemCategory : uint8
-{
-    Weapon      UMETA(DisplayName = "무기"),
-    Armor       UMETA(DisplayName = "방어구"),
-    Consumable  UMETA(DisplayName = "소모품"),
-};
-
 UENUM(BlueprintType) 
 enum class EERNTransactionResult : uint8
 {
@@ -46,31 +37,13 @@ struct FERNShopItemData
     FName ItemID;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    FText DisplayName;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    FText Description;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     int32 Price = 0;  // 룬 단위
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    EERNShopItemCategory Category = EERNShopItemCategory::Weapon;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    int32 MaxStack = 1;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     int32 StockCount = -1;  // -1 = 무제한
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     bool bIsAvailable = true;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    TSoftObjectPtr<UTexture2D> Icon;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    FGameplayTagContainer RequiredTags;
 };
 
 /**
@@ -82,7 +55,7 @@ struct FERNShopCategoryData
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    EERNShopItemCategory Category = EERNShopItemCategory::Weapon;
+    EItemType Category = EItemType::Equipable;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     FText DisplayName;
@@ -100,7 +73,7 @@ struct FERNShopTransaction
     GENERATED_BODY()
 
     UPROPERTY(BlueprintReadWrite, Category = "Shop")
-    FName ShopID;
+    EShopType ShopType = EShopType::None;
 
     UPROPERTY(BlueprintReadWrite, Category = "Shop")
     FName ItemID;
@@ -127,7 +100,7 @@ struct FERNShopInventory
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    FName ShopID;
+    EShopType ShopType = EShopType::None;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     TArray<FERNShopItemData> Items;

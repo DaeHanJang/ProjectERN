@@ -13,6 +13,7 @@
 #include "Character/Player/ERNPlayerState.h"
 #include "Core/ERNGameInstance.h"
 #include "Interfaces/IInteractable.h"
+#include "UI/ERNInventoryWidget.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -364,15 +365,19 @@ void AERNPlayerController::ToggleInventory()
 	if (InventoryWidget->GetVisibility() == ESlateVisibility::Hidden)
 	{
 		InventoryWidget->SetVisibility(ESlateVisibility::Visible);
+		
 		FInputModeUIOnly InputMode;
 		InputMode.SetWidgetToFocus(InventoryWidget->TakeWidget());
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
+		
+		Cast<UERNInventoryWidget>(InventoryWidget)->InitFocusSlotIndex();
 	}
 	else
 	{
 		InventoryWidget->SetVisibility(ESlateVisibility::Hidden);
+		
 		FInputModeGameOnly InputMode;
 		SetInputMode(InputMode);
 		bShowMouseCursor = false;

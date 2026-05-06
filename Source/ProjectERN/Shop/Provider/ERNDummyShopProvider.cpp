@@ -11,22 +11,22 @@ void UERNDummyShopProvider::Initialize_Implementation(UObject* Owner)
         Owner ? *Owner->GetName() : TEXT("nullptr"));
 }
 
-void UERNDummyShopProvider::RequestShopData_Implementation(FName ShopID)
+void UERNDummyShopProvider::RequestShopData_Implementation(EShopType ShopType)
 {
-    UE_LOG(LogShopProvider, Log, TEXT("[DummyProvider] 상점 데이터 요청: %s"), *ShopID.ToString());
+    UE_LOG(LogShopProvider, Log, TEXT("[DummyProvider] 상점 데이터 요청: %d"), (int32)ShopType);
 
     // 캐시에 없으면 더미 데이터 생성
-    if (!CachedData.Contains(ShopID))
+    if (!CachedData.Contains(ShopType))
     {
-        GenerateDummyItems(ShopID);
+        GenerateDummyItems(ShopType);
     }
 
     // 즉시 이벤트 발생 (네트워크 지연 없음)
-    if (CachedData.Contains(ShopID))
+    if (CachedData.Contains(ShopType))
     {
-        OnShopDataReceived.Broadcast(CachedData[ShopID]);
+        OnShopDataReceived.Broadcast(CachedData[ShopType]);
         UE_LOG(LogShopProvider, Log, TEXT("[DummyProvider] 데이터 전달 완료. 아이템 수: %d"),
-            CachedData[ShopID].Items.Num());
+            CachedData[ShopType].Items.Num());
     }
 }
 
@@ -39,9 +39,9 @@ void UERNDummyShopProvider::RequestPurchase_Implementation(FERNShopTransaction T
     FERNShopInventory* ShopInv = nullptr;
     FERNShopItemData* FoundItem = nullptr;
 
-    if (CachedData.Contains(Transaction.ShopID))
+    if (CachedData.Contains(Transaction.ShopType))
     {
-        ShopInv = &CachedData[Transaction.ShopID];
+        ShopInv = &CachedData[Transaction.ShopType];
         for (FERNShopItemData& Item : ShopInv->Items)
         {
             if (Item.ItemID == Transaction.ItemID)
@@ -90,11 +90,11 @@ void UERNDummyShopProvider::RequestPurchase_Implementation(FERNShopTransaction T
     OnPurchaseComplete.Broadcast(Transaction);
 }
 
-FERNShopInventory UERNDummyShopProvider::GetCachedShopData_Implementation(FName ShopID)
+FERNShopInventory UERNDummyShopProvider::GetCachedShopData_Implementation(EShopType ShopType)
 {
-    if (CachedData.Contains(ShopID))
+    if (CachedData.Contains(ShopType))
     {
-        return CachedData[ShopID];
+        return CachedData[ShopType];
     }
     return FERNShopInventory();
 }
@@ -116,10 +116,10 @@ void UERNDummyShopProvider::HandlePurchaseResult_Implementation(const FERNShopTr
     UE_LOG(LogShopProvider, Log, TEXT("[DummyProvider] HandlePurchaseResult 호출됨 (무시)"));
 }
 
-void UERNDummyShopProvider::GenerateDummyItems(FName ShopID)
+void UERNDummyShopProvider::GenerateDummyItems(EShopType ShopType)
 {
     FERNShopInventory Inventory;
-    Inventory.ShopID = ShopID;
+    Inventory.ShopType = ShopType;
     Inventory.ShopLevel = 1;
 
     Inventory.bIsSharedPool = true;
@@ -129,37 +129,19 @@ void UERNDummyShopProvider::GenerateDummyItems(FName ShopID)
     {
         FERNShopItemData Item;
         Item.ItemID = FName("ITEM_SWORD_01");
-        Item.DisplayName = FText::FromString(TEXT("강철 검"));
-        Item.Description = FText::FromString(TEXT("기본적인 강철 검입니다."));
         Item.Price = 500;  // 500 룬
-        Item.Category = EERNShopItemCategory::Weapon;
         Item.StockCount = 1;  // 공유 재고: 1개
         Item.bIsAvailable = true;
         Inventory.Items.Add(Item);
     }
 
-    // 방어구
-    {
-        FERNShopItemData Item;
-        Item.ItemID = FName("ITEM_ARMOR_01");
-        Item.DisplayName = FText::FromString(TEXT("가죽 갑옷"));
-        Item.Description = FText::FromString(TEXT("가벼운 가죽 갑옷입니다."));
-        Item.Price = 300;  // 300 룬
-        Item.Category = EERNShopItemCategory::Armor;
-        Item.StockCount = -1;  // 무제한
-        Item.bIsAvailable = true;
-        Inventory.Items.Add(Item);
-    }
+    // (방어구 카테고리 제거됨)
 
     // 소모품
     {
         FERNShopItemData Item;
         Item.ItemID = FName("ITEM_POTION_HP_01");
-        Item.DisplayName = FText::FromString(TEXT("체력 포션"));
-        Item.Description = FText::FromString(TEXT("HP를 50 회복합니다."));
         Item.Price = 50;  // 50 룬
-        Item.Category = EERNShopItemCategory::Consumable;
-        Item.MaxStack = 99;
         Item.StockCount = -1;  // 무제한
         Item.bIsAvailable = true;
         Inventory.Items.Add(Item);
@@ -167,57 +149,38 @@ void UERNDummyShopProvider::GenerateDummyItems(FName ShopID)
     {
         FERNShopItemData Item;
         Item.ItemID = FName("ITEM_POTION_MP_01");
-        Item.DisplayName = FText::FromString(TEXT("마나 포션"));
-        Item.Description = FText::FromString(TEXT("MP를 30 회복합니다."));
         Item.Price = 80;  // 80 룬
-        Item.Category = EERNShopItemCategory::Consumable;
-        Item.MaxStack = 99;
         Item.StockCount = -1;
         Item.bIsAvailable = true;
         Inventory.Items.Add(Item);
     }
 
     // ----- 마을 상점 (Shop_Township) 이상 등급 전용 확장 아이템 -----
-    if (ShopID == FName("Shop_Township") || ShopID == FName("Shop_Boss"))
+    if (ShopType == EShopType::World || ShopType == EShopType::Boss)
     {
         FERNShopItemData Item;
         Item.ItemID = FName("ITEM_STAFF_01");
-        Item.DisplayName = FText::FromString(TEXT("마법 지팡이"));
-        Item.Description = FText::FromString(TEXT("마력이 깃든 지팡이입니다."));
         Item.Price = 800;
-        Item.Category = EERNShopItemCategory::Weapon;
         Item.StockCount = 1;
         Item.bIsAvailable = true;
         Inventory.Items.Add(Item);
 
-        FERNShopItemData ArmorItem;
-        ArmorItem.ItemID = FName("ITEM_ARMOR_02");
-        ArmorItem.DisplayName = FText::FromString(TEXT("기사단 갑옷"));
-        ArmorItem.Description = FText::FromString(TEXT("단단한 철제 갑옷입니다."));
-        ArmorItem.Price = 1200;
-        ArmorItem.Category = EERNShopItemCategory::Armor;
-        ArmorItem.StockCount = 1;
-        ArmorItem.bIsAvailable = true;
-        Inventory.Items.Add(ArmorItem);
+
     }
 
     // ----- 보스방 특수 상점 (Shop_Boss) 전용 아이템 -----
-    if (ShopID == FName("Shop_Boss"))
+    if (ShopType == EShopType::Boss)
     {
         FERNShopItemData Item;
         Item.ItemID = FName("ITEM_POTION_SPECIAL");
-        Item.DisplayName = FText::FromString(TEXT("기적의 영약"));
-        Item.Description = FText::FromString(TEXT("보스전을 위한 강력한 영약입니다."));
         Item.Price = 3000;
-        Item.Category = EERNShopItemCategory::Consumable;
-        Item.MaxStack = 5;
         Item.StockCount = 3; // 한정 판매
         Item.bIsAvailable = true;
         Inventory.Items.Add(Item);
     }
 
-    CachedData.Add(ShopID, Inventory);
+    CachedData.Add(ShopType, Inventory);
 
-    UE_LOG(LogShopProvider, Log, TEXT("[DummyProvider] 더미 아이템 %d개 생성 (ShopID: %s)"),
-        Inventory.Items.Num(), *ShopID.ToString());
+    UE_LOG(LogShopProvider, Log, TEXT("[DummyProvider] 더미 아이템 %d개 생성 (ShopType: %d)"),
+        Inventory.Items.Num(), (int32)ShopType);
 }

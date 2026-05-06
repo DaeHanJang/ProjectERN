@@ -12,13 +12,25 @@ struct FItemRuntimeState
 	GENERATED_BODY()
 	
 public:
-	FORCEINLINE bool IsValid() const { return ItemID != NAME_None; }
-		
-public:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	// Getter/Setter
+	FORCEINLINE const FName& GetItemID() const { return ItemID; }
+	FORCEINLINE void SetItemID(const FName& InItemID) { ItemID = InItemID; }
+	FORCEINLINE const int32 GetQuantity() const { return Quantity; }
+	FORCEINLINE void SetQuantity(const int32 InQuantity) { Quantity = InQuantity; }
+	FORCEINLINE void AddQuantity(const int32 AddQuantity) { Quantity += AddQuantity; }
+	
+	FORCEINLINE bool IsValid() const { return !ItemID.IsNone(); }
+	
+	// 초기화
+	void Init();
+	
+private:
+	// 아이템 키값
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
 	FName ItemID = NAME_None;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
-	int32 Quantity = 1;
+	// 수량
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
+	int32 Quantity = 0;
 	
 };

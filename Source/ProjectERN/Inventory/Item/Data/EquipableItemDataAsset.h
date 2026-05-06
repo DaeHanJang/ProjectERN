@@ -49,5 +49,5 @@ public:
 	// 무기 class
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftClassPtr<AERNWeaponBase> EquipableClass = nullptr;
-		
+	
 };
