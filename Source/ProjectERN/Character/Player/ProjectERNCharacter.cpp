@@ -50,6 +50,7 @@ AProjectERNCharacter::AProjectERNCharacter()
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 400.0f;
+	CameraBoom->SocketOffset = FVector(0.f, 0.f, 100.f);
 	CameraBoom->bUsePawnControlRotation = true;
 
 	// Create a follow camera
