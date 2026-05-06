@@ -25,6 +25,8 @@ void UERNDataTableShopProvider::Initialize_Implementation(UObject* Owner)
     {
         FName ItemID = Pair.Key;
         FERNItemTable* RowData = reinterpret_cast<FERNItemTable*>(Pair.Value);
+        
+        UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider] ★ 캐싱 Row: %s"), *ItemID.ToString());
 
         if (!RowData) continue;
 

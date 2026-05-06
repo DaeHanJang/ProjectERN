@@ -127,6 +127,12 @@ void UERNShopComponent::Server_RequestShopData_Implementation(EShopType ShopType
                 Cast<UObject>(DataProvider), ShopType);
         }
 
+        // 디버그: 전달되는 ItemID 확인
+        for (const FERNShopItemData& Item : Data.Items)
+        {
+            UE_LOG(LogShopProvider, Warning, TEXT("[ShopComponent:Server] ★ 전달 ItemID: %s"), *Item.ItemID.ToString());
+        }
+
         // 가져온 데이터를 클라이언트에게 전달
         Client_ReceiveShopData(Data);
     }
