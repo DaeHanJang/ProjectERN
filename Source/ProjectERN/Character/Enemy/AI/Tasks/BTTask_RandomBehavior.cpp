@@ -7,6 +7,7 @@
 #include "AbilitySystemComponent.h"
 #include "GAS/ERNGameplayTags.h"
 #include "MotionWarpingComponent.h"
+#include "Character/Enemy/ERNBossCharacter.h"
 
 UBTTask_RandomBehavior::UBTTask_RandomBehavior()
 {
@@ -33,6 +34,15 @@ EBTNodeResult::Type UBTTask_RandomBehavior::ExecuteTask(UBehaviorTreeComponent& 
 	{
 		return EBTNodeResult::Failed;
 	}
+	
+	// 보스 페이즈 전환 중일시 공격 x
+	if (AERNBossCharacter* Boss = Cast<AERNBossCharacter>(Enemy))
+	{
+		if (Boss->bIsTransitioningPhase)
+		{
+			return EBTNodeResult::Failed;
+		}
+	}
 
 	// 경직 상태면 공격 중단
 	if (UAbilitySystemComponent* ASC = Enemy->GetAbilitySystemComponent())
@@ -57,10 +67,14 @@ EBTNodeResult::Type UBTTask_RandomBehavior::ExecuteTask(UBehaviorTreeComponent& 
 	if (SelectedMontage)
 	{
 		// 몽타주 길이를 블랙보드에 저장
-		float MontageLength = SelectedMontage->GetPlayLength();
+		float MontageLength = SelectedMontage->GetPlayLength() - 0.15f;
 		OwnerComp.GetBlackboardComponent()->SetValueAsFloat(TEXT("MontageDuration"), MontageLength);
 
 		Enemy->Multicast_PlayAttackMontage(SelectedMontage);
+		
+		// Focus 해제
+		AIController->ClearFocus(EAIFocusPriority::Gameplay);
+		
 		UE_LOG(LogTemp, Log, TEXT("[%s] Random behavior: %s (%.2fs) on %s"),
 			*Enemy->GetName(), *SelectedMontage->GetName(), MontageLength, *Target->GetName());
 	}

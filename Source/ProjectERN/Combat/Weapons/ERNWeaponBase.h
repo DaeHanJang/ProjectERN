@@ -21,9 +21,17 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
-	// 무기 메시
+	// Static Mesh와 Skeletal Mesh를 모두 사용하기 위해 SceneRoot를 하나 설정
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+	USceneComponent* SceneRoot;
+	
+	// 무기 메시(Static Mesh)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	UStaticMeshComponent* WeaponMesh;
+	
+	// 무기 메시(Skeletal Mesh)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+	USkeletalMeshComponent* SkeletalWeaponMesh;
 
 	// 무기 스탯
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
@@ -39,9 +47,12 @@ public:
 	float HeavyAttackStaggerPower = 25.f;
 
 	// 무기 전용 애니메이션 몽타주
+	
+	/* LightAttack은 일반 공격으로 GA에서 몽타주 받아서 처리.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Animations")
 	UAnimMontage* LightAttackMontage;
+	*/
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Animations")
-	UAnimMontage* HeavyAttackMontage;
+	TObjectPtr<UAnimMontage> HeavyAttackMontage;
 };

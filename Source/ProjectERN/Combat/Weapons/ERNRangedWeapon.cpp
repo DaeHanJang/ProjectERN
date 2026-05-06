@@ -10,7 +10,8 @@ AERNRangedWeapon::AERNRangedWeapon()
 	// MuzzlePoint: 스태틱 메시는 소켓 미지원이므로 ArrowComponent로 발사 위치를 표시
 	// 에디터에서 WeaponMesh 자식으로 위치/회전 조정
 	MuzzlePoint = CreateDefaultSubobject<UArrowComponent>(TEXT("MuzzlePoint"));
-	MuzzlePoint->SetupAttachment(WeaponMesh);
+	// MuzzlePoint->SetupAttachment(WeaponMesh);
+	MuzzlePoint->SetupAttachment(SceneRoot);
 	MuzzlePoint->ArrowColor = FColor::Red;
 	MuzzlePoint->bHiddenInGame = true;
 }
@@ -41,7 +42,11 @@ void AERNRangedWeapon::SpawnProjectile(bool bIsHeavyAttack)
 	{
 		SpawnLocation = WeaponMesh->GetSocketLocation(MuzzleSocketName);
 	}
-
+	else if (SkeletalWeaponMesh && SkeletalWeaponMesh->DoesSocketExist(MuzzleSocketName))
+	{
+		SpawnLocation = SkeletalWeaponMesh->GetSocketLocation(MuzzleSocketName);
+	}
+	
 	// 캐릭터 전방 방향
 	SpawnRotation = GetOwner()->GetActorForwardVector().Rotation();
 

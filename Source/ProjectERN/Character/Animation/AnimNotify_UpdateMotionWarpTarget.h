@@ -21,4 +21,12 @@ public:
 	// Warp Target 이름 (기본값: "AttackTarget")
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Motion Warping")
 	FName WarpTargetName = TEXT("AttackTarget");
+
+	// 타겟 오른쪽 오프셋 (양수: 타겟 오른쪽, 음수: 타겟 왼쪽)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Motion Warping")
+	float RightOffset = 0.0f;
+
+	// 타겟 전방 오프셋 (양수: 타겟 앞, 음수: 타겟 뒤)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Motion Warping")
+	float ForwardOffset = 0.0f;
 };
