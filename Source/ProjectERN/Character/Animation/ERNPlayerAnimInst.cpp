@@ -3,8 +3,11 @@
 
 #include "Character/Animation/ERNPlayerAnimInst.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GAS/ERNGameplayTags.h"
 
 void UERNPlayerAnimInst::NativeUpdateAnimation(float DeltaSeconds)
 {
@@ -14,8 +17,14 @@ void UERNPlayerAnimInst::NativeUpdateAnimation(float DeltaSeconds)
 	ACharacter* Char = Cast<ACharacter>(TryGetPawnOwner());
 	if (!Char)
 	{
+		bIsAttacking = false;
 		return;  // 캐릭터가 없으면 업데이트하지 않음
 	}
+	
+	UAbilitySystemComponent* ASC =
+	UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Char);
+
+	bIsAttacking = ASC && ASC->HasMatchingGameplayTag(TAG_State_Combat_Attacking);
 	
 	// MovementComponent 가져오기
 	UCharacterMovementComponent* MovementComp = Char->GetCharacterMovement();

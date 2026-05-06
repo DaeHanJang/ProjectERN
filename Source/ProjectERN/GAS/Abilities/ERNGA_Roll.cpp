@@ -4,7 +4,7 @@
 #include "GAS/Abilities/ERNGA_Roll.h"
 
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
-#include "GameFramework/Character.h"
+#include "Character/Player/ProjectERNCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GAS/ERNGameplayTags.h"
 
@@ -36,16 +36,23 @@ void UERNGA_Roll::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 	}
 
-	ACharacter* Character = CastChecked<ACharacter>(ActorInfo->AvatarActor);
+	AProjectERNCharacter* Character = CastChecked<AProjectERNCharacter>(ActorInfo->AvatarActor);
 	UCharacterMovementComponent* Movement = Character->GetCharacterMovement();
 
-	FVector InputVector = Movement->GetLastInputVector();
+	const FVector InputVector = Movement->GetLastInputVector();
+	const bool bIsLockOn = Character->IsLockOn();
 
-	// 1. 섹션 결정
-	FName SectionName = GetRollSection(InputVector);
+	// 기본 구르기 섹션
+	FName SectionName = FName("Roll_F");
 
-	// 2. 비타겟팅 시에는 입력 방향으로 캐릭터 회전 (타겟팅 시에는 회전하지 않음)
-	if (!InputVector.IsNearlyZero())
+	// 락온 상태에서만 방향 결정 가능
+	if (bIsLockOn)
+	{
+		SectionName = GetRollSection(InputVector);
+	}
+
+	// 비타겟팅 시에는 입력 방향으로 캐릭터 회전 (타겟팅 시에는 회전하지 않음)
+	if (!bIsLockOn && !InputVector.IsNearlyZero())
 	{
 		Character->SetActorRotation(InputVector.Rotation());
 	}

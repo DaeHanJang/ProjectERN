@@ -41,7 +41,7 @@ AProjectERNCharacter::AProjectERNCharacter()
 	// instead of recompiling to adjust them
 	GetCharacterMovement()->JumpZVelocity = 500.f;
 	GetCharacterMovement()->AirControl = 0.35f;
-	GetCharacterMovement()->MaxWalkSpeed = 500.f;
+	GetCharacterMovement()->MaxWalkSpeed = DefaultSpeed;
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
@@ -190,9 +190,23 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
 	// 해당 태그가 있으면 움직이지 못함
+	/*
 	if (AbilitySystemComponent &&
 		(AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking) ||
 			AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing)))
+	{
+		return;
+	}
+	*/
+	const bool bIsAttacking =
+	AbilitySystemComponent &&
+	AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking);
+
+	const bool bIsLanding =
+		AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing);
+
+	if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsLanding)
 	{
 		return;
 	}
@@ -277,6 +291,7 @@ void AProjectERNCharacter::ToggleTemporaryLockOn()
 
 	if (!Controller)
 	{
+		UpdateMovementSpeed();
 		return;
 	}
 
@@ -300,6 +315,30 @@ void AProjectERNCharacter::ToggleTemporaryLockOn()
 		bUseControllerRotationYaw = false;
 		GetCharacterMovement()->bOrientRotationToMovement = true;
 	}
+	
+	UpdateMovementSpeed();
+}
+
+void AProjectERNCharacter::UpdateMovementSpeed()
+{
+	if (!GetCharacterMovement())
+	{
+		return;
+	}
+
+	float NewSpeed = DefaultSpeed;
+
+	if (bIsLockOn)
+	{
+		NewSpeed = TargetingSpeed;
+	}
+
+	if (AbilitySystemComponent && (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)))
+	{
+		NewSpeed = AttackingSpeed;
+	}
+	
+	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
 }
 
 void AProjectERNCharacter::LightAttack()

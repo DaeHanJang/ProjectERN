@@ -21,9 +21,17 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
-	// 무기 메시
+	// Static Mesh와 Skeletal Mesh를 모두 사용하기 위해 SceneRoot를 하나 설정
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+	USceneComponent* SceneRoot;
+	
+	// 무기 메시(Static Mesh)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	UStaticMeshComponent* WeaponMesh;
+	
+	// 무기 메시(Skeletal Mesh)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
+	USkeletalMeshComponent* SkeletalWeaponMesh;
 
 	// 무기 스탯
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")

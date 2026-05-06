@@ -28,7 +28,6 @@ public:
 	                        bool bReplicateEndAbility,
 	                        bool bWasCancelled) override;
 	*/
-
 protected:
 	// 구르기 몽타주
 	UPROPERTY(EditDefaultsOnly, Category="ERN")

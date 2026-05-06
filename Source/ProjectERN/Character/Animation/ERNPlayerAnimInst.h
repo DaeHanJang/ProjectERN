@@ -22,6 +22,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	bool bIsAccelerating;  // 가속 중인지 여부
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat")
+	bool bIsAttacking = false;	// 공격 중인지 여부
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	FVector Velocity;  // 캐릭터의 속도 벡터 (방향 계산용)
 	
