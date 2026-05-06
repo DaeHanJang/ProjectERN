@@ -138,18 +138,7 @@ void UERNDummyShopProvider::GenerateDummyItems(FName ShopID)
         Inventory.Items.Add(Item);
     }
 
-    // 방어구
-    {
-        FERNShopItemData Item;
-        Item.ItemID = FName("ITEM_ARMOR_01");
-        Item.DisplayName = FText::FromString(TEXT("가죽 갑옷"));
-        Item.Description = FText::FromString(TEXT("가벼운 가죽 갑옷입니다."));
-        Item.Price = 300;  // 300 룬
-        Item.Category = EERNShopItemCategory::Armor;
-        Item.StockCount = -1;  // 무제한
-        Item.bIsAvailable = true;
-        Inventory.Items.Add(Item);
-    }
+    // (방어구 카테고리 제거됨)
 
     // 소모품
     {
@@ -190,15 +179,7 @@ void UERNDummyShopProvider::GenerateDummyItems(FName ShopID)
         Item.bIsAvailable = true;
         Inventory.Items.Add(Item);
 
-        FERNShopItemData ArmorItem;
-        ArmorItem.ItemID = FName("ITEM_ARMOR_02");
-        ArmorItem.DisplayName = FText::FromString(TEXT("기사단 갑옷"));
-        ArmorItem.Description = FText::FromString(TEXT("단단한 철제 갑옷입니다."));
-        ArmorItem.Price = 1200;
-        ArmorItem.Category = EERNShopItemCategory::Armor;
-        ArmorItem.StockCount = 1;
-        ArmorItem.bIsAvailable = true;
-        Inventory.Items.Add(ArmorItem);
+
     }
 
     // ----- 보스방 특수 상점 (Shop_Boss) 전용 아이템 -----

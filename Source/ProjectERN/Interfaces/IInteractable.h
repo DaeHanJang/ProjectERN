@@ -29,6 +29,10 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
 	void Interact(APlayerController* PlayerController);
 
+	// 상호작용 종료 시 (거리 멀어짐 혹은 ESC) 호출
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
+	void EndInteract(APlayerController* PlayerController);
+	
 	// 상호작용 가능한지 여부
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
 	bool CanInteract() const;
@@ -40,5 +44,4 @@ public:
 	// 상호작용 정책 가져오기
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
 	EInteractionExecutionPolicy GetInteractionExecutionPolicy() const;
-	
 };

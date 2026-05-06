@@ -9,6 +9,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "ItemManagerSubsystem.generated.h"
 
+struct FItemRuntimeState;
 class UConsumableItemDataAsset;
 class UEquipableItemDataAsset;
 
@@ -42,8 +43,8 @@ public:
 	bool ItemValid(const FName ItemID) const;
 	// 아이템 생성
 	UFUNCTION(BlueprintCallable, Category="ItemManager")
-	void SpawnItem(const FName ItemID, const int32 Quantity, const FVector& Location, const FRotator& Rotation);
-	
+	void SpawnItem(const FItemRuntimeState& ItemRuntimeState, const FVector& Location, const FRotator& Rotation);
+
 	// 아이템 데이터 애셋 동기 로드
 	const UItemDataAssetBase* LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags);
 	// 아이템 데이터 애셋 비동기 로드

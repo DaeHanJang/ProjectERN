@@ -24,16 +24,16 @@ public:
 	virtual bool CanInteract_Implementation() const override;
 	virtual FText GetInteractionText_Implementation() const override;
 	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
-	
-	// TODO: 제거 함수 구현 (서버 전용)
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	
 private:
-	// Get ItemManager
+    // Get ItemManager
 	UItemManagerSubsystem* GetItemManager() const;
+	
+	// TODO: 제거 함수 구현
 	
 	// TODO: DropTable의 확률로 ItemID 선정 함수 구현
 
@@ -57,5 +57,7 @@ private:
 	TObjectPtr<UStaticMeshComponent> StaticMesh;
 	
 	// TODO: DropTable
-
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	FName ItemID = NAME_None;
+	
 };

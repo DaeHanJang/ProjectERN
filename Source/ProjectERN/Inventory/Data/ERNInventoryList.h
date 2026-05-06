@@ -15,6 +15,17 @@ struct FInventoryItemEntry : public FFastArraySerializerItem
 	GENERATED_BODY()
 	
 public:
+	// Getter/Setter
+	FORCEINLINE const FName& GetItemID() const { return ItemID; }
+	FORCEINLINE void SetItemID(const FName& NewItemID) { ItemID = NewItemID; }
+	FORCEINLINE const int32 GetSlotIndex() const { return SlotIndex; }
+	FORCEINLINE void SetSlotIndex(const int32 NewSlotIndex) { SlotIndex = NewSlotIndex; }
+	FORCEINLINE const int32 GetQuantity() const { return ItemRuntimeState.GetQuantity();}
+	FORCEINLINE void SetQuantity(const int32 NewQuantity) { ItemRuntimeState.SetQuantity(NewQuantity); }
+	FORCEINLINE void AddQuantity(const int32 AddQuantity) { ItemRuntimeState.AddQuantity(AddQuantity); }
+	
+	FORCEINLINE bool IsValid() const { return !ItemID.IsNone(); }
+	
 	// 클라에서 새 아이템 추가됨
 	void PostReplicatedAdd(const FInventoryList& InArraySerializer);
 	// 클라에서 아이템 수정됨
@@ -22,22 +33,21 @@ public:
 	// 클라에서 아이템 제거 직전
 	void PreReplicatedRemove(const FInventoryList& InArraySerializer);
 	
-public:
+	// 초기화
+	void Init();
+	
+private:
 	// 아이템 고유 Key값
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	FName ItemID = NAME_None;
 	
 	// 인벤토리 슬롯
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	int32 SlotIndex = INDEX_NONE;
 	
-	// 보유 수량
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	int32 Quantity = 0;
-	
 	// 아이템 런타임 상태값 구조체
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	FItemRuntimeState ItemRuntimeState;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	FItemRuntimeState ItemRuntimeState = FItemRuntimeState();
 	
 };
 
@@ -54,31 +64,34 @@ public:
 	}
 	
 	// Getter/Setter
-	UERNInventoryComponent* GetOwner() const { return Owner.Get(); }
+	FORCEINLINE UERNInventoryComponent* GetOwner() const { return Owner.Get(); }
+	// ERNInventoryComponent의 FInventoryList Inventory 변수 때문에 cpp에서 구현 
 	void SetOwner(UERNInventoryComponent* NewOwner);
-	const TArray<FInventoryItemEntry>& GetItems() const { return Items; }
+	FORCEINLINE const TArray<FInventoryItemEntry>& GetItems() const { return Items;}
+	
+	// Get Item Quantity
+	const int32 GetItemQuantity(const int32 SlotIndex) const;
+	
+	// Initialization
+	void Init(const int Size);
 	
 	// Add Item
 	bool AddItem(FItemRuntimeState& ItemRuntimeState, const int32 MaxSlotSize, const int32 MaxStackSize, TArray<FInventoryItemEntry>& OutChangedEntries);
 	
-	// TODO: RemoveItem 함수 구현
 	// Remove Item
-	void RemoveItem();
+	void RemoveItem(const int32 SlotIndex, const int32 Count, FItemRuntimeState& OutDropRuntimeState, FInventoryItemEntry& OutChangedEntry);
 	
 	// Debug Log
 	void LogInventory() const;
 	
 private:
 	// 비어있는 첫 번재 슬롯 인덱스 반환
-	int32 FindFirstEmptySlot(const int32 MaxSlotSize) const;
+	const int32 FindFirstEmptySlot(const int32 MaxSlotSize) const;
 	
 private:
 	// Inventory Container
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess=true))
 	TArray<FInventoryItemEntry> Items;
-	
-	// 현재 사용중인 슬롯 집합
-	TSet<int32> OccupiedSlots;
 	
 	// FInventoryList를 쇼유하고 있는 InventoryComponent
 	UPROPERTY(Transient, NotReplicated)
