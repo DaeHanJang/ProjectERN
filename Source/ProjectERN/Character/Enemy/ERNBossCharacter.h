@@ -93,6 +93,8 @@ protected:
 	// 페이즈 전환 완료 콜백
 	UFUNCTION()
 	void OnPhaseTransitionMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	
+	void PlayPhaseTransitionMontage(const FBossPhaseInfo& PhaseInfo);
 
 	// 슈퍼아머 적용/해제
 	void ApplySuperArmor();
