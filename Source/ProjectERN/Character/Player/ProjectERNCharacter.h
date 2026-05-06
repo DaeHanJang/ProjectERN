@@ -16,6 +16,7 @@ enum class ECharacterType : uint8;
 class UERNInventoryComponent;
 class UERNEquipmentComponent;
 class UERNShopComponent;
+class UERNInputConfig;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -51,36 +52,16 @@ class AProjectERNCharacter : public AERNCharacterBase
 protected:
 
 	/** Character Type - 블루프린트에서 설정 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Character")
 	ECharacterType CharacterType;
 
 	/** Called when character is possessed by a controller */
 	virtual void PossessedBy(AController* NewController) override;
-
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* JumpAction;
-
-	/** Move Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* MoveAction;
-
-	/** Look Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* LookAction;
-
-	/** Mouse Look Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* MouseLookAction;
-
-	/** Light Attack Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* LightAttackAction;
-
-	/** Heavy Attack Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* HeavyAttackAction;
-
+	
+	// 태그 기반 입력을 위한 InputConfig 부여
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Input")
+	TObjectPtr<UERNInputConfig> InputConfig;
+	
 public:
 
 	/** Constructor */
@@ -93,9 +74,7 @@ protected:
 
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-protected:
-
+	
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
 
@@ -103,31 +82,38 @@ protected:
 	void Look(const FInputActionValue& Value);
 
 	/** Called for light attack input */
-	void LightAttack(const FInputActionValue& Value);
+	void Roll();
+	
+	/** Called for light attack input */
+	void LightAttack();
 
 	/** Called for heavy attack input */
-	void HeavyAttack(const FInputActionValue& Value);
+	void HeavyAttack();
+	
+	/** Called for lock on input */
+	void LockOn();
 
 public:
-
 	/** Handles move inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
+	UFUNCTION(BlueprintCallable, Category="ERN|Input")
 	virtual void DoMove(float Right, float Forward);
 
 	/** Handles look inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
+	UFUNCTION(BlueprintCallable, Category="ERN|Input")
 	virtual void DoLook(float Yaw, float Pitch);
 
 	/** Handles jump pressed inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
+	UFUNCTION(BlueprintCallable, Category="ERN|Input")
 	virtual void DoJumpStart();
 
 	/** Handles jump pressed inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
+	UFUNCTION(BlueprintCallable, Category="ERN|Input")
 	virtual void DoJumpEnd();
+	
+	UFUNCTION(BlueprintCallable, Category="ERN|Action")
+	void ExecuteJumpLaunch();
 
 public:
-
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
@@ -142,4 +128,41 @@ public:
 
 	/** Returns ShopComponent **/
 	FORCEINLINE class UERNShopComponent* GetShopComponent() const { return ShopComponent; }
+	
+	// ************** 임시 락온 기능 구현 **************
+public:
+	UFUNCTION(BlueprintCallable, Category="ERN|LockOn")
+	void ToggleTemporaryLockOn();
+
+	bool IsLockOn() const { return bIsLockOn; }
+	
+protected:
+	UPROPERTY(BlueprintReadOnly, Category="ERN|LockOn")
+	bool bIsLockOn = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn")
+	bool bUseCameraYawOnLockOn = true;
+	// ************** 임시 락온 기능 구현 **************
+	
+	// 공격 중 움직일 수 있게 하기 위함
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
+	bool bCanMoveWhileAttacking = false;
+	
+	// 상태 별 속도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
+	float DefaultSpeed = 600;	// 기본 속도
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
+	float TargetingSpeed = 300;	// 타겟팅 중 속도
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
+	float TargetingRunSpeed = 500;	// 타겟팅 중 달리기 속도
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
+	float AttackingSpeed = 200;	// 공격 중 속도
+	
+public:
+	// 움직임 속도 변화 함수
+	UFUNCTION(BlueprintCallable, Category="ERN|Movement")
+	void UpdateMovementSpeed();
 };

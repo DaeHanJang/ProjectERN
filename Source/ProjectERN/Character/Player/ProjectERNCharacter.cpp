@@ -9,6 +9,7 @@
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameplayAbilitySpec.h"
 #include "InputActionValue.h"
 #include "ProjectERN.h"
 #include "AbilitySystemComponent.h"
@@ -16,6 +17,8 @@
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
 #include "GAS/ERNGameplayTags.h"
+#include "GAS/Abilities/ERNGA_LightAttack.h"
+#include "Input/ERNInputComponent.h"
 #include "Shop/Components/ERNShopComponent.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -38,7 +41,7 @@ AProjectERNCharacter::AProjectERNCharacter()
 	// instead of recompiling to adjust them
 	GetCharacterMovement()->JumpZVelocity = 500.f;
 	GetCharacterMovement()->AirControl = 0.35f;
-	GetCharacterMovement()->MaxWalkSpeed = 500.f;
+	GetCharacterMovement()->MaxWalkSpeed = DefaultSpeed;
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
@@ -102,34 +105,108 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 
 void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	// Set up action bindings
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-		// Jumping
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-
-		// Moving
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AProjectERNCharacter::Move);
-		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AProjectERNCharacter::Look);
-
-		// Looking
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AProjectERNCharacter::Look);
-
-		// Attacking
-		EnhancedInputComponent->BindAction(LightAttackAction, ETriggerEvent::Started, this, &AProjectERNCharacter::LightAttack);
-		EnhancedInputComponent->BindAction(HeavyAttackAction, ETriggerEvent::Started, this, &AProjectERNCharacter::HeavyAttack);
-	}
-	else
+	UERNInputComponent* InputComp = Cast<UERNInputComponent>(PlayerInputComponent);
+	if (!InputComp)
 	{
-		UE_LOG(LogProjectERN, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
+		UE_LOG(LogProjectERN, Error, TEXT("%s failed to find ERNInputComponent."), *GetNameSafe(this));
+		return;
 	}
+
+	if (!InputConfig)
+	{
+		UE_LOG(LogProjectERN, Warning, TEXT("%s has no InputConfig."), *GetNameSafe(this));
+		return;
+	}
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Move,
+		ETriggerEvent::Triggered,
+		this,
+		&AProjectERNCharacter::Move);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Look,
+		ETriggerEvent::Triggered,
+		this,
+		&AProjectERNCharacter::Look);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_MouseLook,
+		ETriggerEvent::Triggered,
+		this,
+		&AProjectERNCharacter::Look);
+
+	// Jump
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Jump,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::DoJumpStart);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Jump,
+		ETriggerEvent::Completed,
+		this,
+		&AProjectERNCharacter::DoJumpEnd);
+
+	// Tap Shift -> Roll
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Roll,
+		ETriggerEvent::Triggered,
+		this,
+		&AProjectERNCharacter::Roll);
+
+	// Attack
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_LightAttack,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::LightAttack);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_HeavyAttack,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::HeavyAttack);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_LockOn,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::LockOn);
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
-	// 공격 중이면 이동 불가
-	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking))
+	// 해당 태그가 있으면 움직이지 못함
+	/*
+	if (AbilitySystemComponent &&
+		(AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking) ||
+			AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing)))
+	{
+		return;
+	}
+	*/
+	const bool bIsAttacking =
+	AbilitySystemComponent &&
+	AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking);
+
+	const bool bIsLanding =
+		AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing);
+
+	if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsLanding)
 	{
 		return;
 	}
@@ -148,6 +225,15 @@ void AProjectERNCharacter::Look(const FInputActionValue& Value)
 
 	// route the inputS
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
+}
+
+void AProjectERNCharacter::Roll()
+{
+	if (AbilitySystemComponent)
+	{
+		// 구르기 태그를 가진 어빌리티 실행 시도
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Roll));
+	}
 }
 
 void AProjectERNCharacter::DoMove(float Right, float Forward)
@@ -182,28 +268,121 @@ void AProjectERNCharacter::DoLook(float Yaw, float Pitch)
 
 void AProjectERNCharacter::DoJumpStart()
 {
-	// signal the character to jump
-	Jump();
+	if (AbilitySystemComponent)
+	{
+		// 점프 태그를 가진 어빌리티 실행 시도
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Jump));
+	}
 }
 
 void AProjectERNCharacter::DoJumpEnd()
 {
-	// signal the character to stop jumping
 	StopJumping();
 }
 
-void AProjectERNCharacter::LightAttack(const FInputActionValue& Value)
+void AProjectERNCharacter::ExecuteJumpLaunch()
 {
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Light));
-	}
+	Jump();
 }
 
-void AProjectERNCharacter::HeavyAttack(const FInputActionValue& Value)
+void AProjectERNCharacter::ToggleTemporaryLockOn()
+{
+	bIsLockOn = !bIsLockOn;
+
+	if (!Controller)
+	{
+		UpdateMovementSpeed();
+		return;
+	}
+
+	if (bIsLockOn)
+	{
+		// 카메라/컨트롤러가 바라보는 Yaw로 캐릭터 방향을 맞춘다.
+		const FRotator ControlRotation = Controller->GetControlRotation();
+		const FRotator TargetYawRotation(0.f, ControlRotation.Yaw, 0.f);
+
+		SetActorRotation(TargetYawRotation);
+
+		// 락온 중에는 컨트롤러 Yaw가 캐릭터 회전을 직접 제어하게 한다.
+		bUseControllerRotationYaw = true;
+
+		// 이동 방향으로 자동 회전하는 기능은 꺼야 카메라 방향 유지가 쉽다.
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+	}
+	else
+	{
+		// 기존 이동 방식으로 복귀.
+		bUseControllerRotationYaw = false;
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+	}
+	
+	UpdateMovementSpeed();
+}
+
+void AProjectERNCharacter::UpdateMovementSpeed()
+{
+	if (!GetCharacterMovement())
+	{
+		return;
+	}
+
+	float NewSpeed = DefaultSpeed;
+
+	if (bIsLockOn)
+	{
+		NewSpeed = TargetingSpeed;
+	}
+
+	if (AbilitySystemComponent && (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)))
+	{
+		NewSpeed = AttackingSpeed;
+	}
+	
+	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
+}
+
+void AProjectERNCharacter::LightAttack()
+{
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	// 이미 LightAttack 어빌리티가 활성화되어 있으면
+	// 새로 활성화하지 않고 다음 콤보 입력만 전달한다.
+	const FGameplayTagContainer LightAttackTags(TAG_Ability_Attack_Light);
+	for (const FGameplayAbilitySpec& AbilitySpec : AbilitySystemComponent->GetActivatableAbilities())
+	{
+		if (!AbilitySpec.IsActive() || !AbilitySpec.Ability ||
+			!AbilitySpec.Ability->GetAssetTags().HasAll(LightAttackTags))
+		{
+			continue;
+		}
+
+		for (UGameplayAbility* AbilityInstance : AbilitySpec.GetAbilityInstances())
+		{
+			if (UERNGA_LightAttack* LightAttackAbility = Cast<UERNGA_LightAttack>(AbilityInstance))
+			{
+				LightAttackAbility->CacheComboInput();
+				return;
+			}
+		}
+	}
+
+	// 활성 중인 LightAttack이 없으면 첫 공격을 시작한다.
+	AbilitySystemComponent->TryActivateAbilitiesByTag(
+		FGameplayTagContainer(TAG_Ability_Attack_Light));
+}
+
+void AProjectERNCharacter::HeavyAttack()
 {
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Heavy));
 	}
+}
+
+void AProjectERNCharacter::LockOn()
+{
+	ToggleTemporaryLockOn();
 }
