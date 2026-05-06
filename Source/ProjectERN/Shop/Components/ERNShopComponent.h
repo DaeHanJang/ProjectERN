@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Shop/Data/ERNShopTypes.h"
+#include "Inventory/Item/Data/ERNItemEnums.h"
 #include "ERNShopComponent.generated.h"
 
 class IERNShopDataProvider;
@@ -32,9 +33,10 @@ public:
 
     // ===== 공개 API =====
 
+public:
     /** 상점 열기 */
     UFUNCTION(BlueprintCallable, Category = "Shop")
-    void OpenShop(FName ShopID, AActor* TargetNPC = nullptr);
+    void OpenShop(EShopType ShopType, AActor* TargetNPC = nullptr);
 
     /** 상점 닫기 */
     UFUNCTION(BlueprintCallable, Category = "Shop")
@@ -66,7 +68,7 @@ protected:
 
     /** 클라이언트 → 서버: 상점 데이터 요청 */
     UFUNCTION(Server, Reliable, Category = "Shop")
-    void Server_RequestShopData(FName ShopID, AActor* TargetNPC);
+    void Server_RequestShopData(EShopType ShopType, AActor* TargetNPC);
 
     /** 클라이언트 → 서버: 구매 요청 (안전한 파라미터) */
     UFUNCTION(Server, Reliable, Category = "Shop")
@@ -97,8 +99,8 @@ private:
     // Provider 참조 (GameInstance에서 획득)
     IERNShopDataProvider* DataProvider = nullptr;
 
-    // 현재 열린 상점 ID
-    FName CurrentShopID;
+    // 현재 열린 상점 타입
+    EShopType CurrentShopType = EShopType::None;
 
     // 로컬 캐시 (수신된 상점 데이터)
     FERNShopInventory CurrentShopData;

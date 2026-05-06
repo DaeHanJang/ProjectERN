@@ -63,24 +63,22 @@ void UERNShopComponent::AcquireProvider()
 
 // ===== 공개 API =====
 
-void UERNShopComponent::OpenShop(FName ShopID, AActor* TargetNPC)
+void UERNShopComponent::OpenShop(EShopType ShopType, AActor* TargetNPC)
 {
-    CurrentShopID = ShopID;
     CurrentTargetNPC = TargetNPC;
     bIsShopOpen = true;
 
-    UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] 상점 열기: %s (Authority: %s)"),
-        *ShopID.ToString(),
-        GetOwner()->HasAuthority() ? TEXT("Server") : TEXT("Client"));
+    UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] 상점 열기: %d (Authority: %s)"),
+        (int32)ShopType, GetOwner()->HasAuthority() ? TEXT("Server") : TEXT("Client"));
 
     // 서버 RPC 호출 (호스트일 경우 로컬에서 즉시 실행됨)
-    Server_RequestShopData(ShopID, TargetNPC);
+    Server_RequestShopData(ShopType, TargetNPC);
 }
 
 void UERNShopComponent::CloseShop()
 {
     bIsShopOpen = false;
-    CurrentShopID = NAME_None;
+    CurrentShopType = EShopType::None;
     CurrentTargetNPC = nullptr;
     UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] 상점 닫기"));
 }
@@ -101,24 +99,24 @@ TArray<FERNShopItemData> UERNShopComponent::GetCurrentShopItems() const
 
 // ===== Server RPC =====
 
-void UERNShopComponent::Server_RequestShopData_Implementation(FName ShopID, AActor* TargetNPC)
+void UERNShopComponent::Server_RequestShopData_Implementation(EShopType ShopType, AActor* TargetNPC)
 {
-    UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent:Server] 클라이언트로부터 데이터 요청 수신: %s"),
-        *ShopID.ToString());
+    UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent:Server] 클라이언트로부터 데이터 요청 수신: %d"),
+        (int32)ShopType);
 
     // 서버 측에서 Provider 호출
     if (DataProvider)
     {
         FERNShopInventory Data = IERNShopDataProvider::Execute_GetCachedShopData(
-            Cast<UObject>(DataProvider), ShopID);
+            Cast<UObject>(DataProvider), ShopType);
 
         if (Data.Items.Num() == 0)
         {
             IERNShopDataProvider::Execute_RequestShopData(
-                Cast<UObject>(DataProvider), ShopID);
+                Cast<UObject>(DataProvider), ShopType);
 
             Data = IERNShopDataProvider::Execute_GetCachedShopData(
-                Cast<UObject>(DataProvider), ShopID);
+                Cast<UObject>(DataProvider), ShopType);
         }
 
         // 가져온 데이터를 클라이언트에게 전달
@@ -150,7 +148,7 @@ void UERNShopComponent::Server_RequestPurchase_Implementation(FName ItemID, int3
     if (DataProvider)
     {
         FERNShopTransaction ServerTx;
-        ServerTx.ShopID = CurrentShopID; // 위임 패턴의 핵심: 현재 열린 상점 명시
+        ServerTx.ShopType = CurrentShopType; // 위임 패턴의 핵심: 현재 열린 상점 명시
         ServerTx.ItemID = ItemID;
         ServerTx.Quantity = Quantity;
         ServerTx.Timestamp = GetWorld()->GetTimeSeconds();

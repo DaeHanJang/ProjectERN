@@ -86,16 +86,20 @@ void AERNNightLordGrace::EndInteract_Implementation(APlayerController* PlayerCon
 		InteractionPromptWidget->SetVisibility(false);
 	}
 	
-	// 이미 팝업이 열려 있는 상태 일때는 닫기
 	if (LevelUpPopupWidget)
 	{
-		LevelUpPopupWidget->RemoveFromViewport();
-		LevelUpPopupWidget = nullptr; // Dangling Pointer 방지
-		
-		ERNPC->SetInputMode(FInputModeGameOnly());
-		ERNPC->SetShowMouseCursor(false);
-		
-		UE_LOG(LogTemp, Warning, TEXT("화톳불 : 상호작용 종료 및 UI 닫힘"));
+		if (UERNInteractableWidget* InteractableWidget = Cast<UERNInteractableWidget>(LevelUpPopupWidget))
+		{
+			InteractableWidget->BP_PlayCloseAnimation();
+		}
+		else
+		{
+			LevelUpPopupWidget->RemoveFromViewport();
+			LevelUpPopupWidget = nullptr; 
+			
+			ERNPC->SetInputMode(FInputModeGameOnly());
+			ERNPC->SetShowMouseCursor(false);
+		}
 	}
 	
 	
@@ -128,10 +132,19 @@ void AERNNightLordGrace::HandlePopupClosed()
 {
 	if (AProjectERNCharacter* PlayerChar = Cast<AProjectERNCharacter>(GetWorld()->GetFirstPlayerController()->GetCharacter()))
 	{
-		AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerChar->GetController());
-		if (PC)
+		AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PlayerChar->GetController());
+		if (ERNPC)
 		{
-			EndInteract_Implementation(PC);
+			if (LevelUpPopupWidget)
+			{
+				LevelUpPopupWidget->RemoveFromViewport();
+				LevelUpPopupWidget = nullptr; 
+				
+				ERNPC->SetInputMode(FInputModeGameOnly());
+				ERNPC->SetShowMouseCursor(false);
+				
+				UE_LOG(LogTemp, Warning, TEXT("화톳불 : 상호작용 종료 및 UI 애니메이션 완료 닫힘"));
+			}
 		}
 	}
 }
