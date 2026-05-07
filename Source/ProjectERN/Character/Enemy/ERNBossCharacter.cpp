@@ -120,31 +120,57 @@ void AERNBossCharacter::TransitionToPhase(int32 NewPhaseIndex)
 	{
 		ApplySuperArmor();
 	}
-	
+
+	// BT 일시정지
+	if (AERNBossAIController* BossAIC = Cast<AERNBossAIController>(GetController()))
+	{
+		if (UBrainComponent* Brain = BossAIC->GetBrainComponent())
+		{
+			Brain->StopLogic(TEXT("PhaseTransition"));
+		}
+	}
+
 	// 현재 몽타주가 재생 중인지 체크
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
 	if (AnimInstance && AnimInstance->IsAnyMontagePlaying())
 	{
-		// 재생중인 몽타주 종료까지 대기
-		FOnMontageEnded OnCurrentMontageEnded;
-		OnCurrentMontageEnded.BindLambda([this, NewPhase](UAnimMontage* Montage, bool bInterrupted)
-		{
-			// 현재 몽타주 종료 후 페이즈 전환 몽타주 재생
-			PlayPhaseTransitionMontage(NewPhase);
-		});
-		
 		UAnimMontage* CurrentMontage = AnimInstance->GetCurrentActiveMontage();
-		AnimInstance->Montage_SetEndDelegate(OnCurrentMontageEnded, CurrentMontage);
+
+		if (CurrentMontage)
+		{
+			// 재생중인 몽타주 종료까지 대기
+			FOnMontageEnded OnCurrentMontageEnded;
+			OnCurrentMontageEnded.BindLambda([this](UAnimMontage* Montage, bool bInterrupted)
+			{
+				PlayPhaseTransitionMontage();
+			});
+
+			AnimInstance->Montage_SetEndDelegate(OnCurrentMontageEnded, CurrentMontage);
+		}
+		else
+		{
+			// 1프레임 타이밍 이슈: 다음 틱에서 재시도
+			GetWorldTimerManager().SetTimerForNextTick(this, &AERNBossCharacter::PlayPhaseTransitionMontage);
+		}
 	}
 	else
 	{
 		// 재생 중인 몽타주가 없으면 바로 재생
-		PlayPhaseTransitionMontage(NewPhase);
+		PlayPhaseTransitionMontage();
 	}
 }
 
-void AERNBossCharacter::PlayPhaseTransitionMontage(const FBossPhaseInfo& PhaseInfo)
+void AERNBossCharacter::PlayPhaseTransitionMontage()
 {
+	if (!Phases.IsValidIndex(CurrentPhaseIndex))
+	{
+		OnPhaseTransitionMontageEnded(nullptr, false);
+		return;
+	}
+
+	const FBossPhaseInfo& PhaseInfo = Phases[CurrentPhaseIndex];
+
 	// 페이즈 전환 몽타주 재생
 	if (PhaseInfo.PhaseTransitionMontage && GetMesh() && GetMesh()->GetAnimInstance())
 	{
@@ -168,8 +194,8 @@ void AERNBossCharacter::OnPhaseTransitionMontageEnded(UAnimMontage* Montage, boo
 	bIsTransitioningPhase = false;
 
 	// 슈퍼아머 해제
-	RemoveSuperArmor();	
-	
+	RemoveSuperArmor();
+
 	// 페이즈 전환 몽타주 끝난 후 새 BT로 전환
 	if (Phases.IsValidIndex(CurrentPhaseIndex))
 	{

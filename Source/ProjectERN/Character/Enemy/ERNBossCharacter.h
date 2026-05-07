@@ -94,7 +94,7 @@ protected:
 	UFUNCTION()
 	void OnPhaseTransitionMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 	
-	void PlayPhaseTransitionMontage(const FBossPhaseInfo& PhaseInfo);
+	void PlayPhaseTransitionMontage();
 
 	// 슈퍼아머 적용/해제
 	void ApplySuperArmor();
