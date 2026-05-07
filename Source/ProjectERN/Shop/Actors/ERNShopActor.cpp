@@ -11,6 +11,7 @@
 #include "Shop/Components/ERNShopComponent.h"
 #include "Shop/Provider/ERNDummyShopProvider.h"
 #include "UI/ERNInteractableWidget.h"
+#include "UI/ERNUIManagerSubsystem.h"
 
 AERNShopActor::AERNShopActor()
 {
@@ -62,6 +63,38 @@ void AERNShopActor::Interact_Implementation(APlayerController* PlayerController)
     }
     
     if (ActiveShopWidget) return;
+    
+    // UI 매니저 게이트: 다른 UI(인벤토리, 레벨업)가 열려있으면 차단
+    ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
+    UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] ★ UI게이트 진입 - LocalPlayer: %s"), 
+        LocalPlayer ? TEXT("유효") : TEXT("NULL"));
+    
+    if (!LocalPlayer)
+    {
+        UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] ★ LocalPlayer가 NULL! 상점 열기 중단."));
+        return;
+    }
+    
+    UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>();
+    UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] ★ UIManager: %s"), 
+        UIManager ? TEXT("유효") : TEXT("NULL"));
+    
+    if (!UIManager)
+    {
+        UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] ★ UIManager가 NULL! 상점 열기 중단."));
+        return;
+    }
+    
+    UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] ★ 현재 ActiveUI: %d, Shop 요청 시도"), 
+        (int32)UIManager->GetActiveUIType());
+    
+    if (!UIManager->RequestOpenUI(EERNUIType::Shop))
+    {
+        UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] ★ RequestOpenUI(Shop) 거부됨! 다른 UI가 열려있음."));
+        return;
+    }
+    
+    UE_LOG(LogShopProvider, Warning, TEXT("[ShopActor] ★ RequestOpenUI(Shop) 성공! 상점 위젯 생성 진행."));
     
     ActiveShopWidget = CreateWidget<UUserWidget>(PlayerController, ERNPC->ShopMainWidgetClass);
 
@@ -143,6 +176,15 @@ void AERNShopActor::EndInteract_Implementation(APlayerController* PlayerControll
             
             ERNPC->SetInputMode(FInputModeGameOnly());
             ERNPC->SetShowMouseCursor(false);
+            
+            // UI 매니저에 닫힘 알림
+            if (ULocalPlayer* LocalPlayer = ERNPC->GetLocalPlayer())
+            {
+                if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+                {
+                    UIManager->CloseActiveUI();
+                }
+            }
         }
     }
 }
@@ -162,6 +204,15 @@ void AERNShopActor::HandleShopClosed()
                 
                 ERNPC->SetInputMode(FInputModeGameOnly());
                 ERNPC->SetShowMouseCursor(false);
+                
+                // UI 매니저에 닫힘 알림
+                if (ULocalPlayer* LocalPlayer = ERNPC->GetLocalPlayer())
+                {
+                    if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+                    {
+                        UIManager->CloseActiveUI();
+                    }
+                }
                 
                 UE_LOG(LogShopProvider, Log, TEXT("[ShopActor] 상점 UI 애니메이션 종료 및 최종 닫힘"));
             }

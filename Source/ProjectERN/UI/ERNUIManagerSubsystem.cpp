@@ -11,11 +11,10 @@ bool UERNUIManagerSubsystem::RequestOpenUI(EERNUIType UIType)
 		return false;
 	}
 	
-	// 이미 같은 UI가 열려있으면 → 토글 닫기
+	// 이미 같은 UI가 열려있으면 → 이미 열린 상태이므로 성공 반환 (중복 호출 안전)
 	if (ActiveUIType == UIType)
 	{
-		CloseActiveUI();
-		return false;
+		return true;
 	}
 
 	// 다른 UI가 열려있으면 → 거부
