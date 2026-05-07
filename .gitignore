@@ -88,3 +88,6 @@ Plugins/Developer/
 
 # VS Code
 .vscode/
+
+# Assistive tools
+.Tools/

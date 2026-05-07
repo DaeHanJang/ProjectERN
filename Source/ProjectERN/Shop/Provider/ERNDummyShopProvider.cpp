@@ -7,6 +7,7 @@
 void UERNDummyShopProvider::Initialize_Implementation(UObject* Owner)
 {
     OwnerObject = Owner;
+    
     UE_LOG(LogShopProvider, Log, TEXT("[DummyProvider] 초기화 완료. Owner: %s"),
         Owner ? *Owner->GetName() : TEXT("nullptr"));
 }

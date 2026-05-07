@@ -1,0 +1,74 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Subsystems/LocalPlayerSubsystem.h"
+#include "ERNUIManagerSubsystem.generated.h"
+
+/**
+ * UI 타입 열거형 - 전체 화면 UI의 종류를 정의
+ */
+UENUM(BlueprintType)
+enum class EERNUIType : uint8
+{
+	None      UMETA(Hidden),
+	Shop      UMETA(DisplayName = "Shop"),
+	Inventory UMETA(DisplayName = "Inventory"),
+	LevelUp   UMETA(DisplayName = "LevelUp"),
+};
+
+/**
+ * UI 상태 변경 델리게이트
+ */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnUIStateChanged, EERNUIType, UIType);
+
+/**
+ * UI 매니저 서브시스템
+ * 
+ * 여러 전체 화면 UI(상점, 인벤토리, 레벨업 등)가 동시에 열리지 않도록 중앙 관리합니다.
+ * ULocalPlayerSubsystem 기반으로, 로컬 플레이어당 하나만 존재하며
+ * 어디서든 GetSubsystem<UERNUIManagerSubsystem>()으로 접근 가능합니다.
+ */
+UCLASS()
+class PROJECTERN_API UERNUIManagerSubsystem : public ULocalPlayerSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	// ── 핵심 API ──
+
+	/** UI 열기 요청. 다른 UI가 이미 열려있으면 false 반환 */
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	bool RequestOpenUI(EERNUIType UIType);
+
+	/** 현재 활성 UI 닫기 */
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void CloseActiveUI();
+
+	/** 현재 열려있는 UI 타입 반환 */
+	UFUNCTION(BlueprintPure, Category = "UI")
+	EERNUIType GetActiveUIType() const { return ActiveUIType; }
+
+	/** 특정 UI가 열려있는지 확인 */
+	UFUNCTION(BlueprintPure, Category = "UI")
+	bool IsUIActive(EERNUIType UIType) const { return ActiveUIType == UIType; }
+
+	/** 아무 UI든 열려있는지 확인 */
+	UFUNCTION(BlueprintPure, Category = "UI")
+	bool IsAnyUIActive() const { return ActiveUIType != EERNUIType::None; }
+
+	// ── 델리게이트 ──
+
+	/** UI가 열릴 때 브로드캐스트 */
+	UPROPERTY(BlueprintAssignable, Category = "UI")
+	FOnUIStateChanged OnUIOpened;
+
+	/** UI가 닫힐 때 브로드캐스트 */
+	UPROPERTY(BlueprintAssignable, Category = "UI")
+	FOnUIStateChanged OnUIClosed;
+
+private:
+	/** 현재 활성화된 UI 타입 */
+	EERNUIType ActiveUIType = EERNUIType::None;
+};
