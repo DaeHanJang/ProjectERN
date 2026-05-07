@@ -49,13 +49,15 @@ class AProjectERNCharacter : public AERNCharacterBase
 	UERNShopComponent* ShopComponent;
 
 protected:
-
 	/** Character Type - 블루프린트에서 설정 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Character")
 	ECharacterType CharacterType;
 
 	/** Called when character is possessed by a controller */
 	virtual void PossessedBy(AController* NewController) override;
+	
+	// 회전 보간을 위해 사용
+	void Tick(float DeltaSeconds) override;
 	
 	// 태그 기반 입력을 위한 InputConfig 부여
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Input")
@@ -144,7 +146,15 @@ public:
 	void Server_SetLockOn(bool bNewLockOn, FRotator TargetRotation);
 	
 	void ApplyLockOnState(bool bNewLockOn, const FRotator& TargetRotation);
+	
 protected:
+	float DesiredLockOnYaw = 0.f;
+	
+	// Server에서 Yaw방향 갱신
+	// Unreliable을 사용하는 이유는 LockOn yaw는 매번 최신값만 중요하고, 오래된 패킷이 늦게 도착해도 의미가 적기 때문이에요.
+	UFUNCTION(Server, Unreliable)
+	void Server_UpdateLockOnYaw(float NewYaw);
+	
 	UPROPERTY(ReplicatedUsing=OnRep_IsLockOn, BlueprintReadOnly, Category="ERN|LockOn")
 	bool bIsLockOn = false;
 	
@@ -157,11 +167,12 @@ protected:
 	void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	// ************** 임시 락온 기능 구현 **************
 	
-protected:
+public:
 	// 공격 중 움직일 수 있게 하기 위함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
 	bool bCanMoveWhileAttacking = false;
 	
+protected:
 	// 상태 별 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
 	float DefaultSpeed = 600;	// 기본 속도
@@ -178,10 +189,27 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
 	float SprintSpeed = 1000;	// 전력질주 속도
 	
+	// 회전 보간 속도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Movement")
+	float RotationInterpSpeed = 10.f;
+	
+	// 현재 회전 보간 목표
+	FRotator DesiredActorRotation = FRotator::ZeroRotator;
+
+	// 콤보/공격처럼 한 번만 회전시키고 끝낼 때 사용
+	bool bHasPendingActorRotation = false;
+	
 public:
 	// 움직임 속도 변화 함수
 	UFUNCTION(BlueprintCallable, Category="ERN|Movement")
 	void UpdateMovementSpeed();
+	
+	// 캐릭터 회전 변화 함수
+	UFUNCTION(BlueprintCallable, Category="ERN|Movement")
+	void UpdateRotationMode();
+	
+	// 공격의 1회용 회전 적용
+	void SetPendingAttackRotation(const FRotator& TargetRotation);
 	
 protected:
 	// Sprint 관련 변수/함수
@@ -193,10 +221,22 @@ protected:
 	// 움직임 입력 여부 확인(Sprint 비활성 확인용)
 	bool HasMoveInput() const;
 	
-protected:
+	// LockOn 목표 회전 계산
+	FRotator GetLockOnDesiredRotation() const;
+
+	// 공격 목표 회전 계산
+	FRotator GetAttackDesiredRotation() const;
+
+	// 실제 회전 보간 실행
+	void InterpActorRotation(float DeltaSeconds);
+	
+	// 서버에서의 공격 회전을 적용
+	UFUNCTION(Server, Reliable)
+	void Server_SetPendingAttackRotation(FRotator TargetRotation);
+	
 	// 클라이언트가 누른 추가 공격 입력을 서버의 Ability 인스턴스에도 전달하기 위함
 	UFUNCTION(Server, Reliable)
-	void Server_CacheLightAttackComboInput();
+	void Server_CacheLightAttackComboInput(FRotator TargetRotation);
 
-	bool CacheActiveLightAttackComboInput();
+	bool CacheActiveLightAttackComboInput(const FRotator& TargetRotation);
 };

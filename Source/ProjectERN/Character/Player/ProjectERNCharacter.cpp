@@ -24,6 +24,8 @@ DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
 AProjectERNCharacter::AProjectERNCharacter()
 {
+	PrimaryActorTick.bCanEverTick = true;
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
@@ -101,6 +103,56 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 	}
 
 	// GAS 초기화는 부모 클래스에서 처리
+}
+
+void AProjectERNCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	const bool bIsSprinting =
+		AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Sprinting);
+
+	const bool bIsAttacking =
+		AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking);
+	
+	// Sprint 중에는 LockOn 강제 회전을 끈다.
+	// const bool bShouldRotateForLockOn = bIsLockOn && !bIsSprinting && !bIsAttacking;
+	
+	if (bIsLockOn && !bIsSprinting && !bIsAttacking)
+	{
+		if (IsLocallyControlled() && Controller)
+		{
+			const float ControlYaw = Controller->GetControlRotation().Yaw;
+			DesiredLockOnYaw = ControlYaw;
+
+			if (!HasAuthority())
+			{
+				Server_UpdateLockOnYaw(ControlYaw);
+			}
+		}
+		
+		DesiredActorRotation = GetLockOnDesiredRotation();
+		
+		if (HasAuthority() || IsLocallyControlled())
+		{
+			InterpActorRotation(DeltaSeconds);
+		}
+		
+		return;
+	}
+	
+	// 공격/콤보 회전: 로컬 + 서버
+	if (bHasPendingActorRotation)
+	{
+		if (!HasAuthority() && !IsLocallyControlled())
+		{
+			return;
+		}
+
+		InterpActorRotation(DeltaSeconds);
+	}
 }
 
 void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -203,6 +255,12 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
+	// input is a Vector2D
+	FVector2D MovementVector = Value.Get<FVector2D>();
+
+	// 입력 값 갱신(Sprint에 사용)
+	CachedMoveInput = MovementVector;
+
 	// 해당 태그가 있으면 움직이지 못함
 	const bool bIsAttacking =
 		AbilitySystemComponent &&
@@ -216,12 +274,6 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 	{
 		return;
 	}
-
-	// input is a Vector2D
-	FVector2D MovementVector = Value.Get<FVector2D>();
-
-	// 입력 값 갱신(Sprint에 사용)
-	CachedMoveInput = MovementVector;
 
 	// route the input
 	DoMove(MovementVector.X, MovementVector.Y);
@@ -324,30 +376,29 @@ void AProjectERNCharacter::ApplyLockOnState(bool bNewLockOn, const FRotator& Tar
 
 	if (bIsLockOn)
 	{
-		SetActorRotation(FRotator(0.f, TargetRotation.Yaw, 0.f));
-		bUseControllerRotationYaw = true;
-		GetCharacterMovement()->bOrientRotationToMovement = false;
-	}
-	else
-	{
-		bUseControllerRotationYaw = false;
-		GetCharacterMovement()->bOrientRotationToMovement = true;
+		DesiredLockOnYaw = TargetRotation.Yaw;
+		DesiredActorRotation = FRotator(0.f, TargetRotation.Yaw, 0.f);
 	}
 
+	UpdateRotationMode();
 	UpdateMovementSpeed();
+}
+
+void AProjectERNCharacter::Server_UpdateLockOnYaw_Implementation(float NewYaw)
+{
+	DesiredLockOnYaw = NewYaw;
 }
 
 void AProjectERNCharacter::OnRep_IsLockOn()
 {
-	bUseControllerRotationYaw = bIsLockOn;
-	GetCharacterMovement()->bOrientRotationToMovement = !bIsLockOn;
+	UpdateRotationMode();
 	UpdateMovementSpeed();
 }
 
 void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
+
 	DOREPLIFETIME(AProjectERNCharacter, bIsLockOn);
 }
 
@@ -363,13 +414,13 @@ void AProjectERNCharacter::UpdateMovementSpeed()
 
 	float NewSpeed = DefaultSpeed;
 
-	if (bIsLockOn)
-	{
-		NewSpeed = TargetingSpeed;
-	}
-	else if (bIsSprinting)
+	if (bIsSprinting)
 	{
 		NewSpeed = SprintSpeed;
+	}
+	else if (bIsLockOn)
+	{
+		NewSpeed = TargetingSpeed;
 	}
 
 	if (AbilitySystemComponent && (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)))
@@ -380,6 +431,35 @@ void AProjectERNCharacter::UpdateMovementSpeed()
 	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
 }
 
+void AProjectERNCharacter::UpdateRotationMode()
+{
+	if (!GetCharacterMovement())
+	{
+		return;
+	}
+
+	const bool bIsSprinting =
+		AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Sprinting);
+
+	const bool bIsAttacking =
+		AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking);
+
+	if (bIsAttacking)
+	{
+		bUseControllerRotationYaw = false;
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+		return;
+	}
+
+	// LockOn상태와 관련 없이 회전이 가능하게 함
+	const bool bShouldFaceMovement = !bIsLockOn || bIsSprinting;
+
+	bUseControllerRotationYaw = false;
+	GetCharacterMovement()->bOrientRotationToMovement = bShouldFaceMovement;
+}
+
 void AProjectERNCharacter::LightAttack()
 {
 	if (!AbilitySystemComponent)
@@ -387,39 +467,24 @@ void AProjectERNCharacter::LightAttack()
 		return;
 	}
 
-	/*
-	// 이미 LightAttack 어빌리티가 활성화되어 있으면
-	// 새로 활성화하지 않고 다음 콤보 입력만 전달한다.
-	const FGameplayTagContainer LightAttackTags(TAG_Ability_Attack_Light);
-	for (const FGameplayAbilitySpec& AbilitySpec : AbilitySystemComponent->GetActivatableAbilities())
-	{
-		if (!AbilitySpec.IsActive() || !AbilitySpec.Ability ||
-			!AbilitySpec.Ability->GetAssetTags().HasAll(LightAttackTags))
-		{
-			continue;
-		}
-
-		for (UGameplayAbility* AbilityInstance : AbilitySpec.GetAbilityInstances())
-		{
-			if (UERNGA_LightAttack* LightAttackAbility = Cast<UERNGA_LightAttack>(AbilityInstance))
-			{
-				LightAttackAbility->CacheComboInput();
-				return;
-			}
-		}
-	}
-	*/
-
-	if (CacheActiveLightAttackComboInput())
+	const FRotator TargetRotation = GetAttackDesiredRotation();
+	
+	if (CacheActiveLightAttackComboInput(TargetRotation))
 	{
 		if (!HasAuthority())
 		{
-			Server_CacheLightAttackComboInput();
+			Server_CacheLightAttackComboInput(TargetRotation);
 		}
 
 		return;
 	}
 
+	SetPendingAttackRotation(TargetRotation);
+
+	if (!HasAuthority())
+	{
+		Server_SetPendingAttackRotation(TargetRotation);
+	}
 	
 	// 활성 중인 LightAttack이 없으면 첫 공격을 시작한다.
 	AbilitySystemComponent->TryActivateAbilitiesByTag(
@@ -481,12 +546,81 @@ bool AProjectERNCharacter::HasMoveInput() const
 	return !CachedMoveInput.IsNearlyZero();
 }
 
-void AProjectERNCharacter::Server_CacheLightAttackComboInput_Implementation()
+FRotator AProjectERNCharacter::GetLockOnDesiredRotation() const
 {
-	CacheActiveLightAttackComboInput();
+	return FRotator(0.f, DesiredLockOnYaw, 0.f);
 }
 
-bool AProjectERNCharacter::CacheActiveLightAttackComboInput()
+FRotator AProjectERNCharacter::GetAttackDesiredRotation() const
+{
+	FRotator TargetRotation = GetActorRotation();
+
+	// LockOn상태 일 때
+	if (bIsLockOn && Controller)
+	{
+		// 카메라 방향과 일치하는 방향으로 회전
+		const FRotator ControlRotation = Controller->GetControlRotation();
+		return FRotator(0.f, ControlRotation.Yaw, 0.f);
+	}
+
+	// 입력이 없다면
+	if (!CachedMoveInput.IsNearlyZero() && Controller)
+	{
+		const FRotator ControlRotation = Controller->GetControlRotation();
+		const FRotator YawRotation(0.f, ControlRotation.Yaw, 0.f);
+
+		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+		const FVector DesiredDirection =
+			ForwardDirection * CachedMoveInput.Y +
+			RightDirection * CachedMoveInput.X;
+
+		if (!DesiredDirection.IsNearlyZero())
+		{
+			TargetRotation = DesiredDirection.Rotation();
+		}
+	}
+
+	return FRotator(0.f, TargetRotation.Yaw, 0.f);
+}
+
+void AProjectERNCharacter::InterpActorRotation(float DeltaSeconds)
+{
+	const FRotator CurrentRotation = GetActorRotation();
+	const FRotator TargetRotation(0.f, DesiredActorRotation.Yaw, 0.f);
+
+	const FRotator NewRotation = FMath::RInterpTo(
+		CurrentRotation,
+		TargetRotation,
+		DeltaSeconds,
+		RotationInterpSpeed);
+
+	SetActorRotation(NewRotation);
+
+	if (bHasPendingActorRotation && NewRotation.Equals(TargetRotation, 1.f))
+	{
+		bHasPendingActorRotation = false;
+	}
+}
+
+void AProjectERNCharacter::SetPendingAttackRotation(const FRotator& TargetRotation)
+{
+	DesiredActorRotation = FRotator(0.f, TargetRotation.Yaw, 0.f);
+	bHasPendingActorRotation = true;
+}
+
+void AProjectERNCharacter::Server_SetPendingAttackRotation_Implementation(FRotator TargetRotation)
+{
+	SetPendingAttackRotation(TargetRotation);
+}
+
+void AProjectERNCharacter::Server_CacheLightAttackComboInput_Implementation(FRotator TargetRotation)
+{
+	CacheActiveLightAttackComboInput(TargetRotation);
+}
+
+bool AProjectERNCharacter::CacheActiveLightAttackComboInput(const FRotator& TargetRotation)
 {
 	if (!AbilitySystemComponent)
 	{
@@ -507,11 +641,12 @@ bool AProjectERNCharacter::CacheActiveLightAttackComboInput()
 		{
 			if (UERNGA_LightAttack* LightAttackAbility = Cast<UERNGA_LightAttack>(AbilityInstance))
 			{
-				LightAttackAbility->CacheComboInput();
+				LightAttackAbility->CacheComboInput(TargetRotation);
 				return true;
 			}
 		}
 	}
 
 	return false;
+
 }

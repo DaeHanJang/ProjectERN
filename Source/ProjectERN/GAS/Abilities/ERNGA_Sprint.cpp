@@ -33,8 +33,9 @@ void UERNGA_Sprint::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 
 	if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(GetAvatarActorFromActorInfo()))
 	{
-		// 캐릭터 속도 갱신
+		// 캐릭터 속도/회전모드 갱신
 		Character->UpdateMovementSpeed();
+		Character->UpdateRotationMode();
 	}
 	
 	// Sprint 시작모션
@@ -63,8 +64,9 @@ void UERNGA_Sprint::EndAbility(const FGameplayAbilitySpecHandle Handle,
 	
 	if (Character)
 	{
-		// 캐릭터 속도 갱신
+		// 캐릭터 속도/회전모드 갱신
 		Character->UpdateMovementSpeed();
+		Character->UpdateRotationMode();
 	}
 }
 

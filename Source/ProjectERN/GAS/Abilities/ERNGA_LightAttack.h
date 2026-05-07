@@ -20,7 +20,7 @@ public:
 	void ResetComboState();
 
 	// ProjectERNCharacter::LightAttack에서 공격 중 추가 입력이 들어오면 호출.
-	void CacheComboInput();
+	void CacheComboInput(const FRotator& TargetRotation);
 
 	// AnimNotify_CheckLightCombo에서 호출.
 	// 입력이 캐시되어 있으면 다음 Montage Section으로 이동한다.
@@ -37,4 +37,7 @@ protected:
 	FName GetComboSectionName(int32 ComboIndex) const;
 
 	bool CanMoveToNextCombo() const;
+	
+	bool bHasCachedComboRotation = false;
+	FRotator CachedComboRotation = FRotator::ZeroRotator;
 };
