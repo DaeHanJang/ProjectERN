@@ -7,8 +7,6 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/Controller.h"
-// #include "EnhancedInputComponent.h"
-// #include "EnhancedInputSubsystems.h"
 #include "GameplayAbilitySpec.h"
 #include "InputActionValue.h"
 #include "ProjectERN.h"
@@ -19,6 +17,7 @@
 #include "GAS/ERNGameplayTags.h"
 #include "GAS/Abilities/ERNGA_LightAttack.h"
 #include "Input/ERNInputComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "Shop/Components/ERNShopComponent.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -303,36 +302,53 @@ void AProjectERNCharacter::ExecuteJumpLaunch()
 
 void AProjectERNCharacter::ToggleTemporaryLockOn()
 {
-	bIsLockOn = !bIsLockOn;
+	const bool bNewLockOn = !bIsLockOn;
+	const FRotator ControlRotation = Controller ? Controller->GetControlRotation() : GetActorRotation();
 
-	if (!Controller)
+	ApplyLockOnState(bNewLockOn, ControlRotation);
+
+	if (!HasAuthority())
 	{
-		UpdateMovementSpeed();
-		return;
+		Server_SetLockOn(bNewLockOn, ControlRotation);
 	}
+}
+
+void AProjectERNCharacter::Server_SetLockOn_Implementation(bool bNewLockOn, FRotator TargetRotation)
+{
+	ApplyLockOnState(bNewLockOn, TargetRotation);
+}
+
+void AProjectERNCharacter::ApplyLockOnState(bool bNewLockOn, const FRotator& TargetRotation)
+{
+	bIsLockOn = bNewLockOn;
 
 	if (bIsLockOn)
 	{
-		// 카메라/컨트롤러가 바라보는 Yaw로 캐릭터 방향을 맞춘다.
-		const FRotator ControlRotation = Controller->GetControlRotation();
-		const FRotator TargetYawRotation(0.f, ControlRotation.Yaw, 0.f);
-
-		SetActorRotation(TargetYawRotation);
-
-		// 락온 중에는 컨트롤러 Yaw가 캐릭터 회전을 직접 제어하게 한다.
+		SetActorRotation(FRotator(0.f, TargetRotation.Yaw, 0.f));
 		bUseControllerRotationYaw = true;
-
-		// 이동 방향으로 자동 회전하는 기능은 꺼야 카메라 방향 유지가 쉽다.
 		GetCharacterMovement()->bOrientRotationToMovement = false;
 	}
 	else
 	{
-		// 기존 이동 방식으로 복귀.
 		bUseControllerRotationYaw = false;
 		GetCharacterMovement()->bOrientRotationToMovement = true;
 	}
 
 	UpdateMovementSpeed();
+}
+
+void AProjectERNCharacter::OnRep_IsLockOn()
+{
+	bUseControllerRotationYaw = bIsLockOn;
+	GetCharacterMovement()->bOrientRotationToMovement = !bIsLockOn;
+	UpdateMovementSpeed();
+}
+
+void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	DOREPLIFETIME(AProjectERNCharacter, bIsLockOn);
 }
 
 void AProjectERNCharacter::UpdateMovementSpeed()
@@ -371,6 +387,7 @@ void AProjectERNCharacter::LightAttack()
 		return;
 	}
 
+	/*
 	// 이미 LightAttack 어빌리티가 활성화되어 있으면
 	// 새로 활성화하지 않고 다음 콤보 입력만 전달한다.
 	const FGameplayTagContainer LightAttackTags(TAG_Ability_Attack_Light);
@@ -391,7 +408,19 @@ void AProjectERNCharacter::LightAttack()
 			}
 		}
 	}
+	*/
 
+	if (CacheActiveLightAttackComboInput())
+	{
+		if (!HasAuthority())
+		{
+			Server_CacheLightAttackComboInput();
+		}
+
+		return;
+	}
+
+	
 	// 활성 중인 LightAttack이 없으면 첫 공격을 시작한다.
 	AbilitySystemComponent->TryActivateAbilitiesByTag(
 		FGameplayTagContainer(TAG_Ability_Attack_Light));
@@ -450,4 +479,39 @@ void AProjectERNCharacter::StopSprint()
 bool AProjectERNCharacter::HasMoveInput() const
 {
 	return !CachedMoveInput.IsNearlyZero();
+}
+
+void AProjectERNCharacter::Server_CacheLightAttackComboInput_Implementation()
+{
+	CacheActiveLightAttackComboInput();
+}
+
+bool AProjectERNCharacter::CacheActiveLightAttackComboInput()
+{
+	if (!AbilitySystemComponent)
+	{
+		return false;
+	}
+
+	const FGameplayTagContainer LightAttackTags(TAG_Ability_Attack_Light);
+
+	for (const FGameplayAbilitySpec& AbilitySpec : AbilitySystemComponent->GetActivatableAbilities())
+	{
+		if (!AbilitySpec.IsActive() || !AbilitySpec.Ability ||
+			!AbilitySpec.Ability->GetAssetTags().HasAll(LightAttackTags))
+		{
+			continue;
+		}
+
+		for (UGameplayAbility* AbilityInstance : AbilitySpec.GetAbilityInstances())
+		{
+			if (UERNGA_LightAttack* LightAttackAbility = Cast<UERNGA_LightAttack>(AbilityInstance))
+			{
+				LightAttackAbility->CacheComboInput();
+				return true;
+			}
+		}
+	}
+
+	return false;
 }

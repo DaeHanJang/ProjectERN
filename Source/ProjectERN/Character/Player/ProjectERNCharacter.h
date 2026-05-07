@@ -140,12 +140,21 @@ public:
 
 	bool IsLockOn() const { return bIsLockOn; }
 	
+	UFUNCTION(Server, Reliable)
+	void Server_SetLockOn(bool bNewLockOn, FRotator TargetRotation);
+	
+	void ApplyLockOnState(bool bNewLockOn, const FRotator& TargetRotation);
 protected:
-	UPROPERTY(BlueprintReadOnly, Category="ERN|LockOn")
+	UPROPERTY(ReplicatedUsing=OnRep_IsLockOn, BlueprintReadOnly, Category="ERN|LockOn")
 	bool bIsLockOn = false;
-
+	
+	UFUNCTION()
+	void OnRep_IsLockOn();
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn")
 	bool bUseCameraYawOnLockOn = true;
+	
+	void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	// ************** 임시 락온 기능 구현 **************
 	
 protected:
@@ -183,4 +192,11 @@ protected:
 	
 	// 움직임 입력 여부 확인(Sprint 비활성 확인용)
 	bool HasMoveInput() const;
+	
+protected:
+	// 클라이언트가 누른 추가 공격 입력을 서버의 Ability 인스턴스에도 전달하기 위함
+	UFUNCTION(Server, Reliable)
+	void Server_CacheLightAttackComboInput();
+
+	bool CacheActiveLightAttackComboInput();
 };
