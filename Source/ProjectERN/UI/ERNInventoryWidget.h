@@ -55,7 +55,11 @@ private:
 	
 	// 장비 슬롯 갱신 이벤트 핸들러
 	UFUNCTION()
-	void UpdateEquipmentSlot(const FInventoryItemEntry& Entry);
+	void UpdateEquipableSlot(const FInventoryItemEntry& Entry);
+	
+	// 소모품 슬롯 갱신 이벤트 핸들러
+	UFUNCTION()
+	void UpdateConsumableSlot(const FInventoryItemEntry& Entry);
 	
 	// 슬롯 활성화 이벤트 핸들러
 	UFUNCTION()

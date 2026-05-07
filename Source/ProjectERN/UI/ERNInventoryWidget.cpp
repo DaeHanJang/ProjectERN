@@ -41,7 +41,8 @@ void UERNInventoryWidget::NativeConstruct()
 	
 	if (UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent())
 	{
-		EquipmentComponent->OnEquipmentSlotChanged.AddDynamic(this, &UERNInventoryWidget::UpdateEquipmentSlot);
+		EquipmentComponent->OnEquipmentSlotChanged.AddDynamic(this, &UERNInventoryWidget::UpdateEquipableSlot);
+		EquipmentComponent->OnConsumableSlotChanged.AddDynamic(this, &UERNInventoryWidget::UpdateConsumableSlot);
 	}
 	
 	// 슬라이드 위젯 생성
@@ -215,7 +216,7 @@ void UERNInventoryWidget::UpdateInventorySlot(const FInventoryItemEntry& Entry)
 	}
 }
 
-void UERNInventoryWidget::UpdateEquipmentSlot(const FInventoryItemEntry& Entry)
+void UERNInventoryWidget::UpdateEquipableSlot(const FInventoryItemEntry& Entry)
 {
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
@@ -225,6 +226,20 @@ void UERNInventoryWidget::UpdateEquipmentSlot(const FInventoryItemEntry& Entry)
 		{
 			// 슬롯 위젯 갱신
 			EquipableSlotWidget->SetItem(ItemData->Icon.Get(), Entry.GetQuantity());
+		}
+	}
+}
+
+void UERNInventoryWidget::UpdateConsumableSlot(const FInventoryItemEntry& Entry)
+{
+	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
+	{
+		// TODO: 비동기 로드 변경
+		// ItemManager에서 동기 로드로 UI 리소스 로드
+		if (const UItemDataAssetBase* ItemData = ItemManager->LoadItemDataAssetSync(Entry.GetItemID(), EItemAssetLoadFlags::UI))
+		{
+			// 슬롯 위젯 갱신
+			ConsumableSlotWidget->SetItem(ItemData->Icon.Get(), Entry.GetQuantity());
 		}
 	}
 }

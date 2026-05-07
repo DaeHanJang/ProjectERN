@@ -12,7 +12,8 @@ class UItemManagerSubsystem;
 class UERNInventoryComponent;
 class AERNWeaponBase;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEquipmentSlotChanged, const FInventoryItemEntry&, Entry);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEquipalbeSlotChanged, const FInventoryItemEntry&, Entry);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnConsumableSlotChanged, const FInventoryItemEntry&, Entry);
 
 /**
  * ERNEquipmentComponent - 장비 관리 (무기 장착/해제)
@@ -39,6 +40,7 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")
 	void Server_EquipItem(const int32 SlotIndex);
 	
+	// TODO: 소모품 클래스를 만든 후 작성
 	// 아이템 제거 (소모품 전용)
 	UFUNCTION(Server,Reliable, BlueprintCallable, Category = "Equipment")
 	void Server_UnequipItem();
@@ -52,10 +54,13 @@ private:
 
 	UFUNCTION()
 	void OnRep_EquipableSlot();
+	UFUNCTION()
+	void OnRep_ConsumableSlot();
 
 public:
 	// 장착 갱신 이벤트
-	FOnEquipmentSlotChanged OnEquipmentSlotChanged;
+	FOnEquipalbeSlotChanged OnEquipmentSlotChanged;
+	FOnConsumableSlotChanged OnConsumableSlotChanged;
 	
 	// 현재 장착된 무기
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Equipment")
@@ -66,11 +71,11 @@ public:
 	FInventoryItemEntry EquipableSlot;
 	
 	// TODO: 현재 장착된 소모품
-	//UPROPERTY(Replicated, BlueprintReadOnly, Category = "Equipment")
-	//AERNConsumableBase* CurrentConsumable;
+	// UPROPERTY(Replicated, BlueprintReadOnly, Category = "Equipment")
+	// AERNConsumableBase* CurrentConsumable;
 	
 	// 소모품 슬롯
-	// UPROPERTY(ReplicatedUsing="OnRep_ConsumableSlot", BlueprintReadOnly, Category = "Equipment")
-	// FInventoryItemEntry ConsumableSlot;
+	UPROPERTY(ReplicatedUsing="OnRep_ConsumableSlot", BlueprintReadOnly, Category = "Equipment")
+	FInventoryItemEntry ConsumableSlot;
 	
 };
