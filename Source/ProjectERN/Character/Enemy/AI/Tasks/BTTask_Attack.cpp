@@ -7,6 +7,7 @@
 #include "AbilitySystemComponent.h"
 #include "GAS/ERNGameplayTags.h"
 #include "MotionWarpingComponent.h"
+#include "Character/Enemy/ERNBossCharacter.h"
 
 UBTTask_Attack::UBTTask_Attack()
 {
@@ -32,6 +33,15 @@ EBTNodeResult::Type UBTTask_Attack::ExecuteTask(UBehaviorTreeComponent& OwnerCom
 	if (!Target)
 	{
 		return EBTNodeResult::Failed;
+	}
+	
+	// 보스 페이즈 전환 중일시 공격 x
+	if (AERNBossCharacter* Boss = Cast<AERNBossCharacter>(Enemy))
+	{
+		if (Boss->bIsTransitioningPhase)
+		{
+			return EBTNodeResult::Failed;
+		}
 	}
 
 	// 경직 상태면 공격 중단
