@@ -14,6 +14,7 @@
 #include "Core/ERNGameInstance.h"
 #include "Interfaces/IInteractable.h"
 #include "UI/ERNInventoryWidget.h"
+#include "UI/ERNUIManagerSubsystem.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -360,10 +361,17 @@ void AERNPlayerController::ToggleInventory()
 		return;
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("ToggleInventory"));
+	// UI 매니저를 통한 상태 관리
+	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
 	
 	if (InventoryWidget->GetVisibility() == ESlateVisibility::Hidden)
 	{
+		// 다른 UI가 열려있으면 인벤토리 열기 거부
+		if (UIManager && !UIManager->RequestOpenUI(EERNUIType::Inventory))
+		{
+			return;
+		}
+		
 		InventoryWidget->SetVisibility(ESlateVisibility::Visible);
 		
 		FInputModeUIOnly InputMode;
@@ -376,6 +384,12 @@ void AERNPlayerController::ToggleInventory()
 	}
 	else
 	{
+		// UI 매니저에 닫힘 알림
+		if (UIManager)
+		{
+			UIManager->CloseActiveUI();
+		}
+		
 		InventoryWidget->SetVisibility(ESlateVisibility::Hidden);
 		
 		FInputModeGameOnly InputMode;

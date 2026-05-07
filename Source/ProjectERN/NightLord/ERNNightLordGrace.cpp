@@ -11,6 +11,7 @@
 #include "Character/Player/ERNPlayerController.h"
 #include "GAS/ERNAttributeSet.h"
 #include "UI/ERNInteractableWidget.h"
+#include "UI/ERNUIManagerSubsystem.h"
 
 AERNNightLordGrace::AERNNightLordGrace()
 {
@@ -44,6 +45,19 @@ void AERNNightLordGrace::Interact_Implementation(APlayerController* PlayerContro
 	if (!ERNPC || !ERNPC->LevelUpWidgetClass) return;
 	
 	if (LevelUpPopupWidget) return;
+	
+	// UI 매니저 게이트: 다른 UI(상점, 인벤토리)가 열려있으면 차단
+	if (ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			if (!UIManager->RequestOpenUI(EERNUIType::LevelUp))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("화톳불 : 다른 UI가 열려있어 레벨업 UI를 열 수 없습니다."));
+				return;
+			}
+		}
+	}
 	
 	LevelUpPopupWidget = CreateWidget<UUserWidget>(PlayerController, ERNPC->LevelUpWidgetClass);
 	
@@ -99,6 +113,15 @@ void AERNNightLordGrace::EndInteract_Implementation(APlayerController* PlayerCon
 			
 			ERNPC->SetInputMode(FInputModeGameOnly());
 			ERNPC->SetShowMouseCursor(false);
+			
+			// UI 매니저에 닫힘 알림
+			if (ULocalPlayer* LocalPlayer = ERNPC->GetLocalPlayer())
+			{
+				if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+				{
+					UIManager->CloseActiveUI();
+				}
+			}
 		}
 	}
 	
@@ -142,6 +165,15 @@ void AERNNightLordGrace::HandlePopupClosed()
 				
 				ERNPC->SetInputMode(FInputModeGameOnly());
 				ERNPC->SetShowMouseCursor(false);
+				
+				// UI 매니저에 닫힘 알림
+				if (ULocalPlayer* LocalPlayer = ERNPC->GetLocalPlayer())
+				{
+					if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+					{
+						UIManager->CloseActiveUI();
+					}
+				}
 				
 				UE_LOG(LogTemp, Warning, TEXT("화톳불 : 상호작용 종료 및 UI 애니메이션 완료 닫힘"));
 			}
