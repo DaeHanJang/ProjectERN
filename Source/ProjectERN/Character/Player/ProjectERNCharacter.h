@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "Character/ERNCharacterBase.h"
 #include "Logging/LogMacros.h"
-#include "GameplayTagContainer.h"
 #include "ProjectERNCharacter.generated.h"
 
 class USpringArmComponent;
@@ -63,7 +62,6 @@ protected:
 	TObjectPtr<UERNInputConfig> InputConfig;
 	
 public:
-
 	/** Constructor */
 	AProjectERNCharacter();
 
@@ -77,11 +75,14 @@ protected:
 	
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
+	
+	/** Called for movement input end*/
+	void MoveEnd();
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
-	/** Called for light attack input */
+	/** Called for roll input */
 	void Roll();
 	
 	/** Called for light attack input */
@@ -92,6 +93,9 @@ protected:
 	
 	/** Called for lock on input */
 	void LockOn();
+	
+	/** Called for sprint on input */
+	void ToggleSprint();
 
 public:
 	/** Handles move inputs from either controls or UI interfaces */
@@ -144,6 +148,7 @@ protected:
 	bool bUseCameraYawOnLockOn = true;
 	// ************** 임시 락온 기능 구현 **************
 	
+protected:
 	// 공격 중 움직일 수 있게 하기 위함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
 	bool bCanMoveWhileAttacking = false;
@@ -161,8 +166,21 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
 	float AttackingSpeed = 200;	// 공격 중 속도
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
+	float SprintSpeed = 1000;	// 전력질주 속도
+	
 public:
 	// 움직임 속도 변화 함수
 	UFUNCTION(BlueprintCallable, Category="ERN|Movement")
 	void UpdateMovementSpeed();
+	
+protected:
+	// Sprint 관련 변수/함수
+	FVector2D CachedMoveInput = FVector2D::ZeroVector;
+	
+	// Sprint 멈추기 함수
+	void StopSprint();
+	
+	// 움직임 입력 여부 확인(Sprint 비활성 확인용)
+	bool HasMoveInput() const;
 };

@@ -6,14 +6,15 @@
 #include "NativeGameplayTags.h"
 
 // 캐릭터 입력 태그
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_Move)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_Move)			// 움직임 : WASD
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_Look)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_MouseLook)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_Jump)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_Roll)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_LightAttack)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_HeavyAttack)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_LockOn)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_MouseLook)		// 시야 : Mouse
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_Jump)			// 점프 : SpaceBar
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_Roll)			// 구르기(회피) : LShift
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_LightAttack)	// 일반 공격 : Mouse_LeftClick
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_HeavyAttack)	// 무기 스킬 : Mouse_RightClick
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_LockOn)		// 락온 : Mouse_WheelClick
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_Sprint)		// 전력질주 : Alt
 
 // 전투 상태
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Attacking)
@@ -22,8 +23,9 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Rolling)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Jumping)
 
 // 어빌리티
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Jump)		// 점프
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Roll)		// 회피(구르기)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Jump)	// 점프
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Roll)	// 회피(구르기)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Sprint)	// 전력질주
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Light)	// 일반 공격
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Heavy)	// 무기 스킬
 
@@ -35,3 +37,4 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_StaggerImmune)		// 무적 프레임
 // 상태(움직임)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Falling)	// 공중 상태
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Landing)	// 착지 모션 진행중
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Sprinting)	// 전력질주 상태

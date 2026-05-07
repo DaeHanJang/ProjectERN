@@ -7,8 +7,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/Controller.h"
-#include "EnhancedInputComponent.h"
-#include "EnhancedInputSubsystems.h"
+// #include "EnhancedInputComponent.h"
+// #include "EnhancedInputSubsystems.h"
 #include "GameplayAbilitySpec.h"
 #include "InputActionValue.h"
 #include "ProjectERN.h"
@@ -130,6 +130,13 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 
 	InputComp->BindNativeInputAction(
 		InputConfig,
+		TAG_Input_Move,
+		ETriggerEvent::Completed,
+		this,
+		&AProjectERNCharacter::MoveEnd);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
 		TAG_Input_Look,
 		ETriggerEvent::Triggered,
 		this,
@@ -186,22 +193,21 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::LockOn);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_Sprint,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::ToggleSprint);
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
 	// 해당 태그가 있으면 움직이지 못함
-	/*
-	if (AbilitySystemComponent &&
-		(AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking) ||
-			AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing)))
-	{
-		return;
-	}
-	*/
 	const bool bIsAttacking =
-	AbilitySystemComponent &&
-	AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking);
+		AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking);
 
 	const bool bIsLanding =
 		AbilitySystemComponent &&
@@ -215,8 +221,17 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
+	// 입력 값 갱신(Sprint에 사용)
+	CachedMoveInput = MovementVector;
+
 	// route the input
 	DoMove(MovementVector.X, MovementVector.Y);
+}
+
+void AProjectERNCharacter::MoveEnd()
+{
+	CachedMoveInput = FVector2D::ZeroVector;
+	StopSprint();
 }
 
 void AProjectERNCharacter::Look(const FInputActionValue& Value)
@@ -316,7 +331,7 @@ void AProjectERNCharacter::ToggleTemporaryLockOn()
 		bUseControllerRotationYaw = false;
 		GetCharacterMovement()->bOrientRotationToMovement = true;
 	}
-	
+
 	UpdateMovementSpeed();
 }
 
@@ -327,18 +342,25 @@ void AProjectERNCharacter::UpdateMovementSpeed()
 		return;
 	}
 
+	const bool bIsSprinting = AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(
+		TAG_State_Movement_Sprinting);
+
 	float NewSpeed = DefaultSpeed;
 
 	if (bIsLockOn)
 	{
 		NewSpeed = TargetingSpeed;
 	}
+	else if (bIsSprinting)
+	{
+		NewSpeed = SprintSpeed;
+	}
 
 	if (AbilitySystemComponent && (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)))
 	{
 		NewSpeed = AttackingSpeed;
 	}
-	
+
 	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
 }
 
@@ -386,4 +408,46 @@ void AProjectERNCharacter::HeavyAttack()
 void AProjectERNCharacter::LockOn()
 {
 	ToggleTemporaryLockOn();
+}
+
+void AProjectERNCharacter::ToggleSprint()
+{
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	const bool bIsSprinting = AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Sprinting);
+
+	if (bIsSprinting)
+	{
+		StopSprint();
+		return;
+	}
+
+	if (!HasMoveInput())
+	{
+		return;
+	}
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(
+		FGameplayTagContainer(TAG_Ability_Movement_Sprint));
+}
+
+void AProjectERNCharacter::StopSprint()
+{
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	FGameplayTagContainer SprintTags;
+	SprintTags.AddTag(TAG_Ability_Movement_Sprint);
+
+	AbilitySystemComponent->CancelAbilities(&SprintTags);
+}
+
+bool AProjectERNCharacter::HasMoveInput() const
+{
+	return !CachedMoveInput.IsNearlyZero();
 }
