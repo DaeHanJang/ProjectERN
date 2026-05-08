@@ -25,10 +25,7 @@ public:
 	UERNInventoryWidget(const FObjectInitializer& ObjectInitializer);
 	
 	// 활성화된 슬롯 인덱스 초기화
-	FORCEINLINE void InitFocusSlotIndex()
-	{
-		UpdateFocusSlotIndex(-1);
-	}
+	FORCEINLINE void InitFocusSlotIndex() { UpdateFocusSlotIndex(-1); }
 	
 	// 슬롯 생성
 	UFUNCTION(BlueprintCallable, Category="InventoryUI")
@@ -38,6 +35,7 @@ protected:
 	virtual void NativeConstruct() override;
 	
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	
 private:

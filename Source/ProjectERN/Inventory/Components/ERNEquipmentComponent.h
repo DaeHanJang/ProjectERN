@@ -8,6 +8,7 @@
 #include "Inventory/Data/ERNInventoryList.h"
 #include "ERNEquipmentComponent.generated.h"
 
+class AERNConsumableBase;
 class UItemManagerSubsystem;
 class UERNInventoryComponent;
 class AERNWeaponBase;
@@ -26,13 +27,15 @@ class PROJECTERN_API UERNEquipmentComponent : public UActorComponent
 public:
 	UERNEquipmentComponent();
 
+	FORCEINLINE const int32 GetCurrentConsumableQuantity() const { return CurrentConsumable.GetQuantity(); }
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	// 무기 장착
+	// 초기 무기 장착
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")
 	void Server_EquipWeapon(TSubclassOf<AERNWeaponBase> WeaponClass);
 
-	// 무기 해제
+	// 초기 무기 제거
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")
 	void Server_UnequipWeapon();
 	
@@ -40,39 +43,40 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")
 	void Server_EquipItem(const int32 SlotIndex);
 	
-	// TODO: 소모품 클래스를 만든 후 작성
-	// 아이템 제거 (소모품 전용)
+	// 아이템 버리기 (소모품 전용)
 	UFUNCTION(Server,Reliable, BlueprintCallable, Category = "Equipment")
-	void Server_UnequipItem();
-	
-protected:
-	virtual void BeginPlay() override;
+	void Server_UnequipItem(const int32 Quantity);
 	
 private:
 	UItemManagerSubsystem* GetItemManagerSubsystem() const;
 	UERNInventoryComponent* GetInventoryComponent() const;
 
+	// RepNotify 함수
+	// 장비 슬롯
 	UFUNCTION()
 	void OnRep_EquipableSlot();
+	// 소모품 슬롯
 	UFUNCTION()
 	void OnRep_ConsumableSlot();
 
 public:
 	// 장착 갱신 이벤트
+	// 무기
 	FOnEquipalbeSlotChanged OnEquipmentSlotChanged;
+	// 소모품
 	FOnConsumableSlotChanged OnConsumableSlotChanged;
-	
+
 	// 현재 장착된 무기
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Equipment")
-	AERNWeaponBase* CurrentWeapon;
+	AERNWeaponBase* CurrentWeapon = nullptr;
 	
 	// 무기 슬롯
 	UPROPERTY(ReplicatedUsing="OnRep_EquipableSlot", BlueprintReadOnly, Category = "Equipment")
 	FInventoryItemEntry EquipableSlot;
 	
-	// TODO: 현재 장착된 소모품
-	// UPROPERTY(Replicated, BlueprintReadOnly, Category = "Equipment")
-	// AERNConsumableBase* CurrentConsumable;
+	// 현재 장착된 소모품
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Equipment")
+	FItemRuntimeState CurrentConsumable;
 	
 	// 소모품 슬롯
 	UPROPERTY(ReplicatedUsing="OnRep_ConsumableSlot", BlueprintReadOnly, Category = "Equipment")

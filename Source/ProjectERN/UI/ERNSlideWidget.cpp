@@ -18,11 +18,11 @@ void UERNSlideWidget::NativeConstruct()
 	
 	SetVisibility(ESlateVisibility::Hidden);
 	
-	SlideWidgetEditableText->OnTextChanged.AddDynamic(this, &UERNSlideWidget::HandleEditableTextChanged);
-	SlideWidgetEditableText->OnTextCommitted.AddDynamic(this, &UERNSlideWidget::HandleEditableTextCommitted);
-	SlideWidgetSlider->OnValueChanged.AddDynamic(this, &UERNSlideWidget::HandleSlider);
-	ConfirmButton->OnClicked.AddDynamic(this, &UERNSlideWidget::HandleConfirmButtonClicked);
-	CancelButton->OnClicked.AddDynamic(this, &UERNSlideWidget::HandleCancelButtonClicked);
+	SlideWidgetEditableText->OnTextChanged.AddUniqueDynamic(this, &UERNSlideWidget::HandleEditableTextChanged);
+	SlideWidgetEditableText->OnTextCommitted.AddUniqueDynamic(this, &UERNSlideWidget::HandleEditableTextCommitted);
+	SlideWidgetSlider->OnValueChanged.AddUniqueDynamic(this, &UERNSlideWidget::HandleSlider);
+	ConfirmButton->OnClicked.AddUniqueDynamic(this, &UERNSlideWidget::HandleConfirmButtonClicked);
+	CancelButton->OnClicked.AddUniqueDynamic(this, &UERNSlideWidget::HandleCancelButtonClicked);
 }
 
 void UERNSlideWidget::InitSlideWidget(const FString& Text, const int32 MaxValue) const
@@ -44,19 +44,11 @@ void UERNSlideWidget::HandleEditableTextChanged(const FText& Text)
 
 void UERNSlideWidget::HandleEditableTextCommitted(const FText& Text, ETextCommit::Type CommitMethod)
 {
-	if (CommitMethod == ETextCommit::OnEnter || CommitMethod == ETextCommit::OnUserMovedFocus)
-	{
-		const int32 NewValue = FCString::Atoi(*Text.ToString());
-		const int32 MaxValue = FCString::Atoi(*MaxTextBlock->GetText().ToString());
-		// 슬라이더 갱신
-		SlideWidgetSlider->SetValue(NewValue / MaxValue);
-		Value = NewValue;
-	}
-	else if (CommitMethod == ETextCommit::OnCleared)
-	{
-		SlideWidgetSlider->SetValue(0.0f);
-		Value = 0;
-	}
+	const int32 NewValue = FCString::Atoi(*Text.ToString());
+	const int32 MaxValue = FCString::Atoi(*MaxTextBlock->GetText().ToString());
+	// 슬라이더 갱신
+	SlideWidgetSlider->SetValue(static_cast<float>(NewValue) / MaxValue);
+	Value = NewValue;
 }
 
 void UERNSlideWidget::HandleSlider(float InValue)
