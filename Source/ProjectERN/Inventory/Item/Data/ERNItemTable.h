@@ -34,8 +34,6 @@ struct FERNItemTable : public FTableRowBase
 public:
 	// 외부 데이터(cvs/json)가 import될 때
 	virtual void OnPostDataImport(const UDataTable* InDataTable, const FName InRowName, TArray<FString>& OutCollectedImportProblems) override;
-	// 에디터에서 변경될 때
-	virtual void OnDataTableChanged(const UDataTable* InDataTable, const FName InRowName) override;
 	
 public:
 	// 이름

@@ -13,18 +13,18 @@ UERNInventoryComponent::UERNInventoryComponent()
 	Inventory.SetOwner(this);
 }
 
-void UERNInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(UERNInventoryComponent, Inventory);
-}
-
 void UERNInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	
 	Inventory.Init(MaxSlotSize);
+}
+
+void UERNInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UERNInventoryComponent, Inventory);
 }
 
 UItemManagerSubsystem* UERNInventoryComponent::GetItemManager() const
