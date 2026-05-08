@@ -7,6 +7,7 @@
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
 #include "ConsumableItemDataAsset.generated.h"
 
+class AERNConsumableBase;
 class UGameplayAbility;
 
 /**
@@ -23,10 +24,14 @@ public:
 public:
 	// 사용 가능 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EConsumableType ConsumableType = EConsumableType::None; 
+	EConsumableType ConsumableType = EConsumableType::None;
 	
 	// 사용 소모품 효과
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(EditCondition="ConsumableType == EConsumableType::Usable"))
 	TSoftClassPtr<UGameplayAbility> ConsumableAbility = nullptr;
+			
+	// 소모품 클래스
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(EditCondition="ConsumableType == EConsumableType::Usable"))
+	TSoftClassPtr<AERNConsumableBase> ConsumableClass = nullptr;
 	
 };

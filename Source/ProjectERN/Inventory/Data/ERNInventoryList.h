@@ -17,13 +17,15 @@ struct FInventoryItemEntry : public FFastArraySerializerItem
 public:
 	// Getter/Setter
 	FORCEINLINE const FName& GetItemID() const { return ItemID; }
-	FORCEINLINE void SetItemID(const FName& NewItemID) { ItemID = NewItemID; }
+	FORCEINLINE void SetItemID(const FName& NewItemID) { ItemID = NewItemID; ItemRuntimeState.SetItemID(NewItemID); }
 	FORCEINLINE const int32 GetSlotIndex() const { return SlotIndex; }
 	FORCEINLINE void SetSlotIndex(const int32 NewSlotIndex) { SlotIndex = NewSlotIndex; }
 	FORCEINLINE const int32 GetQuantity() const { return ItemRuntimeState.GetQuantity();}
 	FORCEINLINE void SetQuantity(const int32 NewQuantity) { ItemRuntimeState.SetQuantity(NewQuantity); }
 	FORCEINLINE void AddQuantity(const int32 AddQuantity) { ItemRuntimeState.AddQuantity(AddQuantity); }
-	
+	FORCEINLINE const FItemRuntimeState& GetItemRuntimeState() const { return ItemRuntimeState; }
+	FORCEINLINE void SetItemRuntimeState(const FItemRuntimeState& NewItemRuntimeState) { ItemRuntimeState = NewItemRuntimeState; ItemID = NewItemRuntimeState.GetItemID(); }
+		
 	FORCEINLINE bool IsValid() const { return !ItemID.IsNone(); }
 	
 	// 클라에서 새 아이템 추가됨
@@ -80,6 +82,9 @@ public:
 	
 	// Remove Item
 	void RemoveItem(const int32 SlotIndex, const int32 Count, FItemRuntimeState& OutDropRuntimeState, FInventoryItemEntry& OutChangedEntry);
+	
+	// Change Item
+	FItemRuntimeState ChangeItem(const int32 SlotIndex, const FItemRuntimeState& NewItemRuntimeState);
 	
 	// Debug Log
 	void LogInventory() const;

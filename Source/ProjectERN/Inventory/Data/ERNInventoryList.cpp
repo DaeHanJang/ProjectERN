@@ -86,6 +86,10 @@ bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 Ma
 		const int32 EntrySpace = MaxStackSize - Entry.GetQuantity();
 		// 현재 슬롯에 채울 수량
 		const int32 AddQuantity = FMath::Min(EntrySpace, Remaining);
+		if (EntrySpace <= 0)
+		{
+			continue;
+		}
 		
 		Entry.AddQuantity(AddQuantity);
 		Remaining -= AddQuantity;
@@ -96,6 +100,7 @@ bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 Ma
 		// 인벤토리에 넣을 아이템을 전부 넣었다면
 		if (Remaining <= 0)
 		{
+			ItemRuntimeState.SetQuantity(Remaining);
 			return true;
 		}
 	}
@@ -157,6 +162,16 @@ void FInventoryList::RemoveItem(const int32 SlotIndex, const int32 Count, FItemR
 	MarkItemDirty(Items[SlotIndex]);
 	// 리슨 서버 UI 갱신용 슬롯 데이터 적재
 	OutChangedEntry = Items[SlotIndex];
+}
+
+FItemRuntimeState FInventoryList::ChangeItem(const int32 SlotIndex, const FItemRuntimeState& NewItemRuntimeState)
+{
+	FItemRuntimeState OutItemRuntimeState = Items[SlotIndex].GetItemRuntimeState();
+	
+	Items[SlotIndex].SetItemRuntimeState(NewItemRuntimeState);
+	MarkItemDirty(Items[SlotIndex]);
+	
+	return OutItemRuntimeState;
 }
 
 void FInventoryList::LogInventory() const
