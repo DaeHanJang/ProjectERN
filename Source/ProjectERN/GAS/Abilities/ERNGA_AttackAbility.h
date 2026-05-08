@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "GAS/ERNGameplayAbility.h"
 #include "ERNGA_AttackAbility.generated.h"
 
 /**
@@ -12,7 +13,7 @@
  * 몽타주 재생 및 EndAbility는 블루프린트에서 처리
  */
 UCLASS(Blueprintable)
-class PROJECTERN_API UERNA_AttackAbility : public UGameplayAbility
+class PROJECTERN_API UERNA_AttackAbility : public UERNGameplayAbility
 {
 	GENERATED_BODY()
 

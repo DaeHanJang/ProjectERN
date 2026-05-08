@@ -35,3 +35,9 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_StaggerImmune, "State.StaggerImmune")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Falling, "State.Movement.Falling")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Landing, "State.Movement.Landing")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Sprinting, "State.Movement.Sprinting")
+
+// 소모 자원
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Cost_Stamina, "Data.Cost.Stamina")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Cost_Mana, "Data.Cost.Mana")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Regen_StaminaBlocked, "State.Regen.StaminaBlocked")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Regen_ManaBlocked, "State.Regen.ManaBlocked")

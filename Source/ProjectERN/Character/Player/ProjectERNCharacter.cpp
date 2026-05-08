@@ -101,7 +101,13 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 			PS->CharacterType = CharacterType;
 		}
 	}
-
+	
+	if (HasAuthority())
+	{
+		// 재생 GE적용
+		ApplyPlayerRegenEffects();
+	}
+	
 	// GAS 초기화는 부모 클래스에서 처리
 }
 
@@ -649,4 +655,49 @@ bool AProjectERNCharacter::CacheActiveLightAttackComboInput(const FRotator& Targ
 
 	return false;
 
+}
+
+void AProjectERNCharacter::ApplyPlayerRegenEffects()
+{
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	FGameplayEffectContextHandle Context =
+		AbilitySystemComponent->MakeEffectContext();
+
+	Context.AddSourceObject(this);
+
+	// 스태미나 재생
+	if (StaminaRegenEffectClass)
+	{
+		FGameplayEffectSpecHandle SpecHandle =
+			AbilitySystemComponent->MakeOutgoingSpec(
+				StaminaRegenEffectClass,
+				1.f,
+				Context);
+
+		if (SpecHandle.IsValid())
+		{
+			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(
+				*SpecHandle.Data.Get());
+		}
+	}
+
+	// 마나 재생
+	if (ManaRegenEffectClass)
+	{
+		FGameplayEffectSpecHandle SpecHandle =
+			AbilitySystemComponent->MakeOutgoingSpec(
+				ManaRegenEffectClass,
+				1.f,
+				Context);
+
+		if (SpecHandle.IsValid())
+		{
+			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(
+				*SpecHandle.Data.Get());
+		}
+	}
 }

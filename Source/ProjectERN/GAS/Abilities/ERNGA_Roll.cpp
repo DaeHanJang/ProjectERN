@@ -34,6 +34,7 @@ void UERNGA_Roll::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		}
 		
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
 
 	AProjectERNCharacter* Character = CastChecked<AProjectERNCharacter>(ActorInfo->AvatarActor);

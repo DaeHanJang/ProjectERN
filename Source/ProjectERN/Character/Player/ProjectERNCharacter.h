@@ -16,6 +16,7 @@ class UERNInventoryComponent;
 class UERNEquipmentComponent;
 class UERNShopComponent;
 class UERNInputConfig;
+class UGameplayEffect;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -57,7 +58,7 @@ protected:
 	virtual void PossessedBy(AController* NewController) override;
 	
 	// 회전 보간을 위해 사용
-	void Tick(float DeltaSeconds) override;
+	virtual void Tick(float DeltaSeconds) override;
 	
 	// 태그 기반 입력을 위한 InputConfig 부여
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Input")
@@ -164,7 +165,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn")
 	bool bUseCameraYawOnLockOn = true;
 	
-	void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	// ************** 임시 락온 기능 구현 **************
 	
 public:
@@ -239,4 +240,16 @@ protected:
 	void Server_CacheLightAttackComboInput(FRotator TargetRotation);
 
 	bool CacheActiveLightAttackComboInput(const FRotator& TargetRotation);
+	
+protected:
+	// 스태미나 재생 GE
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|GE")
+	TSubclassOf<UGameplayEffect> StaminaRegenEffectClass;
+	
+	// 마나 재생 GE
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|GE")
+	TSubclassOf<UGameplayEffect> ManaRegenEffectClass;
+	
+	// 재생효과 적용
+	void ApplyPlayerRegenEffects();
 };
