@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EStructureType.h"
 #include "Engine/DataAsset.h"
 #include "PackedLevelActor/PackedLevelActor.h"
 #include "StructureSpawnConfigDataAsset.generated.h"
@@ -14,18 +15,15 @@ struct FERNStructureSpawnEntry
 	GENERATED_BODY()
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSoftClassPtr<APackedLevelActor> PackedLevelActorClass;
+	EStructureType SpawnType = EStructureType::None;
 	
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	//TSoftObjectPtr<UStaticMesh> StaticMesh;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float SpawnWeight = 1.0f;
+	TSoftClassPtr<APackedLevelActor> PackedLevelActorClass;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MinSpawnCount = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(ClampMin="0", UIMin="0"))
+	int32 MinSpawnCount = 0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(ClampMin="0", UIMin="0"))
 	int32 MaxSpawnCount = 1;
 };
 
