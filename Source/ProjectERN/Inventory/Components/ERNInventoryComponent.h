@@ -28,6 +28,7 @@ public:
 	// Getter
 	FORCEINLINE int32 GetMaxStackSize() const { return MaxSlotSize; }
 	FORCEINLINE const FInventoryList& GetInventory() const { return Inventory; }
+	FORCEINLINE FInventoryList& GetInventory() { return Inventory; }
 	FORCEINLINE const int32 GetItemQuantity(const int32 SlotIndex) const { return Inventory.GetItemQuantity(SlotIndex); }
 	
 	// Add Item
@@ -38,7 +39,7 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void Server_RemoveItem(const int32 SlotIndex, const int32 Count);
 	
-protected:
+protected: 
 	virtual void BeginPlay() override;
 	
 private:

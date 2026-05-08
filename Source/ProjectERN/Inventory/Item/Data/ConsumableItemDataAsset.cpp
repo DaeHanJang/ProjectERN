@@ -12,5 +12,9 @@ void UConsumableItemDataAsset::GatherSoftPaths(const EItemAssetLoadFlags LoadFla
 		{
 			OutPaths.AddUnique(ConsumableAbility.ToSoftObjectPath());
 		}
+		if (ConsumableType == EConsumableType::Usable && !ConsumableClass.IsNull())
+		{
+			OutPaths.AddUnique(ConsumableClass.ToSoftObjectPath());
+		}
 	}
 }

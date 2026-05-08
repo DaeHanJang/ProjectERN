@@ -374,9 +374,10 @@ void AERNPlayerController::ToggleInventory()
 		
 		InventoryWidget->SetVisibility(ESlateVisibility::Visible);
 		
-		FInputModeUIOnly InputMode;
+		FInputModeGameAndUI InputMode;
 		InputMode.SetWidgetToFocus(InventoryWidget->TakeWidget());
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(true);
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
 		
