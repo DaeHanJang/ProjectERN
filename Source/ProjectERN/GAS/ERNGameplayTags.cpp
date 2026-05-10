@@ -35,6 +35,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_StaggerImmune, "State.StaggerImmune")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Falling, "State.Movement.Falling")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Landing, "State.Movement.Landing")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Sprinting, "State.Movement.Sprinting")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Immunity_Damage, "State.Immunity.Damage")
 
 // 소모 자원
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Cost_Stamina, "Data.Cost.Stamina")

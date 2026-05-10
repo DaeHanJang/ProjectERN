@@ -32,12 +32,13 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Heavy)	// 무기 스킬
 // 경직 상태
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Stagger)			// 현재 경직 중
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_SuperArmor)		// 슈퍼아머 (경직 무시)
-UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_StaggerImmune)		// 무적 프레임
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_StaggerImmune)		// 피격 무적 프레임
 
 // 상태(움직임)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Falling)	// 공중 상태
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Landing)	// 착지 모션 진행중
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Sprinting)	// 전력질주 상태
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Immunity_Damage)		// 대미지 면역 상태
 
 // 자원 관련
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Data_Cost_Stamina)	// 소모할 스태미나

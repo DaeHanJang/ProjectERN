@@ -82,6 +82,13 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 		return 0.0f;
 	}
 
+	// 대미지 면역 상태
+	if (AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Immunity_Damage))
+	{
+		return 0.0f;
+	}
+	
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	if (AttributeSet && ActualDamage > 0.0f)

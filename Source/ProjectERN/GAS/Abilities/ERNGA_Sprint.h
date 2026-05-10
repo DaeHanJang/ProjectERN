@@ -7,6 +7,9 @@
 #include "GAS/ERNGameplayAbility.h"
 #include "ERNGA_Sprint.generated.h"
 
+class UGameplayEffect;
+struct FOnAttributeChangeData;
+
 /**
  * 
  */
@@ -39,4 +42,29 @@ public:
 	
 	// 끝 요청
 	void RequestStopSprint();
+	
+protected:
+	// 초당 소모될 Stamina양
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Cost")
+	float StaminaCostPerSecond = 10.f;
+
+	// GE 실행 주기
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Cost")
+	float StaminaDrainPeriod = 0.1f;
+
+	// 설정할 GE클래스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|GE")
+	TSubclassOf<UGameplayEffect> SprintStaminaDrainEffectClass;
+
+	FActiveGameplayEffectHandle StaminaDrainEffectHandle;
+
+	void ApplyStaminaDrainEffect(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo);
+
+	void RemoveStaminaDrainEffect();
+
+	void HandleStaminaChanged(const FOnAttributeChangeData& Data);
+	
 };
