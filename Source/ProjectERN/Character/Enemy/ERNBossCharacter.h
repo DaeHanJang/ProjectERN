@@ -84,7 +84,7 @@ public:
 	// 현재 페이즈의 체력 비율 조건 체크
 	UFUNCTION(BlueprintPure, Category = "Boss")
 	int32 GetPhaseIndexForCurrentHealth() const;
-
+	
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnDeath() override;

@@ -9,6 +9,8 @@
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Engine/DamageEvents.h"
 #include "MotionWarpingComponent.h"
+#include "Inventory/Item/Data/ERNItemRuntimeState.h"
+#include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 
 AERNEnemyCharacter::AERNEnemyCharacter()
 {
@@ -180,14 +182,17 @@ void AERNEnemyCharacter::OnDeath()
 
 void AERNEnemyCharacter::SpawnDrops()
 {
-	// TODO: 드랍 테이블 기반으로 아이템 스폰
-	for (const FDropItemInfo& DropInfo : DropTable)
+	if (!DropTable)
 	{
-		float RandomValue = FMath::FRand();
-		if (RandomValue <= DropInfo.DropChance)
+		return;
+	}
+	
+	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
+	{
+		FItemRuntimeState ItemRuntimeState;
+		if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState))
 		{
-			int32 DropCount = FMath::RandRange(DropInfo.MinCount, DropInfo.MaxCount);
-			UE_LOG(LogTemp, Log, TEXT("Dropped %s x%d"), *DropInfo.ItemID.ToString(), DropCount);
+			ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation(), GetActorRotation());
 		}
 	}
 }

@@ -35,8 +35,6 @@ private:
 	
 	// TODO: 제거 함수 구현
 	
-	// TODO: DropTable의 확률로 ItemID 선정 함수 구현
-
 	// Collision Bind Handler
 	// Begin Overlap
 	UFUNCTION()
@@ -56,8 +54,10 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UStaticMeshComponent> StaticMesh;
 	
-	// TODO: DropTable
+	// DropTable
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
-	FName ItemID = NAME_None;
+	TObjectPtr<UDataTable> DropTable;
 	
+	// 중복 방지 플래그
+	bool bOpened = false;
 };

@@ -5,8 +5,11 @@
 #include "GAS/ERNAttributeSet.h"
 #include "GAS/ERNGameplayTags.h"
 #include "AbilitySystemComponent.h"
+#include "OnlineSubsystemUtils.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "Components/CapsuleComponent.h"
+#include "Inventory/Item/Data/ERNItemRuntimeState.h"
+#include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
 AERNBossCharacter::AERNBossCharacter()

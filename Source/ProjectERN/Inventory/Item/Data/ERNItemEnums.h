@@ -45,7 +45,7 @@ enum class EWeaponType : uint8
 	None   UMETA(Hidden),
 	Sword  UMETA(DisplayName="Sword"),
 	Staff  UMETA(DisplayName="Staff"),
-	Rapier UMETA(DisplayName="Rapier")
+	Polearm UMETA(DisplayName="Rapier")
 };
 
 // Consumable Type
