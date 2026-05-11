@@ -24,6 +24,7 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Jumping)
 
 // 어빌리티
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Jump)	// 점프
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_WallJump)	// 벽 점프
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Roll)	// 회피(구르기)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Sprint)	// 전력질주
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Light)	// 일반 공격
@@ -38,6 +39,7 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_StaggerImmune)		// 피격 무적 프레
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Falling)	// 공중 상태
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Landing)	// 착지 모션 진행중
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Sprinting)	// 전력질주 상태
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_WallJumpUsed)	// 벽점프 사용상태
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Immunity_Damage)		// 대미지 면역 상태
 
 // 자원 관련

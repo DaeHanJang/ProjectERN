@@ -191,6 +191,9 @@ void AERNCharacterBase::OnMovementModeChanged(EMovementMode PrevMovementMode, ui
 	}
 	else
 	{
+		// 공중 상태 태그 Off
 		AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Movement_Falling, 0);
+		// 벽 점프 사용상태 Off
+		AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Movement_WallJumpUsed, 0);
 	}
 }

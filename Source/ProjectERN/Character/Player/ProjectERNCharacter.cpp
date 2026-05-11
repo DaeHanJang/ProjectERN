@@ -101,13 +101,13 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 			PS->CharacterType = CharacterType;
 		}
 	}
-	
+
 	if (HasAuthority())
 	{
 		// 재생 GE적용
 		ApplyPlayerRegenEffects();
 	}
-	
+
 	// GAS 초기화는 부모 클래스에서 처리
 }
 
@@ -122,10 +122,10 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 	const bool bIsAttacking =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking);
-	
+
 	// Sprint 중에는 LockOn 강제 회전을 끈다.
 	// const bool bShouldRotateForLockOn = bIsLockOn && !bIsSprinting && !bIsAttacking;
-	
+
 	if (bIsLockOn && !bIsSprinting && !bIsAttacking)
 	{
 		if (IsLocallyControlled() && Controller)
@@ -138,17 +138,17 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 				Server_UpdateLockOnYaw(ControlYaw);
 			}
 		}
-		
+
 		DesiredActorRotation = GetLockOnDesiredRotation();
-		
+
 		if (HasAuthority() || IsLocallyControlled())
 		{
 			InterpActorRotation(DeltaSeconds);
 		}
-		
+
 		return;
 	}
-	
+
 	// 공격/콤보 회전: 로컬 + 서버
 	if (bHasPendingActorRotation)
 	{
@@ -341,11 +341,28 @@ void AProjectERNCharacter::DoLook(float Yaw, float Pitch)
 
 void AProjectERNCharacter::DoJumpStart()
 {
+	/*
 	if (AbilitySystemComponent)
 	{
 		// 점프 태그를 가진 어빌리티 실행 시도
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Jump));
 	}
+	*/
+
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	// 공중 상태라면 벽 점프 시도
+	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Falling))
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_WallJump));
+		return;
+	}
+
+	// 점프
+	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Jump));
 }
 
 void AProjectERNCharacter::DoJumpEnd()
@@ -474,7 +491,7 @@ void AProjectERNCharacter::LightAttack()
 	}
 
 	const FRotator TargetRotation = GetAttackDesiredRotation();
-	
+
 	if (CacheActiveLightAttackComboInput(TargetRotation))
 	{
 		if (!HasAuthority())
@@ -491,7 +508,7 @@ void AProjectERNCharacter::LightAttack()
 	{
 		Server_SetPendingAttackRotation(TargetRotation);
 	}
-	
+
 	// 활성 중인 LightAttack이 없으면 첫 공격을 시작한다.
 	AbilitySystemComponent->TryActivateAbilitiesByTag(
 		FGameplayTagContainer(TAG_Ability_Attack_Light));
@@ -654,7 +671,6 @@ bool AProjectERNCharacter::CacheActiveLightAttackComboInput(const FRotator& Targ
 	}
 
 	return false;
-
 }
 
 void AProjectERNCharacter::ApplyPlayerRegenEffects()
