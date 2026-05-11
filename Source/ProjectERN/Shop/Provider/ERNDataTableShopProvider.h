@@ -39,9 +39,9 @@ public:
     FOnShopError OnShopError;
 
 protected:
-    // 인벤토리 파트에서 작성한 전체 아이템 데이터 테이블을 에디터(블루프린트)에서 할당합니다.
+    // 상점 전용 상품 목록 테이블 (FERNShopProductTable 구조체 사용)
     UPROPERTY(EditDefaultsOnly, Category = "Shop Data")
-    UDataTable* ItemDataTable;
+    UDataTable* ShopProductTable;
 
     UPROPERTY()
     UObject* ShopDataProvider = nullptr;
