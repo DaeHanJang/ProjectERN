@@ -4,6 +4,7 @@
 
 #include "Character/Player/ERNPlayerController.h"
 #include "Components/SphereComponent.h"
+#include "Inventory/Item/Data/ERNDropTable.h"
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 
@@ -25,7 +26,7 @@ AChest::AChest()
 	// Mesh
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
 	StaticMesh->SetupAttachment(GetRootComponent());
-	StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	StaticMesh->SetCollisionProfileName(TEXT("BlockAll"));
 }
 
 // Called when the game starts or when spawned
@@ -48,23 +49,22 @@ void AChest::Interact_Implementation(APlayerController* PlayerController)
 	{
 		return;
 	}
-	
-	// TODO: 상호작용 시 DropTable에 따라 ItemActor 생성 후 제거
-	
+		
+	bOpened = true;
 	if (UItemManagerSubsystem* ItemManager = GetItemManager())
 	{
 		FItemRuntimeState ItemRuntimeState;
-		ItemRuntimeState.SetItemID(ItemID);
-		ItemRuntimeState.SetQuantity(1);
-		ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(-150.0f, 0.0f, 0.0f), GetActorRotation());
-		//Destroy();
+		if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState))
+		{
+			ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(-150.0f, 0.0f, 0.0f), GetActorRotation());
+		}
+		Destroy();
 	}
 }
 
 bool AChest::CanInteract_Implementation() const
 {
-	// TODO: 검증 코드 작성
-	return true;
+	return !IsActorBeingDestroyed() && DropTable && DropTable->GetRowStruct() == FERNDropTable::StaticStruct() && !bOpened;
 }
 
 FText AChest::GetInteractionText_Implementation() const

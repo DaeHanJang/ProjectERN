@@ -47,26 +47,6 @@ struct FEnemyProjectileConfig
 	FName SpawnSocket = TEXT("hand_r");
 };
 
-
- // 드랍 아이템 정보 
-USTRUCT(BlueprintType)
-struct FDropItemInfo
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName ItemID;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float DropChance = 0.5f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MinCount = 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MaxCount = 1;
-};
-
 UCLASS(Abstract)
 class PROJECTERN_API AERNEnemyCharacter : public AERNCharacterBase
 {
@@ -113,8 +93,8 @@ private:
 public:
 	// 드롭 테이블
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
-	TArray<FDropItemInfo> DropTable;
-
+	TObjectPtr<UDataTable> DropTable;
+	
 	// 골드 보상
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
 	int32 MinGold = 10;

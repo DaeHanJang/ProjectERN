@@ -31,8 +31,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category="InventoryUI")
 	void CreateSlot(const int32 MaxSlotSize, const int32 ColumnCount);
 	
+	// 현재 캐릭터 컴포넌트에 이벤트 바인딩
+	UFUNCTION(BlueprintCallable, Category="InventoryUI")
+	void RefreshFromCurrentCharacter();
+	
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 	
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -66,6 +71,9 @@ private:
 	// 슬라이어 위젯 갱신 이벤트 핸들러
 	UFUNCTION()
 	void UpdateSlideWidget(const int32 NewQuantity);
+	
+	// 현재 캐릭터 컴포넌트에 이벤트 언바인딩
+	void UnbindFromCurrentComponent();
 	
 private:
 	// 장비 슬롯
@@ -103,6 +111,14 @@ private:
 	// 인벤토리 슬롯 배열
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UERNInventorySlotWidget>> SlotWidgets;
+	
+	// 현재 캐릭터의 인벤토리 컴포넌트
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UERNInventoryComponent> BoundInventoryComponent;
+	
+	// 현재 캐릭터의 장착 컴포넌트
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UERNEquipmentComponent> BoundEquipmentComponent;
 	
 	// 활성화된 슬롯 인덱스
 	int32 FocusSlotIndex = -1;

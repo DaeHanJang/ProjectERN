@@ -112,6 +112,7 @@ void AERNPlayerController::BeginPlay()
 			if (InventoryWidget)
 			{
 				InventoryWidget->AddToViewport();
+				RefreshInventoryWidget();
 			}
 		}
 	}
@@ -144,6 +145,27 @@ void AERNPlayerController::BeginPlay()
 		}
 	}
 }
+
+void AERNPlayerController::AcknowledgePossession(class APawn* P)
+{
+	Super::AcknowledgePossession(P);
+	
+	RefreshInventoryWidget();
+}
+
+void AERNPlayerController::RefreshInventoryWidget()
+{
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+	
+	if (UERNInventoryWidget* ERNInventoryWidget = Cast<UERNInventoryWidget>(InventoryWidget))
+	{
+		ERNInventoryWidget->RefreshFromCurrentCharacter();
+	}
+}
+
 
 void AERNPlayerController::TrySendNickname()
 {
