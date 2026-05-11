@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Inventory/Item/Data/ERNItemEnums.h"
+#include "Engine/DataTable.h"
 #include "ERNShopTypes.generated.h"
 
 // ===== 로그 카테고리 =====
@@ -24,6 +25,31 @@ enum class EERNTransactionResult : uint8
 };
 
 // ===== 구조체 =====
+
+/**
+ * 상점 진열용 상품 데이터 구조체 (데이터 테이블용)
+ */
+USTRUCT(BlueprintType)
+struct FERNShopProductTable : public FTableRowBase
+{
+    GENERATED_BODY()
+
+    // 어느 상점에서 파는가?
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    EShopType ShopType = EShopType::None;
+
+    // 무엇을 파는가? (DT_ItemTable의 RowName과 매핑되는 외래 키)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    FName ItemID;
+
+    // 얼마에 파는가?
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    int32 Price = 0;
+
+    // 몇 개나 파는가? (-1: 무제한, 0 이상: 제한 수량)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    int32 MaxStock = -1;
+};
 
 /**
  * 상점 아이템 데이터 - 개별 아이템의 모든 정보를 담는 구조체

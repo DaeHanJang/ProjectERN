@@ -40,6 +40,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FText DisplayName = FText::GetEmpty();
 	
+	// 상세 설명
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FText Description = FText::GetEmpty();
+	
 	// 종류
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EItemType ItemType = EItemType::None;
