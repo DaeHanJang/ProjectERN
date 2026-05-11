@@ -23,8 +23,8 @@ FText UERNUIFunctionLibrary::GetWeaponTypeText(EWeaponType WeaponType)
 		return FText::FromString(TEXT("검"));
 	case EWeaponType::Staff:
 		return FText::FromString(TEXT("지팡이"));
-	case EWeaponType::Rapier:
-		return FText::FromString(TEXT("레이피어"));
+	case EWeaponType::Polearm:
+		return FText::FromString(TEXT("폴암"));
 	default:
 		return FText::GetEmpty();
 	}
