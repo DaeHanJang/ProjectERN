@@ -24,8 +24,31 @@ void UERNInventoryWidget::NativeConstruct()
 	
 	SetVisibility(ESlateVisibility::Hidden);
 	
-	if (UERNInventoryComponent* InventoryComponent = GetInventoryComponent())
+	// 현재 캐릭터 컴포넌트에 이벤트 바인딩
+	RefreshFromCurrentCharacter();
+	
+	// 슬라이드 위젯 확인, 취소 버튼 클릭 이벤트 구독
+	if (WBP_SlideWidget)
 	{
+		WBP_SlideWidget->OnConfirmButtonClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateSlideWidget);
+		WBP_SlideWidget->OnCancelButtonClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateSlideWidget);
+	}
+}
+
+void UERNInventoryWidget::RefreshFromCurrentCharacter()
+{
+	// 구독된 이벤트가 있다면 해제
+	UnbindFromCurrentComponent();
+	
+	// 활성화 슬롯 초기화
+	InitFocusSlotIndex();
+	
+	UERNInventoryComponent* InventoryComponent = GetInventoryComponent();
+	if (InventoryComponent)
+	{
+		// 현재 캐릭터의 인벤토리 컴포넌트 설정
+		BoundInventoryComponent = InventoryComponent;
+		
 		// 슬롯 생성
 		CreateSlot(InventoryComponent->GetMaxStackSize(), ColumnSize);
 		
@@ -38,9 +61,24 @@ void UERNInventoryWidget::NativeConstruct()
 			UpdateInventorySlot(Entry);
 		}
 	}
-	
-	if (UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent())
+	else
 	{
+		BoundInventoryComponent = nullptr;
+		
+		if (InventoryUniformGridPanel)
+		{
+			InventoryUniformGridPanel->ClearChildren();
+		}
+		
+		SlotWidgets.Empty();
+	}
+	
+	UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent();
+	if (EquipmentComponent)
+	{
+		// 현재 캐릭터의 장착 컴포넌트 설정
+		BoundEquipmentComponent = EquipmentComponent;
+		
 		// 장비 슬롯 갱신 이벤트 구독
 		EquipmentComponent->OnEquipmentSlotChanged.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateEquipableSlot);
 		EquipmentComponent->OnConsumableSlotChanged.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateConsumableSlot);
@@ -49,10 +87,52 @@ void UERNInventoryWidget::NativeConstruct()
 		UpdateEquipableSlot(EquipmentComponent->EquipableSlot);
 		UpdateConsumableSlot(EquipmentComponent->ConsumableSlot);
 	}
+	else
+	{
+		BoundEquipmentComponent = nullptr;
+		
+		if (EquipableSlotWidget)
+		{
+			EquipableSlotWidget->ClearItem();
+		}
+		
+		if (ConsumableSlotWidget)
+		{
+			ConsumableSlotWidget->ClearItem();
+		}
+	}
+}
+
+void UERNInventoryWidget::NativeDestruct()
+{
+	// 현재 캐릭터 컴포넌트에 이벤트 언바인딩
+	UnbindFromCurrentComponent();
 	
-	// 슬라이드 위젯 확인, 취소 버튼 클릭 이벤트 구독
-	WBP_SlideWidget->OnConfirmButtonClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateSlideWidget);
-	WBP_SlideWidget->OnCancelButtonClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateSlideWidget);
+	// 슬라이드 위젯 확인, 취소 버튼 클릭 이벤트 구독 해제
+	if (WBP_SlideWidget)
+	{
+		WBP_SlideWidget->OnConfirmButtonClicked.RemoveDynamic(this, &UERNInventoryWidget::UpdateSlideWidget);
+		WBP_SlideWidget->OnCancelButtonClicked.RemoveDynamic(this, &UERNInventoryWidget::UpdateSlideWidget);
+	}
+	
+	Super::NativeDestruct();
+}
+
+void UERNInventoryWidget::UnbindFromCurrentComponent()
+{
+	if (UERNInventoryComponent* InventoryComponent = BoundInventoryComponent.Get())
+	{
+		InventoryComponent->OnInventorySlotChanged.RemoveDynamic(this, &UERNInventoryWidget::UpdateInventorySlot);
+	}
+	
+	if (UERNEquipmentComponent* EquipmentComponent = BoundEquipmentComponent.Get())
+	{
+		EquipmentComponent->OnEquipmentSlotChanged.RemoveDynamic(this, &UERNInventoryWidget::UpdateEquipableSlot);
+		EquipmentComponent->OnConsumableSlotChanged.RemoveDynamic(this, &UERNInventoryWidget::UpdateConsumableSlot);
+	}
+	
+	BoundInventoryComponent = nullptr;
+	BoundEquipmentComponent = nullptr;
 }
 
 FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
@@ -262,6 +342,12 @@ void UERNInventoryWidget::UpdateInventorySlot(const FInventoryItemEntry& Entry)
 
 void UERNInventoryWidget::UpdateEquipableSlot(const FInventoryItemEntry& Entry)
 {
+	if (Entry.GetItemID().IsNone() || Entry.GetQuantity() <= 0)
+	{
+		EquipableSlotWidget->ClearItem();
+		return;
+	}
+	
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
 		// TODO: 비동기 로드 변경
@@ -276,6 +362,12 @@ void UERNInventoryWidget::UpdateEquipableSlot(const FInventoryItemEntry& Entry)
 
 void UERNInventoryWidget::UpdateConsumableSlot(const FInventoryItemEntry& Entry)
 {
+	if (Entry.GetItemID().IsNone() || Entry.GetQuantity() <= 0)
+	{
+		ConsumableSlotWidget->ClearItem();
+		return;
+	}
+	
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
 		if (Entry.GetItemID() == NAME_None)

@@ -131,10 +131,14 @@ void AERNItemActor::SetMesh(const UItemDataAssetBase* DA) const
 	if (DA->StaticMesh)
 	{
 		StaticMesh->SetStaticMesh(DA->StaticMesh.Get());
+		StaticMesh->SetRelativeRotation(DA->Rotator);
+		StaticMesh->SetRelativeScale3D(DA->Scale);
 	}
 	else if (DA->SkeletalMesh)
 	{
 		SkeletalMesh->SetSkeletalMesh(DA->SkeletalMesh.Get());
+		SkeletalMesh->SetRelativeRotation(DA->Rotator);
+		SkeletalMesh->SetRelativeScale3D(DA->Scale);
 	}
 }
 
