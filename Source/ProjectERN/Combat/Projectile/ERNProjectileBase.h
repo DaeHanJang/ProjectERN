@@ -12,6 +12,9 @@ class UNiagaraComponent;
 class UNiagaraSystem;
 class UStaticMeshComponent;
 class UCurveFloat;
+class USoundBase;
+class USoundAttenuation;
+class UAudioComponent;
 
 /**
  * AERNProjectileBase - 원거리 투사체 베이스
@@ -55,6 +58,9 @@ protected:
 	// 로컬 스페이스 방향을 받아 PMC Velocity / 액터 회전 적용
 	void ApplyInitialDirection(const FVector& LocalDir);
 
+	// 폭발 범위 데미지 적용
+	void ApplyExplosionDamage(const FVector& ExplosionCenter);
+
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -78,6 +84,26 @@ public:
 	// 착탄 시 나이아가라 이펙트
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
 	UNiagaraSystem* ImpactEffect;
+
+	// 착탄 시 사운드
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
+	USoundBase* ImpactSound;
+
+	// 사운드 감쇠 설정
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
+	USoundAttenuation* ImpactSoundAttenuation;
+
+	// 비행 중 루프 사운드
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
+	USoundBase* FlightSound;
+
+	// 비행 사운드 감쇠 설정
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
+	USoundAttenuation* FlightSoundAttenuation;
+
+	// 비행 사운드 컴포넌트
+	UPROPERTY()
+	UAudioComponent* FlightAudioComponent;
 
 	// 착탄 이펙트 - 모든 클라이언트에서 재생
 	UFUNCTION(NetMulticast, Unreliable)
@@ -141,4 +167,23 @@ public:
 	// 서버가 랜덤 결정한 발사 방향 - 클라에 InitialOnly로 동기화
 	UPROPERTY(ReplicatedUsing = OnRep_ChosenInitialDir)
 	FVector ChosenInitialDir = FVector::ZeroVector;
+
+	// 폭발 활성화
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion")
+	bool bExplode = false;
+
+	// 폭발 범위 (cm)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
+	float ExplosionRadius = 300.f;
+
+	// 폭발 데미지
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
+	float ExplosionDamage = 50.f;
+
+	// 폭발 경직력
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
+	float ExplosionStaggerPower = 30.f;
 };
