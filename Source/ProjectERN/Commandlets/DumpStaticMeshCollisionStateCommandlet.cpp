@@ -41,7 +41,9 @@ int32 UDumpStaticMeshCollisionStateCommandlet::Main(const FString& Params)
 	}
 
 	UBodySetup* BodySetup = StaticMesh->GetBodySetup();
+#if WITH_EDITORONLY_DATA
 	const UStaticMesh* ComplexCollisionMesh = StaticMesh->ComplexCollisionMesh;
+#endif
 
 	TArray<FString> Lines;
 	Lines.Add(TEXT("DumpStaticMeshCollisionStateCommandlet"));
@@ -49,6 +51,7 @@ int32 UDumpStaticMeshCollisionStateCommandlet::Main(const FString& Params)
 	Lines.Add(FString::Printf(TEXT("AssetName=%s"), *StaticMesh->GetName()));
 	Lines.Add(FString::Printf(TEXT("LOD0Triangles=%d"), StaticMesh->GetNumTriangles(0)));
 	Lines.Add(FString::Printf(TEXT("LODForCollision=%d"), StaticMesh->LODForCollision));
+#if WITH_EDITORONLY_DATA
 	Lines.Add(
 		FString::Printf(
 			TEXT("ComplexCollisionMesh=%s"),
@@ -57,6 +60,10 @@ int32 UDumpStaticMeshCollisionStateCommandlet::Main(const FString& Params)
 		FString::Printf(
 			TEXT("ComplexCollisionMeshLOD0Triangles=%d"),
 			ComplexCollisionMesh ? ComplexCollisionMesh->GetNumTriangles(0) : -1));
+#else
+	Lines.Add(TEXT("ComplexCollisionMesh=EditorOnlyDataUnavailable"));
+	Lines.Add(TEXT("ComplexCollisionMeshLOD0Triangles=-1"));
+#endif
 
 	if (!BodySetup)
 	{
