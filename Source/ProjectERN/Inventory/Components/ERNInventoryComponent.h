@@ -39,6 +39,10 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void Server_RemoveItem(const int32 SlotIndex, const int32 Count);
 	
+	// Copy InventoryComponent
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	void CopyInventoryFrom(const UERNInventoryComponent* Source);
+	
 protected: 
 	virtual void BeginPlay() override;
 	

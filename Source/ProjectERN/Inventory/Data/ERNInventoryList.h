@@ -86,6 +86,9 @@ public:
 	// Change Item
 	FItemRuntimeState ChangeItem(const int32 SlotIndex, const FItemRuntimeState& NewItemRuntimeState);
 	
+	// Copy Inventory
+	void CopyFrom(const FInventoryList& SourceInventory, const int32 Size);
+	
 	// Debug Log
 	void LogInventory() const;
 	
