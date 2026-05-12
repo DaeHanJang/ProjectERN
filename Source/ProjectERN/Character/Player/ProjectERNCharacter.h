@@ -252,4 +252,22 @@ protected:
 	
 	// 재생효과 적용
 	void ApplyPlayerRegenEffects();
+	
+	// *** 멀티 환경에서 방향별 구르기 적용시키기 ***
+private:
+	// 구르기 입력 방향 저장 변수
+	FVector PendingRollDirection = FVector::ForwardVector;
+	
+	// 회피 입력 순간 방향 계산
+	FVector GetRollWorldDirection() const;
+
+public:
+	FVector GetPendingRollDirection() const { return PendingRollDirection; }
+
+private:
+	// 서버에서 실행
+	UFUNCTION(Server, Reliable)
+	void Server_RequestRoll(FVector_NetQuantizeNormal RollDirection);
+	
+	// *** 멀티 환경에서 방향별 구르기 적용시키기 ***
 };

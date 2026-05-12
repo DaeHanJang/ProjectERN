@@ -38,9 +38,9 @@ void UERNGA_Roll::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	}
 
 	AProjectERNCharacter* Character = CastChecked<AProjectERNCharacter>(ActorInfo->AvatarActor);
-	UCharacterMovementComponent* Movement = Character->GetCharacterMovement();
 
-	const FVector InputVector = Movement->GetLastInputVector();
+	// const FVector InputVector = Movement->GetLastInputVector();	// 구르기 시 입력 방향 받아옴
+	const FVector InputVector = Character->GetPendingRollDirection();	// 멀티 환경에서 적용하기 위해 수정
 	const bool bIsLockOn = Character->IsLockOn();
 
 	// 기본 구르기 섹션
@@ -58,7 +58,7 @@ void UERNGA_Roll::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		Character->SetActorRotation(InputVector.Rotation());
 	}
 
-	// 3. 몽타주 섹션 재생
+	// 몽타주 섹션 재생
 	UAbilityTask_PlayMontageAndWait* Task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 		this, NAME_None, RollMontage, 1.0f, SectionName);
 

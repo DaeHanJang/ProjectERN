@@ -302,10 +302,25 @@ void AProjectERNCharacter::Look(const FInputActionValue& Value)
 
 void AProjectERNCharacter::Roll()
 {
-	if (AbilitySystemComponent)
+	if (!AbilitySystemComponent)
 	{
+		return;
+	}
+
+	// 방향 계산
+	const FVector RollDirection = GetRollWorldDirection();
+
+	if (HasAuthority())
+	{
+		// 구르기 방향 결정
+		PendingRollDirection = RollDirection;
+		
 		// 구르기 태그를 가진 어빌리티 실행 시도
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Roll));
+	}
+	else
+	{
+		Server_RequestRoll(RollDirection);
 	}
 }
 
@@ -341,27 +356,19 @@ void AProjectERNCharacter::DoLook(float Yaw, float Pitch)
 
 void AProjectERNCharacter::DoJumpStart()
 {
-	/*
-	if (AbilitySystemComponent)
-	{
-		// 점프 태그를 가진 어빌리티 실행 시도
-		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Jump));
-	}
-	*/
-
 	if (!AbilitySystemComponent)
 	{
 		return;
 	}
 
-	// 공중 상태라면 벽 점프 시도
+	// 공중 상태라면 벽 점프 실행
 	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Falling))
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_WallJump));
 		return;
 	}
 
-	// 점프
+	// 점프 실행
 	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Jump));
 }
 
@@ -510,8 +517,7 @@ void AProjectERNCharacter::LightAttack()
 	}
 
 	// 활성 중인 LightAttack이 없으면 첫 공격을 시작한다.
-	AbilitySystemComponent->TryActivateAbilitiesByTag(
-		FGameplayTagContainer(TAG_Ability_Attack_Light));
+	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Light));
 }
 
 void AProjectERNCharacter::HeavyAttack()
@@ -547,8 +553,8 @@ void AProjectERNCharacter::ToggleSprint()
 		return;
 	}
 
-	AbilitySystemComponent->TryActivateAbilitiesByTag(
-		FGameplayTagContainer(TAG_Ability_Movement_Sprint));
+	// 전력질주 실행
+	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Sprint));
 }
 
 void AProjectERNCharacter::StopSprint()
@@ -715,5 +721,31 @@ void AProjectERNCharacter::ApplyPlayerRegenEffects()
 			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(
 				*SpecHandle.Data.Get());
 		}
+	}
+}
+
+FVector AProjectERNCharacter::GetRollWorldDirection() const
+{
+	if (!CachedMoveInput.IsNearlyZero() && Controller)
+	{
+		const FRotator ControlRotation = Controller->GetControlRotation();
+		const FRotator YawRotation(0.f, ControlRotation.Yaw, 0.f);
+
+		const FVector Forward = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+		const FVector Right = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+		return (Forward * CachedMoveInput.Y + Right * CachedMoveInput.X).GetSafeNormal();
+	}
+
+	return GetActorForwardVector();
+}
+
+void AProjectERNCharacter::Server_RequestRoll_Implementation(FVector_NetQuantizeNormal RollDirection)
+{
+	PendingRollDirection = RollDirection.GetSafeNormal();
+
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Roll));
 	}
 }
