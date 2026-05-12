@@ -136,9 +136,13 @@ public:
 	void SetCurrentInteractable(AActor* Interactable) { CurrentInteractableActor = Interactable; }
 	void ClearCurrentInteractable() { CurrentInteractableActor = nullptr; }
 	
-	// 인벤토리 열기, 닫기
+	// 인벤토리 열기
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	void ToggleInventory();
+	void InventoryOpen();
+	
+	// 인벤토리 닫기
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void InventoryClose();
 
 	// 데미지 텍스트 액터 클래스 (BP에서 설정)
 	UPROPERTY(EditDefaultsOnly, Category = "UI|DamageText")

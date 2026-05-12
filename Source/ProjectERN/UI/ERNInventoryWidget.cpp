@@ -148,13 +148,12 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 		return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 	}
 	
-	// 키보드 I를 누를 경우 또는 활성화 슬롯이 없는 상태에서 Esc키 누를 경우 (=인벤토리 UI 숨기기)
-	if (InKeyEvent.GetKey() == EKeys::I || (FocusSlotIndex == -1 && InKeyEvent.GetKey() == EKeys::Escape))
+	// 키보드 I를 누를 경우 (=인벤토리 UI 숨기기)
+	if (InKeyEvent.GetKey() == EKeys::I)
 	{
 		if (AERNPlayerController* PC = GetOwningPlayer<AERNPlayerController>())
 		{
-			// 인벤토리 위젯 숨기기
-			PC->ToggleInventory();
+			BP_PlayCloseAnimation();
 		
 			return FReply::Handled();
 		}
@@ -311,6 +310,7 @@ void UERNInventoryWidget::CreateSlot(const int32 MaxSlotSize, const int32 Column
 	// 소모품 슬롯 인덱스 설정
 	ConsumableSlotWidget->SetSlotIndex(MaxSlotSize);
 	ConsumableSlotWidget->OnSlotClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateFocusSlotIndex);
+	ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
 }
 
 void UERNInventoryWidget::UpdateInventorySlot(const FInventoryItemEntry& Entry)
@@ -402,7 +402,7 @@ void UERNInventoryWidget::UpdateFocusSlotIndex(const int32 NewIndex)
 	// 활성화된 슬롯이 있을 경우
 	if (FocusSlotIndex == SlotWidgets.Num())
 	{
-		ConsumableSlotWidget->SetInventorySlotImage(BasicSlotImage.Get());
+		ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
 	}
 	else if (FocusSlotIndex != -1)
 	{
@@ -413,7 +413,7 @@ void UERNInventoryWidget::UpdateFocusSlotIndex(const int32 NewIndex)
 	// 슬롯 초기화(-1)가 아니라면
 	if (NewIndex == SlotWidgets.Num())
 	{
-		ConsumableSlotWidget->SetInventorySlotImage(FocusSlotImage.Get());
+		ConsumableSlotWidget->SetInventorySlotImage(FocusConsumableSlotImage.Get());
 	}
 	else if (NewIndex != -1)
 	{
@@ -468,4 +468,9 @@ UERNEquipmentComponent* UERNInventoryWidget::GetEquipmentComponent() const
 	}
 	
 	return nullptr;
+}
+
+void UERNInventoryWidget::PlayOpenAnimation()
+{
+	PlayAnimation(FadeIn);
 }

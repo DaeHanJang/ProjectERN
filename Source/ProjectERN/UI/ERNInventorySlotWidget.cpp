@@ -45,7 +45,14 @@ void UERNInventorySlotWidget::ClearItem() const
 void UERNInventorySlotWidget::SetItem(UTexture2D* Icon, const int32 QuantityText) const
 {
 	ItemImage->SetBrushFromTexture(Icon);
-	ItemQuantityTextBlock->SetText(FText::AsNumber(QuantityText));
+	if (QuantityText == 1)
+	{
+		ItemQuantityTextBlock->SetText(FText::GetEmpty());
+	}
+	else
+	{
+		ItemQuantityTextBlock->SetText(FText::AsNumber(QuantityText));
+	}	
 	
 	ItemImage->SetVisibility(ESlateVisibility::Visible);
 	ItemQuantityTextBlock->SetVisibility(ESlateVisibility::Visible);

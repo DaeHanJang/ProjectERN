@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ERNInteractableWidget.h"
 #include "ERNInventorySlotWidget.h"
-#include "Blueprint/UserWidget.h"
 #include "Inventory/Data/ERNInventoryList.h"
 #include "ERNInventoryWidget.generated.h"
 
@@ -17,7 +17,7 @@ class UERNInventorySlotWidget;
  * 
  */
 UCLASS()
-class PROJECTERN_API UERNInventoryWidget : public UUserWidget
+class PROJECTERN_API UERNInventoryWidget : public UERNInteractableWidget
 {
 	GENERATED_BODY()
 	
@@ -27,13 +27,12 @@ public:
 	// 활성화된 슬롯 인덱스 초기화
 	FORCEINLINE void InitFocusSlotIndex() { UpdateFocusSlotIndex(-1); }
 	
-	// 슬롯 생성
-	UFUNCTION(BlueprintCallable, Category="InventoryUI")
-	void CreateSlot(const int32 MaxSlotSize, const int32 ColumnCount);
-	
 	// 현재 캐릭터 컴포넌트에 이벤트 바인딩
 	UFUNCTION(BlueprintCallable, Category="InventoryUI")
 	void RefreshFromCurrentCharacter();
+	
+	// 열기 애니메이션 재생
+	void PlayOpenAnimation();
 	
 protected:
 	virtual void NativeConstruct() override;
@@ -48,6 +47,10 @@ private:
 	UERNInventoryComponent* GetInventoryComponent() const;
 	// 장착 컴포넌트 가져오기
 	UERNEquipmentComponent* GetEquipmentComponent() const;
+	
+	// 슬롯 생성
+	UFUNCTION(BlueprintCallable, Category="InventoryUI")
+	void CreateSlot(const int32 MaxSlotSize, const int32 ColumnCount);
 	
 	// 인벤토리 내비게이션 처리
 	const int32 GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize) const;
@@ -92,22 +95,34 @@ private:
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UERNSlideWidget> WBP_SlideWidget;
 	
+	// 열기 애니메이션
+	UPROPERTY(meta=(BindWidgetAnim), Transient)
+	TObjectPtr<UWidgetAnimation> FadeIn;
+	
 	// 인벤토리 슬롯 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
 	TSubclassOf<UUserWidget> SlotWidgetClass;
 	
-	// 슬롯 이미지
+	// 인벤토리 슬롯 이미지
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UTexture2D> BasicSlotImage = nullptr;
 	
-	// 슬롯 선택 시 이미지
+	// 인벤토리 슬롯 선택 시 이미지
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UTexture2D> FocusSlotImage = nullptr;
+	
+	// 소모품 슬롯 이미지
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UTexture2D> BasicConsumableSlotImage = nullptr;
+	
+	// 소모품 슬롯 선택 시 이미지
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UTexture2D> FocusConsumableSlotImage = nullptr;
 	
 	// 인벤토리 열 수
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Inventory", meta=(AllowPrivateAccess="true"))
 	int32 ColumnSize = 4;
-	
+		
 	// 인벤토리 슬롯 배열
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UERNInventorySlotWidget>> SlotWidgets;
