@@ -11,6 +11,9 @@ class UInputMappingContext;
 class UInputAction;
 class UUserWidget;
 class AERNPlayerState;
+class AERNDamageTextActor;
+class AERNBossCharacter;
+class UERNBossHealthBarWidget;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -137,7 +140,35 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void ToggleInventory();
 
+	// 데미지 텍스트 액터 클래스 (BP에서 설정)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|DamageText")
+	TSubclassOf<AERNDamageTextActor> DamageTextActorClass;
+
+	// 데미지 텍스트 표시 (공격자 클라이언트에서 호출)
+	UFUNCTION(Client, Unreliable)
+	void Client_ShowDamageText(FVector Location, float Damage);
+
+	// 보스 체력바 위젯 클래스 (BP에서 설정)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|BossHealthBar")
+	TSubclassOf<UERNBossHealthBarWidget> BossHealthBarWidgetClass;
+
+	// 보스 체력바 표시 (보스 조우 시)
+	UFUNCTION(Client, Reliable)
+	void Client_ShowBossHealthBar(AERNBossCharacter* Boss);
+
+	// 보스 체력 업데이트 + 데미지 누적
+	UFUNCTION(Client, Unreliable)
+	void Client_UpdateBossHealthBar(float HealthPercent, float MyDamageDealt);
+
+	// 보스 체력바 숨김
+	UFUNCTION(Client, Reliable)
+	void Client_HideBossHealthBar();
+
 private:
+	// 보스 체력바 위젯 인스턴스
+	UPROPERTY(Transient)
+	UERNBossHealthBarWidget* BossHealthBarWidget = nullptr;
+
 	// 현재 상호작용 가능한 액터
 	UPROPERTY()
 	TWeakObjectPtr<AActor> CurrentInteractableActor;
