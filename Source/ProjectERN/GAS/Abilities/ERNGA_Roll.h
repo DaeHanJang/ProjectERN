@@ -4,12 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "GAS/ERNGameplayAbility.h"
 #include "ERNGA_Roll.generated.h"
 
 class UAnimMontage;
 
 UCLASS()
-class PROJECTERN_API UERNGA_Roll : public UGameplayAbility
+class PROJECTERN_API UERNGA_Roll : public UERNGameplayAbility
 {
 	GENERATED_BODY()
 

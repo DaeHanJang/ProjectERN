@@ -21,8 +21,6 @@ void UERNA_AttackAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 	const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
-	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	
 	// 어빌리티 커밋 (코스트/쿨다운 처리)
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
@@ -30,9 +28,12 @@ void UERNA_AttackAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 		return;
 	}
 	
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	
 	if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(GetAvatarActorFromActorInfo()))
 	{
 		Character->UpdateMovementSpeed();
+		Character->UpdateRotationMode();
 	}
 
 	// 몽타주 재생 및 EndAbility는 블루프린트에서 처리
@@ -42,10 +43,12 @@ void UERNA_AttackAbility::EndAbility(const FGameplayAbilitySpecHandle Handle,
 	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
 	bool bReplicateEndAbility, bool bWasCancelled)
 {
+	AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(GetAvatarActorFromActorInfo());
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 	
-	if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(GetAvatarActorFromActorInfo()))
+	if (Character)
 	{
 		Character->UpdateMovementSpeed();
+		Character->UpdateRotationMode();
 	}
 }

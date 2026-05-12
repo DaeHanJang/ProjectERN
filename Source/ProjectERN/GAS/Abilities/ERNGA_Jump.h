@@ -4,13 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "GAS/ERNGameplayAbility.h"
 #include "ERNGA_Jump.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class PROJECTERN_API UERNGA_Jump : public UGameplayAbility
+class PROJECTERN_API UERNGA_Jump : public UERNGameplayAbility
 {
 	GENERATED_BODY()
 

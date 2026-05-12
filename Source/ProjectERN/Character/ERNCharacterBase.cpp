@@ -82,6 +82,13 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 		return 0.0f;
 	}
 
+	// 대미지 면역 상태
+	if (AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Immunity_Damage))
+	{
+		return 0.0f;
+	}
+	
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	if (AttributeSet && ActualDamage > 0.0f)
@@ -184,6 +191,9 @@ void AERNCharacterBase::OnMovementModeChanged(EMovementMode PrevMovementMode, ui
 	}
 	else
 	{
+		// 공중 상태 태그 Off
 		AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Movement_Falling, 0);
+		// 벽 점프 사용상태 Off
+		AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Movement_WallJumpUsed, 0);
 	}
 }
