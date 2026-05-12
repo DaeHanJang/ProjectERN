@@ -22,7 +22,8 @@ public:
 
 private:
 	// 어떤 Attribute를, 언제, 어떻게 가져올 것인지에 대한 정의서
-	FGameplayEffectAttributeCaptureDefinition MaxStaminaDef;
+	FGameplayEffectAttributeCaptureDefinition MaxStaminaDef;	// 최대 Stamina 캡처
+	FGameplayEffectAttributeCaptureDefinition StaminaRegenRateDef;	// Stamina 재생율 캡처
 };
 
 UCLASS()
@@ -38,4 +39,5 @@ public:
 
 private:
 	FGameplayEffectAttributeCaptureDefinition MaxManaDef;
+	FGameplayEffectAttributeCaptureDefinition ManaRegenRateDef;
 };

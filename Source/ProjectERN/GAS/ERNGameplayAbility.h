@@ -49,4 +49,10 @@ protected:
 	// 마나 재생 블록 GE
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|GE")
 	TSubclassOf<UGameplayEffect> ManaRegenBlockEffectClass;
+	
+	// 스태미나/마나가 충분한지 확인
+	bool CanPayResourceCost(float InStaminaCost, float InManaCost) const;
+	
+	// 스태미나/마나 소모 적용
+	bool ApplyResourceCost(float InStaminaCost, float InManaCost) const;
 };

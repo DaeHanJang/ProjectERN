@@ -41,6 +41,35 @@ void UERNGA_LightAttack::CheckCombo()
 		return;
 	}
 
+	const int32 NextComboIndex = CurrentComboIndex + 1;
+
+	const FERNComboSectionCost NextCost =
+		ComboSectionCosts.IsValidIndex(NextComboIndex)
+			? ComboSectionCosts[NextComboIndex]
+			: FERNComboSectionCost();
+
+	if (!ApplyResourceCost(NextCost.StaminaCost, NextCost.ManaCost))
+	{
+		bHasNextComboInput = false;
+		bHasCachedComboRotation = false;
+		return;
+	}
+
+	bHasNextComboInput = false;
+	CurrentComboIndex = NextComboIndex;
+
+	const FName NextSectionName = GetComboSectionName(CurrentComboIndex);
+	if (NextSectionName == NAME_None)
+	{
+		return;
+	}
+	
+	/*
+	if (!bHasNextComboInput || !CanMoveToNextCombo())
+	{
+		return;
+	}
+
 	bHasNextComboInput = false;
 	++CurrentComboIndex;
 
@@ -49,7 +78,8 @@ void UERNGA_LightAttack::CheckCombo()
 	{
 		return;
 	}
-
+	*/
+	
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	if (!AvatarActor)
 	{

@@ -51,7 +51,7 @@ void UERNGameplayAbility::ApplyCost(const FGameplayAbilitySpecHandle Handle, con
 	const FGameplayAbilityActivationInfo ActivationInfo) const
 {
 	Super::ApplyCost(Handle, ActorInfo, ActivationInfo);
-
+	
 	if (!ActorInfo || !ActorInfo->AbilitySystemComponent.IsValid())
 	{
 		return;
@@ -135,4 +135,87 @@ void UERNGameplayAbility::ApplyCost(const FGameplayAbilitySpecHandle Handle, con
 			ASC->ApplyGameplayEffectSpecToSelf(*BlockSpecHandle.Data.Get());
 		}
 	}
+}
+
+bool UERNGameplayAbility::CanPayResourceCost(float InStaminaCost, float InManaCost) const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	if (!ActorInfo || !ActorInfo->AbilitySystemComponent.IsValid())
+	{
+		return false;
+	}
+
+	const UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+
+	if (InStaminaCost > 0.f &&
+		ASC->GetNumericAttribute(UERNAttributeSet::GetStaminaAttribute()) < InStaminaCost)
+	{
+		return false;
+	}
+
+	if (InManaCost > 0.f &&
+		ASC->GetNumericAttribute(UERNAttributeSet::GetManaAttribute()) < InManaCost)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool UERNGameplayAbility::ApplyResourceCost(float InStaminaCost, float InManaCost) const
+{
+	if (InStaminaCost <= 0.f && InManaCost <= 0.f)
+	{
+		return true;
+	}
+
+	if (!CanPayResourceCost(InStaminaCost, InManaCost) || !CostEffectClass)
+	{
+		return false;
+	}
+
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+
+	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+	ContextHandle.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle CostSpecHandle =
+		ASC->MakeOutgoingSpec(CostEffectClass, GetAbilityLevel(), ContextHandle);
+
+	if (!CostSpecHandle.IsValid())
+	{
+		return false;
+	}
+
+	CostSpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Cost_Stamina, -InStaminaCost);
+	CostSpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Cost_Mana, -InManaCost);
+
+	ASC->ApplyGameplayEffectSpecToSelf(*CostSpecHandle.Data.Get());
+
+	// 스태미나 회복 막기
+	if (InStaminaCost > 0.f && StaminaRegenBlockEffectClass)
+	{
+		FGameplayEffectSpecHandle BlockSpecHandle =
+			ASC->MakeOutgoingSpec(StaminaRegenBlockEffectClass, GetAbilityLevel(), ContextHandle);
+
+		if (BlockSpecHandle.IsValid())
+		{
+			ASC->ApplyGameplayEffectSpecToSelf(*BlockSpecHandle.Data.Get());
+		}
+	}
+
+	// 마나 회복 막기
+	if (InManaCost > 0.f && ManaRegenBlockEffectClass)
+	{
+		FGameplayEffectSpecHandle BlockSpecHandle =
+			ASC->MakeOutgoingSpec(ManaRegenBlockEffectClass, GetAbilityLevel(), ContextHandle);
+
+		if (BlockSpecHandle.IsValid())
+		{
+			ASC->ApplyGameplayEffectSpecToSelf(*BlockSpecHandle.Data.Get());
+		}
+	}
+	
+	return true;
 }

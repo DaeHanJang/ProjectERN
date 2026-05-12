@@ -12,8 +12,10 @@ UERNAttributeSet::UERNAttributeSet()
 	InitMaxHealth(100.f);
 	InitMana(100.f);
 	InitMaxMana(100.f);
+	InitManaRegenRate(0.01f);
 	InitStamina(100.f);
 	InitMaxStamina(100.f);
+	InitStaminaRegenRate(0.03f);
 	InitAttackPower(10.f);
 	InitDefense(5.f);
 	InitMoveSpeed(600.f);
@@ -30,8 +32,10 @@ void UERNAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, MaxHealth, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, Mana, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, MaxMana, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, ManaRegenRate, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, Stamina, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, MaxStamina, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, StaminaRegenRate, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, AttackPower, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, Defense, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, MoveSpeed, COND_None, REPNOTIFY_Always);
@@ -96,6 +100,11 @@ void UERNAttributeSet::OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana)
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, MaxMana, OldMaxMana);
 }
 
+void UERNAttributeSet::OnRep_ManaRegenRate(const FGameplayAttributeData& OldManaRegenRate)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, ManaRegenRate, OldManaRegenRate);
+}
+
 void UERNAttributeSet::OnRep_Stamina(const FGameplayAttributeData& OldStamina)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, Stamina, OldStamina);
@@ -104,6 +113,11 @@ void UERNAttributeSet::OnRep_Stamina(const FGameplayAttributeData& OldStamina)
 void UERNAttributeSet::OnRep_MaxStamina(const FGameplayAttributeData& OldMaxStamina)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, MaxStamina, OldMaxStamina);
+}
+
+void UERNAttributeSet::OnRep_StaminaRegenRate(const FGameplayAttributeData& OldStaminaRegenRate)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, StaminaRegenRate, OldStaminaRegenRate);
 }
 
 void UERNAttributeSet::OnRep_AttackPower(const FGameplayAttributeData& OldAttackPower)

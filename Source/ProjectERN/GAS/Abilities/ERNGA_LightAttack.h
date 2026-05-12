@@ -6,6 +6,18 @@
 #include "GAS/Abilities/ERNGA_AttackAbility.h"
 #include "ERNGA_LightAttack.generated.h"
 
+USTRUCT(BlueprintType)
+struct FERNComboSectionCost
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cost")
+	float StaminaCost = 0.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cost")
+	float ManaCost = 0.f;
+};
+
 UCLASS()
 class PROJECTERN_API UERNGA_LightAttack : public UERNA_AttackAbility
 {
@@ -28,6 +40,9 @@ public:
 	void CheckCombo();
 
 protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "ERN|Cost")
+	TArray<FERNComboSectionCost> ComboSectionCosts;
+	
 	// 0 = 1타 section, 1 = 2타 section ...
 	int32 CurrentComboIndex = 0;
 
