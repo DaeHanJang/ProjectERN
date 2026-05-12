@@ -13,6 +13,21 @@ UERNInventoryComponent::UERNInventoryComponent()
 	Inventory.SetOwner(this);
 }
 
+void UERNInventoryComponent::CopyInventoryFrom(const UERNInventoryComponent* Source)
+{
+	if (!Source)
+	{
+		return;
+	}
+	
+	Inventory.CopyFrom(Source->GetInventory(), MaxSlotSize);
+	
+	for (const FInventoryItemEntry& Entry : Inventory.GetItems())
+	{
+		OnInventorySlotChanged.Broadcast(Entry);
+	}
+}
+
 void UERNInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
