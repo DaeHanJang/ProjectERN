@@ -11,6 +11,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Input_Roll, "Input.Roll")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_LightAttack, "Input.LightAttack")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_HeavyAttack, "Input.HeavyAttack")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_LockOn, "Input.LockOn")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Input_Sprint, "Input.Sprint")
 
 // 전투 상태
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Attacking, "State.Combat.Attacking")
@@ -20,7 +21,9 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Jumping, "State.Combat.Jumping")
 
 // 어빌리티
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Jump, "Ability.Movement.Jump")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_WallJump, "Ability.Movement.WallJump")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Roll, "Ability.Movement.Roll")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Sprint, "Ability.Movement.Sprint")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Attack_Light, "Ability.Attack.Light")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Attack_Heavy, "Ability.Attack.Heavy")
 
@@ -32,3 +35,12 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_StaggerImmune, "State.StaggerImmune")
 // 상태 (움직임)
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Falling, "State.Movement.Falling")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Landing, "State.Movement.Landing")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Sprinting, "State.Movement.Sprinting")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_WallJumpUsed, "State.Movement.WallJumpUsed")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Immunity_Damage, "State.Immunity.Damage")
+
+// 소모 자원
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Cost_Stamina, "Data.Cost.Stamina")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Cost_Mana, "Data.Cost.Mana")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Regen_StaminaBlocked, "State.Regen.StaminaBlocked")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Regen_ManaBlocked, "State.Regen.ManaBlocked")

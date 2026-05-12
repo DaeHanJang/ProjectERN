@@ -6,6 +6,18 @@
 #include "GAS/Abilities/ERNGA_AttackAbility.h"
 #include "ERNGA_LightAttack.generated.h"
 
+USTRUCT(BlueprintType)
+struct FERNComboSectionCost
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cost")
+	float StaminaCost = 0.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Cost")
+	float ManaCost = 0.f;
+};
+
 UCLASS()
 class PROJECTERN_API UERNGA_LightAttack : public UERNA_AttackAbility
 {
@@ -20,7 +32,7 @@ public:
 	void ResetComboState();
 
 	// ProjectERNCharacter::LightAttack에서 공격 중 추가 입력이 들어오면 호출.
-	void CacheComboInput();
+	void CacheComboInput(const FRotator& TargetRotation);
 
 	// AnimNotify_CheckLightCombo에서 호출.
 	// 입력이 캐시되어 있으면 다음 Montage Section으로 이동한다.
@@ -28,6 +40,9 @@ public:
 	void CheckCombo();
 
 protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "ERN|Cost")
+	TArray<FERNComboSectionCost> ComboSectionCosts;
+	
 	// 0 = 1타 section, 1 = 2타 section ...
 	int32 CurrentComboIndex = 0;
 
@@ -37,4 +52,7 @@ protected:
 	FName GetComboSectionName(int32 ComboIndex) const;
 
 	bool CanMoveToNextCombo() const;
+	
+	bool bHasCachedComboRotation = false;
+	FRotator CachedComboRotation = FRotator::ZeroRotator;
 };
