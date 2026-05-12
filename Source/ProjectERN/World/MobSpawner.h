@@ -34,7 +34,7 @@ class PROJECTERN_API AMobSpawner : public AActor
 {
 	GENERATED_BODY()
 	
-public:	
+public:
 	// Sets default values for this actor's properties
 	AMobSpawner();
 
@@ -43,10 +43,7 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
+public:
 	FName GetMobSpawnerID() const { return MobSpawnerID; }
 	void SetMobSpawnerID(const FName NewID) { MobSpawnerID = NewID; }
 	
@@ -57,6 +54,8 @@ private:
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<AERNEnemyCharacter>> ActiveEnemiesBySlot;
 	
+	UPROPERTY(EditAnywhere)
+	TMap<FName, UMobSpawnPointComponent*> CachedSpawnPoints;
 private:
 	void SpawnMobs();
 	void SpawnMobFromPoint(UMobSpawnPointComponent* SpawnPoint);
