@@ -15,6 +15,9 @@
 #include "Interfaces/IInteractable.h"
 #include "UI/ERNInventoryWidget.h"
 #include "UI/ERNUIManagerSubsystem.h"
+#include "UI/ERNDamageTextActor.h"
+#include "UI/ERNBossHealthBarWidget.h"
+#include "Character/Enemy/ERNBossCharacter.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -418,5 +421,61 @@ void AERNPlayerController::ToggleInventory()
 		FInputModeGameOnly InputMode;
 		SetInputMode(InputMode);
 		bShowMouseCursor = false;
+	}
+}
+
+void AERNPlayerController::Client_ShowDamageText_Implementation(FVector Location, float Damage)
+{
+	if (!DamageTextActorClass || !GetWorld()) return;
+
+	// 약간 위로 오프셋
+	FVector TextSpawnLocation = Location + FVector(0.f, 0.f, 100.f);
+
+	AERNDamageTextActor* DamageTextActor = GetWorld()->SpawnActor<AERNDamageTextActor>(
+		DamageTextActorClass, TextSpawnLocation, FRotator::ZeroRotator);
+
+	if (DamageTextActor)
+	{
+		DamageTextActor->Initialize(Damage);
+	}
+}
+
+void AERNPlayerController::Client_ShowBossHealthBar_Implementation(AERNBossCharacter* Boss)
+{
+	if (!Boss || !BossHealthBarWidgetClass) return;
+
+	// 위젯이 없으면 생성
+	if (!BossHealthBarWidget)
+	{
+		BossHealthBarWidget = CreateWidget<UERNBossHealthBarWidget>(this, BossHealthBarWidgetClass);
+		if (BossHealthBarWidget)
+		{
+			BossHealthBarWidget->AddToViewport(100); // 높은 ZOrder로 최상위 표시
+		}
+	}
+
+	if (BossHealthBarWidget)
+	{
+		BossHealthBarWidget->SetVisibility(ESlateVisibility::Visible);
+
+		// 보스 정보 설정 (체력은 Client_UpdateBossHealthBar에서 즉시 업데이트)
+		BossHealthBarWidget->SetBossInfo(Boss->BossName, 1.0f);
+	}
+}
+
+void AERNPlayerController::Client_UpdateBossHealthBar_Implementation(float HealthPercent, float MyDamageDealt)
+{
+	if (BossHealthBarWidget)
+	{
+		BossHealthBarWidget->UpdateHealth(HealthPercent, MyDamageDealt);
+	}
+}
+
+void AERNPlayerController::Client_HideBossHealthBar_Implementation()
+{
+	if (BossHealthBarWidget)
+	{
+		BossHealthBarWidget->SetVisibility(ESlateVisibility::Hidden);
+		BossHealthBarWidget->ResetAccumulatedDamage();
 	}
 }

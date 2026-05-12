@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Character/Enemy/AI/ERNBossAIController.h"
+#include "Character/Enemy/ERNBossCharacter.h"
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
@@ -93,6 +94,12 @@ void AERNBossAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 			if (!CurrentTarget)
 			{
 				SetTarget(Player);
+			}
+
+			// 보스 체력바 표시 (첫 감지 시)
+			if (AERNBossCharacter* Boss = Cast<AERNBossCharacter>(GetPawn()))
+			{
+				Boss->ShowHealthBarToAllPlayers();
 			}
 
 			UE_LOG(LogTemp, Log, TEXT("[Boss %s] Player detected: %s"), *GetName(), *Player->GetName());

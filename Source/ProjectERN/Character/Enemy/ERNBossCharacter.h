@@ -84,6 +84,10 @@ public:
 	// 현재 페이즈의 체력 비율 조건 체크
 	UFUNCTION(BlueprintPure, Category = "Boss")
 	int32 GetPhaseIndexForCurrentHealth() const;
+
+	// 모든 플레이어에게 보스 체력바 표시 (AIC에서 호출)
+	UFUNCTION(BlueprintCallable, Category = "Boss|UI")
+	void ShowHealthBarToAllPlayers();
 	
 protected:
 	virtual void BeginPlay() override;
@@ -103,4 +107,7 @@ protected:
 private:
 	// 페이즈 전환 체크
 	void CheckPhaseTransition();
+
+	// 체력바가 이미 표시되었는지 여부
+	bool bHealthBarShown = false;
 };

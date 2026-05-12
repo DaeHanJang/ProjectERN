@@ -2,6 +2,8 @@
 
 #include "Character/Enemy/ERNBossCharacter.h"
 #include "Character/Enemy/AI/ERNBossAIController.h"
+#include "Character/Player/ProjectERNCharacter.h"
+#include "Character/Player/ERNPlayerController.h"
 #include "GAS/ERNAttributeSet.h"
 #include "GAS/ERNGameplayTags.h"
 #include "AbilitySystemComponent.h"
@@ -11,6 +13,8 @@
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
 
 AERNBossCharacter::AERNBossCharacter()
 {
@@ -70,6 +74,30 @@ float AERNBossCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 
 		// 페이즈 전환 체크
 		CheckPhaseTransition();
+
+		// 공격자 캐릭터 찾기
+		AProjectERNCharacter* AttackerChar = Cast<AProjectERNCharacter>(DamageCauser);
+		if (!AttackerChar && EventInstigator)
+		{
+			AttackerChar = Cast<AProjectERNCharacter>(EventInstigator->GetPawn());
+		}
+
+		// 체력 퍼센트 계산
+		const float HealthPercent = AttributeSet && AttributeSet->GetMaxHealth() > 0.f
+			? AttributeSet->GetHealth() / AttributeSet->GetMaxHealth()
+			: 0.f;
+
+		// 모든 플레이어에게 보스 체력바 업데이트
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			AERNPlayerController* PC = Cast<AERNPlayerController>(It->Get());
+			if (!PC) continue;
+
+			// 공격자에게는 본인 데미지 누적, 나머지는 0 (체력만 업데이트)
+			const bool bIsAttacker = AttackerChar && PC == AttackerChar->GetController();
+			const float DamageToAdd = bIsAttacker ? ActualDamage : 0.f;
+			PC->Client_UpdateBossHealthBar(HealthPercent, DamageToAdd);
+		}
 	}
 
 	return ActualDamage;
@@ -226,12 +254,51 @@ void AERNBossCharacter::PlayIntro()
 	}
 }
 
+void AERNBossCharacter::ShowHealthBarToAllPlayers()
+{
+	if (!HasAuthority() || bHealthBarShown)
+	{
+		return;
+	}
+
+	bHealthBarShown = true;
+
+	// 체력 퍼센트 계산
+	const float HealthPercent = AttributeSet && AttributeSet->GetMaxHealth() > 0.f
+		? AttributeSet->GetHealth() / AttributeSet->GetMaxHealth()
+		: 1.f;
+
+	// 모든 플레이어에게 보스 체력바 표시
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AERNPlayerController* PC = Cast<AERNPlayerController>(It->Get()))
+		{
+			PC->Client_ShowBossHealthBar(this);
+			PC->Client_UpdateBossHealthBar(HealthPercent, 0.f);
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[Boss %s] Health bar shown to all players"), *GetName());
+}
+
 void AERNBossCharacter::OnDeath()
 {
 	// 사망 몽타주 재생
 	if (DeathMontage && GetMesh() && GetMesh()->GetAnimInstance())
 	{
 		GetMesh()->GetAnimInstance()->Montage_Play(DeathMontage);
+	}
+
+	// 모든 플레이어의 보스 체력바 숨김
+	if (HasAuthority())
+	{
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			if (AERNPlayerController* PC = Cast<AERNPlayerController>(It->Get()))
+			{
+				PC->Client_HideBossHealthBar();
+			}
+		}
 	}
 
 	// 부모 사망 처리 (딜레이 후 Destroy 등)

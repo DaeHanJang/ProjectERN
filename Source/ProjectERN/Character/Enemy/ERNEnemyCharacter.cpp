@@ -7,6 +7,7 @@
 #include "Components/BoxComponent.h"
 #include "UI/ERNEnemyHealthBarWidget.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Character/Player/ERNPlayerController.h"
 #include "Engine/DamageEvents.h"
 #include "MotionWarpingComponent.h"
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
@@ -120,6 +121,18 @@ float AERNEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 	if (ActualDamage > 0.0f)
 	{
 		Multicast_ShowHealthBar();
+
+		// 공격자 클라이언트에게 데미지 텍스트 표시 요청
+		if (HasAuthority())
+		{
+			if (AProjectERNCharacter* AttackerChar = Cast<AProjectERNCharacter>(DamageCauser))
+			{
+				if (AERNPlayerController* PC = Cast<AERNPlayerController>(AttackerChar->GetController()))
+				{
+					PC->Client_ShowDamageText(GetActorLocation(), ActualDamage);
+				}
+			}
+		}
 	}
 
 	return ActualDamage;
