@@ -101,8 +101,6 @@ void AERNBossAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 			{
 				Boss->ShowHealthBarToAllPlayers();
 			}
-
-			UE_LOG(LogTemp, Log, TEXT("[Boss %s] Player detected: %s"), *GetName(), *Player->GetName());
 		}
 		else
 		{
@@ -129,14 +127,21 @@ void AERNBossAIController::SwitchBehaviorTree(UBehaviorTree* NewBehaviorTree)
 	// 새 BT 시작
 	RunBehaviorTree(NewBehaviorTree);
 	CurrentBehaviorTree = NewBehaviorTree;
-
-	UE_LOG(LogTemp, Log, TEXT("[Boss %s] Switched to BehaviorTree: %s"), *GetName(), *NewBehaviorTree->GetName());
 }
 
 void AERNBossAIController::SetTarget(AActor* NewTarget)
 {
 	if (Blackboard)
 	{
+		AActor* OldTarget = Cast<AActor>(Blackboard->GetValueAsObject(TEXT("TargetActor")));
+
+		// 타겟이 실제로 변경될 때만 시간 기록
+		if (NewTarget != OldTarget)
+		{
+			CurrentTargetStartTime = GetWorld()->GetTimeSeconds();
+			CachedCurrentTarget = NewTarget;
+		}
+
 		Blackboard->SetValueAsObject(TEXT("TargetActor"), NewTarget);
 	}
 }
@@ -157,11 +162,17 @@ void AERNBossAIController::AddAggro(AActor* Target, float AggroAmount)
 		AggroTable.Add(Target, AggroAmount);
 	}
 
-	// 어그로가 가장 높은 타겟으로 전환
+	// 어그로가 가장 높은 타겟으로 전환 (최소 락 시간 체크)
 	AActor* HighestAggroTarget = GetHighestAggroTarget();
+	AActor* CurrentTarget = Blackboard ? Cast<AActor>(Blackboard->GetValueAsObject(TEXT("TargetActor"))) : nullptr;
+
 	if (HighestAggroTarget)
 	{
-		SetTarget(HighestAggroTarget);
+		// 타겟이 없거나, 같은 타겟이거나, 락 시간이 지났으면 변경 허용
+		if (!CurrentTarget || HighestAggroTarget == CurrentTarget || CanChangeTarget())
+		{
+			SetTarget(HighestAggroTarget);
+		}
 	}
 }
 
@@ -184,9 +195,12 @@ AActor* AERNBossAIController::GetHighestAggroTarget() const
 
 void AERNBossAIController::TickSightAggro()
 {
+	// 최대 락 시간 초과 체크
+	CheckForceTargetChange();
+
 	if (SightAggroPerSecond > 0.f)
 	{
-		// 시야 안 플레이어들에게 매초 어그로 누적
+		// 시야 안 플레이어들에게 매초 어그로 누적 (거리 배율 적용)
 		for (int32 i = PerceivedPlayers.Num() - 1; i >= 0; --i)
 		{
 			AActor* Player = PerceivedPlayers[i];
@@ -195,27 +209,11 @@ void AERNBossAIController::TickSightAggro()
 				PerceivedPlayers.RemoveAt(i);
 				continue;
 			}
-			AddAggro(Player, SightAggroPerSecond);
-		}
-	}
 
-	// 디버그 : 어그로 테이블 화면 출력
-	if (bShowAggroDebug && GEngine)
-	{
-		AActor* CurrentTarget = Blackboard ? Cast<AActor>(Blackboard->GetValueAsObject(TEXT("TargetActor"))) : nullptr;
-		const FString Header = FString::Printf(TEXT("=== %s Aggro ==="),
-			GetPawn() ? *GetPawn()->GetName() : TEXT("Boss"));
-		GEngine->AddOnScreenDebugMessage(-1, 1.1f, FColor::Cyan, Header);
-
-		for (const auto& Pair : AggroTable)
-		{
-			if (!IsValid(Pair.Key)) continue;
-			const bool bIsCurrentTarget = (Pair.Key == CurrentTarget);
-			const FColor Color = bIsCurrentTarget ? FColor::Red : FColor::Yellow;
-			const FString Msg = FString::Printf(TEXT("%s: %.1f%s"),
-				*Pair.Key->GetName(), Pair.Value,
-				bIsCurrentTarget ? TEXT(" [TARGET]") : TEXT(""));
-			GEngine->AddOnScreenDebugMessage(-1, 1.1f, Color, Msg);
+			// 거리에 따른 배율 계산
+			const float DistanceMultiplier = GetDistanceAggroMultiplier(Player);
+			const float AggroToAdd = SightAggroPerSecond * DistanceMultiplier;
+			AddAggro(Player, AggroToAdd);
 		}
 	}
 }
@@ -244,5 +242,95 @@ void AERNBossAIController::DecayAggro()
 	if (AggroTable.Num() == 0 && Blackboard)
 	{
 		Blackboard->ClearValue(TEXT("TargetActor"));
+		CurrentTargetStartTime = 0.f;
+		CachedCurrentTarget.Reset();
 	}
+}
+
+float AERNBossAIController::GetDistanceAggroMultiplier(AActor* Target) const
+{
+	if (!Target || !GetPawn())
+	{
+		return 1.0f;
+	}
+
+	const float Distance = FVector::Dist(GetPawn()->GetActorLocation(), Target->GetActorLocation());
+
+	// 가까우면 높은 배율, 멀면 낮은 배율 (선형 보간)
+	if (Distance <= NearDistanceThreshold)
+	{
+		return NearAggroMultiplier;
+	}
+	else if (Distance >= FarDistanceThreshold)
+	{
+		return FarAggroMultiplier;
+	}
+	else
+	{
+		// 중간 거리: 선형 보간
+		const float Alpha = (Distance - NearDistanceThreshold) / (FarDistanceThreshold - NearDistanceThreshold);
+		return FMath::Lerp(NearAggroMultiplier, FarAggroMultiplier, Alpha);
+	}
+}
+
+bool AERNBossAIController::CanChangeTarget() const
+{
+	if (!GetWorld())
+	{
+		return true;
+	}
+
+	const float ElapsedTime = GetWorld()->GetTimeSeconds() - CurrentTargetStartTime;
+	return ElapsedTime >= MinTargetLockTime;
+}
+
+void AERNBossAIController::CheckForceTargetChange()
+{
+	if (!GetWorld() || !Blackboard)
+	{
+		return;
+	}
+
+	AActor* CurrentTarget = Cast<AActor>(Blackboard->GetValueAsObject(TEXT("TargetActor")));
+	if (!CurrentTarget)
+	{
+		return;
+	}
+
+	const float ElapsedTime = GetWorld()->GetTimeSeconds() - CurrentTargetStartTime;
+
+	// 최대 락 시간 초과 시 강제 타겟 변경
+	if (ElapsedTime >= MaxTargetLockTime)
+	{
+		AActor* NextTarget = GetSecondHighestAggroTarget();
+		if (NextTarget && NextTarget != CurrentTarget)
+		{
+			SetTarget(NextTarget);
+		}
+	}
+}
+
+AActor* AERNBossAIController::GetSecondHighestAggroTarget() const
+{
+	AActor* CurrentTarget = Blackboard ? Cast<AActor>(Blackboard->GetValueAsObject(TEXT("TargetActor"))) : nullptr;
+
+	AActor* SecondTarget = nullptr;
+	float SecondHighestAggro = 0.0f;
+
+	for (const auto& Pair : AggroTable)
+	{
+		// 현재 타겟 제외
+		if (Pair.Key == CurrentTarget)
+		{
+			continue;
+		}
+
+		if (Pair.Value > SecondHighestAggro && IsValid(Pair.Key))
+		{
+			SecondHighestAggro = Pair.Value;
+			SecondTarget = Pair.Key;
+		}
+	}
+
+	return SecondTarget;
 }

@@ -69,15 +69,37 @@ protected:
 
 	// 어그로 감소율 (초당)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI")
-	float AggroDecayRate = 0.5f;
+	float AggroDecayRate = 0.0f;
 
-	// 시야 안에 있을 때 초당 누적되는 어그로
+	// 시야 안에 있을 때 초당 누적되는 기본 어그로
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI")
 	float SightAggroPerSecond = 1.0f;
 
-	// 어그로 테이블 화면 표시 (디버그용)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|Debug")
-	bool bShowAggroDebug = false;
+	// === 거리 기반 어그로 배율 ===
+	// 가까운 거리 기준 (이 거리 이하면 NearAggroMultiplier 적용)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|Distance")
+	float NearDistanceThreshold = 500.f;
+
+	// 먼 거리 기준 (이 거리 이상이면 FarAggroMultiplier 적용)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|Distance")
+	float FarDistanceThreshold = 2000.f;
+
+	// 가까울 때 어그로 배율
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|Distance")
+	float NearAggroMultiplier = 1.5f;
+
+	// 멀 때 어그로 배율
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|Distance")
+	float FarAggroMultiplier = 0.8f;
+
+	// === 타겟 락 시간 ===
+	// 타겟 변경 후 최소 유지 시간 (이 시간 동안 타겟 변경 불가)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|TargetLock")
+	float MinTargetLockTime = 20.0f;
+
+	// 한 타겟 최대 유지 시간 (이 시간 초과 시 강제 변경)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|TargetLock")
+	float MaxTargetLockTime = 40.0f;
 
 	// 어그로 업데이트 타이머
 	FTimerHandle AggroDecayTimerHandle;
@@ -92,4 +114,24 @@ protected:
 
 	// 시야 내 플레이어 어그로 누적 처리 (1초마다 호출)
 	void TickSightAggro();
+
+	// 거리에 따른 어그로 배율 계산
+	float GetDistanceAggroMultiplier(AActor* Target) const;
+
+	// 타겟 변경 가능 여부 체크 (최소 락 시간)
+	bool CanChangeTarget() const;
+
+	// 최대 락 시간 초과 시 강제 타겟 변경
+	void CheckForceTargetChange();
+
+	// 현재 타겟이 아닌 가장 높은 어그로 타겟 반환
+	AActor* GetSecondHighestAggroTarget() const;
+
+private:
+	// 현재 타겟이 설정된 시간
+	float CurrentTargetStartTime = 0.f;
+
+	// 현재 타겟 (변경 감지용)
+	UPROPERTY()
+	TWeakObjectPtr<AActor> CachedCurrentTarget;
 };
