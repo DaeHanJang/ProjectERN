@@ -80,11 +80,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TArray<FString> HideInventoryWidgetMapNames;
 	
-	UPROPERTY()
-	UUserWidget* InventoryWidget;
+	UPROPERTY(Transient)
+	UUserWidget* InventoryWidget = nullptr;
 	
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
+	
+	virtual void AcknowledgePossession(class APawn* P) override;
 
 	// UI 생성 (약간 지연)
 	void CreatePartyUI();
@@ -100,6 +102,9 @@ protected:
 
 	/** Returns true if the player should use UMG touch controls */
 	bool ShouldUseTouchControls() const;
+	
+private:
+	void RefreshInventoryWidget();
 
 public:
 	// 캐릭터 선택 위젯

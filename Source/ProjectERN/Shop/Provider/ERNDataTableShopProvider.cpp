@@ -10,52 +10,44 @@ void UERNDataTableShopProvider::Initialize_Implementation(UObject* Owner)
 {
     OwnerObject = Owner;
     
-    if (!ItemDataTable)
+    if (!ShopProductTable)
     {
-        UE_LOG(LogShopProvider, Error, TEXT("[DataTableProvider] ItemDataTable이 할당되지 않아 캐싱을 진행할 수 없습니다!"));
+        UE_LOG(LogShopProvider, Error, TEXT("[DataTableProvider] ShopProductTable이 할당되지 않아 캐싱을 진행할 수 없습니다!"));
         return;
     }
     
-    // 데이터 테이블의 모든 Row 가져오기
-    TArray<FERNItemTable*> AllItems;
-    ItemDataTable->GetAllRows<FERNItemTable>(TEXT("ShopProviderCache"), AllItems);
+    // 상점 상품 데이터 테이블의 모든 Row 가져오기
+    TArray<FERNShopProductTable*> AllProducts;
+    ShopProductTable->GetAllRows<FERNShopProductTable>(TEXT("ShopProviderCache"), AllProducts);
     
-    // RowMap을 순회하며 아이템을 상점 타입별로 캐싱
-    for (auto& Pair : ItemDataTable->GetRowMap())
+    // Row를 순회하며 상점 타입별로 아이템 캐싱
+    for (FERNShopProductTable* ProductData : AllProducts)
     {
-        FName ItemID = Pair.Key;
-        FERNItemTable* RowData = reinterpret_cast<FERNItemTable*>(Pair.Value);
+        if (!ProductData || ProductData->ShopType == EShopType::None) continue;
         
-        UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider] ★ 캐싱 Row: %s"), *ItemID.ToString());
+        UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider] ★ 캐싱 상품: %s (상점: %d)"), *ProductData->ItemID.ToString(), (int32)ProductData->ShopType);
 
-        if (!RowData) continue;
-
-        // 아이템 가격표를 순회하며 판매되는 상점 타입을 확인.
-        for (const FItemShopPrice& PriceData : RowData->ShopPrices)
+        // 해당 상점 타입의 인벤토리가 맵에 없을 경우 새로 생성
+        if (!CachedShopData.Contains(ProductData->ShopType))
         {
-            if (PriceData.ShopType == EShopType::None) continue;
-            
-            // 해당 상점 타입의 인벤토리가 맵에 없을 경우 새로 생성
-            if (!CachedShopData.Contains(PriceData.ShopType))
-            {
-                FERNShopInventory NewInventory;
-                NewInventory.ShopType = PriceData.ShopType;
-                CachedShopData.Add(PriceData.ShopType, NewInventory);
-            }
-            
-            //상점 아이템 데이터 구성
-            FERNShopItemData ShopItem;
-            ShopItem.ItemID = ItemID;
-            ShopItem.Price = PriceData.BuyPrice;
-            ShopItem.StockCount = -1;
-            ShopItem.bIsAvailable = true;
-            // 캐싱 맵의 해당 상점 타입 인벤토리 아이템 추가
-            CachedShopData[PriceData.ShopType].Items.Add(ShopItem);
+            FERNShopInventory NewInventory;
+            NewInventory.ShopType = ProductData->ShopType;
+            CachedShopData.Add(ProductData->ShopType, NewInventory);
         }
+        
+        // 상점 아이템 데이터 구성
+        FERNShopItemData ShopItem;
+        ShopItem.ItemID = ProductData->ItemID;
+        ShopItem.Price = ProductData->Price;
+        ShopItem.StockCount = ProductData->MaxStock;
+        ShopItem.bIsAvailable = (ShopItem.StockCount != 0); // 재고가 0이면 구매 불가
+
+        // 캐싱 맵의 해당 상점 타입 인벤토리에 아이템 추가
+        CachedShopData[ProductData->ShopType].Items.Add(ShopItem);
     }
 
     bIsDataCached = true;
-    UE_LOG(LogShopProvider, Log, TEXT("[DataTableProvider] 초기화 및 데이터 테이블 캐싱 완료. 총 %d종류의 상점 데이터가 준비되었습니다."), CachedShopData.Num());
+    UE_LOG(LogShopProvider, Log, TEXT("[DataTableProvider] 초기화 및 상점 테이블 캐싱 완료. 총 %d종류의 상점 인벤토리가 준비되었습니다."), CachedShopData.Num());
 }
 
 void UERNDataTableShopProvider::RequestShopData_Implementation(EShopType ShopType)
@@ -74,6 +66,13 @@ void UERNDataTableShopProvider::RequestShopData_Implementation(EShopType ShopTyp
     else
     {
         UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider] 상점 타입 [%d] 에 대한 캐싱 데이터를 찾을 수 없습니다. (빈 인벤토리 전달)"), (int32)ShopType);
+        UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider Debug] bIsDataCached = %s, CachedShopData.Num() = %d"), 
+            bIsDataCached ? TEXT("True") : TEXT("False"), CachedShopData.Num());
+        
+        for (auto& Pair : CachedShopData)
+        {
+            UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider Debug] 발견된 캐시 상점 타입: %d"), (int32)Pair.Key);
+        }
         
         // 데이터가 없으면 빈 인벤토리로 반환
         FERNShopInventory EmptyInventory;

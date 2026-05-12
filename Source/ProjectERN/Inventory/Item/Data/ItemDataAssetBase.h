@@ -38,6 +38,6 @@ public:
 	
 	// 메시 스케일
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector Scale = FVector::ZeroVector;
+	FVector Scale = FVector::OneVector;
 	
 };

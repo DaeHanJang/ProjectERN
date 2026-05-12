@@ -5,6 +5,7 @@
 #include "ItemManagerSettings.h"
 #include "Engine/AssetManager.h"
 #include "Inventory/Item/ERNItemActor.h"
+#include "Inventory/Item/Data/ERNDropTable.h"
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
 
 void UItemManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -73,6 +74,53 @@ void UItemManagerSubsystem::SpawnItem(const FItemRuntimeState& ItemRuntimeState,
 	
 	// ItemActor 초기화
 	Item->InitializeRuntimeState(ItemRuntimeState);
+}
+
+bool UItemManagerSubsystem::RollItemFromDropTable(const UDataTable* DropTable, FItemRuntimeState& OutItemRuntimeState) const
+{
+	TArray<float> ItemChance;
+	TMap<uint32, FERNDropTable> IndexToItemID;
+	float SumChance = 0.0f;
+	
+	if (!DropTable || DropTable->GetRowStruct() != FERNDropTable::StaticStruct())
+	{
+		return false;
+	}
+	
+	// 드롭 테이블을 읽어 확률값을 누적시키면 배열에 추가 후 [인덱스, 행 데이터]로 매핑
+	DropTable->ForeachRow<FERNDropTable>(TEXT("DropTableContext"), 
+		[this, &ItemChance, &IndexToItemID, &SumChance](const FName& RowName, const FERNDropTable& Row)
+		{
+			if (Row.ItemID.IsNone() || !ItemValid(Row.ItemID) || Row.DropChance <= 0 || Row.MinCount <= 0 || Row.MinCount > Row.MaxCount)
+			{
+				return;
+			}
+			
+			SumChance += Row.DropChance;
+			ItemChance.Add(SumChance);
+			IndexToItemID.Add(ItemChance.Num() - 1, Row);
+		}
+	);
+	
+	// 랜덤 값 생성
+	const float Roll = FMath::FRandRange(0.0f, SumChance);
+	
+	// 확률 배열을 순회하면서 랜덤 값이 최초로 이하일 경우 아이템 데이터 세팅
+	for (int32 i = 0; i < ItemChance.Num(); ++i)
+	{
+		if (Roll <= ItemChance[i])
+		{
+			const FERNDropTable& Row = IndexToItemID.FindRef(i);
+			const int32 Quantity = FMath::RandRange(Row.MinCount, Row.MaxCount);
+			
+			OutItemRuntimeState.SetItemID(Row.ItemID);
+			OutItemRuntimeState.SetQuantity(Quantity);
+			
+			break;
+		}
+	}
+	
+	return OutItemRuntimeState.IsValid();
 }
 
 const UItemDataAssetBase* UItemManagerSubsystem::LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags)

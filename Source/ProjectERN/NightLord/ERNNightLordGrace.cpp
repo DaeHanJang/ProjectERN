@@ -42,9 +42,19 @@ void AERNNightLordGrace::Interact_Implementation(APlayerController* PlayerContro
 	if (!PlayerController) return;
 	
 	AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PlayerController);
-	if (!ERNPC || !ERNPC->LevelUpWidgetClass) return;
+	if (!ERNPC) return;
+
+	if (!ERNPC->LevelUpWidgetClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("화톳불 오류: 플레이어 컨트롤러에 LevelUpWidgetClass가 할당되지 않았습니다. (BP_PlayerController 확인)"));
+		return;
+	}
 	
-	if (LevelUpPopupWidget) return;
+	if (LevelUpPopupWidget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("화톳불: 팝업 위젯이 이미 존재합니다."));
+		return;
+	}
 	
 	// UI 매니저 게이트: 다른 UI(상점, 인벤토리)가 열려있으면 차단
 	if (ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer())

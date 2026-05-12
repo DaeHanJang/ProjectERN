@@ -4,10 +4,12 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Engine/DamageEvents.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/AudioComponent.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -60,6 +62,13 @@ void AERNProjectileBase::Multicast_PlayImpactEffect_Implementation(FVector Locat
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ImpactEffect, Location, Rotation);
 	}
+
+	if (ImpactSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this, ImpactSound, Location, Rotation,
+			1.f, 1.f, 0.f, ImpactSoundAttenuation);
+	}
 }
 
 void AERNProjectileBase::BeginPlay()
@@ -76,6 +85,15 @@ void AERNProjectileBase::BeginPlay()
 	if (SpeedCurve && ProjectileMovement)
 	{
 		ProjectileMovement->MaxSpeed = 99999.f;
+	}
+
+	// 비행 사운드 재생 (서버/클라 모두)
+	if (FlightSound)
+	{
+		FlightAudioComponent = UGameplayStatics::SpawnSoundAttached(
+			FlightSound, RootComponent, NAME_None,
+			FVector::ZeroVector, EAttachLocation::KeepRelativeOffset,
+			true, 1.f, 1.f, 0.f, FlightSoundAttenuation);
 	}
 
 	if (!HasAuthority()) return;
@@ -169,7 +187,12 @@ void AERNProjectileBase::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 {
 	if (!HasAuthority()) return;
 
-	// 폰은 Overlap으로 처리되므로 여기는 벽(WorldStatic/Dynamic) 충돌만
+	// 폭발 투사체면 벽에 부딪혀도 범위 데미지 적용
+	if (bExplode)
+	{
+		ApplyExplosionDamage(Hit.ImpactPoint);
+	}
+
 	Multicast_PlayImpactEffect(Hit.ImpactPoint, Hit.ImpactNormal.Rotation());
 	Destroy();
 }
@@ -188,31 +211,36 @@ void AERNProjectileBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AAc
 	AProjectERNCharacter* OtherPlayer = Cast<AProjectERNCharacter>(OtherActor);
 	AERNEnemyCharacter* OtherEnemy = Cast<AERNEnemyCharacter>(OtherActor);
 
-	// 플레이어가 쏜 투사체 - 같은 플레이어는 통과, 적에게만 데미지
-	if (PlayerShooter)
-	{
-		if (OtherPlayer) return;
-		if (!OtherEnemy) return;
+	// 같은 팀이면 통과
+	if (PlayerShooter && OtherPlayer) return;
+	if (EnemyShooter && OtherEnemy) return;
 
-		OtherEnemy->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), OwnerActor);
-		OtherEnemy->TryApplyStagger(StaggerPower);
-	}
-	// 적이 쏜 투사체 - 같은 적은 통과, 플레이어에게만 데미지
-	else if (EnemyShooter)
-	{
-		if (OtherEnemy) return;
-		if (!OtherPlayer) return;
-
-		OtherPlayer->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), OwnerActor);
-		OtherPlayer->TryApplyStagger(StaggerPower);
-	}
-	else
-	{
-		return;
-	}
+	// 유효한 타겟인지 확인
+	if (PlayerShooter && !OtherEnemy) return;
+	if (EnemyShooter && !OtherPlayer) return;
+	if (!PlayerShooter && !EnemyShooter) return;
 
 	const FVector ImpactPoint = bFromSweep ? FVector(SweepResult.ImpactPoint) : GetActorLocation();
 	const FRotator ImpactRot = bFromSweep ? SweepResult.ImpactNormal.Rotation() : GetActorRotation();
+
+	// 직격 데미지 적용
+	if (OtherEnemy)
+	{
+		OtherEnemy->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), OwnerActor);
+		OtherEnemy->TryApplyStagger(StaggerPower);
+	}
+	else if (OtherPlayer)
+	{
+		OtherPlayer->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), OwnerActor);
+		OtherPlayer->TryApplyStagger(StaggerPower);
+	}
+
+	// 폭발 투사체면 범위 데미지 추가 적용
+	if (bExplode)
+	{
+		ApplyExplosionDamage(ImpactPoint);
+	}
+
 	Multicast_PlayImpactEffect(ImpactPoint, ImpactRot);
 	Destroy();
 }
@@ -286,4 +314,46 @@ AActor* AERNProjectileBase::GetEnemyBlackboardTarget() const
 	if (!BB) return nullptr;
 
 	return Cast<AActor>(BB->GetValueAsObject(TEXT("TargetActor")));
+}
+
+// 폭발 범위 데미지 적용
+void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
+{
+	AActor* OwnerActor = GetOwner();
+	AProjectERNCharacter* PlayerShooter = Cast<AProjectERNCharacter>(OwnerActor);
+	AERNEnemyCharacter* EnemyShooter = Cast<AERNEnemyCharacter>(OwnerActor);
+
+	TArray<AActor*> IgnoreActors;
+	IgnoreActors.Add(this);
+	if (OwnerActor) IgnoreActors.Add(OwnerActor);
+
+	TArray<AActor*> OverlappedActors;
+	UKismetSystemLibrary::SphereOverlapActors(
+		this, ExplosionCenter, ExplosionRadius,
+		TArray<TEnumAsByte<EObjectTypeQuery>>(), APawn::StaticClass(),
+		IgnoreActors, OverlappedActors);
+
+	for (AActor* HitActor : OverlappedActors)
+	{
+		if (!HitActor) continue;
+
+		// 플레이어가 쏜 폭발 - 적에게만 데미지
+		if (PlayerShooter)
+		{
+			if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(HitActor))
+			{
+				Enemy->TakeDamage(ExplosionDamage, FDamageEvent(), GetInstigatorController(), OwnerActor);
+				Enemy->TryApplyStagger(ExplosionStaggerPower);
+			}
+		}
+		// 적이 쏜 폭발 - 플레이어에게만 데미지
+		else if (EnemyShooter)
+		{
+			if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(HitActor))
+			{
+				Player->TakeDamage(ExplosionDamage, FDamageEvent(), GetInstigatorController(), OwnerActor);
+				Player->TryApplyStagger(ExplosionStaggerPower);
+			}
+		}
+	}
 }

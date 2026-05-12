@@ -44,6 +44,9 @@ public:
 	// 아이템 생성
 	UFUNCTION(BlueprintCallable, Category="ItemManager")
 	void SpawnItem(const FItemRuntimeState& ItemRuntimeState, const FVector& Location, const FRotator& Rotation);
+	// 드롭 테이블 기반 아이템 데이터 생성
+	UFUNCTION(BlueprintCallable, Category="ItemManager")
+	bool RollItemFromDropTable(const UDataTable* DropTable, FItemRuntimeState& OutItemRuntimeState) const;
 
 	// 아이템 데이터 애셋 동기 로드
 	UFUNCTION(BlueprintCallable, Category="ItemManager")
