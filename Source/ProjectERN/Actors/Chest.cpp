@@ -56,7 +56,7 @@ void AChest::Interact_Implementation(APlayerController* PlayerController)
 		FItemRuntimeState ItemRuntimeState;
 		if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState))
 		{
-			ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(-150.0f, 0.0f, 0.0f), GetActorRotation());
+			ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(-150.0f, 0.0f, 50.0f), GetActorRotation());
 		}
 		Destroy();
 	}

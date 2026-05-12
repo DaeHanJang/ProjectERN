@@ -205,7 +205,7 @@ void AERNEnemyCharacter::SpawnDrops()
 		FItemRuntimeState ItemRuntimeState;
 		if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState))
 		{
-			ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation(), GetActorRotation());
+			ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), GetActorRotation());
 		}
 	}
 }

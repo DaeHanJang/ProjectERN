@@ -1,6 +1,5 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-
 #include "Character/Player/ERNPlayerController.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
@@ -114,6 +113,10 @@ void AERNPlayerController::BeginPlay()
 			InventoryWidget = CreateWidget<UUserWidget>(this, InventoryWidgetClass);
 			if (InventoryWidget)
 			{
+				if (UERNInteractableWidget* InteractableInventoryWidget = Cast<UERNInteractableWidget>(InventoryWidget))
+				{
+					InteractableInventoryWidget->OnWidgetClosed.AddUniqueDynamic(this, &AERNPlayerController::InventoryClose);
+				}
 				InventoryWidget->AddToViewport();
 				RefreshInventoryWidget();
 			}
@@ -261,7 +264,7 @@ void AERNPlayerController::SetupInputComponent()
 			
 			if (InventoryAction)
 			{
-				EnhancedInputComponent->BindAction(InventoryAction, ETriggerEvent::Started, this, &AERNPlayerController::ToggleInventory);
+				EnhancedInputComponent->BindAction(InventoryAction, ETriggerEvent::Started, this, &AERNPlayerController::InventoryOpen);
 			}
 		}
 	}
@@ -379,7 +382,7 @@ void AERNPlayerController::Server_TryInteract_Implementation(AActor* Interactabl
 	}
 }
 
-void AERNPlayerController::ToggleInventory()
+void AERNPlayerController::InventoryOpen()
 {
 	if (!InventoryWidget)
 	{
@@ -406,9 +409,24 @@ void AERNPlayerController::ToggleInventory()
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
 		
-		Cast<UERNInventoryWidget>(InventoryWidget)->InitFocusSlotIndex();
+		if (UERNInventoryWidget* ERNInventoryWidget = Cast<UERNInventoryWidget>(InventoryWidget))
+		{
+			ERNInventoryWidget->PlayOpenAnimation();
+			ERNInventoryWidget->InitFocusSlotIndex();
+		}
 	}
-	else
+}
+
+void AERNPlayerController::InventoryClose()
+{
+	if (!InventoryWidget)
+	{
+		return;
+	}
+	
+	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
+	
+	if (InventoryWidget->GetVisibility() == ESlateVisibility::Visible)
 	{
 		// UI 매니저에 닫힘 알림
 		if (UIManager)
