@@ -174,6 +174,31 @@ FItemRuntimeState FInventoryList::ChangeItem(const int32 SlotIndex, const FItemR
 	return OutItemRuntimeState;
 }
 
+void FInventoryList::CopyFrom(const FInventoryList& SourceInventory, const int32 Size)
+{
+	Items.Empty();
+	Items.SetNum(Size);
+	
+	const TArray<FInventoryItemEntry>& SourceItems = SourceInventory.GetItems();
+	
+	for (int32 i = 0; i < Size; ++i)
+	{
+		if (SourceItems.IsValidIndex(i))
+		{
+			Items[i] = SourceItems[i];
+		}
+		else
+		{
+			Items[i].Init();
+		}
+		
+		Items[i].SetSlotIndex(i);
+		MarkItemDirty(Items[i]);
+	}
+	
+	MarkArrayDirty();
+}
+
 void FInventoryList::LogInventory() const
 {
 	UE_LOG(LogTemp, Warning, TEXT("=================================================="));

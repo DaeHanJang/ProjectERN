@@ -8,11 +8,12 @@
 #include "GameFramework/PlayerController.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
 #include "Core/ERNGameInstance.h"
+#include "Inventory/Components/ERNInventoryComponent.h"
 
 AERNPlayerState::AERNPlayerState()
 {
 	// 기본값 - 로비에서 설정됨
-	CharacterType = ECharacterType::None;
+		CharacterType = ECharacterType::None;
 	PlayerNickname = TEXT("Player");
 	bIsReady = false;
 }
@@ -81,21 +82,6 @@ void AERNPlayerState::Server_ChangeCharacterClass_Implementation(ECharacterType 
 	FVector Location = OldPawn ? OldPawn->GetActorLocation() : FVector::ZeroVector;
 	FRotator Rotation = OldPawn ? OldPawn->GetActorRotation() : FRotator::ZeroRotator;
 
-	// 기존 캐릭터 파괴 (장착된 무기도 함께 정리)
-	if (OldPawn)
-	{
-		// Equipment 컴포넌트가 있다면 무기 먼저 해제
-		if (AProjectERNCharacter* OldCharacter = Cast<AProjectERNCharacter>(OldPawn))
-		{
-			if (UERNEquipmentComponent* EquipComp = OldCharacter->FindComponentByClass<UERNEquipmentComponent>())
-			{
-				// 장착된 무기가 있다면 먼저 해제
-				EquipComp->Server_UnequipWeapon();
-			}
-		}
-		OldPawn->Destroy();
-	}
-
 	// 새 캐릭터 클래스 선택
 	TSubclassOf<AProjectERNCharacter> NewCharacterClass = nullptr;
 	switch (NewClass)
@@ -122,8 +108,9 @@ void AERNPlayerState::Server_ChangeCharacterClass_Implementation(ECharacterType 
 	SpawnParams.Owner = PC;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-	if (AProjectERNCharacter* NewCharacter = GetWorld()->SpawnActor<AProjectERNCharacter>(
-		NewCharacterClass, Location, Rotation, SpawnParams))
+	AProjectERNCharacter* NewCharacter = GetWorld()->SpawnActor<AProjectERNCharacter>(
+		NewCharacterClass, Location, Rotation, SpawnParams);
+	if (NewCharacter)
 	{
 		// Possess
 		PC->Possess(NewCharacter);
@@ -132,6 +119,32 @@ void AERNPlayerState::Server_ChangeCharacterClass_Implementation(ECharacterType 
 		CharacterType = NewClass;
 
 		UE_LOG(LogTemp, Warning, TEXT("[Server_ChangeCharacterClass] Player %s changed CharacterType to %d"), *PlayerNickname, static_cast<int32>(NewClass));
+	}
+	
+	if (AProjectERNCharacter* OldCharacter = Cast<AProjectERNCharacter>(OldPawn))
+	{
+		if (UERNInventoryComponent* OldInventory = OldCharacter->GetInventoryComponent())
+		{
+			if (UERNInventoryComponent* NewInventory = NewCharacter->GetInventoryComponent())
+			{
+				NewInventory->CopyInventoryFrom(OldInventory);
+			}
+		}
+	}
+	
+	// 기존 캐릭터 파괴 (장착된 무기도 함께 정리)
+	if (OldPawn)
+	{
+		// Equipment 컴포넌트가 있다면 무기 먼저 해제
+		if (AProjectERNCharacter* OldCharacter = Cast<AProjectERNCharacter>(OldPawn))
+		{
+			if (UERNEquipmentComponent* EquipComp = OldCharacter->FindComponentByClass<UERNEquipmentComponent>())
+			{
+				// 장착된 무기가 있다면 먼저 해제
+				EquipComp->Server_UnequipWeapon();
+			}
+		}
+		OldPawn->Destroy();
 	}
 }
 
