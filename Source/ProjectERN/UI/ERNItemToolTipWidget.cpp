@@ -1,0 +1,81 @@
+#include "ERNItemToolTipWidget.h"
+#include "Components/TextBlock.h"
+#include "Components/Image.h"
+#include "Inventory/Item/Manager/ItemManagerSubsystem.h"
+#include "Inventory/Item/Data/ItemDataAssetBase.h"
+
+void UERNItemToolTipWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	// 상점이 처음 열렸을 때 툴팁이 보이지 않도록 초기화
+	SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UERNItemToolTipWidget::UpdateTooltip(FName ItemID, int32 ItemPrice)
+{
+	if (ItemID.IsNone()) return;
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UItemManagerSubsystem* ItemSubsystem = GI->GetSubsystem<UItemManagerSubsystem>())
+		{
+			// 1. 데이터 테이블에서 아이템 기본 정보 가져오기 (이름)
+			if (const FERNItemTable* ItemRow = ItemSubsystem->FindItemRow(ItemID))
+			{
+				if (ItemNameText)
+				{
+					ItemNameText->SetText(ItemRow->DisplayName);
+				}
+
+				FLinearColor TintColor = FLinearColor::White;
+				switch (ItemRow->Grade)
+				{
+				case EItemGrade::Common:
+					TintColor = FLinearColor(0.65f, 0.65f, 0.65f, 1.0f); // 회색
+					break;
+				case EItemGrade::Uncommon:
+					TintColor = FLinearColor(0.2f, 1.0f, 1.0f, 1.0f); // 녹색
+					break;
+				case EItemGrade::Rare:
+					TintColor = FLinearColor(0.07f, 0.0f, 1.0f, 1.0f); // 파란색
+					break;
+				case EItemGrade::Legendary:
+					TintColor = FLinearColor(1.0f, 0.265f, 0.0f, 1.0f); // 주황/금색
+					break;
+				default:
+					TintColor = FLinearColor::White;
+					break;
+				}
+
+				// 등급에 따른 배경 틴트 및 텍스트 색상 적용
+				if (GradeBackgroundImage)
+				{
+					GradeBackgroundImage->SetColorAndOpacity(TintColor);
+				}
+				
+				if (ItemNameText)
+				{
+					ItemNameText->SetColorAndOpacity(FSlateColor(TintColor));
+				}
+			}
+
+			// 2. 데이터 에셋에서 아이콘 가져오기 (UI용으로 동기 로드)
+			// (캐싱되어 있다면 즉시 반환되며, 없을 경우 로드 대기가 발생할 수 있음)
+			const UItemDataAssetBase* DataAsset = ItemSubsystem->LoadItemDataAssetSync(ItemID, EItemAssetLoadFlags::UI);
+			if (DataAsset && TooltipIcon)
+			{
+				if (UTexture2D* IconTex = DataAsset->Icon.LoadSynchronous())
+				{
+					TooltipIcon->SetBrushFromTexture(IconTex);
+				}
+			}
+			
+			// 차후 추가될 가격 정보 등 연동 (당장은 아이콘과 이름만 필수 요구됨)
+			if (PriceText)
+			{
+				PriceText->SetText(FText::AsNumber(ItemPrice));
+			}
+		}
+	}
+}
