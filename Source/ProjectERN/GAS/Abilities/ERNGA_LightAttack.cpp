@@ -43,12 +43,6 @@ void UERNGA_LightAttack::CheckCombo()
 
 	const int32 NextComboIndex = CurrentComboIndex + 1;
 
-	/*
-	const FERNComboSectionCost NextCost =
-		ComboSectionCosts.IsValidIndex(NextComboIndex)
-			? ComboSectionCosts[NextComboIndex]
-			: FERNComboSectionCost();
-			*/
 	const FERNComboSectionCost NextCost = GetComboSectionCost(NextComboIndex);
 
 	if (!ApplyResourceCost(NextCost.StaminaCost, NextCost.ManaCost))
