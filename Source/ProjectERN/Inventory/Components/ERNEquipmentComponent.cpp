@@ -160,7 +160,7 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 	{
 		// 장착할 아이템의 데이터 애셋 로드
 		const UEquipableItemDataAsset* DA = Cast<UEquipableItemDataAsset>(ItemManager->LoadItemDataAssetSync(ItemEntry.GetItemID(), EItemAssetLoadFlags::Gameplay));
-		if (!DA || DA->EquipableClass.IsNull() || DA->EquipableAbility.IsNull())
+		if (!DA || DA->EquipableClass.IsNull())
 		{
 			return;
 		}
@@ -242,7 +242,7 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 			
 			// 장착할 아이템의 데이터 애셋 로드
 			const UConsumableItemDataAsset* DA = Cast<UConsumableItemDataAsset>(ItemManager->LoadItemDataAssetSync(ItemEntry.GetItemID(), EItemAssetLoadFlags::Gameplay));
-			if (!DA || DA->ConsumableAbility.IsNull())
+			if (!DA)
 			{
 				return;
 			}
