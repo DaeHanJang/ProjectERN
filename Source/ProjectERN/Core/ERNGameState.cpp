@@ -3,9 +3,18 @@
 #include "Core/ERNGameState.h"
 #include "GameFramework/PlayerState.h"
 #include "Character/Player/ERNPlayerState.h"
+#include "Net/UnrealNetwork.h"
 
 AERNGameState::AERNGameState()
 {
+	bReplicates = true;
+}
+
+void AERNGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AERNGameState, CountdownTime);
 }
 
 void AERNGameState::AddPlayerState(APlayerState* PlayerState)
@@ -55,17 +64,92 @@ void AERNGameState::CheckAllPlayersReady()
 		}
 	}
 
-	// 모두 준비되면 필드맵으로 이동
-	if (bAllReady)
+	// 모두 준비되면 카운트다운 시작
+	if (bAllReady && !bIsCountingDown)
 	{
-		UE_LOG(LogTemp, Log, TEXT("All players ready! Traveling to field map: %s"), *FieldMapName);
-
-		// 방송
+		UE_LOG(LogTemp, Log, TEXT("All players ready! Starting countdown..."));
 		OnAllPlayersReady.Broadcast();
+		StartCountdown();
+	}
+}
 
-		if (UWorld* World = GetWorld())
-		{
-			World->ServerTravel(FieldMapName + TEXT("?listen"));
-		}
+void AERNGameState::StartCountdown()
+{
+	if (!HasAuthority() || bIsCountingDown)
+	{
+		return;
+	}
+
+	bIsCountingDown = true;
+	CountdownTime = CountdownDuration;
+
+	// 즉시 클라이언트에 알림
+	OnRep_CountdownTime();
+
+	// 1초마다 틱
+	GetWorldTimerManager().SetTimer(
+		CountdownTimerHandle,
+		this,
+		&AERNGameState::TickCountdown,
+		1.0f,
+		true
+	);
+}
+
+void AERNGameState::CancelCountdown()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bIsCountingDown = false;
+	CountdownTime = 0;
+	GetWorldTimerManager().ClearTimer(CountdownTimerHandle);
+
+	// 클라이언트에 취소 알림
+	OnRep_CountdownTime();
+}
+
+void AERNGameState::TickCountdown()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	CountdownTime--;
+
+	// 서버에서도 UI 업데이트 (OnRep은 클라이언트에서만 자동 호출됨)
+	OnCountdownChanged.Broadcast(CountdownTime);
+
+	if (CountdownTime <= 0)
+	{
+		GetWorldTimerManager().ClearTimer(CountdownTimerHandle);
+		OnCountdownComplete();
+	}
+}
+
+void AERNGameState::OnRep_CountdownTime()
+{
+	// 모든 클라이언트에서 UI 업데이트
+	OnCountdownChanged.Broadcast(CountdownTime);
+
+	if (CountdownTime <= 0 && bIsCountingDown)
+	{
+		OnCountdownFinished.Broadcast();
+	}
+}
+
+void AERNGameState::OnCountdownComplete()
+{
+	bIsCountingDown = false;
+	OnCountdownFinished.Broadcast();
+
+	UE_LOG(LogTemp, Log, TEXT("Countdown complete! Traveling to field map: %s"), *FieldMapName);
+
+	if (UWorld* World = GetWorld())
+	{
+		World->ServerTravel(FieldMapName + TEXT("?listen"));
 	}
 }
