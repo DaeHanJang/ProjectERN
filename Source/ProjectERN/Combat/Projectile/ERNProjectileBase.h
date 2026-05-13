@@ -167,6 +167,16 @@ public:
 	// 서버가 랜덤 결정한 발사 방향 - 클라에 InitialOnly로 동기화
 	UPROPERTY(ReplicatedUsing = OnRep_ChosenInitialDir)
 	FVector ChosenInitialDir = FVector::ZeroVector;
+	
+	// 유도 타켓 (서버-클라 리플리케이트)
+	UPROPERTY(ReplicatedUsing = OnRep_HomingTarget)
+	TWeakObjectPtr<class AActor> HomingTarget;
+	
+	UFUNCTION()
+	void OnRep_HomingTarget();
+	
+	// PMC 유도 설정
+	void ApplyHomingSettings(AActor* Target);
 
 	// 폭발 활성화
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion")
