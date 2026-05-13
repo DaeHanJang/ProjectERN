@@ -40,6 +40,16 @@ public:
 	void CheckCombo();
 
 protected:
+	virtual bool CheckCost(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
+	
+	virtual void ApplyCost(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo) const override;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "ERN|Cost")
 	TArray<FERNComboSectionCost> ComboSectionCosts;
 	
@@ -55,4 +65,7 @@ protected:
 	
 	bool bHasCachedComboRotation = false;
 	FRotator CachedComboRotation = FRotator::ZeroRotator;
+	
+public:
+	FERNComboSectionCost GetComboSectionCost(int32 ComboIndex) const;
 };

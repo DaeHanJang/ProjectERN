@@ -31,11 +31,11 @@ protected:
 
 protected:
 	// 스태미나 소모 값
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Cost")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "ERN|Cost")
 	float StaminaCost = 0.f;
 
 	// 마나 소모 값
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Cost")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "ERN|Cost")
 	float ManaCost = 0.f;
 
 	// GE
@@ -55,4 +55,7 @@ protected:
 	
 	// 스태미나/마나 소모 적용
 	bool ApplyResourceCost(float InStaminaCost, float InManaCost) const;
+	
+	// 콤보 어택은 따로 스태미나 소모를 적용하기 위함
+	bool CheckResourceCost(float InStaminaCost, float InManaCost, const FGameplayAbilityActorInfo* ActorInfo) const;
 };
