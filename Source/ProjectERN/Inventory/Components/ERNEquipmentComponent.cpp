@@ -3,12 +3,14 @@
 #include "Inventory/Components/ERNEquipmentComponent.h"
 
 #include "ERNInventoryComponent.h"
+#include "Abilities/GameplayAbility.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Combat/Consumable/ERNConsumableBase.h"
 #include "Combat/Weapons/ERNWeaponBase.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Inventory/Item/Data/ConsumableItemDataAsset.h"
 #include "Inventory/Item/Data/EquipableItemDataAsset.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 
@@ -88,7 +90,7 @@ void UERNEquipmentComponent::Server_EquipWeapon_Implementation(TSubclassOf<AERNW
 		// 캐릭터 메시에 부착
 		if (CurrentWeapon && Owner)
 		{
-			ACharacter* Character = Cast<ACharacter>(Owner);
+			AERNCharacterBase* Character = Cast<AERNCharacterBase>(Owner);
 			if (Character && Character->GetMesh())
 			{
 				CurrentWeapon->AttachToComponent(
@@ -117,6 +119,7 @@ void UERNEquipmentComponent::Server_UnequipWeapon_Implementation()
 	{
 		CurrentWeapon->Destroy();
 		CurrentWeapon = nullptr;
+		
 		UE_LOG(LogTemp, Log, TEXT("Weapon unequipped"));
 	}
 }
@@ -157,7 +160,7 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 	{
 		// 장착할 아이템의 데이터 애셋 로드
 		const UEquipableItemDataAsset* DA = Cast<UEquipableItemDataAsset>(ItemManager->LoadItemDataAssetSync(ItemEntry.GetItemID(), EItemAssetLoadFlags::Gameplay));
-		if (!DA || DA->EquipableClass.IsNull())
+		if (!DA || DA->EquipableClass.IsNull() || DA->EquipableAbility.IsNull())
 		{
 			return;
 		}
@@ -170,7 +173,7 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 		}
 		
 		// GetOwner(), Character의 null체크는 GetInventoryComponent()에서 진행
-		const ACharacter* Character = Cast<ACharacter>(GetOwner());
+		AERNCharacterBase* Character = Cast<AERNCharacterBase>(GetOwner());
 		if (!Character->GetMesh())
 		{
 			return;
@@ -183,6 +186,12 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 		if (!NewWeapon)
 		{
 			return;
+		}
+
+		// 무기 스킬 장착
+		if (TSubclassOf<UGameplayAbility> WeaponSkillClass = DA->EquipableAbility.Get())
+		{
+			Character->SetWeaponAbility(WeaponSkillClass);
 		}
 		
 		// 스폰된 아이템 런타임 값 설정
@@ -230,6 +239,26 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 		{
 			// 장착할 아이템 런타임 값으로 변경
 			CurrentConsumable = NewConsumableRuntimeState;
+			
+			// 장착할 아이템의 데이터 애셋 로드
+			const UConsumableItemDataAsset* DA = Cast<UConsumableItemDataAsset>(ItemManager->LoadItemDataAssetSync(ItemEntry.GetItemID(), EItemAssetLoadFlags::Gameplay));
+			if (!DA || DA->ConsumableAbility.IsNull())
+			{
+				return;
+			}
+			
+			// GetOwner(), Character의 null체크는 GetInventoryComponent()에서 진행
+			AERNCharacterBase* Character = Cast<AERNCharacterBase>(GetOwner());
+			if (!Character->GetMesh())
+			{
+				return;
+			}
+			
+			// 무기 스킬 장착
+			if (TSubclassOf<UGameplayAbility> ConsumableAbility = DA->ConsumableAbility.Get())
+			{
+				Character->SetConsumableAbility(ConsumableAbility);
+			}
 		
 			// 장착했던 아이템의 런타임 상태
 			if (ConsumableSlot.IsValid())

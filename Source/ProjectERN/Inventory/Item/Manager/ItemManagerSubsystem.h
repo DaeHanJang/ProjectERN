@@ -22,6 +22,8 @@ struct FPendingItemDataAssetLoad
 	EItemAssetLoadFlags RequestedLoadFlags = EItemAssetLoadFlags::None;
 	// AssetManager에서 보낸 비동기 로드 요청 핸들
 	TSharedPtr<FStreamableHandle> Handle;
+	
+	TArray<FOnItemDataAssetLoaded> OnLoadedCallbacks;
 };
 
 /**

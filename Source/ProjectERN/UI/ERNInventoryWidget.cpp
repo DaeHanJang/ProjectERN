@@ -22,12 +22,13 @@ void UERNInventoryWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
+	// 처음 위젯이 생성될 때 숨김 처리
 	SetVisibility(ESlateVisibility::Hidden);
 	
 	// 현재 캐릭터 컴포넌트에 이벤트 바인딩
 	RefreshFromCurrentCharacter();
 	
-	// 슬라이드 위젯 확인, 취소 버튼 클릭 이벤트 구독
+	// 슬라이드 위젯 확인, 취소 버튼 이벤트 바인딩
 	if (WBP_SlideWidget)
 	{
 		WBP_SlideWidget->OnConfirmButtonClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateSlideWidget);
@@ -37,25 +38,25 @@ void UERNInventoryWidget::NativeConstruct()
 
 void UERNInventoryWidget::RefreshFromCurrentCharacter()
 {
-	// 구독된 이벤트가 있다면 해제
+	// 현재 캐릭터 컴포넌트에 이벤트 언바인딩
 	UnbindFromCurrentComponent();
 	
-	// 활성화 슬롯 초기화
+	// 활성화된 슬롯 인덱스 초기화
 	InitFocusSlotIndex();
-	
-	UERNInventoryComponent* InventoryComponent = GetInventoryComponent();
-	if (InventoryComponent)
+
+	// 인벤토리 컴포넌트 이벤트 바인딩
+	if (UERNInventoryComponent* InventoryComponent = GetInventoryComponent())
 	{
-		// 현재 캐릭터의 인벤토리 컴포넌트 설정
+		// 현재 바인딩된 인벤토리 컴포넌트 포인터를 현재 캐릭터의 인벤토리 컴포넌트로 설정
 		BoundInventoryComponent = InventoryComponent;
 		
 		// 슬롯 생성
 		CreateSlot(InventoryComponent->GetMaxStackSize(), ColumnSize);
 		
-		// 인벤토리 갱신 이벤트 구독
+		// 인벤토리 갱신 이벤트 바인딩
 		InventoryComponent->OnInventorySlotChanged.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateInventorySlot);
 		
-		// 최초 인벤토리와 UI 동기화
+		// 최초 바인딩 후 인벤토리 컴포넌트와 UI 동기화
 		for (const FInventoryItemEntry& Entry : InventoryComponent->GetInventory().GetItems())
 		{
 			UpdateInventorySlot(Entry);
@@ -63,44 +64,73 @@ void UERNInventoryWidget::RefreshFromCurrentCharacter()
 	}
 	else
 	{
+		// 현재 바인딩된 인벤토리 컴포넌트 포인터 초기화
 		BoundInventoryComponent = nullptr;
 		
-		if (InventoryUniformGridPanel)
-		{
-			InventoryUniformGridPanel->ClearChildren();
-		}
+		// 인벤토리 그리드 패널 초기화
+		InventoryUniformGridPanel->ClearChildren();
 		
+		// 인벤토리 슬롯 배열 초기화
 		SlotWidgets.Empty();
 	}
-	
-	UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent();
-	if (EquipmentComponent)
+
+	// 장착 컴포넌트 이벤트 바인딩
+	if (UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent())
 	{
-		// 현재 캐릭터의 장착 컴포넌트 설정
+		// 현재 바인딩된 장착 컴포넌트 포인터를 현재 캐릭터의 장착 컴포넌트로 설정
 		BoundEquipmentComponent = EquipmentComponent;
 		
-		// 장비 슬롯 갱신 이벤트 구독
+		// 장비 슬롯 갱신 이벤트 바인딩
 		EquipmentComponent->OnEquipmentSlotChanged.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateEquipableSlot);
 		EquipmentComponent->OnConsumableSlotChanged.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateConsumableSlot);
 		
-		// 최초 장비 슬롯과 UI 동기화
+		// 최초 바인딩 후 장비 컴포넌트와 UI 동기화
 		UpdateEquipableSlot(EquipmentComponent->EquipableSlot);
 		UpdateConsumableSlot(EquipmentComponent->ConsumableSlot);
 	}
 	else
 	{
+		// 현재 바인딩된 장비 컴포넌트 포인터 초기화
 		BoundEquipmentComponent = nullptr;
 		
-		if (EquipableSlotWidget)
-		{
-			EquipableSlotWidget->ClearItem();
-		}
+		// 무기, 소모품 슬롯 초기화
+		EquipableSlotWidget->ClearItem();
+		ConsumableSlotWidget->ClearItem();
+	}
+}
+
+void UERNInventoryWidget::CreateSlot(const int32 MaxSlotSize, const int32 ColumnCount)
+{
+	// 인벤토리 그리드 패널 초기화
+	InventoryUniformGridPanel->ClearChildren();
+	// 인벤토리 슬롯 배열 크기 설정
+	SlotWidgets.SetNum(MaxSlotSize);
+	
+	// 인벤토리 슬롯 생성
+	for (int32 i = 0; i < MaxSlotSize; ++i)
+	{
+		SlotWidgets[i] = CreateWidget<UERNInventorySlotWidget>(this, SlotWidgetClass);
 		
-		if (ConsumableSlotWidget)
+		const int32 Row = i / ColumnCount;
+		const int32 Col = i % ColumnCount;
+		
+		InventoryUniformGridPanel->AddChildToUniformGrid(SlotWidgets[i], Row, Col);
+		
+		if (SlotWidgets[i])
 		{
-			ConsumableSlotWidget->ClearItem();
+			// 인벤토리 슬롯 인덱스 설정
+			SlotWidgets[i]->SetSlotIndex(i);
+			// 인벤토리 슬롯 활성화 이벤트 바인딩
+			SlotWidgets[i]->OnSlotClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateFocusSlotIndex);
 		}
 	}
+	
+	// 소모품 슬롯 인덱스 설정
+	ConsumableSlotWidget->SetSlotIndex(MaxSlotSize);
+	// 소모품 슬롯 활성화 이벤트 바인딩
+	ConsumableSlotWidget->OnSlotClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateFocusSlotIndex);
+	// 소모품 슬롯 이미지 설정
+	ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
 }
 
 void UERNInventoryWidget::NativeDestruct()
@@ -108,7 +138,7 @@ void UERNInventoryWidget::NativeDestruct()
 	// 현재 캐릭터 컴포넌트에 이벤트 언바인딩
 	UnbindFromCurrentComponent();
 	
-	// 슬라이드 위젯 확인, 취소 버튼 클릭 이벤트 구독 해제
+	// 슬라이드 위젯 확인, 취소 버튼 이벤트 언바인딩
 	if (WBP_SlideWidget)
 	{
 		WBP_SlideWidget->OnConfirmButtonClicked.RemoveDynamic(this, &UERNInventoryWidget::UpdateSlideWidget);
@@ -120,17 +150,20 @@ void UERNInventoryWidget::NativeDestruct()
 
 void UERNInventoryWidget::UnbindFromCurrentComponent()
 {
+	// 인벤토리 컴포넌트 이벤트 바인딩 해제
 	if (UERNInventoryComponent* InventoryComponent = BoundInventoryComponent.Get())
 	{
 		InventoryComponent->OnInventorySlotChanged.RemoveDynamic(this, &UERNInventoryWidget::UpdateInventorySlot);
 	}
 	
+	// 장착 컴포넌트 이벤트 바인딩 해제
 	if (UERNEquipmentComponent* EquipmentComponent = BoundEquipmentComponent.Get())
 	{
 		EquipmentComponent->OnEquipmentSlotChanged.RemoveDynamic(this, &UERNInventoryWidget::UpdateEquipableSlot);
 		EquipmentComponent->OnConsumableSlotChanged.RemoveDynamic(this, &UERNInventoryWidget::UpdateConsumableSlot);
 	}
 	
+	// 현재 바인딩된 인벤토리, 장착 컴포넌트 포인터 초기화
 	BoundInventoryComponent = nullptr;
 	BoundEquipmentComponent = nullptr;
 }
@@ -151,12 +184,10 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 	// 키보드 I를 누를 경우 (=인벤토리 UI 숨기기)
 	if (InKeyEvent.GetKey() == EKeys::I)
 	{
-		if (AERNPlayerController* PC = GetOwningPlayer<AERNPlayerController>())
-		{
-			BP_PlayCloseAnimation();
+		// UI 닫기 처리 BP 함수 호출 (부모에서 선언된 함수)
+		BP_PlayCloseAnimation();
 		
-			return FReply::Handled();
-		}
+		return FReply::Handled();
 	}
 	
 	// 활성화된 슬롯 인덱스가 있을 경우
@@ -165,7 +196,7 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 		// 키보드 Esc를 누를 경우 (=활성화 슬롯 초기화)
 		if (InKeyEvent.GetKey() == EKeys::Escape)
 		{
-			UpdateFocusSlotIndex(-1);
+			InitFocusSlotIndex();
 			
 			return FReply::Handled();
 		}
@@ -215,9 +246,12 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 
 FReply UERNInventoryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && !WBP_SlideWidget->IsVisible())
+	// 슬롯이 아닌 곳을 클릭하면 활성화 슬롯 초기화
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton &&
+		InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton &&
+		!WBP_SlideWidget->IsVisible())
 	{
-		UpdateFocusSlotIndex(-1);
+		InitFocusSlotIndex();
 		
 		return FReply::Handled();
 	}
@@ -227,7 +261,7 @@ FReply UERNInventoryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,
 
 FReply UERNInventoryWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
-	UERNInventoryComponent* InventoryComponent = GetInventoryComponent();
+	const UERNInventoryComponent* InventoryComponent = GetInventoryComponent();
 	if (!InventoryComponent)
 	{
 		return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
@@ -236,7 +270,7 @@ FReply UERNInventoryWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, 
 	// 활성화된 슬롯 인덱스가 있을 경우
 	if (FocusSlotIndex != -1)
 	{
-		// 인벤토리 네비게이션 (W/Up, A/Left, S/Down, D/Right)
+		// 인벤토리 네비게이션 (Up, Left, Down, Right)
 		const int32 NextIndex = GetNavigationTargetSlotIndex(InKeyEvent.GetKey(), InventoryComponent->GetMaxStackSize());
 		if (NextIndex != INDEX_NONE)
 		{			
@@ -285,109 +319,112 @@ const int32 UERNInventoryWidget::GetNavigationTargetSlotIndex(const FKey& Key, c
 	return NextIndex;
 }
 
-void UERNInventoryWidget::CreateSlot(const int32 MaxSlotSize, const int32 ColumnCount)
-{
-	InventoryUniformGridPanel->ClearChildren();
-	SlotWidgets.SetNum(MaxSlotSize);
-	
-	for (int32 i = 0; i < MaxSlotSize; ++i)
-	{
-		SlotWidgets[i] = CreateWidget<UERNInventorySlotWidget>(this, SlotWidgetClass);
-		
-		const int32 Row = i / ColumnCount;
-		const int32 Col = i % ColumnCount;
-		
-		InventoryUniformGridPanel->AddChildToUniformGrid(SlotWidgets[i], Row, Col);
-		
-		if (SlotWidgets[i])
-		{
-			SlotWidgets[i]->SetSlotIndex(i);
-			// 인벤토리 슬롯 활성화 이벤트 구독
-			SlotWidgets[i]->OnSlotClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateFocusSlotIndex);
-		}
-	}
-	
-	// 소모품 슬롯 인덱스 설정
-	ConsumableSlotWidget->SetSlotIndex(MaxSlotSize);
-	ConsumableSlotWidget->OnSlotClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateFocusSlotIndex);
-	ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
-}
-
 void UERNInventoryWidget::UpdateInventorySlot(const FInventoryItemEntry& Entry)
-{
+{	
 	// 슬롯 위젯 유효성 확인
 	if (!SlotWidgets.IsValidIndex(Entry.GetSlotIndex()))
 	{
 		return;
 	}
 	
-	// 수량이 0인 경우 슬롯 위젯 초기화
-	if (Entry.GetQuantity() <= 0)
+	// 아이템 키값이 유효하지 않거나 수량이 0인 경우 슬롯 위젯 초기화
+	if (Entry.GetItemID().IsNone() || Entry.GetItemID() == NAME_None || Entry.GetQuantity() <= 0)
 	{
 		SlotWidgets[Entry.GetSlotIndex()]->ClearItem();
 		return;
 	}
 	
+	// ItemManager에서 UI 리소스 비로드
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
-		// TODO: 비동기 로드 변경
-		// ItemManager에서 동기 로드로 UI 리소스 로드
-		if (const UItemDataAssetBase* ItemData = ItemManager->LoadItemDataAssetSync(Entry.GetItemID(), EItemAssetLoadFlags::UI))
-		{
-			// 슬롯 위젯 갱신
-			SlotWidgets[Entry.GetSlotIndex()]->SetItem(ItemData->Icon.Get(), Entry.GetQuantity());
-		}
+		TWeakObjectPtr<UERNInventoryWidget> WeakThis(this);
+		const int32 SlotIndex = Entry.GetSlotIndex();
+		const int32 Quantity = Entry.GetQuantity();
+		EItemGrade Grade = ItemManager->FindItemRow(Entry.GetItemID())->Grade;
+		
+		ItemManager->PreloadItemDataAssetAsync(Entry.GetItemID(), EItemAssetLoadFlags::UI, 
+			FOnItemDataAssetLoaded::CreateLambda([WeakThis, SlotIndex, Quantity, Grade](const UItemDataAssetBase* ItemData)
+			{
+				if (!WeakThis.IsValid() || !ItemData)
+				{
+					return;
+				}
+				
+				WeakThis->SlotWidgets[SlotIndex]->SetItem(ItemData->Icon.Get(), Quantity, WeakThis->ItemGradeByColor(Grade));
+				
+				WeakThis->UpdateFocusSlotIndex(WeakThis->FocusSlotIndex);
+			}
+		));
 	}
 }
 
 void UERNInventoryWidget::UpdateEquipableSlot(const FInventoryItemEntry& Entry)
 {
-	if (Entry.GetItemID().IsNone() || Entry.GetQuantity() <= 0)
+	// 아이템 키값이 유효하지 않거나 수량이 0인 경우 슬롯 위젯 초기화
+	if (Entry.GetItemID().IsNone() || Entry.GetItemID() == NAME_None || Entry.GetQuantity() <= 0)
 	{
 		EquipableSlotWidget->ClearItem();
 		return;
 	}
 	
+	// ItemManager에서 UI 리소스 비로드
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
-		// TODO: 비동기 로드 변경
-		// ItemManager에서 동기 로드로 UI 리소스 로드
-		if (const UItemDataAssetBase* ItemData = ItemManager->LoadItemDataAssetSync(Entry.GetItemID(), EItemAssetLoadFlags::UI))
-		{
-			// 슬롯 위젯 갱신
-			EquipableSlotWidget->SetItem(ItemData->Icon.Get(), Entry.GetQuantity());
-		}
+		TWeakObjectPtr<UERNInventoryWidget> WeakThis(this);
+		const int32 Quantity = Entry.GetQuantity();
+		EItemGrade Grade = ItemManager->FindItemRow(Entry.GetItemID())->Grade;
+		
+		ItemManager->PreloadItemDataAssetAsync(Entry.GetItemID(), EItemAssetLoadFlags::UI, 
+			FOnItemDataAssetLoaded::CreateLambda([WeakThis, Quantity, Grade](const UItemDataAssetBase* ItemData)
+			{
+				if (!WeakThis.IsValid() || !ItemData)
+				{
+					return;
+				}
+				
+				WeakThis->EquipableSlotWidget->SetItem(ItemData->Icon.Get(), Quantity, WeakThis->ItemGradeByColor(Grade));
+				
+				WeakThis->UpdateFocusSlotIndex(WeakThis->FocusSlotIndex);
+			}
+		));
 	}
 }
 
 void UERNInventoryWidget::UpdateConsumableSlot(const FInventoryItemEntry& Entry)
 {
-	if (Entry.GetItemID().IsNone() || Entry.GetQuantity() <= 0)
+	// 아이템 키값이 유효하지 않거나 수량이 0인 경우 슬롯 위젯 초기화
+	if (Entry.GetItemID().IsNone() || Entry.GetItemID() == NAME_None || Entry.GetQuantity() <= 0)
 	{
 		ConsumableSlotWidget->ClearItem();
 		return;
 	}
 	
+	// ItemManager에서 UI 리소스 비로드
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
-		if (Entry.GetItemID() == NAME_None)
-		{
-			ConsumableSlotWidget->ClearItem();
-			return;
-		}
+		TWeakObjectPtr<UERNInventoryWidget> WeakThis(this);
+		const int32 Quantity = Entry.GetQuantity();
+		EItemGrade Grade = ItemManager->FindItemRow(Entry.GetItemID())->Grade;
 		
-		// TODO: 비동기 로드 변경
-		// ItemManager에서 동기 로드로 UI 리소스 로드
-		if (const UItemDataAssetBase* ItemData = ItemManager->LoadItemDataAssetSync(Entry.GetItemID(), EItemAssetLoadFlags::UI))
-		{
-			// 슬롯 위젯 갱신
-			ConsumableSlotWidget->SetItem(ItemData->Icon.Get(), Entry.GetQuantity());
-		}
+		ItemManager->PreloadItemDataAssetAsync(Entry.GetItemID(), EItemAssetLoadFlags::UI,
+			FOnItemDataAssetLoaded::CreateLambda([WeakThis, Quantity, Grade](const UItemDataAssetBase* ItemData)
+			{
+				if (!WeakThis.IsValid() || !ItemData)
+				{
+					return;
+				}
+				
+				WeakThis->ConsumableSlotWidget->SetItem(ItemData->Icon.Get(), Quantity, WeakThis->ItemGradeByColor(Grade));
+				
+				WeakThis->UpdateFocusSlotIndex(WeakThis->FocusSlotIndex);
+			}
+		));
 	}
 }
 
 void UERNInventoryWidget::UpdateFocusSlotIndex(const int32 NewIndex)
 {
+	// 슬라이드 위젯으로 갯수 조정 중일 때는 활성화 슬롯 변경 불가
 	if (WBP_SlideWidget->IsVisible())
 	{
 		return;
@@ -403,22 +440,26 @@ void UERNInventoryWidget::UpdateFocusSlotIndex(const int32 NewIndex)
 	if (FocusSlotIndex == SlotWidgets.Num())
 	{
 		ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
+		ConsumableSlotWidget->InitInventorySlotTint();
 	}
 	else if (FocusSlotIndex != -1)
 	{
 		// 비활성화 UI로 변경
 		SlotWidgets[FocusSlotIndex]->SetInventorySlotImage(BasicSlotImage.Get());
+		SlotWidgets[FocusSlotIndex]->InitInventorySlotTint();
 	}
 	
 	// 슬롯 초기화(-1)가 아니라면
 	if (NewIndex == SlotWidgets.Num())
 	{
 		ConsumableSlotWidget->SetInventorySlotImage(FocusConsumableSlotImage.Get());
+		ConsumableSlotWidget->SetInventorySlotTint(FColor::White);
 	}
 	else if (NewIndex != -1)
 	{
 		// 활성화 UI로 변경
 		SlotWidgets[NewIndex]->SetInventorySlotImage(FocusSlotImage.Get());
+		SlotWidgets[NewIndex]->SetInventorySlotTint(FColor::White);
 	}
 	
 	// 활성화 슬롯 인덱스 갱신
@@ -427,10 +468,12 @@ void UERNInventoryWidget::UpdateFocusSlotIndex(const int32 NewIndex)
 
 void UERNInventoryWidget::UpdateSlideWidget(const int32 NewQuantity)
 {
+	// 인벤토리 슬롯 위젯에 유효한 인덱스라면
 	if (SlotWidgets.IsValidIndex(FocusSlotIndex))
 	{
 		if (UERNInventoryComponent* InventoryComponent = GetInventoryComponent())
 		{
+			// 인벤토리 컴포넌트에 제거 요청
 			InventoryComponent->Server_RemoveItem(FocusSlotIndex, NewQuantity);
 		}
 	}
@@ -438,9 +481,12 @@ void UERNInventoryWidget::UpdateSlideWidget(const int32 NewQuantity)
 	{
 		if (UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent())
 		{
+			// 장비 컴포넌트에 아이템 제거 요청
 			EquipmentComponent->Server_UnequipItem(NewQuantity);
 		}
 	}
+	
+	// 슬라이드 위젯 숨기기
 	WBP_SlideWidget->SetVisibility(ESlateVisibility::Hidden);
 }
 
@@ -470,7 +516,28 @@ UERNEquipmentComponent* UERNInventoryWidget::GetEquipmentComponent() const
 	return nullptr;
 }
 
+void UERNInventoryWidget::InitFocusSlotIndex()
+{
+	UpdateFocusSlotIndex(-1);
+}
+
 void UERNInventoryWidget::PlayOpenAnimation()
 {
 	PlayAnimation(FadeIn);
+	InitFocusSlotIndex();
+}
+
+FColor UERNInventoryWidget::ItemGradeByColor(EItemGrade Grade)
+{
+	switch (Grade)
+	{
+	case EItemGrade::Uncommon:
+		return FColor::Cyan;
+	case EItemGrade::Rare:
+		return FColor::Purple;
+	case EItemGrade::Legendary:
+		return FColor::Orange;
+	default:
+		return FColor::White;
+	}
 }

@@ -33,18 +33,27 @@ void UERNInventorySlotWidget::SetInventorySlotImage(UTexture2D* NewTexture) cons
 	}
 }
 
+void UERNInventorySlotWidget::SetInventorySlotTint(FColor NewColor) const
+{
+	InventorySlotImage->SetBrushTintColor(NewColor);
+}
+
 void UERNInventorySlotWidget::ClearItem() const
 {
 	ItemImage->SetBrushFromTexture(nullptr);
+	ItemImage->SetBrushTintColor(FColor::White);
 	ItemQuantityTextBlock->SetText(FText::GetEmpty());
 	
 	ItemImage->SetVisibility(ESlateVisibility::Hidden);
 	ItemQuantityTextBlock->SetVisibility(ESlateVisibility::Hidden);
 }
 
-void UERNInventorySlotWidget::SetItem(UTexture2D* Icon, const int32 QuantityText) const
+void UERNInventorySlotWidget::SetItem(UTexture2D* Icon, const int32 QuantityText, FColor Color)
 {
 	ItemImage->SetBrushFromTexture(Icon);
+	BackgroundTint = Color;
+	InventorySlotImage->SetBrushTintColor(Color);
+	
 	if (QuantityText == 1)
 	{
 		ItemQuantityTextBlock->SetText(FText::GetEmpty());

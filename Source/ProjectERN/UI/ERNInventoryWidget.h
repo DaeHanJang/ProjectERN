@@ -6,6 +6,7 @@
 #include "ERNInteractableWidget.h"
 #include "ERNInventorySlotWidget.h"
 #include "Inventory/Data/ERNInventoryList.h"
+#include "Inventory/Item/Data/ERNItemEnums.h"
 #include "ERNInventoryWidget.generated.h"
 
 class UERNEquipmentComponent;
@@ -24,11 +25,7 @@ class PROJECTERN_API UERNInventoryWidget : public UERNInteractableWidget
 public:
 	UERNInventoryWidget(const FObjectInitializer& ObjectInitializer);
 	
-	// 활성화된 슬롯 인덱스 초기화
-	FORCEINLINE void InitFocusSlotIndex() { UpdateFocusSlotIndex(-1); }
-	
 	// 현재 캐릭터 컴포넌트에 이벤트 바인딩
-	UFUNCTION(BlueprintCallable, Category="InventoryUI")
 	void RefreshFromCurrentCharacter();
 	
 	// 열기 애니메이션 재생
@@ -45,15 +42,24 @@ protected:
 private:
 	// 인벤토리 컴포넌트 가져오기
 	UERNInventoryComponent* GetInventoryComponent() const;
+	
 	// 장착 컴포넌트 가져오기
 	UERNEquipmentComponent* GetEquipmentComponent() const;
 	
+	// 활성화된 슬롯 인덱스 초기화
+	void InitFocusSlotIndex();
+	
 	// 슬롯 생성
-	UFUNCTION(BlueprintCallable, Category="InventoryUI")
 	void CreateSlot(const int32 MaxSlotSize, const int32 ColumnCount);
+	
+	// 현재 캐릭터 컴포넌트에 이벤트 언바인딩
+	void UnbindFromCurrentComponent();
 	
 	// 인벤토리 내비게이션 처리
 	const int32 GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize) const;
+	
+	// 등급에 따른 색
+	FColor ItemGradeByColor(EItemGrade Grade = EItemGrade::None);
 	
 	// 인벤토리 슬롯 갱신 이벤트 핸들러
 	UFUNCTION()
@@ -75,9 +81,6 @@ private:
 	UFUNCTION()
 	void UpdateSlideWidget(const int32 NewQuantity);
 	
-	// 현재 캐릭터 컴포넌트에 이벤트 언바인딩
-	void UnbindFromCurrentComponent();
-	
 private:
 	// 장비 슬롯
 	UPROPERTY(meta=(BindWidget))
@@ -87,7 +90,7 @@ private:
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UERNInventorySlotWidget> ConsumableSlotWidget;
 	
-	// 인벤토리
+	// 인벤토리 그리드 패널
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UUniformGridPanel> InventoryUniformGridPanel;
 	
@@ -127,11 +130,11 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UERNInventorySlotWidget>> SlotWidgets;
 	
-	// 현재 캐릭터의 인벤토리 컴포넌트
+	// 현재 바인딩된 인벤토리 컴포넌트
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UERNInventoryComponent> BoundInventoryComponent;
 	
-	// 현재 캐릭터의 장착 컴포넌트
+	// 현재 바인딩된 장착 컴포넌트
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UERNEquipmentComponent> BoundEquipmentComponent;
 	

@@ -159,7 +159,7 @@ void AERNPlayerController::AcknowledgePossession(class APawn* P)
 	RefreshInventoryWidget();
 }
 
-void AERNPlayerController::RefreshInventoryWidget()
+void AERNPlayerController::RefreshInventoryWidget() const
 {
 	if (!IsLocalPlayerController())
 	{
@@ -171,7 +171,6 @@ void AERNPlayerController::RefreshInventoryWidget()
 		ERNInventoryWidget->RefreshFromCurrentCharacter();
 	}
 }
-
 
 void AERNPlayerController::TrySendNickname()
 {
@@ -412,7 +411,6 @@ void AERNPlayerController::InventoryOpen()
 		if (UERNInventoryWidget* ERNInventoryWidget = Cast<UERNInventoryWidget>(InventoryWidget))
 		{
 			ERNInventoryWidget->PlayOpenAnimation();
-			ERNInventoryWidget->InitFocusSlotIndex();
 		}
 	}
 }
