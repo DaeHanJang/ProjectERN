@@ -68,6 +68,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_AttackPower)
 	FGameplayAttributeData AttackPower;
 	ATTRIBUTE_ACCESSORS(UERNAttributeSet, AttackPower)
+	
+	// 공격력 수치 증가
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_AttackPowerBonus, Category = "Combat")
+	FGameplayAttributeData AttackPowerBonus;
+	ATTRIBUTE_ACCESSORS(UERNAttributeSet, AttackPowerBonus)
 
 	// Defense
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_Defense)
@@ -121,6 +126,9 @@ protected:
 	
 	UFUNCTION()
 	virtual void OnRep_AttackPower(const FGameplayAttributeData& OldAttackPower);
+	
+	UFUNCTION()
+	void OnRep_AttackPowerBonus(const FGameplayAttributeData& OldAttackPowerBonus);
 
 	UFUNCTION()
 	virtual void OnRep_Defense(const FGameplayAttributeData& OldDefense);
