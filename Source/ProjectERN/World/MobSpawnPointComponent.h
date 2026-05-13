@@ -26,5 +26,5 @@ public:
 	FName SlotId;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mob Spawn")
-	TSoftClassPtr<AERNEnemyCharacter> EnemyClass;
+	TSubclassOf<AERNEnemyCharacter> EnemyClass;
 };

@@ -6,27 +6,8 @@
 #include "GameFramework/Actor.h"
 #include "MobSpawner.generated.h"
 
+struct FMobRuntimeState;
 class UMobSpawnPointComponent;
-class AERNEnemyCharacter;
-
-USTRUCT(BlueprintType)
-struct FMobRuntimeState
-{
-	GENERATED_BODY()
-	
-	UPROPERTY()
-	FName SlotId;
-
-	UPROPERTY()
-	FTransform Transform;
-
-	UPROPERTY()
-	float CurrentHealth = 0.f;
-
-	UPROPERTY()
-	bool bDead = false;
-};
-
 class AERNEnemyCharacter;
 
 UCLASS()
@@ -54,12 +35,20 @@ private:
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<AERNEnemyCharacter>> ActiveEnemiesBySlot;
 	
-	UPROPERTY(EditAnywhere)
-	TMap<FName, UMobSpawnPointComponent*> CachedSpawnPoints;
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UMobSpawnPointComponent>> CachedSpawnPoints;
 private:
-	void SpawnMobs();
-	void SpawnMobFromPoint(UMobSpawnPointComponent* SpawnPoint);
+	// 저장된 데이터가 없는 경우의 몬스터 스폰
+	void SpawnInitialMobs();
+	// 몬스터 스폰 및 상태 조정을 위한 포인터 반환
+	AERNEnemyCharacter* SpawnMobFromPoint(UMobSpawnPointComponent* SpawnPoint);
+	// 저장된 데이터를 기반으로 몹 스폰 밎 상태 조정
 	void RestoreMobFromState(const FMobRuntimeState& State);
+	// 몹들의 상태를 기록하고 월드 매니저에 저장 요청
 	void SaveMobStates();
+	// 저장 이후 몹들 Destroy
 	void ClearActiveEnemies();
+	
+	// 부착된 UMobSpawnPointComponent 들 수집, 캐시화
+	void CachingSpawnPoints();
 };
