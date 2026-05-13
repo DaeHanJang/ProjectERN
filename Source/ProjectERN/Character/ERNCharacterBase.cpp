@@ -70,6 +70,62 @@ void AERNCharacterBase::GiveDefaultAbilities()
 	}
 }
 
+void AERNCharacterBase::SetWeaponAbility(TSubclassOf<UGameplayAbility> NewWeaponAbility)
+{
+	if (!NewWeaponAbility)
+	{
+		return;
+	}
+	
+	if (!AbilitySystemComponent || !AbilitySystemComponent->IsOwnerActorAuthoritative())
+	{
+		return;
+	}
+	
+	if (WeaponAbilityHandle.IsValid())
+	{
+		if (FGameplayAbilitySpec* OldSpec = AbilitySystemComponent->FindAbilitySpecFromHandle(WeaponAbilityHandle))
+		{
+			AbilitySystemComponent->CancelAbilityHandle(WeaponAbilityHandle);
+			
+			AbilitySystemComponent->ClearAbility(WeaponAbilityHandle);
+		}
+		
+		WeaponAbilityHandle = FGameplayAbilitySpecHandle();
+	}
+	
+	FGameplayAbilitySpec NewSpec(NewWeaponAbility, 1, INDEX_NONE, this);
+	WeaponAbilityHandle = AbilitySystemComponent->GiveAbility(NewSpec);
+}
+
+void AERNCharacterBase::SetConsumableAbility(TSubclassOf<UGameplayAbility> NewConsumableAbility)
+{
+	if (!NewConsumableAbility)
+	{
+		return;
+	}
+	
+	if (!AbilitySystemComponent || !AbilitySystemComponent->IsOwnerActorAuthoritative())
+	{
+		return;
+	}
+	
+	if (ConsumableAbilityHandle.IsValid())
+	{
+		if (FGameplayAbilitySpec* OldSpec = AbilitySystemComponent->FindAbilitySpecFromHandle(ConsumableAbilityHandle))
+		{
+			AbilitySystemComponent->CancelAbilityHandle(ConsumableAbilityHandle);
+			
+			AbilitySystemComponent->ClearAbility(ConsumableAbilityHandle);
+		}
+		
+		ConsumableAbilityHandle = FGameplayAbilitySpecHandle();
+	}
+	
+	FGameplayAbilitySpec NewSpec(NewConsumableAbility, 1, INDEX_NONE, this);
+	ConsumableAbilityHandle = AbilitySystemComponent->GiveAbility(NewSpec);
+}
+
 UAbilitySystemComponent* AERNCharacterBase::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;

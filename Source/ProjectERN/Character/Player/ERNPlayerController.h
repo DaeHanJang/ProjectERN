@@ -107,7 +107,8 @@ protected:
 	bool ShouldUseTouchControls() const;
 	
 private:
-	void RefreshInventoryWidget();
+	// 인벤토리 UI에 이벤트 바인딩
+	void RefreshInventoryWidget() const;
 
 public:
 	// 캐릭터 선택 위젯

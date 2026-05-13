@@ -214,18 +214,4 @@ void FInventoryList::LogInventory() const
 		}
 	}
 	UE_LOG(LogTemp, Warning, TEXT("=================================================="));
-	
-	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("=================================================="));
-	if (Items.IsEmpty())
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("Inventory is Empty"));
-	}
-	else
-	{
-		for (const FInventoryItemEntry& Entry : Items)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, FString::Printf(TEXT("Slot: %d, ItemID: %s, Quantity: %d"), Entry.GetSlotIndex(), *Entry.GetItemID().ToString(), Entry.GetQuantity()));
-		}
-	}
-	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("=================================================="));
 }

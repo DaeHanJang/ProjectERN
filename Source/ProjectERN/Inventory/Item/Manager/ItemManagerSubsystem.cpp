@@ -183,8 +183,8 @@ const UItemDataAssetBase* UItemManagerSubsystem::LoadItemDataAssetSync(const FNa
 
 void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const EItemAssetLoadFlags LoadFlags, FOnItemDataAssetLoaded OnLoaded)
 {
-	const FERNItemTable* Row = FindItemRow(ItemID);
 	// ItemID에 해당하는 테이블 행이 없거나 경로가 존재하지 않는 경우
+	const FERNItemTable* Row = FindItemRow(ItemID);
 	if (!Row || Row->DataAsset.IsNull())
 	{
 		return;
@@ -195,7 +195,9 @@ void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const 
 		return;
 	}
 	
-	auto ExecuteAfterNestedAssetsLoaded = [LoadFlags, OnLoaded](const UItemDataAssetBase* DataAsset)
+	// 데이터 애셋에 정의된 리소스 비동기 로드 헬퍼 람다
+	auto ExecuteAfterNestedAssetsLoaded = 
+		[](const UItemDataAssetBase* DataAsset, EItemAssetLoadFlags RequestedFlags, TArray<FOnItemDataAssetLoaded> Callbacks)
 	{
 		if (!DataAsset)
 		{
@@ -204,21 +206,27 @@ void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const 
 
 		TArray<FSoftObjectPath> NestedPaths;
 		// 데이터 애셋에 존재하는 Soft reference 리소스 경로 추출
-		DataAsset->GatherSoftPaths(LoadFlags, NestedPaths);
-
+		DataAsset->GatherSoftPaths(RequestedFlags, NestedPaths);
+			
+		// 나중에 실행할 콜백 묶음 생성
+		auto ExecuteCallbacks = [DataAsset, Callbacks = MoveTemp(Callbacks)]() mutable
+		{
+			for (const FOnItemDataAssetLoaded& Callback : Callbacks)
+			{
+				Callback.ExecuteIfBound(DataAsset);
+			}
+		};
+		
 		if (NestedPaths.IsEmpty())
 		{
-			OnLoaded.ExecuteIfBound(DataAsset);
+			ExecuteCallbacks();
 			return;
 		}
 		
 		// 데이터 애셋에 정의된 리소스 비동기 로드
 		UAssetManager::GetStreamableManager().RequestAsyncLoad(
 			NestedPaths,
-			FStreamableDelegate::CreateLambda([OnLoaded, DataAsset]()
-			{
-				OnLoaded.ExecuteIfBound(DataAsset);
-			})
+			FStreamableDelegate::CreateLambda(MoveTemp(ExecuteCallbacks))
 		);
 	};
 	
@@ -227,7 +235,14 @@ void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const 
 	{
 		if (const UItemDataAssetBase* CachedDataAsset = Cached->Get())
 		{
-			ExecuteAfterNestedAssetsLoaded(CachedDataAsset);
+			TArray<FOnItemDataAssetLoaded> Callbacks;
+			if (OnLoaded.IsBound())
+			{
+				Callbacks.Add(OnLoaded);
+			}
+			
+			// 캐시된 데이터 애셋을 사용하되 이번 요청의 로드 정책에 대한 리소스를 비동기 로드
+			ExecuteAfterNestedAssetsLoaded(CachedDataAsset, LoadFlags, MoveTemp(Callbacks));
 		}
 		return;
 	}
@@ -235,6 +250,11 @@ void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const 
 	// 비동기 로드 요청 테이블에 요청된 ItemID를 찾고 로드 정책만 누적 없으면 추가
 	FPendingItemDataAssetLoad& PendingLoad = PendingItemDataAssetLoads.FindOrAdd(ItemID);
 	PendingLoad.RequestedLoadFlags |= LoadFlags;
+	
+	if (OnLoaded.IsBound())
+	{
+		PendingLoad.OnLoadedCallbacks.Add(OnLoaded);
+	}
 	
 	// 이미 DataAsset 비동기 로드가 진행 중이라면 중복 요청 방지
 	if (PendingLoad.Handle.IsValid())
@@ -265,6 +285,7 @@ void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const 
 			
 			// 로드 중 누적된 최종 플래그를 가져옴
 			const EItemAssetLoadFlags RequestedFlags = PendingLoadPtr->RequestedLoadFlags;
+			TArray<FOnItemDataAssetLoaded> Callbacks = MoveTemp(PendingLoadPtr->OnLoadedCallbacks);
 			
 			if (PendingLoadPtr->Handle.IsValid())
 			{
@@ -285,8 +306,8 @@ void UItemManagerSubsystem::PreloadItemDataAssetAsync(const FName ItemID, const 
 			// 캐싱
 			WeakThis->ItemDataAssetCache.Add(ItemID, LoadedDataAsset);
 			
-			
-			ExecuteAfterNestedAssetsLoaded(LoadedDataAsset);
+			// 데이터 에셋 안에 있는 필요한 리소슫르을 비동기 로드
+			ExecuteAfterNestedAssetsLoaded(LoadedDataAsset, RequestedFlags, MoveTemp(Callbacks));
 		})
 	);
 }

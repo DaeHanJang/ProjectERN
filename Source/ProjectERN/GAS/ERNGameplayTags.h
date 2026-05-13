@@ -15,6 +15,7 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_LightAttack)	// 일반 공격 : Mouse_L
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_HeavyAttack)	// 무기 스킬 : Mouse_RightClick
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_LockOn)		// 락온 : Mouse_WheelClick
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_Sprint)		// 전력질주 : Alt
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Input_Consumable)	// 소모품 사용 : 
 
 // 전투 상태
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Attacking)
@@ -29,6 +30,7 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Roll)	// 회피(구르기)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Sprint)	// 전력질주
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Light)	// 일반 공격
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Attack_Heavy)	// 무기 스킬
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Consumalbe)		// 소모품 사용
 
 // 경직 상태
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Stagger)			// 현재 경직 중
