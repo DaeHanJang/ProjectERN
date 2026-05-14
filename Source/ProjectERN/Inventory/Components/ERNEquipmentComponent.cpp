@@ -224,16 +224,15 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 		EquipableSlot = ItemEntry;
 		OnEquipmentSlotChanged.Broadcast(EquipableSlot);
 		
-		UE_LOG(LogTemp, Log, TEXT("Weapon equipped: %s"), *DA->EquipableClass.Get()->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("OldWeapon: %s"), *InventoryReplacementState.GetItemID().ToString());
+		UE_LOG(LogTemp, Warning, TEXT("NewWeapon: %s"), *NewWeaponRuntimeState.GetItemID().ToString());
 	}
 	// 소포품인 경우
 	else if (ItemRow->ItemType == EItemType::Consumable)
 	{
 		// 장착할 아이템 런타임 상태 값
 		const FItemRuntimeState NewConsumableRuntimeState = ItemEntry.GetItemRuntimeState();
-		// 장착했던 아이템의 런타임 상태 값
-		FItemRuntimeState InventoryReplacementState;
-		
+				
 		// 다른 종류의 소모품일 경우 교환
 		if (ItemEntry.GetItemID() != CurrentConsumable.GetItemID())
 		{
@@ -260,6 +259,8 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 				Character->SetConsumableAbility(ConsumableAbility);
 			}
 		
+			// 장착했던 아이템의 런타임 상태 값
+			FItemRuntimeState InventoryReplacementState;
 			// 장착했던 아이템의 런타임 상태
 			if (ConsumableSlot.IsValid())
 			{
@@ -270,6 +271,8 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 			
 			// 장착했던 아이템의 런타임 상태 인벤토리 슬롯에 갱신
 			Inventory.ChangeItem(SlotIndex, InventoryReplacementState);
+			
+			UE_LOG(LogTemp, Warning, TEXT("OldConsumable: %s, Quantity: %d"), *InventoryReplacementState.GetItemID().ToString(), InventoryReplacementState.GetQuantity());
 		}
 		// 같은 종류의 소모품일 경우 수량 계산
 		else
@@ -303,7 +306,7 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 		// UI 갱신을 위한 슬롯 데이터 갱신 및 리슨 서버용 브로드캐스트
 		OnConsumableSlotChanged.Broadcast(ConsumableSlot);
 		
-		UE_LOG(LogTemp, Log, TEXT("Consumable equipped: %s"), *CurrentConsumable.GetItemID().ToString());
+		UE_LOG(LogTemp, Warning, TEXT("NewConsumable: %s, Quantity: %d"), *CurrentConsumable.GetItemID().ToString(), CurrentConsumable.GetQuantity());
 	}
 }
 
@@ -339,4 +342,7 @@ void UERNEquipmentComponent::Server_UnequipItem_Implementation(const int32 Quant
 	// 소모품 슬롯에서 제거한 아이템 월드에 생성 
 	const FVector& DropLocation = GetOwner()->GetActorLocation() + GetOwner()->GetActorForwardVector() * 50.0f;
 	GetItemManagerSubsystem()->SpawnItem(DropItemRuntimeState, DropLocation, GetOwner()->GetActorRotation());
+	
+	UE_LOG(LogTemp, Warning, TEXT("DropConsumable: %s, Quantity: %d"), *DropItemRuntimeState.GetItemID().ToString(), DropItemRuntimeState.GetQuantity());
+	UE_LOG(LogTemp, Warning, TEXT("CurrentConsumable: %s, Quantity: %d"), *CurrentConsumable.GetItemID().ToString(), CurrentConsumable.GetQuantity());
 }

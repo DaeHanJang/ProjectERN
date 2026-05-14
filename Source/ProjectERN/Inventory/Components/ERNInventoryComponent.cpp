@@ -94,7 +94,6 @@ void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemAc
 	
 	if (ItemRuntimeState.GetQuantity() <= 0)
 	{
-		// TODO: ItemActor 제거 함수 넣기
 		ItemActor->Destroy();
 	}
 }
@@ -126,4 +125,7 @@ void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIn
 	// 인벤토리에서 제거한 아이템 월드에 생성 
 	const FVector& DropLocation = GetOwner()->GetActorLocation() + GetOwner()->GetActorForwardVector() * 50.0f;
 	GetItemManager()->SpawnItem(DropItemRuntimeState, DropLocation, GetOwner()->GetActorRotation());
+	
+	UE_LOG(LogTemp, Warning, TEXT("DropItem: %s, Quantity: %d"), *DropItemRuntimeState.GetItemID().ToString(), DropItemRuntimeState.GetQuantity());
+	UE_LOG(LogTemp, Warning, TEXT("CurrentItem: %s, Quantity: %d"), *Inventory.GetItems()[SlotIndex].GetItemID().ToString(), Inventory.GetItemQuantity(SlotIndex));
 }
