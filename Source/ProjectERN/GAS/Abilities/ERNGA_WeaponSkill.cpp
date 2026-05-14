@@ -8,7 +8,7 @@
 UERNGA_WeaponSkill::UERNGA_WeaponSkill()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-
+	
 	FGameplayTagContainer AssetTags;
 	AssetTags.AddTag(TAG_Ability_Attack_Heavy);
 	SetAssetTags(AssetTags);
