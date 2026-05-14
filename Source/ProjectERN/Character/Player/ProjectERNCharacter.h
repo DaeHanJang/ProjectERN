@@ -7,6 +7,7 @@
 #include "Logging/LogMacros.h"
 #include "ProjectERNCharacter.generated.h"
 
+class USphereComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
@@ -48,8 +49,18 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** Shop Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UERNShopComponent* ShopComponent;
+	
+	/** Interaction Detection Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	USphereComponent* InteractionDetector;
+	
+	// InteractionDetector TimerHandle
+	FTimerHandle DetectionTimerHandle;
 
 protected:
+	//
+	void UpdateInteractionDetector();
+	
 	/** Character Type - 블루프린트에서 설정 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Character")
 	ECharacterType CharacterType;

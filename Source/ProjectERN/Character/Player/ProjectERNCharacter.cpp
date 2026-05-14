@@ -11,12 +11,15 @@
 #include "InputActionValue.h"
 #include "ProjectERN.h"
 #include "AbilitySystemComponent.h"
+#include "ERNPlayerController.h"
 #include "Character/Player/ERNPlayerState.h"
+#include "Components/SphereComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
 #include "GAS/ERNGameplayTags.h"
 #include "GAS/Abilities/ERNGA_LightAttack.h"
 #include "Input/ERNInputComponent.h"
+#include "Interfaces/IInteractable.h"
 #include "Net/UnrealNetwork.h"
 #include "Shop/Components/ERNShopComponent.h"
 
@@ -68,6 +71,13 @@ AProjectERNCharacter::AProjectERNCharacter()
 	// Create Shop Component
 	ShopComponent = CreateDefaultSubobject<UERNShopComponent>(TEXT("ShopComponent"));
 
+	// Create Interaction Detection Component
+	InteractionDetector = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionDetector"));
+	InteractionDetector->SetupAttachment(GetRootComponent());
+	InteractionDetector->InitSphereRadius(150.0f);
+	InteractionDetector->SetCollisionProfileName(TEXT("OverlapAll"));
+	InteractionDetector->SetGenerateOverlapEvents(true);
+	
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
@@ -109,6 +119,56 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 	}
 
 	// GAS 초기화는 부모 클래스에서 처리
+	
+	// InteractionDetector 감지 시작
+	if (!GetWorldTimerManager().IsTimerActive(DetectionTimerHandle))
+	{
+		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector, 0.2f, true, 0.0f);
+	}
+}
+
+void AProjectERNCharacter::UpdateInteractionDetector()
+{
+	if (!InteractionDetector || !IsLocallyControlled())
+	{
+		return;
+	}
+	
+	TArray<AActor*> OverlappingActors;
+	InteractionDetector->GetOverlappingActors(OverlappingActors);
+	if (OverlappingActors.IsEmpty())
+	{
+		return;
+	}
+	
+	float ClosestDistSq = MAX_FLT;
+	AActor* ClosestActor = nullptr;
+	
+	for (AActor* Actor : OverlappingActors)
+	{
+		if (!Actor->Implements<UInteractable>())
+		{
+			continue;
+		}
+		
+		const float DistSq = this->GetSquaredDistanceTo(Actor);
+		
+		if (ClosestDistSq > DistSq)
+		{
+			ClosestDistSq = DistSq;
+			ClosestActor = Actor;
+		}
+	}
+	
+	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
+	if (!ERNController || ClosestActor == ERNController->GetCurrentInteractable())
+	{
+		return;
+	}
+	
+	ERNController->SetCurrentInteractable(ClosestActor);
+	
+	UE_LOG(LogTemp, Warning, TEXT("New Interactable Actor is %s"), *GetNameSafe(ClosestActor));
 }
 
 void AProjectERNCharacter::Tick(float DeltaSeconds)

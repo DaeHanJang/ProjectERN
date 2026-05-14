@@ -21,9 +21,7 @@ AERNItemActor::AERNItemActor()
 	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	SetRootComponent(Collision);
 	Collision->InitSphereRadius(150.0f);
-	Collision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	Collision->SetCollisionResponseToAllChannels(ECR_Ignore);
-	Collision->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	Collision->SetCollisionProfileName(TEXT("OverlapAll"));
 	
 	// Mesh
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
@@ -40,15 +38,6 @@ void AERNItemActor::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& 
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
 	DOREPLIFETIME(AERNItemActor, ItemRuntimeState);
-}
-
-void AERNItemActor::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	// Collision Overlap Binding
-	Collision->OnComponentBeginOverlap.AddDynamic(this, &AERNItemActor::OnSphereBeginOverlap);
-	Collision->OnComponentEndOverlap.AddDynamic(this, &AERNItemActor::OnSphereEndOverlap);
 }
 
 void AERNItemActor::Interact_Implementation(APlayerController* PlayerController)
@@ -76,7 +65,7 @@ void AERNItemActor::Interact_Implementation(APlayerController* PlayerController)
 
 bool AERNItemActor::CanInteract_Implementation() const
 {
-	return true;
+	return !IsActorBeingDestroyed();
 }
 
 FText AERNItemActor::GetInteractionText_Implementation() const
@@ -177,28 +166,4 @@ void AERNItemActor::OnRep_ItemRuntimeState()
 {
 	// ItemRuntimeState 기반 DataAsset 비동기 로드
 	LoadItemDataAssetFromRuntimeStateAsync();
-}
-
-void AERNItemActor::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-                                         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (const APawn* Pawn = Cast<APawn>(OtherActor))
-	{
-		if (AERNPlayerController* PC = Cast<AERNPlayerController>(Pawn->GetController()))
-		{
-			PC->SetCurrentInteractable(this);
-		}
-	}
-}
-
-void AERNItemActor::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (const APawn* Pawn = Cast<APawn>(OtherActor))
-	{
-		if (AERNPlayerController* PC = Cast<AERNPlayerController>(Pawn->GetController()))
-		{
-			PC->ClearCurrentInteractable();
-		}
-	}
 }
