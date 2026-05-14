@@ -38,10 +38,11 @@ void UERNInventorySlotWidget::SetInventorySlotTint(FColor NewColor) const
 	InventorySlotImage->SetBrushTintColor(NewColor);
 }
 
-void UERNInventorySlotWidget::ClearItem() const
+void UERNInventorySlotWidget::ClearItem()
 {
+	BackgroundTint = FColor::White;
+	InventorySlotImage->SetBrushTintColor(FColor::White);
 	ItemImage->SetBrushFromTexture(nullptr);
-	ItemImage->SetBrushTintColor(FColor::White);
 	ItemQuantityTextBlock->SetText(FText::GetEmpty());
 	
 	ItemImage->SetVisibility(ESlateVisibility::Hidden);

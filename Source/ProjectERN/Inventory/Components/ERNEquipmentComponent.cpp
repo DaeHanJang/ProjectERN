@@ -69,7 +69,7 @@ void UERNEquipmentComponent::OnRep_ConsumableSlot()
 	OnConsumableSlotChanged.Broadcast(ConsumableSlot);
 }
 
-void UERNEquipmentComponent::Server_EquipWeapon_Implementation(TSubclassOf<AERNWeaponBase> WeaponClass)
+void UERNEquipmentComponent::Server_EquipWeapon_Implementation(FName ItemID)
 {
 	// 기존 무기 제거
 	if (CurrentWeapon)
@@ -77,40 +77,74 @@ void UERNEquipmentComponent::Server_EquipWeapon_Implementation(TSubclassOf<AERNW
 		CurrentWeapon->Destroy();
 		CurrentWeapon = nullptr;
 	}
-
-	// 새 무기 스폰
-	if (WeaponClass)
+	
+	UItemManagerSubsystem* ItemManager = GetItemManagerSubsystem();
+	if (!ItemManager)
 	{
-		AActor* Owner = GetOwner();
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = Owner;
-
-		CurrentWeapon = GetWorld()->SpawnActor<AERNWeaponBase>(WeaponClass, SpawnParams);
-
-		// 캐릭터 메시에 부착
-		if (CurrentWeapon && Owner)
-		{
-			AERNCharacterBase* Character = Cast<AERNCharacterBase>(Owner);
-			if (Character && Character->GetMesh())
-			{
-				CurrentWeapon->AttachToComponent(
-					Character->GetMesh(),
-					FAttachmentTransformRules::SnapToTargetIncludingScale,
-					FName("WeaponSocket")
-				);
-				
-				// UI 갱신을 위한 슬롯 데이터 갱신 및 리슨 서버용 브로드캐스트
-				FInventoryItemEntry Entry;
-				Entry.SetItemID(CurrentWeapon->GetItemRuntimeState().GetItemID());
-				Entry.SetQuantity(CurrentWeapon->GetItemRuntimeState().GetQuantity());
-				Entry.SetItemRuntimeState(CurrentWeapon->GetItemRuntimeState());
-				EquipableSlot = Entry;
-				OnEquipmentSlotChanged.Broadcast(EquipableSlot);
-				
-				UE_LOG(LogTemp, Log, TEXT("Weapon equipped: %s"), *WeaponClass->GetName());
-			}
-		}
+		return;
 	}
+	// 매개변수 유효성 검증
+	if (!ItemManager->ItemValid(ItemID))
+	{
+		return;
+	}
+	
+	// 장착할 아이템 데이터 애셋 로드
+	const UEquipableItemDataAsset* DA = Cast<UEquipableItemDataAsset>(ItemManager->LoadItemDataAssetSync(ItemID, EItemAssetLoadFlags::Gameplay));
+	if (!DA || DA->EquipableClass.IsNull())
+	{
+		return;
+	}
+	
+	// 로드한 데이터 애셋에 있는 무기 클래스
+	TSubclassOf<AERNWeaponBase> WeaponClass = DA->EquipableClass.Get();
+	if (!WeaponClass)
+	{
+		return;
+	}
+	
+	if (!GetOwner())
+	{
+		return;
+	}
+	AERNCharacterBase* Character = Cast<AERNCharacterBase>(GetOwner());
+	if (!Character || !Character->GetMesh())
+	{
+		return;
+	}
+	
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = GetOwner();
+	// 장착할 무기 스폰
+	AERNWeaponBase* NewWeapon = GetWorld()->SpawnActor<AERNWeaponBase>(WeaponClass, SpawnParams);
+	if (!NewWeapon)
+	{
+		return;
+	}
+	
+	// 무기 스킬 장착
+	if (TSubclassOf<UGameplayAbility> WeaponSkillClass = DA->EquipableAbility.Get())
+	{
+		Character->SetWeaponAbility(WeaponSkillClass);
+	}
+	
+	// 스폰된 아이템 런타임 값 설정
+	FItemRuntimeState NewWeaponRuntimeState;
+	NewWeaponRuntimeState.SetItemID(ItemID);
+	NewWeaponRuntimeState.SetQuantity(1);
+	NewWeapon->Init(NewWeaponRuntimeState, DA);
+	
+	// 장착할 아이템 부착
+	NewWeapon->AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("WeaponSocket"));
+	
+	// 스폰된 아이템으로 변경
+	CurrentWeapon = NewWeapon;
+	
+	// UI 갱신을 위한 슬롯 데이터 갱신 및 리슨 서버용 브로드캐스트
+	FInventoryItemEntry Entry;
+	Entry.SetItemRuntimeState(NewWeaponRuntimeState);
+	EquipableSlot = Entry;
+	OnEquipmentSlotChanged.Broadcast(EquipableSlot);
 }
 
 void UERNEquipmentComponent::Server_UnequipWeapon_Implementation()
@@ -139,12 +173,10 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 	}
 	
 	UItemManagerSubsystem* ItemManager = GetItemManagerSubsystem();
-	// 현재 장착중인 아이템 검증
 	if (!ItemManager)
 	{
 		return;
 	}
-	
 	FInventoryItemEntry ItemEntry = Inventory.GetItems()[SlotIndex];
 	// 인벤토리에서 장착할 아이템 검증
 	if (!ItemEntry.IsValid() || !ItemManager->ItemValid(ItemEntry.GetItemID()))
@@ -174,7 +206,7 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 		
 		// GetOwner(), Character의 null체크는 GetInventoryComponent()에서 진행
 		AERNCharacterBase* Character = Cast<AERNCharacterBase>(GetOwner());
-		if (!Character->GetMesh())
+		if (!Character || !Character->GetMesh())
 		{
 			return;
 		}
@@ -235,10 +267,7 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 				
 		// 다른 종류의 소모품일 경우 교환
 		if (ItemEntry.GetItemID() != CurrentConsumable.GetItemID())
-		{
-			// 장착할 아이템 런타임 값으로 변경
-			CurrentConsumable = NewConsumableRuntimeState;
-			
+		{		
 			// 장착할 아이템의 데이터 애셋 로드
 			const UConsumableItemDataAsset* DA = Cast<UConsumableItemDataAsset>(ItemManager->LoadItemDataAssetSync(ItemEntry.GetItemID(), EItemAssetLoadFlags::Gameplay));
 			if (!DA)
@@ -248,12 +277,15 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 			
 			// GetOwner(), Character의 null체크는 GetInventoryComponent()에서 진행
 			AERNCharacterBase* Character = Cast<AERNCharacterBase>(GetOwner());
-			if (!Character->GetMesh())
+			if (!Character || !Character->GetMesh())
 			{
 				return;
 			}
 			
-			// 무기 스킬 장착
+			// 장착할 아이템 런타임 값으로 변경
+			CurrentConsumable = NewConsumableRuntimeState;
+			
+			// 소모품 사용 효과 장착
 			if (TSubclassOf<UGameplayAbility> ConsumableAbility = DA->ConsumableAbility.Get())
 			{
 				Character->SetConsumableAbility(ConsumableAbility);

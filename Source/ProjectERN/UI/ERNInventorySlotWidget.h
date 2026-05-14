@@ -34,7 +34,7 @@ public:
 	
 	// Clear UI
 	UFUNCTION(BlueprintCallable)
-	void ClearItem() const;
+	void ClearItem();
 	
 	// Set UI
 	UFUNCTION(BlueprintCallable)
