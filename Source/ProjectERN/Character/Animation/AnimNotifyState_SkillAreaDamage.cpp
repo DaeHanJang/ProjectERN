@@ -10,6 +10,10 @@
 #include "GameFramework/Character.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Combat/Weapons/ERNMeleeWeapon.h"
+#include "Components/BoxComponent.h"
+#include "Inventory/Components/ERNEquipmentComponent.h"
+#include "DrawDebugHelpers.h"
 
 void UAnimNotifyState_SkillAreaDamage::NotifyBegin(USkeletalMeshComponent* MeshComp,
                                                    UAnimSequenceBase* Animation,
@@ -24,33 +28,30 @@ void UAnimNotifyState_SkillAreaDamage::NotifyBegin(USkeletalMeshComponent* MeshC
 	}
 
 	HitActorsByMesh.FindOrAdd(MeshComp).Empty();
-
+	
 	if (NiagaraEffect)
 	{
-		UNiagaraComponent* NiagaraComponent = nullptr;
+		AActor* OwnerActor = MeshComp->GetOwner();
+		if (!OwnerActor)
+		{
+			return;
+		}
 
-		if (AttachSocketName != NAME_None)
-		{
-			NiagaraComponent = UNiagaraFunctionLibrary::SpawnSystemAttached(
-				NiagaraEffect,
-				MeshComp,
-				AttachSocketName,
-				Offset,
-				FRotator::ZeroRotator,
-				EAttachLocation::KeepRelativeOffset,
-				false);
-		}
-		else
-		{
-			NiagaraComponent = UNiagaraFunctionLibrary::SpawnSystemAttached(
-				NiagaraEffect,
-				MeshComp,
-				NAME_None,
-				Offset,
-				FRotator::ZeroRotator,
-				EAttachLocation::KeepRelativeOffset,
-				false);
-		}
+		const FVector NiagaraLocation =
+			OwnerActor->GetActorLocation()
+			+ OwnerActor->GetActorForwardVector() * NiagaraOffset.X
+			+ OwnerActor->GetActorRightVector() * NiagaraOffset.Y
+			+ OwnerActor->GetActorUpVector() * NiagaraOffset.Z;
+
+		const FRotator NiagaraRotation = OwnerActor->GetActorRotation();
+
+		UNiagaraComponent* NiagaraComponent = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			OwnerActor->GetWorld(),
+			NiagaraEffect,
+			NiagaraLocation,
+			NiagaraRotation,
+			FVector(1.f),
+			false);
 
 		if (NiagaraComponent)
 		{
@@ -112,6 +113,7 @@ FVector UAnimNotifyState_SkillAreaDamage::GetDamageOrigin(const USkeletalMeshCom
 		return FVector::ZeroVector;
 	}
 
+	/*
 	if (AttachSocketName != NAME_None && MeshComp->DoesSocketExist(AttachSocketName))
 	{
 		return MeshComp->GetSocketTransform(AttachSocketName).TransformPosition(Offset);
@@ -121,8 +123,44 @@ FVector UAnimNotifyState_SkillAreaDamage::GetDamageOrigin(const USkeletalMeshCom
 	if (!OwnerActor)
 	{
 		return MeshComp->GetComponentLocation();
+	} 
+	*/
+	
+	const AActor* OwnerActor = MeshComp->GetOwner();
+	if (!OwnerActor)
+	{
+		return MeshComp->GetComponentLocation();
 	}
 
+	if (OriginMode == ESkillAreaDamageOriginMode::WeaponHitbox)
+	{
+		if (const UERNEquipmentComponent* Equipment =
+			OwnerActor->FindComponentByClass<UERNEquipmentComponent>())
+		{
+			if (const AERNMeleeWeapon* MeleeWeapon =
+				Cast<AERNMeleeWeapon>(Equipment->CurrentWeapon))
+			{
+				if (const UBoxComponent* Hitbox = MeleeWeapon->GetHitboxComponent())
+				{
+					// 월드 기준 오프셋 적용
+					// return Hitbox->GetComponentLocation() + Offset;
+					
+					// Hitbox 기준 오프셋 적용
+					return Hitbox->GetComponentTransform().TransformPosition(Offset);
+				}
+			}
+		}
+	}
+
+	if (OriginMode == ESkillAreaDamageOriginMode::MeshSocket)
+	{
+		if (AttachSocketName != NAME_None && MeshComp->DoesSocketExist(AttachSocketName))
+		{
+			return MeshComp->GetSocketTransform(AttachSocketName).TransformPosition(Offset);
+		}
+	}
+
+	
 	return OwnerActor->GetActorLocation()
 		+ OwnerActor->GetActorForwardVector() * Offset.X
 		+ OwnerActor->GetActorRightVector() * Offset.Y
@@ -148,6 +186,22 @@ void UAnimNotifyState_SkillAreaDamage::ApplyDamageAtOrigin(USkeletalMeshComponen
 		return;
 	}
 
+	// 디버그 드로잉
+	if (bDrawDebug)
+	{
+		DrawDebugSphere(
+			World,
+			Origin,
+			Radius,
+			16,
+			FColor::Red,
+			false,
+			DebugDrawTime,
+			0,
+			2.f);
+	}
+	// 디버그 드로잉 end
+	
 	TArray<FOverlapResult> OverlapResults;
 
 	FCollisionObjectQueryParams ObjectQueryParams;
