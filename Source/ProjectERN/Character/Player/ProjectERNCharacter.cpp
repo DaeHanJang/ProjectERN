@@ -275,8 +275,12 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 	const bool bIsLanding =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing);
+	
+	const bool bIsGetHit =
+		AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Stagger);
 
-	if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsLanding)
+	if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsLanding || bIsGetHit)
 	{
 		return;
 	}

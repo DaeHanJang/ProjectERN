@@ -37,6 +37,7 @@ void UERNAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, MaxStamina, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, StaminaRegenRate, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, AttackPower, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, AttackPowerBonus, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, Defense, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, MoveSpeed, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, Level, COND_None, REPNOTIFY_Always);
@@ -123,6 +124,11 @@ void UERNAttributeSet::OnRep_StaminaRegenRate(const FGameplayAttributeData& OldS
 void UERNAttributeSet::OnRep_AttackPower(const FGameplayAttributeData& OldAttackPower)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, AttackPower, OldAttackPower);
+}
+
+void UERNAttributeSet::OnRep_AttackPowerBonus(const FGameplayAttributeData& OldAttackPowerBonus)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, AttackPowerBonus, OldAttackPowerBonus);
 }
 
 void UERNAttributeSet::OnRep_Defense(const FGameplayAttributeData& OldDefense)

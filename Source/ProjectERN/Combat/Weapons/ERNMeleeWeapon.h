@@ -52,4 +52,7 @@ public:
 	// 히트 시 나이아가라 이펙트
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Melee")
 	UNiagaraSystem* HitEffect;
+	
+	// 히트박스 Getter (무기 스킬에서 사용)
+	UBoxComponent* GetHitboxComponent() const { return HitboxComponent; }
 };

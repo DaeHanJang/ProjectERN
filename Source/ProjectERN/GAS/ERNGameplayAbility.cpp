@@ -219,3 +219,28 @@ bool UERNGameplayAbility::ApplyResourceCost(float InStaminaCost, float InManaCos
 	
 	return true;
 }
+
+bool UERNGameplayAbility::CheckResourceCost(float InStaminaCost, float InManaCost,
+	const FGameplayAbilityActorInfo* ActorInfo) const
+{
+	if (!ActorInfo || !ActorInfo->AbilitySystemComponent.IsValid())
+	{
+		return false;
+	}
+
+	const UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+
+	if (InStaminaCost > 0.f &&
+		ASC->GetNumericAttribute(UERNAttributeSet::GetStaminaAttribute()) < InStaminaCost)
+	{
+		return false;
+	}
+
+	if (InManaCost > 0.f &&
+		ASC->GetNumericAttribute(UERNAttributeSet::GetManaAttribute()) < InManaCost)
+	{
+		return false;
+	}
+
+	return true;
+}

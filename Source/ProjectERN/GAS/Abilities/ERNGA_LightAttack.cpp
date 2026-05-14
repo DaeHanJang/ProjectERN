@@ -43,10 +43,7 @@ void UERNGA_LightAttack::CheckCombo()
 
 	const int32 NextComboIndex = CurrentComboIndex + 1;
 
-	const FERNComboSectionCost NextCost =
-		ComboSectionCosts.IsValidIndex(NextComboIndex)
-			? ComboSectionCosts[NextComboIndex]
-			: FERNComboSectionCost();
+	const FERNComboSectionCost NextCost = GetComboSectionCost(NextComboIndex);
 
 	if (!ApplyResourceCost(NextCost.StaminaCost, NextCost.ManaCost))
 	{
@@ -63,23 +60,7 @@ void UERNGA_LightAttack::CheckCombo()
 	{
 		return;
 	}
-	
-	/*
-	if (!bHasNextComboInput || !CanMoveToNextCombo())
-	{
-		return;
-	}
 
-	bHasNextComboInput = false;
-	++CurrentComboIndex;
-
-	const FName NextSectionName = GetComboSectionName(CurrentComboIndex);
-	if (NextSectionName == NAME_None)
-	{
-		return;
-	}
-	*/
-	
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	if (!AvatarActor)
 	{
@@ -107,10 +88,31 @@ void UERNGA_LightAttack::CheckCombo()
 
 		bHasCachedComboRotation = false;
 	}
-	
+
 	// 몽타주 section 이름은 코드에 직접 쓰지 않고,
 	// AttackMontage의 CompositeSections 순서를 콤보 순서로 사용한다.
 	AnimInstance->Montage_JumpToSection(NextSectionName, AttackMontage);
+}
+
+bool UERNGA_LightAttack::CheckCost(const FGameplayAbilitySpecHandle Handle,
+                                   const FGameplayAbilityActorInfo* ActorInfo,
+                                   FGameplayTagContainer* OptionalRelevantTags) const
+{
+	if (!UGameplayAbility::CheckCost(Handle, ActorInfo, OptionalRelevantTags))
+	{
+		return false;
+	}
+
+	const FERNComboSectionCost FirstCost = GetComboSectionCost(0);
+	return CheckResourceCost(FirstCost.StaminaCost, FirstCost.ManaCost, ActorInfo);
+}
+
+void UERNGA_LightAttack::ApplyCost(const FGameplayAbilitySpecHandle Handle,
+                                   const FGameplayAbilityActorInfo* ActorInfo,
+                                   const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	const FERNComboSectionCost FirstCost = GetComboSectionCost(0);
+	ApplyResourceCost(FirstCost.StaminaCost, FirstCost.ManaCost);
 }
 
 FName UERNGA_LightAttack::GetComboSectionName(int32 ComboIndex) const
@@ -127,4 +129,11 @@ bool UERNGA_LightAttack::CanMoveToNextCombo() const
 {
 	return AttackMontage &&
 		CurrentComboIndex + 1 < AttackMontage->CompositeSections.Num();
+}
+
+FERNComboSectionCost UERNGA_LightAttack::GetComboSectionCost(int32 ComboIndex) const
+{
+	return ComboSectionCosts.IsValidIndex(ComboIndex)
+		       ? ComboSectionCosts[ComboIndex]
+		       : FERNComboSectionCost();
 }
