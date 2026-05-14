@@ -33,7 +33,7 @@ public:
 
 	// 초기 무기 장착
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")
-	void Server_EquipWeapon(TSubclassOf<AERNWeaponBase> WeaponClass);
+	void Server_EquipWeapon(FName ItemID);
 
 	// 초기 무기 제거
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")

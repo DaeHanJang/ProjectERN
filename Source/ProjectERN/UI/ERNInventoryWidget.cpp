@@ -330,7 +330,20 @@ void UERNInventoryWidget::UpdateInventorySlot(const FInventoryItemEntry& Entry)
 	// 아이템 키값이 유효하지 않거나 수량이 0인 경우 슬롯 위젯 초기화
 	if (Entry.GetItemID().IsNone() || Entry.GetItemID() == NAME_None || Entry.GetQuantity() <= 0)
 	{
-		SlotWidgets[Entry.GetSlotIndex()]->ClearItem();
+		UERNInventorySlotWidget* SlotWidget = SlotWidgets[Entry.GetSlotIndex()];
+
+		SlotWidget->ClearItem();
+
+		if (FocusSlotIndex == Entry.GetSlotIndex())
+		{
+			SlotWidget->SetInventorySlotImage(FocusSlotImage.Get());
+		}
+		else
+		{
+			SlotWidget->SetInventorySlotImage(BasicSlotImage.Get());
+		}
+		SlotWidget->SetInventorySlotTint(FColor::White);
+
 		return;
 	}
 	
@@ -338,14 +351,33 @@ void UERNInventoryWidget::UpdateInventorySlot(const FInventoryItemEntry& Entry)
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
 		TWeakObjectPtr<UERNInventoryWidget> WeakThis(this);
+		const FName ItemID = Entry.GetItemID();
 		const int32 SlotIndex = Entry.GetSlotIndex();
 		const int32 Quantity = Entry.GetQuantity();
 		EItemGrade Grade = ItemManager->FindItemRow(Entry.GetItemID())->Grade;
 		
 		ItemManager->PreloadItemDataAssetAsync(Entry.GetItemID(), EItemAssetLoadFlags::UI, 
-			FOnItemDataAssetLoaded::CreateLambda([WeakThis, SlotIndex, Quantity, Grade](const UItemDataAssetBase* ItemData)
+			FOnItemDataAssetLoaded::CreateLambda([WeakThis, ItemID, SlotIndex, Quantity, Grade](const UItemDataAssetBase* ItemData)
 			{
 				if (!WeakThis.IsValid() || !ItemData)
+				{
+					return;
+				}
+				
+				if (!WeakThis->SlotWidgets.IsValidIndex(SlotIndex))
+				{
+					return;
+				}
+				
+				const UERNInventoryComponent* InventoryComponent = WeakThis->GetInventoryComponent();
+				if (!InventoryComponent || !InventoryComponent->GetInventory().GetItems().IsValidIndex(SlotIndex))
+				{
+					return;
+				}
+
+				const FInventoryItemEntry& CurrentEntry = InventoryComponent->GetInventory().GetItems()[SlotIndex];
+
+				if (CurrentEntry.GetItemID() != ItemID || CurrentEntry.GetQuantity() != Quantity)
 				{
 					return;
 				}
@@ -371,13 +403,26 @@ void UERNInventoryWidget::UpdateEquipableSlot(const FInventoryItemEntry& Entry)
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
 		TWeakObjectPtr<UERNInventoryWidget> WeakThis(this);
+		const FName ItemID = Entry.GetItemID();
 		const int32 Quantity = Entry.GetQuantity();
 		EItemGrade Grade = ItemManager->FindItemRow(Entry.GetItemID())->Grade;
 		
 		ItemManager->PreloadItemDataAssetAsync(Entry.GetItemID(), EItemAssetLoadFlags::UI, 
-			FOnItemDataAssetLoaded::CreateLambda([WeakThis, Quantity, Grade](const UItemDataAssetBase* ItemData)
+			FOnItemDataAssetLoaded::CreateLambda([WeakThis, ItemID, Quantity, Grade](const UItemDataAssetBase* ItemData)
 			{
 				if (!WeakThis.IsValid() || !ItemData)
+				{
+					return;
+				}
+				
+				const UERNEquipmentComponent* EquipmentComponent = WeakThis->GetEquipmentComponent();
+				if (!EquipmentComponent)
+				{
+					return;
+				}
+
+				const FInventoryItemEntry& CurrentEntry = EquipmentComponent->EquipableSlot;
+				if (CurrentEntry.GetItemID() != ItemID || CurrentEntry.GetQuantity() != Quantity)
 				{
 					return;
 				}
@@ -396,6 +441,17 @@ void UERNInventoryWidget::UpdateConsumableSlot(const FInventoryItemEntry& Entry)
 	if (Entry.GetItemID().IsNone() || Entry.GetItemID() == NAME_None || Entry.GetQuantity() <= 0)
 	{
 		ConsumableSlotWidget->ClearItem();
+
+		if (FocusSlotIndex == SlotWidgets.Num())
+		{
+			ConsumableSlotWidget->SetInventorySlotImage(FocusConsumableSlotImage.Get());
+		}
+		else
+		{
+			ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
+		}
+		ConsumableSlotWidget->SetInventorySlotTint(FColor::White);
+		
 		return;
 	}
 	
@@ -403,13 +459,26 @@ void UERNInventoryWidget::UpdateConsumableSlot(const FInventoryItemEntry& Entry)
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
 		TWeakObjectPtr<UERNInventoryWidget> WeakThis(this);
+		const FName ItemID = Entry.GetItemID();
 		const int32 Quantity = Entry.GetQuantity();
 		EItemGrade Grade = ItemManager->FindItemRow(Entry.GetItemID())->Grade;
 		
 		ItemManager->PreloadItemDataAssetAsync(Entry.GetItemID(), EItemAssetLoadFlags::UI,
-			FOnItemDataAssetLoaded::CreateLambda([WeakThis, Quantity, Grade](const UItemDataAssetBase* ItemData)
+			FOnItemDataAssetLoaded::CreateLambda([WeakThis, ItemID, Quantity, Grade](const UItemDataAssetBase* ItemData)
 			{
 				if (!WeakThis.IsValid() || !ItemData)
+				{
+					return;
+				}
+				
+				const UERNEquipmentComponent* EquipmentComponent = WeakThis->GetEquipmentComponent();
+				if (!EquipmentComponent)
+				{
+					return;
+				}
+
+				const FInventoryItemEntry& CurrentEntry = EquipmentComponent->ConsumableSlot;
+				if (CurrentEntry.GetItemID() != ItemID || CurrentEntry.GetQuantity() != Quantity)
 				{
 					return;
 				}
@@ -529,15 +598,22 @@ void UERNInventoryWidget::PlayOpenAnimation()
 
 FColor UERNInventoryWidget::ItemGradeByColor(EItemGrade Grade)
 {
+	FColor Color;
 	switch (Grade)
 	{
 	case EItemGrade::Uncommon:
-		return FColor::Cyan;
+		Color = FColor::Cyan;
+		break;
 	case EItemGrade::Rare:
-		return FColor::Purple;
+		Color =  FColor::Purple;
+		break;
 	case EItemGrade::Legendary:
-		return FColor::Orange;
+		Color =  FColor::Orange;
+		break;
 	default:
-		return FColor::White;
+		Color =  FColor::White;
+		break;
 	}
+	
+	return Color;
 }
