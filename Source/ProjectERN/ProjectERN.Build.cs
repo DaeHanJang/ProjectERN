@@ -28,7 +28,9 @@ public class ProjectERN : ModuleRules
 			"Niagara",
 			"PhysicsCore",
 			"MotionWarping",
-			"NetCore"
+			"NetCore",
+			"LevelSequence",
+			"MovieScene"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

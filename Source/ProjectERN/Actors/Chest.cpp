@@ -2,11 +2,13 @@
 
 #include "Actors/Chest.h"
 
+#include "NiagaraFunctionLibrary.h"
 #include "Character/Player/ERNPlayerController.h"
 #include "Components/SphereComponent.h"
 #include "Inventory/Item/Data/ERNDropTable.h"
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AChest::AChest()
@@ -58,8 +60,9 @@ void AChest::Interact_Implementation(APlayerController* PlayerController)
 		{
 			ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(-150.0f, 0.0f, 50.0f), GetActorRotation());
 		}
-		Destroy();
 	}
+	
+	Dissolve();
 }
 
 bool AChest::CanInteract_Implementation() const
@@ -90,8 +93,69 @@ UItemManagerSubsystem* AChest::GetItemManager() const
 	return nullptr;
 }
 
+void AChest::Dissolve_Implementation()
+{
+	if (bDestroyed)
+	{
+		return;
+	}
+	if (!StaticMesh)
+	{
+		return;
+	}
+	
+	DynamicMaterial0 = StaticMesh->CreateAndSetMaterialInstanceDynamic(0);
+	DynamicMaterial1 = StaticMesh->CreateAndSetMaterialInstanceDynamic(1);
+	if (!DynamicMaterial0 || !DynamicMaterial1)
+	{
+		return;
+	}
+	
+	bDestroyed = true;
+	RemainingDissolveTime = DissolveTime;
+	DynamicMaterial0->SetScalarParameterValue(TEXT("Dissolve"), 1.0f);
+	DynamicMaterial1->SetScalarParameterValue(TEXT("Dissolve"), 1.0f);
+	
+	if (InteractSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, InteractSound, GetActorLocation());
+	}
+	
+	if (InteractEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, InteractEffect, GetActorLocation());
+	}
+	
+	Collision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	if (!GetWorldTimerManager().IsTimerActive(DissolveTimerHandle))
+	{
+		GetWorldTimerManager().SetTimer(DissolveTimerHandle, this, &AChest::UpdateDissolve, DissolveRate, true);
+	}
+}
+
+void AChest::UpdateDissolve()
+{
+	RemainingDissolveTime -= DissolveRate;
+	
+	const float Opacity = RemainingDissolveTime / DissolveTime;
+	DynamicMaterial0->SetScalarParameterValue(TEXT("Dissolve"), Opacity);
+	DynamicMaterial1->SetScalarParameterValue(TEXT("Dissolve"), Opacity);
+	
+	if (RemainingDissolveTime <= 0.0f)
+	{
+		GetWorldTimerManager().ClearTimer(DissolveTimerHandle);
+		
+		if (HasAuthority())
+		{
+			Destroy();
+		}
+	}
+}
+
 void AChest::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+                                  UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (const APawn* Pawn = Cast<APawn>(OtherActor))
 	{

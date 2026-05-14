@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/Image.h"
 #include "ERNInventorySlotWidget.generated.h"
 
 class UERNInventoryWidget;
@@ -26,7 +27,10 @@ public:
 	// Getter/Setter
 	FORCEINLINE const int32 GetSlotIndex() const { return SlotIndex; }
 	FORCEINLINE void SetSlotIndex(const int32 NewIndex) { SlotIndex = NewIndex; }
+	FORCEINLINE void SetBackgroundTint(FColor NewColor) { BackgroundTint = NewColor; }
+	FORCEINLINE void InitInventorySlotTint() const { InventorySlotImage->SetBrushTintColor(BackgroundTint); }
 	void SetInventorySlotImage(UTexture2D* NewTexture) const;
+	void SetInventorySlotTint(FColor NewColor) const;
 	
 	// Clear UI
 	UFUNCTION(BlueprintCallable)
@@ -34,7 +38,7 @@ public:
 	
 	// Set UI
 	UFUNCTION(BlueprintCallable)
-	void SetItem(UTexture2D* Icon, const int32 QuantityText) const;
+	void SetItem(UTexture2D* Icon, const int32 QuantityText, FColor Color);
 	
 protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -59,5 +63,8 @@ private:
 	
 	// Slot Index
 	int32 SlotIndex = -1;
+	
+	// BackgroundImage Tint Color
+	FColor BackgroundTint = FColor::White;
 	
 };

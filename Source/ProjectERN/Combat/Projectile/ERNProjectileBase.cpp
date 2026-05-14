@@ -121,6 +121,25 @@ void AERNProjectileBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(AERNProjectileBase, ChosenInitialDir, COND_InitialOnly);
+	DOREPLIFETIME(AERNProjectileBase, HomingTarget);
+}
+
+void AERNProjectileBase::OnRep_HomingTarget()
+{
+	if (HomingTarget.IsValid())
+	{
+		ApplyHomingSettings(HomingTarget.Get());
+	}
+}
+
+void AERNProjectileBase::ApplyHomingSettings(AActor* Target)
+{
+	if (ProjectileMovement && Target && Target->GetRootComponent())
+	{
+		ProjectileMovement->bIsHomingProjectile = true;
+		ProjectileMovement->HomingTargetComponent = Target->GetRootComponent();
+		ProjectileMovement->HomingAccelerationMagnitude = HomingAcceleration;
+	}
 }
 
 void AERNProjectileBase::OnRep_ChosenInitialDir()
@@ -194,7 +213,7 @@ void AERNProjectileBase::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 	}
 
 	Multicast_PlayImpactEffect(Hit.ImpactPoint, Hit.ImpactNormal.Rotation());
-	Destroy();
+	SetLifeSpan(0.2f);	// 클라이언트에서도 보이도록 약간 지연
 }
 
 void AERNProjectileBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
@@ -242,7 +261,7 @@ void AERNProjectileBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AAc
 	}
 
 	Multicast_PlayImpactEffect(ImpactPoint, ImpactRot);
-	Destroy();
+	SetLifeSpan(0.2f);	// 클라이언트에서도 보이도록 약간 지연
 }
 
 // 유도 투사체일 경우
@@ -263,11 +282,10 @@ void AERNProjectileBase::InitializeHoming()
 		Target = FindHomingTargetForPlayer();
 	}
 
-	if (Target && Target->GetRootComponent())
+	if (Target)
 	{
-		ProjectileMovement->bIsHomingProjectile = true;
-		ProjectileMovement->HomingTargetComponent = Target->GetRootComponent();
-		ProjectileMovement->HomingAccelerationMagnitude = HomingAcceleration;
+		HomingTarget = Target;  // 리플리케이트 -> 클라에서 OnRep 호출
+		ApplyHomingSettings(Target);
 	}
 	// 타겟 못 찾으면 직선 비행
 }

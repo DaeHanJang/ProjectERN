@@ -44,4 +44,10 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	UPanelWidget* StatsPanel;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	UTextBlock* DamageText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	UPanelWidget* AbilityPanel;
 };

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "World/Data/MobRuntimeState.h"
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "ERNWorldManagerSubsystem.generated.h"
@@ -10,6 +11,7 @@
 struct FERNWorldTableRow;
 class UStructureSpawnService;
 class UStructureSpawnConfigDataAsset;
+
 /**
  * 
  */
@@ -22,15 +24,25 @@ public:
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
-
+	
+public:
+	bool TryGetMobStates(FName SpawnerId, TArray<FMobRuntimeState>& OutSavedStates) const;
+	void SaveMobStates(FName SpawnerId, const TArray<FMobRuntimeState>& InStates);
+	
 private:
 	bool TryFindWorldRow(const UWorld* World, FERNWorldTableRow& OutWorldRow, FString* OutWorldPath) const;
 	
 	FString CurrentWorldPath;
 	
+	// 구조물 스폰 설정 데이터 에셋
 	UPROPERTY()
 	TSoftObjectPtr<UStructureSpawnConfigDataAsset> CachedSpawnConfig;
 	
+	// 구조물 스폰 시스템
 	UPROPERTY()
 	TObjectPtr<UStructureSpawnService> StructureSpawnService;
+	
+	// 몹 스포너 데이터 저장소
+	UPROPERTY()
+	TMap<FName, FSpawnerMobRuntimeStates> SpawnerMobStates;
 };

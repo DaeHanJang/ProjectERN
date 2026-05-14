@@ -1,8 +1,10 @@
 #include "ERNItemToolTipWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
+#include "Components/PanelWidget.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
+#include "Inventory/Item/Data/EquipableItemDataAsset.h"
 
 void UERNItemToolTipWidget::NativeConstruct()
 {
@@ -35,10 +37,10 @@ void UERNItemToolTipWidget::UpdateTooltip(FName ItemID, int32 ItemPrice)
 					TintColor = FLinearColor(0.65f, 0.65f, 0.65f, 1.0f); // 회색
 					break;
 				case EItemGrade::Uncommon:
-					TintColor = FLinearColor(0.2f, 1.0f, 1.0f, 1.0f); // 녹색
+					TintColor = FLinearColor(0.2f, 1.0f, 1.0f, 1.0f); // 밝은 청녹색
 					break;
 				case EItemGrade::Rare:
-					TintColor = FLinearColor(0.07f, 0.0f, 1.0f, 1.0f); // 파란색
+					TintColor = FLinearColor(0.2f, 0.05f, 1.0f, 1.0f); // 진파랑-자색계열
 					break;
 				case EItemGrade::Legendary:
 					TintColor = FLinearColor(1.0f, 0.265f, 0.0f, 1.0f); // 주황/금색
@@ -58,16 +60,55 @@ void UERNItemToolTipWidget::UpdateTooltip(FName ItemID, int32 ItemPrice)
 				{
 					ItemNameText->SetColorAndOpacity(FSlateColor(TintColor));
 				}
+
+				if (DescriptionText)
+				{
+					DescriptionText->SetText(ItemRow->Description);
+				}
 			}
 
 			// 2. 데이터 에셋에서 아이콘 가져오기 (UI용으로 동기 로드)
 			// (캐싱되어 있다면 즉시 반환되며, 없을 경우 로드 대기가 발생할 수 있음)
 			const UItemDataAssetBase* DataAsset = ItemSubsystem->LoadItemDataAssetSync(ItemID, EItemAssetLoadFlags::UI);
-			if (DataAsset && TooltipIcon)
+			if (DataAsset)
 			{
-				if (UTexture2D* IconTex = DataAsset->Icon.LoadSynchronous())
+				if (TooltipIcon)
 				{
-					TooltipIcon->SetBrushFromTexture(IconTex);
+					if (UTexture2D* IconTex = DataAsset->Icon.LoadSynchronous())
+					{
+						TooltipIcon->SetBrushFromTexture(IconTex);
+					}
+				}
+
+				if (const UEquipableItemDataAsset* EquipData = Cast<UEquipableItemDataAsset>(DataAsset))
+				{
+					if (DamageText)
+					{
+						DamageText->SetText(FText::AsNumber(EquipData->LightAttackDamage));
+					}
+					if (StatsPanel)
+					{
+						StatsPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+					}
+					if (AbilityPanel)
+					{
+						AbilityPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+					}
+				}
+				else
+				{
+					if (DamageText)
+					{
+						DamageText->SetText(FText::FromString(TEXT("-")));
+					}
+					if (StatsPanel)
+					{
+						StatsPanel->SetVisibility(ESlateVisibility::Collapsed);
+					}
+					if (AbilityPanel)
+					{
+						AbilityPanel->SetVisibility(ESlateVisibility::Collapsed);
+					}
 				}
 			}
 			

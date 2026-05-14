@@ -4,6 +4,7 @@
 #include "World/ERNWorldManagerSubsystem.h"
 
 #include "ERNWorldManagerSettings.h"
+#include "MobSpawner.h"
 #include "StructureSpawnService.h"
 #include "Data/ERNWorldTable.h"
 #include "Data/StructureSpawnConfigDataAsset.h"
@@ -59,6 +60,41 @@ void UERNWorldManagerSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	
 	StructureSpawnService->SpawnStructures(&InWorld, SpawnConfig);
 }
+
+// 스포너 ID에 대해 저장된 데이터가 있는지 확인해서 넣어주는 함수
+bool UERNWorldManagerSubsystem::TryGetMobStates(FName SpawnerId, TArray<FMobRuntimeState>& OutSavedStates) const
+{
+	if (SpawnerId.IsNone())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnerId is null"));
+		return false;
+	}
+
+	OutSavedStates.Reset();
+	
+	//SpawnerID 를 TMap에서 찾아서 넣어주기
+	const FSpawnerMobRuntimeStates* FoundStates = SpawnerMobStates.Find(SpawnerId);
+	if (FoundStates == nullptr)
+	{
+		return false;
+	}
+	
+	OutSavedStates = FoundStates->MobStates;
+	return true;
+}
+
+void UERNWorldManagerSubsystem::SaveMobStates(FName SpawnerId, const TArray<FMobRuntimeState>& InStates)
+{
+	if (SpawnerId.IsNone())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnerId is null"));
+		return;
+	}
+	
+	FSpawnerMobRuntimeStates& SaveStates = SpawnerMobStates.FindOrAdd(SpawnerId);
+	SaveStates.MobStates = InStates;
+}
+
 
 // 현재 맵을 월드 세팅 매니저의 데이터 테이블에서 찾아내는 공용 함수
 bool UERNWorldManagerSubsystem::TryFindWorldRow(const UWorld* World, FERNWorldTableRow& OutWorldRow, FString* OutWorldPath) const

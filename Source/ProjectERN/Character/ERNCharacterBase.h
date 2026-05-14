@@ -5,15 +5,14 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "ERNCharacterBase.generated.h"
-
 
 class UAbilitySystemComponent;
 class UERNAttributeSet;
 class UGameplayAbility;
 class UGameplayEffect;
 class UAnimMontage;
-
 
 UCLASS(Abstract)
 class PROJECTERN_API AERNCharacterBase : public ACharacter, public IAbilitySystemInterface
@@ -22,13 +21,19 @@ class PROJECTERN_API AERNCharacterBase : public ACharacter, public IAbilitySyste
 
 public:
 	AERNCharacterBase();
-
+	
 	// IAbilitySystemInterface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	// AttributeSet 가져오기
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	UERNAttributeSet* GetAttributeSet() const { return AttributeSet; }
+	
+	// 무기 스킬 어빌리티 설정
+	void SetWeaponAbility(TSubclassOf<UGameplayAbility> NewWeaponAbility);
+	
+	// 소모품 어빌리티 설정
+	void SetConsumableAbility(TSubclassOf<UGameplayAbility> NewConsumableAbility);
 
 protected:
 	virtual void BeginPlay() override;
@@ -38,6 +43,14 @@ protected:
 	// 기본 어빌리티 목록 (블루프린트에서 설정)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
+	
+	// 무기 스킬 어빌리티 핸들
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ABilities")
+	FGameplayAbilitySpecHandle WeaponAbilityHandle;
+	
+	// 소모품 어빌리티 핸들
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ABilities")
+	FGameplayAbilitySpecHandle ConsumableAbilityHandle;
 
 	void GiveDefaultAbilities();
 	void InitializeAbilitySystemActorInfo();

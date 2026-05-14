@@ -10,6 +10,7 @@
 #include "ERNGameInstance.generated.h"
 
 class UERNDummyShopProvider;
+class UUserWidget;
 
 UCLASS()
 class PROJECTERN_API UERNGameInstance : public UGameInstance
@@ -71,12 +72,16 @@ public:
 
 	// ===== 상점 시스템 =====
 
-	/** 상점 Provider 반환 (인터페이스) */
+	// 상점 Provider 반환 (인터페이스)
 	UFUNCTION(BlueprintCallable, Category = "Shop")
 	TScriptInterface<IERNShopDataProvider> GetShopDataProvider() const;
 
-	/** 상점 Provider UObject 반환 (캐스팅용) */
+	// 상점 Provider UObject 반환 (캐스팅용)
 	UObject* GetShopDataProviderObject() const { return ShopDataProvider; }
+
+	// 로딩 위젯 클래스 반환 (서브시스템용)
+	UFUNCTION(BlueprintPure, Category = "Loading")
+	TSubclassOf<UUserWidget> GetLoadingWidgetClass() const { return LoadingWidgetClass; }
 
 protected:
 	// 세션 인터페이스
@@ -131,6 +136,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	TSubclassOf<class UERNDataTableShopProvider> DataTableProviderClass;
 
-	/** 상점 시스템 초기화 */
+	// ===== 로딩 화면 =====
+
+	// 로딩 화면 위젯 클래스 (서브시스템에서 사용)
+	UPROPERTY(EditDefaultsOnly, Category = "Loading")
+	TSubclassOf<UUserWidget> LoadingWidgetClass;
+
+	// 상점 시스템 초기화
 	void InitializeShopSystem();
 };

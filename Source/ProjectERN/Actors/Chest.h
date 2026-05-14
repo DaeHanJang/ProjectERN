@@ -7,6 +7,7 @@
 #include "Interfaces/IInteractable.h"
 #include "Chest.generated.h"
 
+class UNiagaraSystem;
 class UItemManagerSubsystem;
 class USphereComponent;
 
@@ -33,7 +34,12 @@ private:
     // Get ItemManager
 	UItemManagerSubsystem* GetItemManager() const;
 	
-	// TODO: 제거 함수 구현
+	// Start Dissolve
+	UFUNCTION(NetMulticast, Reliable)
+	void Dissolve();
+	
+	// Dissolve Animation
+	void UpdateDissolve();
 	
 	// Collision Bind Handler
 	// Begin Overlap
@@ -58,6 +64,33 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UDataTable> DropTable;
 	
+	// VFX
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UNiagaraSystem> InteractEffect;
+	
+	// SFX
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<USoundBase> InteractSound;
+	
 	// 중복 방지 플래그
 	bool bOpened = false;
+	
+	// 제거 플래그
+	bool bDestroyed = false;
+	
+	// StaticMesh DynamicMaterialInstance
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> DynamicMaterial0;
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> DynamicMaterial1;
+	
+	// Dissolve Timer
+	FTimerHandle DissolveTimerHandle;
+	// Dissolve Animation Time
+	const float DissolveTime = 1.0f;
+	// Dissolve Timer Rate
+	const float DissolveRate = 0.1f;
+	// Remaining Dissolve Animation Time
+	float RemainingDissolveTime = 0.0f;
+	
 };
