@@ -8,6 +8,7 @@
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "GAS/ERNAttributeSet.h"
 #include "GAS/ERNGameplayTags.h"
 
 AERNMeleeWeapon::AERNMeleeWeapon()
@@ -61,11 +62,28 @@ void AERNMeleeWeapon::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActo
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
 	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerCharacter);
 
+	/*
 	// 태그로 강공 / 약공 구분
 	const bool bIsHeavy = ASC && ASC->HasMatchingGameplayTag(TAG_Ability_Attack_Heavy);
 	const float DamageToApply = bIsHeavy ? HeavyAttackDamage : LightAttackDamage;
 	const float StaggerPower = bIsHeavy ? HeavyAttackStaggerPower : LightAttackStaggerPower;
+	*/
+	
+	float CharacterAttackPower = 0.f;
+	float AttackPowerBonus = 0.f;
 
+	if (ASC)
+	{
+		CharacterAttackPower =
+			ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerAttribute());
+
+		AttackPowerBonus =
+			ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerBonusAttribute());
+	}
+	
+	const float DamageToApply = LightAttackDamage + CharacterAttackPower + AttackPowerBonus;
+	const float StaggerPower = LightAttackStaggerPower;
+	
 	OtherActor->TakeDamage(DamageToApply, FDamageEvent(), InstigatorController, GetOwner());
 
 	if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(OtherActor))
