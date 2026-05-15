@@ -58,7 +58,7 @@ class AProjectERNCharacter : public AERNCharacterBase
 	FTimerHandle DetectionTimerHandle;
 
 protected:
-	//
+	// InteractionDetector Update
 	void UpdateInteractionDetector();
 	
 	/** Character Type - 블루프린트에서 설정 */

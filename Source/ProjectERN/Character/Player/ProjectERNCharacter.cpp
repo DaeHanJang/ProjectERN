@@ -129,11 +129,13 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 
 void AProjectERNCharacter::UpdateInteractionDetector()
 {
+	// 감지는 클라이언트에서 하고 상호작용을 서버에 요청
 	if (!InteractionDetector || !IsLocallyControlled())
 	{
 		return;
 	}
 	
+	// 상호작용 감지 콜리전과 겹쳐진 액터 수집
 	TArray<AActor*> OverlappingActors;
 	InteractionDetector->GetOverlappingActors(OverlappingActors);
 	if (OverlappingActors.IsEmpty())
@@ -144,6 +146,7 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 	float ClosestDistSq = MAX_FLT;
 	AActor* ClosestActor = nullptr;
 	
+	// 감지된 액터를 순회하면서 상호작용 가능 액터인 경우 가장 가까운 액터를 선정
 	for (AActor* Actor : OverlappingActors)
 	{
 		if (!Actor->Implements<UInteractable>())
@@ -160,6 +163,7 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		}
 	}
 	
+	// 현재 상호작용 가능 액터가 존재할 경우 새로 선정된 액터와 같다면 변경할 필요가 없기 때문에 early return
 	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
 	if (!ERNController || ClosestActor == ERNController->GetCurrentInteractable())
 	{
