@@ -76,6 +76,7 @@ AProjectERNCharacter::AProjectERNCharacter()
 	InteractionDetector->SetupAttachment(GetRootComponent());
 	InteractionDetector->InitSphereRadius(150.0f);
 	InteractionDetector->SetCollisionProfileName(TEXT("OverlapAll"));
+	InteractionDetector->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Ignore);
 	InteractionDetector->SetGenerateOverlapEvents(true);
 	
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨

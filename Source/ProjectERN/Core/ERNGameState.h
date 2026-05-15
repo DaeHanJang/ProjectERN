@@ -6,6 +6,8 @@
 #include "GameFramework/GameStateBase.h"
 #include "ERNGameState.generated.h"
 
+class ULevelSequence;
+
 // 플레이어 배열 변경 시 호출되는 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerArrayChanged);
 
@@ -41,6 +43,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game")
 	FString FieldMapName = TEXT("Map_Field");
 
+	// 로비 인트로 컷신 (카운트다운 완료 후 재생)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cutscene")
+	TSoftObjectPtr<ULevelSequence> IntroCutscene;
+
 	// === 카운트다운 시스템 ===
 
 	// 카운트다운 변경 이벤트 (UI 바인딩용)
@@ -60,7 +66,7 @@ public:
 	int32 CountdownTime = 0;
 
 	// 카운트다운 진행 중 여부
-	UPROPERTY(BlueprintReadOnly, Category = "Countdown")
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Countdown")
 	bool bIsCountingDown = false;
 
 	// 카운트다운 시작 (서버에서 호출)
@@ -80,8 +86,24 @@ protected:
 	// 카운트다운 틱 (1초마다)
 	void TickCountdown();
 
-	// 카운트다운 완료 → 맵 이동
+	// 카운트다운 완료 → 컷신 재생 또는 맵 이동
 	void OnCountdownComplete();
+
+	// 모든 클라이언트에서 컷신 재생
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayIntroCutscene();
+
+	// 카운트다운 완료 알림 (모든 클라이언트)
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnCountdownFinished();
+
+	// 인트로 컷신 종료 콜백 (서버: 로딩화면 + 맵이동)
+	UFUNCTION()
+	void OnIntroCutsceneFinished();
+
+	// 로컬 컷신 종료 콜백 (클라이언트: 로딩화면만)
+	UFUNCTION()
+	void OnLocalCutsceneFinished();
 
 	FTimerHandle CountdownTimerHandle;
 
