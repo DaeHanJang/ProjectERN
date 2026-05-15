@@ -2,11 +2,14 @@
 
 #include "Inventory/Item/ERNItemActor.h"
 
-#include "Character/Player/ERNPlayerController.h"
+#include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Components/SphereComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Data/EquipableItemDataAsset.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Manager/ItemManagerSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
@@ -15,7 +18,7 @@ AERNItemActor::AERNItemActor()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
-	SetReplicates(true);
+	bReplicates = true;
 	
 	// Collision
 	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
@@ -31,6 +34,43 @@ AERNItemActor::AERNItemActor()
 	SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMesh"));
 	SkeletalMesh->SetupAttachment(GetRootComponent());
 	SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	// Effect
+	EffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("EffectComponent"));
+	EffectComponent->SetupAttachment(GetRootComponent());
+	
+	// Prompt
+	PromptComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("PromptComponent"));
+	PromptComponent->SetupAttachment(GetRootComponent());
+	PromptComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.f));
+	static ConstructorHelpers::FClassFinder<UUserWidget> PromptClass(TEXT("/Game/Blueprint/Widget/WBP_InteractE"));
+	if (PromptClass.Succeeded())
+	{
+		PromptComponent->SetWidgetClass(PromptClass.Class);
+	}
+	PromptComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	PromptComponent->SetVisibility(false);
+	
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> CommonVFX(TEXT("/Game/Assets/VFX/Item/NS_CommonDropItem.NS_CommonDropItem"));
+	if (CommonVFX.Succeeded())
+	{
+		CommonEffect = CommonVFX.Object;
+	}
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> UncommonVFX(TEXT("/Game/Assets/VFX/Item/NS_UncommonDropItem.NS_UncommonDropItem"));
+	if (UncommonVFX.Succeeded())
+	{
+		UncommonEffect = UncommonVFX.Object;
+	}
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> RareVFX(TEXT("/Game/Assets/VFX/Item/NS_RareDropItem.NS_RareDropItem"));
+	if (RareVFX.Succeeded())
+	{
+		RareEffect = RareVFX.Object;
+	}
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> LegendaryVFX(TEXT("/Game/Assets/VFX/Item/NS_LegendaryDropItem.NS_LegendaryDropItem"));
+	if (LegendaryVFX.Succeeded())
+	{
+		LegendaryEffect = LegendaryVFX.Object;
+	}
 }
 
 void AERNItemActor::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -61,11 +101,31 @@ void AERNItemActor::Interact_Implementation(APlayerController* PlayerController)
 	{
 		InventoryComponent->Server_AddItem(this);
 	}
+	if (PickupSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, PickupSound, GetActorLocation());
+	}
 }
 
 bool AERNItemActor::CanInteract_Implementation() const
 {
 	return !IsActorBeingDestroyed();
+}
+
+void AERNItemActor::ActivateInteract_Implementation() const
+{
+	if (PromptComponent)
+	{
+		PromptComponent->SetVisibility(true);
+	}
+}
+
+void AERNItemActor::EndInteract_Implementation(APlayerController* PlayerController)
+{
+	if (PromptComponent)
+	{
+		PromptComponent->SetVisibility(false);
+	}
 }
 
 FText AERNItemActor::GetInteractionText_Implementation() const
@@ -95,6 +155,10 @@ void AERNItemActor::ApplyItemDataAsset(const UItemDataAssetBase* DataAsset)
 	
 	// Apply Mesh
 	SetMesh(DataAsset);
+	// Apply Effect
+	SetEffect();
+	// Apply Sound
+	SetSound(DataAsset);
 }
 
 UItemManagerSubsystem* AERNItemActor::GetItemManager() const
@@ -128,6 +192,62 @@ void AERNItemActor::SetMesh(const UItemDataAssetBase* DA) const
 		SkeletalMesh->SetSkeletalMesh(DA->SkeletalMesh.Get());
 		SkeletalMesh->SetRelativeRotation(DA->Rotator);
 		SkeletalMesh->SetRelativeScale3D(DA->Scale);
+	}
+}
+
+void AERNItemActor::SetEffect() const
+{
+	if (const UItemManagerSubsystem* ItemManager = GetItemManager())
+	{
+		if (const FERNItemTable* Row = ItemManager->FindItemRow(ItemRuntimeState.GetItemID()))
+		{
+			switch (Row->Grade)
+			{
+			case EItemGrade::Common:
+				if (CommonEffect)
+				{
+					EffectComponent->SetAsset(CommonEffect);
+				}
+				break;
+			case EItemGrade::Uncommon:
+				if (UncommonEffect)
+				{
+					EffectComponent->SetAsset(UncommonEffect);
+				}
+				break;
+			case EItemGrade::Rare:
+				if (RareEffect)
+				{
+					EffectComponent->SetAsset(RareEffect);
+				}
+				break;
+			case EItemGrade::Legendary:
+				if (LegendaryEffect)
+				{
+					EffectComponent->SetAsset(LegendaryEffect);
+				}
+				break;
+			default:
+				if (CommonEffect)
+				{
+					EffectComponent->SetAsset(CommonEffect);
+				}
+				break;
+			}
+		}
+	}
+}
+
+void AERNItemActor::SetSound(const UItemDataAssetBase* DA)
+{
+	if (!IsValid(DA))
+	{
+		return;
+	}
+	
+	if (DA->Sound)
+	{
+		PickupSound = DA->Sound.Get();
 	}
 }
 

@@ -91,7 +91,25 @@ public:
 	// 히트리액션 몽타주 재생 (모든 클라이언트에 동기화)
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayHitReaction();
-	
+
+	// 컷신용 몽타주 재생 (시퀀서 Event Track에서 호출)
+	UFUNCTION(BlueprintCallable, Category = "Animation|Cutscene")
+	void PlayCutsceneMontage(UAnimMontage* Montage);
+
+	// 컷신용 Speed (서버에서 계산 → 리플리케이트)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Animation|Cutscene")
+	float CutsceneSpeed = 0.f;
+
+	virtual void Tick(float DeltaTime) override;
+
+protected:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+private:
+	// 컷신 Speed 계산용
+	FVector CutscenePrevLocation = FVector::ZeroVector;
+	bool bCutscenePrevLocationValid = false;
+
 protected:
 	// 움직임 상태태그 변화를 위한 함수
 	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;

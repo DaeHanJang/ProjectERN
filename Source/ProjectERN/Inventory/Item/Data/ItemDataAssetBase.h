@@ -40,4 +40,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector Scale = FVector::OneVector;
 	
+	// 사운드
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<USoundBase> Sound = nullptr;
+	
 };

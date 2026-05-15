@@ -8,10 +8,12 @@
 #include "Components/CapsuleComponent.h"
 #include "Abilities/GameplayAbility.h"
 #include "GameplayEffect.h"
+#include "Net/UnrealNetwork.h"
+#include "Subsystem/ERNCutsceneSubsystem.h"
 
 AERNCharacterBase::AERNCharacterBase()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	// GAS 컴포넌트 생성
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
@@ -24,6 +26,69 @@ AERNCharacterBase::AERNCharacterBase()
 void AERNCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void AERNCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AERNCharacterBase, CutsceneSpeed);
+}
+
+void AERNCharacterBase::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// 서버에서만 컷신 Speed 계산
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 컷신 재생 중인지 확인
+	UERNCutsceneSubsystem* CutsceneSubsystem = nullptr;
+	if (UGameInstance* GI = Cast<UGameInstance>(GetWorld()->GetGameInstance()))
+	{
+		CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>();
+	}
+
+	if (!CutsceneSubsystem || !CutsceneSubsystem->IsPlayingCutscene())
+	{
+		// 컷신 아니면 리셋
+		bCutscenePrevLocationValid = false;
+		CutsceneSpeed = 0.f;
+		return;
+	}
+
+	// 컷신 중 Speed 계산
+	FVector CurrentLocation = GetActorLocation();
+
+	if (bCutscenePrevLocationValid && DeltaTime > 0.f)
+	{
+		FVector PositionDelta = CurrentLocation - CutscenePrevLocation;
+		float CalculatedSpeed = PositionDelta.Size() / DeltaTime;
+
+		// 텔레포트 감지
+		constexpr float MaxReasonableSpeed = 2000.f;
+		if (CalculatedSpeed > MaxReasonableSpeed)
+		{
+			CalculatedSpeed = 0.f;
+		}
+
+		// 미세 떨림 방지
+		constexpr float SpeedThreshold = 20.f;
+		if (CalculatedSpeed < SpeedThreshold)
+		{
+			CalculatedSpeed = 0.f;
+		}
+
+		CutsceneSpeed = CalculatedSpeed;
+	}
+	else
+	{
+		bCutscenePrevLocationValid = true;
+	}
+
+	CutscenePrevLocation = CurrentLocation;
 }
 
 void AERNCharacterBase::PossessedBy(AController* NewController)
@@ -208,6 +273,19 @@ void AERNCharacterBase::Multicast_PlayHitReaction_Implementation()
 	if (AnimInstance)
 	{
 		AnimInstance->Montage_Play(HitReactionMontage);
+	}
+}
+
+void AERNCharacterBase::PlayCutsceneMontage(UAnimMontage* Montage)
+{
+	if (!Montage || !GetMesh())
+	{
+		return;
+	}
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Play(Montage);
 	}
 }
 

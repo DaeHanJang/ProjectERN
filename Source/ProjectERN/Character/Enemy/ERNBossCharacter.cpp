@@ -15,6 +15,8 @@
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Subsystem/ERNCutsceneSubsystem.h"
+#include "LevelSequence.h"
 
 AERNBossCharacter::AERNBossCharacter()
 {
@@ -240,6 +242,29 @@ void AERNBossCharacter::OnPhaseTransitionMontageEnded(UAnimMontage* Montage, boo
 
 void AERNBossCharacter::PlayIntro()
 {
+	// 인트로 컷신이 있으면 컷신 재생
+	if (!IntroCutscene.IsNull())
+	{
+		if (UGameInstance* GI = GetGameInstance())
+		{
+			if (UERNCutsceneSubsystem* CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>())
+			{
+				// 인트로 중 슈퍼아머
+				ApplySuperArmor();
+
+				// 컷신 종료 시 슈퍼아머 해제
+				CutsceneSubsystem->OnCutsceneFinished.AddDynamic(this, &AERNBossCharacter::OnIntroCutsceneFinished);
+
+				// 컷신 재생 (플레이어 자동 바인딩)
+				CutsceneSubsystem->PlayCutscene(IntroCutscene.LoadSynchronous());
+
+				UE_LOG(LogTemp, Log, TEXT("[Boss %s] Playing intro cutscene"), *GetName());
+				return;
+			}
+		}
+	}
+
+	// 컷신이 없으면 몽타주로 폴백
 	if (IntroMontage && GetMesh() && GetMesh()->GetAnimInstance())
 	{
 		// 인트로 중 슈퍼아머
@@ -319,4 +344,19 @@ void AERNBossCharacter::RemoveSuperArmor()
 	{
 		AbilitySystemComponent->RemoveLooseGameplayTag(TAG_State_SuperArmor);
 	}
+}
+
+void AERNBossCharacter::OnIntroCutsceneFinished()
+{
+	// 델리게이트 해제
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UERNCutsceneSubsystem* CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>())
+		{
+			CutsceneSubsystem->OnCutsceneFinished.RemoveDynamic(this, &AERNBossCharacter::OnIntroCutsceneFinished);
+		}
+	}
+
+	// 슈퍼아머 해제
+	RemoveSuperArmor();
 }

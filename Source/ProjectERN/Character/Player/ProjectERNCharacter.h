@@ -67,6 +67,7 @@ protected:
 
 	/** Called when character is possessed by a controller */
 	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_Controller() override;
 	
 	// 회전 보간을 위해 사용
 	virtual void Tick(float DeltaSeconds) override;

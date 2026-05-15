@@ -61,7 +61,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Phases")
 	TArray<FBossPhaseInfo> Phases;
 
-	// 등장 연출 몽타주
+	// 등장 연출 컷신 (시퀀서)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Cutscene")
+	TSoftObjectPtr<ULevelSequence> IntroCutscene;
+
+	// 등장 연출 몽타주 (컷신 없을 때 사용)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Cutscene")
 	UAnimMontage* IntroMontage = nullptr;
 
@@ -97,8 +101,12 @@ protected:
 	// 페이즈 전환 완료 콜백
 	UFUNCTION()
 	void OnPhaseTransitionMontageEnded(UAnimMontage* Montage, bool bInterrupted);
-	
+
 	void PlayPhaseTransitionMontage();
+
+	// 인트로 컷신 종료 콜백
+	UFUNCTION()
+	void OnIntroCutsceneFinished();
 
 	// 슈퍼아머 적용/해제
 	void ApplySuperArmor();

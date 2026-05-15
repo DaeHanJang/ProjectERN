@@ -36,4 +36,12 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	float Direction;  // 이동 방향 (Yaw 각도, -180 ~ 180)
+
+private:
+	// 위치 기반 속도 계산용 (시퀀서 Transform Track 지원)
+	FVector PreviousLocation = FVector::ZeroVector;
+	bool bPreviousLocationValid = false;
+
+	// 컷신 상태 전환 감지용
+	bool bWasInCutscene = false;
 };
