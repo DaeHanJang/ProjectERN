@@ -3,7 +3,6 @@
 #include "Actors/Chest.h"
 
 #include "NiagaraFunctionLibrary.h"
-#include "Character/Player/ERNPlayerController.h"
 #include "Components/SphereComponent.h"
 #include "Inventory/Item/Data/ERNDropTable.h"
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
@@ -21,24 +20,12 @@ AChest::AChest()
 	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	SetRootComponent(Collision);
 	Collision->InitSphereRadius(150.0f);
-	Collision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	Collision->SetCollisionResponseToAllChannels(ECR_Ignore);
-	Collision->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	Collision->SetCollisionProfileName(TEXT("OverlapAll"));
 	
 	// Mesh
-	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
-	StaticMesh->SetupAttachment(GetRootComponent());
-	StaticMesh->SetCollisionProfileName(TEXT("BlockAll"));
-}
-
-// Called when the game starts or when spawned
-void AChest::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	// Collision Overlap Binding
-	Collision->OnComponentBeginOverlap.AddDynamic(this, &AChest::OnSphereBeginOverlap);
-	Collision->OnComponentEndOverlap.AddDynamic(this, &AChest::OnSphereEndOverlap);
+	SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("StaticMesh"));
+	SkeletalMesh->SetupAttachment(GetRootComponent());
+	SkeletalMesh->SetCollisionProfileName(TEXT("BlockAll"));
 }
 
 void AChest::Interact_Implementation(APlayerController* PlayerController)
@@ -99,14 +86,13 @@ void AChest::Dissolve_Implementation()
 	{
 		return;
 	}
-	if (!StaticMesh)
+	if (!SkeletalMesh)
 	{
 		return;
 	}
 	
-	DynamicMaterial0 = StaticMesh->CreateAndSetMaterialInstanceDynamic(0);
-	DynamicMaterial1 = StaticMesh->CreateAndSetMaterialInstanceDynamic(1);
-	if (!DynamicMaterial0 || !DynamicMaterial1)
+	DynamicMaterial0 = SkeletalMesh->CreateAndSetMaterialInstanceDynamic(0);
+	if (!DynamicMaterial0)
 	{
 		return;
 	}
@@ -114,24 +100,30 @@ void AChest::Dissolve_Implementation()
 	bDestroyed = true;
 	RemainingDissolveTime = DissolveTime;
 	DynamicMaterial0->SetScalarParameterValue(TEXT("Dissolve"), 1.0f);
-	DynamicMaterial1->SetScalarParameterValue(TEXT("Dissolve"), 1.0f);
 	
-	if (InteractSound)
+	if (InteractAnimation)
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, InteractSound, GetActorLocation());
+		SkeletalMesh->PlayAnimation(InteractAnimation, false);
 	}
-	
 	if (InteractEffect)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, InteractEffect, GetActorLocation());
 	}
+	if (InteractSound0)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, InteractSound0, GetActorLocation());
+	}
+	if (InteractSound1)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, InteractSound1, GetActorLocation());
+	}
 	
 	Collision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	if (!GetWorldTimerManager().IsTimerActive(DissolveTimerHandle))
 	{
-		GetWorldTimerManager().SetTimer(DissolveTimerHandle, this, &AChest::UpdateDissolve, DissolveRate, true);
+		GetWorldTimerManager().SetTimer(DissolveTimerHandle, this, &AChest::UpdateDissolve, DissolveRate, true, 1.0f);
 	}
 }
 
@@ -141,7 +133,6 @@ void AChest::UpdateDissolve()
 	
 	const float Opacity = RemainingDissolveTime / DissolveTime;
 	DynamicMaterial0->SetScalarParameterValue(TEXT("Dissolve"), Opacity);
-	DynamicMaterial1->SetScalarParameterValue(TEXT("Dissolve"), Opacity);
 	
 	if (RemainingDissolveTime <= 0.0f)
 	{
@@ -150,30 +141,6 @@ void AChest::UpdateDissolve()
 		if (HasAuthority())
 		{
 			Destroy();
-		}
-	}
-}
-
-void AChest::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-                                  UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (const APawn* Pawn = Cast<APawn>(OtherActor))
-	{
-		if (AERNPlayerController* PC = Cast<AERNPlayerController>(Pawn->GetController()))
-		{
-			PC->SetCurrentInteractable(this);
-		}
-	}
-}
-
-void AChest::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (const APawn* Pawn = Cast<APawn>(OtherActor))
-	{
-		if (AERNPlayerController* PC = Cast<AERNPlayerController>(Pawn->GetController()))
-		{
-			PC->ClearCurrentInteractable();
 		}
 	}
 }

@@ -26,10 +26,6 @@ public:
 	virtual FText GetInteractionText_Implementation() const override;
 	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-	
 private:
     // Get ItemManager
 	UItemManagerSubsystem* GetItemManager() const;
@@ -41,16 +37,6 @@ private:
 	// Dissolve Animation
 	void UpdateDissolve();
 	
-	// Collision Bind Handler
-	// Begin Overlap
-	UFUNCTION()
-	void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	// End Overlap
-	UFUNCTION()
-	void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-	
 private:
 	// Collision
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
@@ -58,11 +44,15 @@ private:
 	
 	// Mesh
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
-	TObjectPtr<UStaticMeshComponent> StaticMesh;
+	TObjectPtr<USkeletalMeshComponent> SkeletalMesh;
 	
 	// DropTable
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UDataTable> DropTable;
+	
+	// Animation
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UAnimationAsset> InteractAnimation;
 	
 	// VFX
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
@@ -70,7 +60,9 @@ private:
 	
 	// SFX
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
-	TObjectPtr<USoundBase> InteractSound;
+	TObjectPtr<USoundBase> InteractSound0;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<USoundBase> InteractSound1;
 	
 	// 중복 방지 플래그
 	bool bOpened = false;
@@ -78,11 +70,9 @@ private:
 	// 제거 플래그
 	bool bDestroyed = false;
 	
-	// StaticMesh DynamicMaterialInstance
+	// Mesh DynamicMaterialInstance
 	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> DynamicMaterial0;
-	UPROPERTY()
-	TObjectPtr<UMaterialInstanceDynamic> DynamicMaterial1;
 	
 	// Dissolve Timer
 	FTimerHandle DissolveTimerHandle;
