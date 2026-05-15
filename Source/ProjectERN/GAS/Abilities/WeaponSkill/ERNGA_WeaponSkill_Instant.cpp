@@ -3,6 +3,8 @@
 
 #include "GAS/Abilities/WeaponSkill/ERNGA_WeaponSkill_Instant.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Combat/Projectile/ERNProjectileBase.h"
 #include "Combat/Weapons/ERNMeleeWeapon.h"
@@ -16,6 +18,7 @@
 #include "Inventory/Components/ERNEquipmentComponent.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "GAS/ERNAttributeSet.h"
 
 UERNGA_WeaponSkill_Instant::UERNGA_WeaponSkill_Instant()
 {
@@ -310,7 +313,7 @@ void UERNGA_WeaponSkill_Instant::ApplyAreaDamage(USkeletalMeshComponent* MeshCom
 		InstigatorController = OwnerCharacter->GetController();
 	}
 
-	const float DamageToApply = CalculateAreaDamage();
+	const float DamageToApply = CalculateAreaDamage(OwnerActor);
 
 	for (const FOverlapResult& Result : OverlapResults)
 	{
@@ -340,7 +343,50 @@ void UERNGA_WeaponSkill_Instant::ApplyAreaDamage(USkeletalMeshComponent* MeshCom
 	}
 }
 
-float UERNGA_WeaponSkill_Instant::CalculateAreaDamage() const
+float UERNGA_WeaponSkill_Instant::CalculateAreaDamage(AActor* OwnerActor) const
 {
-	return AreaDamageData.BaseDamage * AreaDamageData.DamageMultiplier;
+	const float WeaponDamage = GetWeaponBaseDamage(OwnerActor);
+	const float CharacterAttackPower = GetCharacterAttackPower(OwnerActor);
+
+	return (WeaponDamage + CharacterAttackPower) * AreaDamageData.DamageMultiplier;
+}
+
+float UERNGA_WeaponSkill_Instant::GetWeaponBaseDamage(AActor* OwnerActor) const
+{
+	if (!OwnerActor)
+	{
+		return 0.f;
+	}
+
+	if (const UERNEquipmentComponent* Equipment =
+		OwnerActor->FindComponentByClass<UERNEquipmentComponent>())
+	{
+		if (const AERNWeaponBase* Weapon = Equipment->CurrentWeapon)
+		{
+			return Weapon->LightAttackDamage;
+		}
+	}
+
+	return 0.f;
+}
+
+float UERNGA_WeaponSkill_Instant::GetCharacterAttackPower(AActor* OwnerActor) const
+{
+	if (!OwnerActor)
+	{
+		return 0.f;
+	}
+
+	const UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerActor);
+
+	if (!ASC)
+	{
+		return 0.f;
+	}
+
+	const float AttackPower = ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerAttribute());
+
+	const float AttackPowerBonus = ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerBonusAttribute());
+
+	return AttackPower + AttackPowerBonus;
 }

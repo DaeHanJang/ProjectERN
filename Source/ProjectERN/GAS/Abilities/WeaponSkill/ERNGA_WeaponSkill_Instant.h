@@ -157,5 +157,9 @@ private:
 	// 범위 대미지 적용
 	void ApplyAreaDamage(USkeletalMeshComponent* MeshComp, const FVector& Origin);
 	// 범위 대미지 계산
-	float CalculateAreaDamage() const;
+	float CalculateAreaDamage(AActor* OwnerActor) const;
+	// 무기 공격력 받아오기
+	float GetWeaponBaseDamage(AActor* OwnerActor) const;
+	// 캐릭터 공격력 받아오기
+	float GetCharacterAttackPower(AActor* OwnerActor) const;
 };
