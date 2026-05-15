@@ -39,11 +39,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ApplyItemDataAsset(const UItemDataAssetBase* DataAsset);
 
-	// TODO: 제거 함수 구현
-	
-protected:
-	virtual void BeginPlay() override;
-	
 private:
 	// Get ItemManager
 	UItemManagerSubsystem* GetItemManager() const;
@@ -53,16 +48,6 @@ private:
 	
 	// ItemRuntimeState 기반 DataAsset 비동기 로드 함수
 	void LoadItemDataAssetFromRuntimeStateAsync();
-	
-	// Collision Bind Handler
-	// Begin Overlap
-	UFUNCTION()
-	void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	// End Overlap
-	UFUNCTION()
-	void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 	
 	// ItemRuntimeState Replicate Handle
 	UFUNCTION()

@@ -134,6 +134,7 @@ public:
 	void Server_TryInteract(AActor* InteractableActor);
 
 	// Pedestal(상호작용가능한액터)에서 호출용
+	AActor* GetCurrentInteractable() const { return CurrentInteractableActor.Get(); }
 	void SetCurrentInteractable(AActor* Interactable) { CurrentInteractableActor = Interactable; }
 	void ClearCurrentInteractable() { CurrentInteractableActor = nullptr; }
 	
