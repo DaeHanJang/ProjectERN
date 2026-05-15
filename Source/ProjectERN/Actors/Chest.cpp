@@ -2,8 +2,9 @@
 
 #include "Actors/Chest.h"
 
-#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Inventory/Item/Data/ERNDropTable.h"
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
@@ -14,7 +15,7 @@ AChest::AChest()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
-	SetReplicates(true);
+	bReplicates = true;
 
 	// Collision
 	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
@@ -23,9 +24,19 @@ AChest::AChest()
 	Collision->SetCollisionProfileName(TEXT("OverlapAll"));
 	
 	// Mesh
-	SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("StaticMesh"));
+	SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMesh"));
 	SkeletalMesh->SetupAttachment(GetRootComponent());
 	SkeletalMesh->SetCollisionProfileName(TEXT("BlockAll"));
+	
+	// Effect
+	EffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("EffectComponent"));
+	EffectComponent->SetupAttachment(GetRootComponent());
+	
+	// Prompt
+	PromptComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("PromptComponent"));
+	PromptComponent->SetupAttachment(GetRootComponent());
+	PromptComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	PromptComponent->SetVisibility(false);
 }
 
 void AChest::Interact_Implementation(APlayerController* PlayerController)
@@ -55,6 +66,22 @@ void AChest::Interact_Implementation(APlayerController* PlayerController)
 bool AChest::CanInteract_Implementation() const
 {
 	return !IsActorBeingDestroyed() && DropTable && DropTable->GetRowStruct() == FERNDropTable::StaticStruct() && !bOpened;
+}
+
+void AChest::ActivateInteract_Implementation() const
+{
+	if (PromptComponent)
+	{
+		PromptComponent->SetVisibility(true);
+	}
+}
+
+void AChest::EndInteract_Implementation(APlayerController* PlayerController)
+{
+	if (PromptComponent)
+	{
+		PromptComponent->SetVisibility(false);
+	}
 }
 
 FText AChest::GetInteractionText_Implementation() const
@@ -107,7 +134,7 @@ void AChest::Dissolve_Implementation()
 	}
 	if (InteractEffect)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, InteractEffect, GetActorLocation());
+		EffectComponent->SetAsset(InteractEffect);
 	}
 	if (InteractSound0)
 	{

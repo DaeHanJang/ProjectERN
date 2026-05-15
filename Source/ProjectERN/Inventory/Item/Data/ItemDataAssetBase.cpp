@@ -21,5 +21,9 @@ void UItemDataAssetBase::GatherSoftPaths(const EItemAssetLoadFlags LoadFlags, TA
 		{
 			OutPaths.AddUnique(SkeletalMesh.ToSoftObjectPath());
 		}
+		if (!Sound.IsNull())
+		{
+			OutPaths.AddUnique(Sound.ToSoftObjectPath());
+		}
 	}
 }

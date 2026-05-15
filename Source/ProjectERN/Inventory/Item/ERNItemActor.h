@@ -9,6 +9,9 @@
 #include "Interfaces/IInteractable.h"
 #include "ERNItemActor.generated.h"
 
+class UNiagaraSystem;
+class UWidgetComponent;
+class UNiagaraComponent;
 class UItemManagerSubsystem;
 class USphereComponent;
 
@@ -29,6 +32,8 @@ public:
 	// IInteractable
 	virtual void Interact_Implementation(APlayerController* PlayerController) override;
 	virtual bool CanInteract_Implementation() const override;
+	virtual void ActivateInteract_Implementation() const override;
+	virtual void EndInteract_Implementation(APlayerController* PlayerController) override;
 	virtual FText GetInteractionText_Implementation() const override;
 	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
 	
@@ -45,6 +50,12 @@ private:
 	
 	// Set Mesh
 	void SetMesh(const UItemDataAssetBase* DA) const;
+	
+	// Set Effect
+	void SetEffect() const;
+	
+	// Set Sound
+	void SetSound(const UItemDataAssetBase* DA);
 	
 	// ItemRuntimeState 기반 DataAsset 비동기 로드 함수
 	void LoadItemDataAssetFromRuntimeStateAsync();
@@ -63,6 +74,28 @@ private:
 	TObjectPtr<UStaticMeshComponent> StaticMesh;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	TObjectPtr<USkeletalMeshComponent> SkeletalMesh;
+	
+	// Effect
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UNiagaraComponent> EffectComponent;
+	
+	// Prompt
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UWidgetComponent> PromptComponent;
+	
+	// VFX
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UNiagaraSystem> CommonEffect;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UNiagaraSystem> UncommonEffect;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UNiagaraSystem> RareEffect;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UNiagaraSystem> LegendaryEffect;
+	
+	// SFX
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<USoundBase> PickupSound;
 	
 	// Item Runtime State
 	UPROPERTY(ReplicatedUsing="OnRep_ItemRuntimeState", VisibleInstanceOnly, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
