@@ -8,22 +8,26 @@
 #include "LevelSequencePlayer.h"
 #include "LevelSequenceActor.h"
 #include "MovieSceneSequencePlayer.h"
+#include "MovieScene.h"
 #include "Core/ERNGameInstance.h"
 #include "Widgets/SWeakWidget.h"
+#include "Character/ERNCharacterBase.h"
+#include "GameFramework/PlayerState.h"
+#include "GameFramework/GameStateBase.h"
+#include "EngineUtils.h"
+#include "Inventory/Components/ERNEquipmentComponent.h"
 
 void UERNCutsceneSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
-	// 로딩 화면 델리게이트 바인딩
-	FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &UERNCutsceneSubsystem::OnPreLoadMap);
+	// 맵 로딩 완료 시 로딩 화면 숨김 처리
 	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UERNCutsceneSubsystem::OnPostLoadMapWithWorld);
 }
 
 void UERNCutsceneSubsystem::Deinitialize()
 {
 	// 델리게이트 해제
-	FCoreUObjectDelegates::PreLoadMap.RemoveAll(this);
 	FCoreUObjectDelegates::PostLoadMapWithWorld.RemoveAll(this);
 
 	// 위젯 정리
@@ -37,11 +41,6 @@ void UERNCutsceneSubsystem::Deinitialize()
 }
 
 // ===== 로딩 화면 시스템 =====
-
-void UERNCutsceneSubsystem::OnPreLoadMap(const FString& MapName)
-{
-	ShowLoadingScreen();
-}
 
 void UERNCutsceneSubsystem::OnPostLoadMapWithWorld(UWorld* LoadedWorld)
 {
@@ -144,6 +143,16 @@ void UERNCutsceneSubsystem::HideLoadingScreen()
 
 void UERNCutsceneSubsystem::PlayCutscene(ULevelSequence* Sequence, bool bDisablePlayerInput)
 {
+	PlayCutsceneInternal(Sequence, bDisablePlayerInput, true);
+}
+
+void UERNCutsceneSubsystem::PlayCutsceneWithoutPlayers(ULevelSequence* Sequence, bool bDisablePlayerInput)
+{
+	PlayCutsceneInternal(Sequence, bDisablePlayerInput, false);
+}
+
+void UERNCutsceneSubsystem::PlayCutsceneInternal(ULevelSequence* Sequence, bool bDisablePlayerInput, bool bBindPlayers)
+{
 	if (!Sequence)
 	{
 		return;
@@ -175,6 +184,12 @@ void UERNCutsceneSubsystem::PlayCutscene(ULevelSequence* Sequence, bool bDisable
 
 		if (CurrentSequencePlayer)
 		{
+			// 플레이어 바인딩
+			if (bBindPlayers)
+			{
+				BindPlayersToSequence(CurrentSequencePlayer, Sequence);
+			}
+
 			// 종료 콜백 바인딩
 			CurrentSequencePlayer->OnFinished.AddDynamic(this, &UERNCutsceneSubsystem::OnCutsceneComplete);
 
@@ -229,8 +244,10 @@ void UERNCutsceneSubsystem::DisablePlayerInput()
 	{
 		if (APlayerController* PC = It->Get())
 		{
-			PC->SetIgnoreMoveInput(true);
-			PC->SetIgnoreLookInput(true);
+			if (APawn* Pawn = PC->GetPawn())
+			{
+				Pawn->DisableInput(PC);
+			}
 		}
 	}
 }
@@ -247,8 +264,94 @@ void UERNCutsceneSubsystem::EnablePlayerInput()
 	{
 		if (APlayerController* PC = It->Get())
 		{
-			PC->ResetIgnoreMoveInput();
-			PC->ResetIgnoreLookInput();
+			if (APawn* Pawn = PC->GetPawn())
+			{
+				Pawn->EnableInput(PC);
+			}
+		}
+	}
+}
+
+void UERNCutsceneSubsystem::BindPlayersToSequence(ULevelSequencePlayer* Player, ULevelSequence* Sequence)
+{
+	if (!Player || !Sequence)
+	{
+		return;
+	}
+
+	UWorld* World = GetGameInstance()->GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	UMovieScene* MovieScene = Sequence->GetMovieScene();
+	if (!MovieScene)
+	{
+		return;
+	}
+
+	// 모든 플레이어 캐릭터 수집 (GameState->PlayerArray 사용 - 클라이언트에서도 모든 플레이어 접근 가능)
+	TArray<AERNCharacterBase*> PlayerCharacters;
+	if (AGameStateBase* GameState = World->GetGameState())
+	{
+		for (APlayerState* PS : GameState->PlayerArray)
+		{
+			if (PS)
+			{
+				if (AERNCharacterBase* Character = Cast<AERNCharacterBase>(PS->GetPawn()))
+				{
+					PlayerCharacters.Add(Character);
+				}
+			}
+		}
+	}
+
+	const int32 PlayerCount = PlayerCharacters.Num();
+
+	// 시퀀서의 Possessable 바인딩 순회
+	for (int32 i = 0; i < MovieScene->GetPossessableCount(); i++)
+	{
+		const FMovieScenePossessable& Possessable = MovieScene->GetPossessable(i);
+		FString PossessableName = Possessable.GetName();
+
+		// "Player1", "Player2", "Player3" 이름의 Possessable 처리
+		for (int32 PlayerIndex = 0; PlayerIndex < 3; PlayerIndex++)
+		{
+			FString ExpectedName = FString::Printf(TEXT("Player%d"), PlayerIndex + 1);
+			if (PossessableName.Equals(ExpectedName, ESearchCase::IgnoreCase))
+			{
+				// 해당 인덱스의 플레이어가 존재하면 바인딩
+				if (PlayerIndex < PlayerCount)
+				{
+					Sequence->BindPossessableObject(Possessable.GetGuid(), *PlayerCharacters[PlayerIndex], World);
+					UE_LOG(LogTemp, Log, TEXT("[CutsceneSubsystem] Bound %s to %s"),
+						*ExpectedName, *PlayerCharacters[PlayerIndex]->GetName());
+				}
+
+				// 플레이스홀더 액터 Destroy (바인딩 여부와 관계없이 항상 제거)
+				for (TActorIterator<AActor> It(World); It; ++It)
+				{
+					AActor* Actor = *It;
+					if (Actor && Actor->GetActorNameOrLabel() == ExpectedName)
+					{
+						// 장착된 무기 먼저 Destroy
+						if (UERNEquipmentComponent* EquipComp = Actor->FindComponentByClass<UERNEquipmentComponent>())
+						{
+							if (EquipComp->CurrentWeapon)
+							{
+								EquipComp->CurrentWeapon->Destroy();
+							}
+						}
+
+						UE_LOG(LogTemp, Log, TEXT("[CutsceneSubsystem] Destroying placeholder for %s: %s"),
+							*ExpectedName, *Actor->GetName());
+						Actor->Destroy();
+						break;
+					}
+				}
+				break;
+			}
 		}
 	}
 }

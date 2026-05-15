@@ -11,6 +11,7 @@ class ULevelSequence;
 class ULevelSequencePlayer;
 class ALevelSequenceActor;
 class SWidget;
+class AERNCharacterBase;
 
 // 로딩 시작/종료 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLoadingStarted);
@@ -66,9 +67,13 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Cutscene")
 	FOnCutsceneFinished OnCutsceneFinished;
 
-	// 컷신 재생
+	// 컷신 재생 (플레이어 자동 바인딩)
 	UFUNCTION(BlueprintCallable, Category = "Cutscene")
 	void PlayCutscene(ULevelSequence* Sequence, bool bDisablePlayerInput = true);
+
+	// 컷신 재생 (플레이어 바인딩 없음 - 환경 연출 등)
+	UFUNCTION(BlueprintCallable, Category = "Cutscene")
+	void PlayCutsceneWithoutPlayers(ULevelSequence* Sequence, bool bDisablePlayerInput = true);
 
 	// 컷신 중단
 	UFUNCTION(BlueprintCallable, Category = "Cutscene")
@@ -79,8 +84,7 @@ public:
 	bool IsPlayingCutscene() const { return bIsPlayingCutscene; }
 
 protected:
-	// 로딩 화면 콜백
-	void OnPreLoadMap(const FString& MapName);
+	// 로딩 화면 콜백 (맵 로딩 완료 시)
 	void OnPostLoadMapWithWorld(UWorld* LoadedWorld);
 
 	// 컷신 종료 콜백
@@ -90,6 +94,12 @@ protected:
 	// 플레이어 입력 차단/복구
 	void DisablePlayerInput();
 	void EnablePlayerInput();
+
+	// 플레이어 캐릭터들을 시퀀서에 바인딩
+	void BindPlayersToSequence(ULevelSequencePlayer* Player, ULevelSequence* Sequence);
+
+	// 컷신 내부 재생 로직 (공통)
+	void PlayCutsceneInternal(ULevelSequence* Sequence, bool bDisablePlayerInput, bool bBindPlayers);
 
 private:
 	// ===== 로딩 화면 =====
