@@ -7,6 +7,8 @@
 #include "Interfaces/IInteractable.h"
 #include "Chest.generated.h"
 
+class UWidgetComponent;
+class UNiagaraComponent;
 class UNiagaraSystem;
 class UItemManagerSubsystem;
 class USphereComponent;
@@ -22,10 +24,12 @@ public:
 	
 	// IInteractable
 	virtual void Interact_Implementation(APlayerController* PlayerController) override;
+	virtual void EndInteract_Implementation(APlayerController* PlayerController) override;
 	virtual bool CanInteract_Implementation() const override;
+	virtual void ActivateInteract_Implementation() const override;
 	virtual FText GetInteractionText_Implementation() const override;
 	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
-
+	
 private:
     // Get ItemManager
 	UItemManagerSubsystem* GetItemManager() const;
@@ -45,6 +49,14 @@ private:
 	// Mesh
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	TObjectPtr<USkeletalMeshComponent> SkeletalMesh;
+	
+	// Effect
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UNiagaraComponent> EffectComponent;
+	
+	// Prompt
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UWidgetComponent> PromptComponent;
 	
 	// DropTable
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))

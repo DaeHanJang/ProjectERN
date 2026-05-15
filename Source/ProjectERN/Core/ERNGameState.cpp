@@ -4,6 +4,8 @@
 #include "GameFramework/PlayerState.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "Subsystem/ERNCutsceneSubsystem.h"
+#include "LevelSequence.h"
 
 AERNGameState::AERNGameState()
 {
@@ -15,6 +17,7 @@ void AERNGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AERNGameState, CountdownTime);
+	DOREPLIFETIME(AERNGameState, bIsCountingDown);
 }
 
 void AERNGameState::AddPlayerState(APlayerState* PlayerState)
@@ -134,22 +137,102 @@ void AERNGameState::OnRep_CountdownTime()
 {
 	// 모든 클라이언트에서 UI 업데이트
 	OnCountdownChanged.Broadcast(CountdownTime);
-
-	if (CountdownTime <= 0 && bIsCountingDown)
-	{
-		OnCountdownFinished.Broadcast();
-	}
 }
 
 void AERNGameState::OnCountdownComplete()
 {
 	bIsCountingDown = false;
-	OnCountdownFinished.Broadcast();
+	Multicast_OnCountdownFinished();
 
-	UE_LOG(LogTemp, Log, TEXT("Countdown complete! Traveling to field map: %s"), *FieldMapName);
+	UE_LOG(LogTemp, Log, TEXT("Countdown complete!"));
 
+	// 인트로 컷신이 있으면 모든 클라이언트에서 컷신 재생
+	if (!IntroCutscene.IsNull())
+	{
+		if (UGameInstance* GI = Cast<UGameInstance>(GetWorld()->GetGameInstance()))
+		{
+			if (UERNCutsceneSubsystem* CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>())
+			{
+				// 서버에서만 컷신 종료 콜백 바인딩 (맵 이동은 서버에서만)
+				CutsceneSubsystem->OnCutsceneFinished.AddDynamic(this, &AERNGameState::OnIntroCutsceneFinished);
+
+				// 모든 클라이언트에서 컷신 재생
+				Multicast_PlayIntroCutscene();
+
+				UE_LOG(LogTemp, Log, TEXT("Playing intro cutscene before travel"));
+				return;
+			}
+		}
+	}
+
+	// 컷신이 없으면 바로 맵 이동
+	OnIntroCutsceneFinished();
+}
+
+void AERNGameState::Multicast_PlayIntroCutscene_Implementation()
+{
+	if (IntroCutscene.IsNull())
+	{
+		return;
+	}
+
+	if (UGameInstance* GI = Cast<UGameInstance>(GetWorld()->GetGameInstance()))
+	{
+		if (UERNCutsceneSubsystem* CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>())
+		{
+			// 클라이언트에서는 로컬 컷신 종료 콜백 바인딩 (로딩화면만 표시)
+			if (!HasAuthority())
+			{
+				CutsceneSubsystem->OnCutsceneFinished.AddDynamic(this, &AERNGameState::OnLocalCutsceneFinished);
+			}
+
+			// 컷신 재생 (플레이어 자동 바인딩)
+			CutsceneSubsystem->PlayCutscene(IntroCutscene.LoadSynchronous());
+		}
+	}
+}
+
+void AERNGameState::OnIntroCutsceneFinished()
+{
+	// 컷신 종료 콜백 해제
+	if (UGameInstance* GI = Cast<UGameInstance>(GetWorld()->GetGameInstance()))
+	{
+		if (UERNCutsceneSubsystem* CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>())
+		{
+			CutsceneSubsystem->OnCutsceneFinished.RemoveDynamic(this, &AERNGameState::OnIntroCutsceneFinished);
+
+			// 로딩화면 호출
+			CutsceneSubsystem->ShowLoadingScreen();
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Traveling to field map: %s"), *FieldMapName);
+
+	// 맵이동
 	if (UWorld* World = GetWorld())
 	{
 		World->ServerTravel(FieldMapName + TEXT("?listen"));
 	}
+}
+
+void AERNGameState::OnLocalCutsceneFinished()
+{
+	// 클라이언트 전용: 로딩화면만 표시 (맵 이동은 서버가 처리)
+	if (UGameInstance* GI = Cast<UGameInstance>(GetWorld()->GetGameInstance()))
+	{
+		if (UERNCutsceneSubsystem* CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>())
+		{
+			CutsceneSubsystem->OnCutsceneFinished.RemoveDynamic(this, &AERNGameState::OnLocalCutsceneFinished);
+
+			// 로딩화면 호출
+			CutsceneSubsystem->ShowLoadingScreen();
+		}
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[Client] Cutscene finished, showing loading screen"));
+}
+
+void AERNGameState::Multicast_OnCountdownFinished_Implementation()
+{
+	OnCountdownFinished.Broadcast();
 }

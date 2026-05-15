@@ -1,7 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "NightLord/ERNNightLordGrace.h"
+
+#include "NiagaraComponent.h"
 #include "Character/ERNCharacterBase.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Components/SphereComponent.h"
@@ -16,25 +17,37 @@
 AERNNightLordGrace::AERNNightLordGrace()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	SetReplicates(true);
 	
-	// GraceMesh 설정
-	GraceMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GraceMesh"));
-	RootComponent = GraceMesh;
-	
-	// InteractionComponent 설정
+	// Collision
 	InteractionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionComponent"));
-	InteractionComponent->SetupAttachment(RootComponent);
-	InteractionComponent->SetSphereRadius(300.f);
-	InteractionComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	InteractionComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-	InteractionComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	SetRootComponent(InteractionComponent);
+	InteractionComponent->InitSphereRadius(250.0f);
+	InteractionComponent->SetCollisionProfileName(TEXT("OverlapAll"));
+	InteractionComponent->SetGenerateOverlapEvents(true);
 	
-	// InteractionOrinotWudget 초기화
+	// Mesh
+	GraceMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GraceMesh"));
+	GraceMesh->SetupAttachment(GetRootComponent());
+	GraceMesh->SetCollisionProfileName(TEXT("BlockAll"));
+	
+	// Effect
+	EffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("EffectComponent"));
+	EffectComponent->SetupAttachment(GetRootComponent());
+	
+	// Prompt
 	InteractionPromptWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionPromptWidget"));
-	InteractionPromptWidget->SetupAttachment(RootComponent);
+	InteractionPromptWidget->SetupAttachment(GetRootComponent());
 	InteractionPromptWidget->SetWidgetSpace(EWidgetSpace::World);
 	InteractionPromptWidget->SetVisibility(false);
+}
+
+void AERNNightLordGrace::BeginPlay()
+{
+	Super::BeginPlay();
 	
+	// Collision Binding
+	InteractionComponent->OnComponentBeginOverlap.AddDynamic(this, &AERNNightLordGrace::OnSphereBeginOverlap);
 }
 
 void AERNNightLordGrace::Interact_Implementation(APlayerController* PlayerController)
@@ -80,34 +93,36 @@ void AERNNightLordGrace::Interact_Implementation(APlayerController* PlayerContro
 		{
 			// 혹시 이미 바인드 되어 있을지 모르므로 제거 후 연결 - 예외 처리
 			InteractableWidget->OnWidgetClosed.RemoveDynamic(this, &AERNNightLordGrace::HandlePopupClosed);
-			InteractableWidget->OnWidgetClosed.AddDynamic(this, &AERNNightLordGrace::HandlePopupClosed);
-			
+			InteractableWidget->OnWidgetClosed.AddUniqueDynamic(this, &AERNNightLordGrace::HandlePopupClosed);
 		}
+		
 		FInputModeGameAndUI InputMode;
 		InputMode.SetWidgetToFocus(LevelUpPopupWidget->TakeWidget()); // 포커스 지정!
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		PlayerController->SetInputMode(InputMode);
-		
 		PlayerController->SetShowMouseCursor(true);
-		//PlayerController->SetInputMode(FInputModeGameAndUI());
-		
-		//TODO 디버그 로그 (패키징 시 제거)
-		UE_LOG(LogTemp, Warning, TEXT("화톳불 : 레벨업 팝업 알림"));
+	}
+}
+
+bool AERNNightLordGrace::CanInteract_Implementation() const
+{
+	return true;
+}
+
+void AERNNightLordGrace::ActivateInteract_Implementation() const
+{
+	if (InteractionPromptWidget)
+	{
+		InteractionPromptWidget->SetVisibility(true);
 	}
 }
 
 void AERNNightLordGrace::EndInteract_Implementation(APlayerController* PlayerController)
 {
 	AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PlayerController);
-	if (!ERNPC) return;
-	
-	// 상호작용 대상 해제
-	ERNPC->ClearCurrentInteractable();
-	
-	// 프롬프트 숨기기
-	if (InteractionPromptWidget)
+	if (!ERNPC)
 	{
-		InteractionPromptWidget->SetVisibility(false);
+		return;
 	}
 	
 	if (LevelUpPopupWidget)
@@ -135,30 +150,20 @@ void AERNNightLordGrace::EndInteract_Implementation(APlayerController* PlayerCon
 		}
 	}
 	
-	
-}
-
-bool AERNNightLordGrace::CanInteract_Implementation() const
-{
-	return true;
+	if (InteractionPromptWidget)
+	{
+		InteractionPromptWidget->SetVisibility(false);
+	}
 }
 
 FText AERNNightLordGrace::GetInteractionText_Implementation() const
 {
-	return FText::FromString(TEXT("E : 휴식"));
+	return FText::FromString(TEXT("레벨 업"));
 }
 
 EInteractionExecutionPolicy AERNNightLordGrace::GetInteractionExecutionPolicy_Implementation() const
 {
 	return EInteractionExecutionPolicy::LocalOnly;
-}
-
-void AERNNightLordGrace::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	InteractionComponent->OnComponentBeginOverlap.AddDynamic(this, &AERNNightLordGrace::OnSphereBeginOverlap);
-	InteractionComponent->OnComponentEndOverlap.AddDynamic(this, &AERNNightLordGrace::OnSphereEndOverlap);
 }
 
 void AERNNightLordGrace::HandlePopupClosed()
@@ -194,57 +199,36 @@ void AERNNightLordGrace::HandlePopupClosed()
 void AERNNightLordGrace::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                               UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// 플레이어 캐릭터를 불러옴
-	AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor); 
-	
-	// 플레이어가 아니면 여기서 즉시 함수 종료 (안전장치)
-	if (!PlayerCharacter) 
+	// 서버 검증
+	if (!HasAuthority())
 	{
 		return;
 	}
-
-	// 회복 함수 호출
-	RestoreAttributes(PlayerCharacter);
 	
-	// 상호작용 등록 및 UI 표시
-	AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerCharacter->GetController());
-	
-	if (PC)
+	// 플레이어 캐릭터 검증 후 스테이터스 회복 
+	if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor)) 
 	{
-		PC->SetCurrentInteractable(this);
-		
-		if (InteractionPromptWidget)
-		{
-			InteractionPromptWidget->SetVisibility(true);
-		}
+		RestoreAttributes(PlayerCharacter);
 	}
 }
 
-void AERNNightLordGrace::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+void AERNNightLordGrace::RestoreAttributes(const AProjectERNCharacter* TargetCharacter) const
 {
-	AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor);
-	if (!PlayerCharacter) return;
-	
-	AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerCharacter->GetController());
-	if (PC)
+	if (!TargetCharacter)
 	{
-		EndInteract_Implementation(PC);
+		return;
 	}
-}
-
-void AERNNightLordGrace::RestoreAttributes(AProjectERNCharacter* TargetCharacter)
-{
-	// 캐릭터가 맞다면 캐릭터가 가지고 있는 체력, 마나 등이 들어 있는 어트리뷰트 셋을 가져옴  
+	
 	UERNAttributeSet* AttributeSet = TargetCharacter->GetAttributeSet();
-	if (!AttributeSet) return; 
-	// 어트리뷰트셋이 없다면 리턴
+	if (!AttributeSet)
+	{
+		return;
+	}
 	
-	// AttributeSet에 있는 체력,마나,스테미나를 게터로 불러온 Max변수의 값에 맞춰서 셋
+	// 체력, 마나, 스테미나 최대치 회복
 	AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
 	AttributeSet->SetMana(AttributeSet->GetMaxMana());
 	AttributeSet->SetStamina(AttributeSet->GetMaxStamina());
 	
-	//TODO 디버그로그
-	UE_LOG(LogTemp, Warning, TEXT("%s: 화톳불에 의해 모든 스탯이 회복되었습니다.!"), *TargetCharacter->GetName());
+	UE_LOG(LogTemp, Warning, TEXT("%s HP: %f, MP: %f, Stamina: %f"), *GetNameSafe(TargetCharacter), AttributeSet->GetHealth(), AttributeSet->GetMana(), AttributeSet->GetStamina());
 }

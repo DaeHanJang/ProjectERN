@@ -128,6 +128,17 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 	}
 }
 
+void AProjectERNCharacter::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+	
+	// InteractionDetector 감지 시작
+	if (!GetWorldTimerManager().IsTimerActive(DetectionTimerHandle))
+	{
+		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector, 0.2f, true, 0.0f);
+	}
+}
+
 void AProjectERNCharacter::UpdateInteractionDetector()
 {
 	// 감지는 클라이언트에서 하고 상호작용을 서버에 요청
@@ -164,14 +175,28 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		}
 	}
 	
-	// 현재 상호작용 가능 액터가 존재할 경우 새로 선정된 액터와 같다면 변경할 필요가 없기 때문에 early return
 	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
-	if (!ERNController || ClosestActor == ERNController->GetCurrentInteractable())
+	if (!ERNController)
 	{
 		return;
 	}
 	
-	ERNController->SetCurrentInteractable(ClosestActor);
+	AActor* CurrentInteractable = ERNController->GetCurrentInteractable();
+	// 대상이 바뀐 경우 기존 대상 종료
+	if (CurrentInteractable && CurrentInteractable != ClosestActor)
+	{
+		IInteractable::Execute_EndInteract(CurrentInteractable, ERNController);
+	}
+	
+	// 현재 상효작용 가능 액터가 존재할 경우 대상이 바뀐 경우 새로 선정
+	if (ClosestActor)
+	{
+		if (CurrentInteractable != ClosestActor)
+		{
+			ERNController->SetCurrentInteractable(ClosestActor);
+		}
+		IInteractable::Execute_ActivateInteract(ClosestActor);
+	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("New Interactable Actor is %s"), *GetNameSafe(ClosestActor));
 }

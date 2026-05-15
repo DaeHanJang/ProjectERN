@@ -33,6 +33,10 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
 	void EndInteract(APlayerController* PlayerController);
 	
+	// 상호작용 가능 액터로 지정될 시 호출
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
+	void ActivateInteract() const;
+	
 	// 상호작용 가능한지 여부
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Interaction")
 	bool CanInteract() const;
