@@ -308,12 +308,6 @@ void AERNBossCharacter::ShowHealthBarToAllPlayers()
 
 void AERNBossCharacter::OnDeath()
 {
-	// 사망 몽타주 재생
-	if (DeathMontage && GetMesh() && GetMesh()->GetAnimInstance())
-	{
-		GetMesh()->GetAnimInstance()->Montage_Play(DeathMontage);
-	}
-
 	// 모든 플레이어의 보스 체력바 숨김
 	if (HasAuthority())
 	{
@@ -326,7 +320,7 @@ void AERNBossCharacter::OnDeath()
 		}
 	}
 
-	// 부모 사망 처리 (딜레이 후 Destroy 등)
+	// 부모 사망 처리 (사망 몽타주 재생, 이동/충돌 비활성화, 딜레이 후 Destroy 등)
 	Super::OnDeath();
 }
 

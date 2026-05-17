@@ -116,6 +116,28 @@ void AERNMobAIController::SetTarget(AActor* NewTarget)
 	}
 }
 
+TArray<AActor*> AERNMobAIController::GetPerceivedPlayers()
+{
+	TArray<AActor*> Result;
+
+	UAIPerceptionComponent* PerceptionComp = GetPerceptionComponent();
+	if (!PerceptionComp) return Result;
+
+	TArray<AActor*> Perceived;
+	PerceptionComp->GetCurrentlyPerceivedActors(UAISense_Sight::StaticClass(), Perceived);
+
+	for (AActor* Actor : Perceived)
+	{
+		AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Actor);
+		if (Player)
+		{
+			Result.Add(Actor);
+		}
+	}
+
+	return Result;
+}
+
 void AERNMobAIController::SetCombatVision(bool bInCombat)
 {
 	if (bIsInCombatMode == bInCombat)

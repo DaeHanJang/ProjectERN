@@ -69,6 +69,10 @@ public:
 	UFUNCTION(NetMulticast, Reliable, BlueprintCallable, Category = "Combat")
 	void Multicast_PlayAttackMontage(UAnimMontage* Montage);
 
+	// 사망 직전 메시 숨김 (몽타주 종료 직전 T-pose 방지용)
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_HideOnDeath();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -86,6 +90,10 @@ protected:
 	// 피격 후 체력바 자동 숨김까지 대기 시간 (블루프린트에서 수정 가능)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
 	float HealthBarHideDelay = 15.0f;
+
+	// 사망 몽타주 종료 전 메시 숨김 시점 마진 (T-pose 방지용, 적마다 조정 가능)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat", meta = (ClampMin = "0.0"))
+	float DeathCleanupLeadTime = 0.1f;
 
 private:
 	FTimerHandle HealthBarHideTimerHandle;

@@ -269,17 +269,21 @@ void AERNProjectileBase::InitializeHoming()
 {
 	if (!ProjectileMovement) return;
 
-	AERNEnemyCharacter* EnemyShooter = Cast<AERNEnemyCharacter>(GetOwner());
+	// 외부(AnimNotify 등)에서 이미 주입된 타겟이 있으면 우선 사용
+	AActor* Target = HomingTarget.Get();
 
-	AActor* Target = nullptr;
-	if (EnemyShooter)
+	if (!Target)
 	{
-		Target = GetEnemyBlackboardTarget();
-	}
-	else
-	{
-		// 플레이어 투사체: 락온 미구현 임시로 자동 검색
-		Target = FindHomingTargetForPlayer();
+		AERNEnemyCharacter* EnemyShooter = Cast<AERNEnemyCharacter>(GetOwner());
+		if (EnemyShooter)
+		{
+			Target = GetEnemyBlackboardTarget();
+		}
+		else
+		{
+			// 플레이어 투사체: 락온 미구현 임시로 자동 검색
+			Target = FindHomingTargetForPlayer();
+		}
 	}
 
 	if (Target)

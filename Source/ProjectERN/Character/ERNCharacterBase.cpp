@@ -237,6 +237,12 @@ void AERNCharacterBase::TryApplyStagger(float IncomingStaggerPower)
 		return;
 	}
 
+	// 이미 사망 처리됐으면 경직/히트리액션 무시 (사망 몽타주 보존)
+	if (bIsDead)
+	{
+		return;
+	}
+
 	// 슈퍼아머 또는 무적 프레임이면 경직 무시
 	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_SuperArmor) ||
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_StaggerImmune))
@@ -276,6 +282,17 @@ void AERNCharacterBase::Multicast_PlayHitReaction_Implementation()
 	}
 }
 
+void AERNCharacterBase::Multicast_PlayDeathMontage_Implementation()
+{
+	if (!DeathMontage || !GetMesh()) return;
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		AnimInstance->Montage_Play(DeathMontage);
+	}
+}
+
 void AERNCharacterBase::PlayCutsceneMontage(UAnimMontage* Montage)
 {
 	if (!Montage || !GetMesh())
@@ -306,7 +323,10 @@ void AERNCharacterBase::OnDeath()
 	// 충돌 비활성화
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	// 자식 클래스에서 추가 사망 처리 구현 (애니메이션, 이펙트 등)
+	// 사망 몽타주 재생 (모든 클라이언트 동기화)
+	Multicast_PlayDeathMontage();
+
+	// 자식 클래스에서 추가 사망 처리 구현 (이펙트, 드롭 등)
 }
 
 void AERNCharacterBase::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)

@@ -23,4 +23,9 @@ public:
 	// ERNEnemyCharacter의 ProjectileConfigs에서 찾을 태그
 	UPROPERTY(EditAnywhere, Category = "Projectile")
 	FName ProjectileTag = NAME_None;
+
+	// true: AIC가 감지중인 모든 플레이어 중 한 명을 랜덤 타겟으로 선택
+	// false: 기존 FocusActor(블랙보드 주 어그로) 방향
+	UPROPERTY(EditAnywhere, Category = "Projectile")
+	bool bRandomTarget = false;
 };

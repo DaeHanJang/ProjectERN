@@ -150,6 +150,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI|DamageText")
 	TSubclassOf<AERNDamageTextActor> DamageTextActorClass;
 
+	// 데미지 텍스트 좌우 랜덤 오프셋 범위 (±값, 같은 위치 겹침 방지)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|DamageText", meta = (ClampMin = "0.0"))
+	float DamageTextRandomOffset = 10.f;
+
 	// 데미지 텍스트 표시 (공격자 클라이언트에서 호출)
 	UFUNCTION(Client, Unreliable)
 	void Client_ShowDamageText(FVector Location, float Damage);
