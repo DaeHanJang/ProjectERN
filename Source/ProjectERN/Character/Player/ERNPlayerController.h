@@ -14,6 +14,7 @@ class AERNPlayerState;
 class AERNDamageTextActor;
 class AERNBossCharacter;
 class UERNBossHealthBarWidget;
+class UCameraShakeBase;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -150,6 +151,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI|DamageText")
 	TSubclassOf<AERNDamageTextActor> DamageTextActorClass;
 
+	// 데미지 텍스트 좌우 랜덤 오프셋 범위 (±값, 같은 위치 겹침 방지)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|DamageText", meta = (ClampMin = "0.0"))
+	float DamageTextRandomOffset = 10.f;
+
 	// 데미지 텍스트 표시 (공격자 클라이언트에서 호출)
 	UFUNCTION(Client, Unreliable)
 	void Client_ShowDamageText(FVector Location, float Damage);
@@ -169,6 +174,10 @@ public:
 	// 보스 체력바 숨김
 	UFUNCTION(Client, Reliable)
 	void Client_HideBossHealthBar();
+
+	// 카메라 흔들림 (공격자 본인/피격자 본인 등 단일 PC 대상)
+	UFUNCTION(Client, Unreliable)
+	void Client_PlayCameraShake(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale);
 
 private:
 	// 보스 체력바 위젯 인스턴스

@@ -88,9 +88,17 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Stagger")
 	TObjectPtr<UAnimMontage> HitReactionMontage;
 
+	// 사망 몽타주 (적/플레이어 공통)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat")
+	TObjectPtr<UAnimMontage> DeathMontage;
+
 	// 히트리액션 몽타주 재생 (모든 클라이언트에 동기화)
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayHitReaction();
+
+	// 사망 몽타주 재생 (모든 클라이언트에 동기화)
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayDeathMontage();
 
 	// 컷신용 몽타주 재생 (시퀀서 Event Track에서 호출)
 	UFUNCTION(BlueprintCallable, Category = "Animation|Cutscene")

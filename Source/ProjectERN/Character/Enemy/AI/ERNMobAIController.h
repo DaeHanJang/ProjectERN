@@ -65,4 +65,8 @@ public:
 
 	// 타겟 설정 (외부에서 호출 - TakeDamage 등)
 	void SetTarget(AActor* NewTarget);
+
+	// 현재 Sight로 감지중인 플레이어 목록
+	UFUNCTION(BlueprintCallable, Category = "AI|Perception")
+	TArray<AActor*> GetPerceivedPlayers();
 };

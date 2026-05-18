@@ -43,6 +43,10 @@ public:
 	// Blackboard Component 접근자
 	FORCEINLINE UBlackboardComponent* GetBlackboardComp() const { return Blackboard; }
 
+	// 현재 시야에 들어와 있는 플레이어 목록 (캐시된 값)
+	UFUNCTION(BlueprintCallable, Category = "Boss AI")
+	TArray<AActor*> GetPerceivedPlayers() const { return PerceivedPlayers; }
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnPossess(APawn* InPawn) override;

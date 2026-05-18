@@ -17,6 +17,7 @@
 #include "UI/ERNDamageTextActor.h"
 #include "UI/ERNBossHealthBarWidget.h"
 #include "Character/Enemy/ERNBossCharacter.h"
+#include "Camera/CameraShakeBase.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -444,8 +445,10 @@ void AERNPlayerController::Client_ShowDamageText_Implementation(FVector Location
 {
 	if (!DamageTextActorClass || !GetWorld()) return;
 
-	// 약간 위로 오프셋
-	FVector TextSpawnLocation = Location + FVector(0.f, 0.f, 100.f);
+	// 좌우/앞뒤 랜덤 오프셋 (겹침 방지) + 위로 100 오프셋
+	const float RandX = FMath::FRandRange(-DamageTextRandomOffset, DamageTextRandomOffset);
+	const float RandY = FMath::FRandRange(-DamageTextRandomOffset, DamageTextRandomOffset);
+	FVector TextSpawnLocation = Location + FVector(RandX, RandY, 100.f);
 
 	AERNDamageTextActor* DamageTextActor = GetWorld()->SpawnActor<AERNDamageTextActor>(
 		DamageTextActorClass, TextSpawnLocation, FRotator::ZeroRotator);
@@ -454,6 +457,13 @@ void AERNPlayerController::Client_ShowDamageText_Implementation(FVector Location
 	{
 		DamageTextActor->Initialize(Damage);
 	}
+}
+
+void AERNPlayerController::Client_PlayCameraShake_Implementation(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale)
+{
+	if (!ShakeClass || !PlayerCameraManager) return;
+
+	PlayerCameraManager->StartCameraShake(ShakeClass, Scale);
 }
 
 void AERNPlayerController::Client_ShowBossHealthBar_Implementation(AERNBossCharacter* Boss)

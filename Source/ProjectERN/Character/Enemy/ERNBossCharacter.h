@@ -69,10 +69,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Cutscene")
 	UAnimMontage* IntroMontage = nullptr;
 
-	// 사망 연출 몽타주
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Cutscene")
-	UAnimMontage* DeathMontage = nullptr;
-
 	// 보스 이름 (UI 표시용)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|UI")
 	FText BossName;
