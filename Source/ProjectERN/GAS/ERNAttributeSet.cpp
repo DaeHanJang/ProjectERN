@@ -4,6 +4,7 @@
 #include "Net/UnrealNetwork.h"
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
+#include "Character/Player/ProjectERNCharacter.h"
 
 UERNAttributeSet::UERNAttributeSet()
 {
@@ -69,7 +70,15 @@ void UERNAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMod
 
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
-		SetHealth(FMath::Clamp(GetHealth(), 0.f, GetMaxHealth()));
+		float MinHealth = 0.f;
+		if (const AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Data.Target.GetAvatarActor()))
+		{
+			if (Player->bGodMode)
+			{
+				MinHealth = 1.f;
+			}
+		}
+		SetHealth(FMath::Clamp(GetHealth(), MinHealth, GetMaxHealth()));
 	}
 	else if (Data.EvaluatedData.Attribute == GetManaAttribute())
 	{
