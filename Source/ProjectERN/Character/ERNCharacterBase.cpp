@@ -242,9 +242,10 @@ void AERNCharacterBase::TryApplyStagger(float IncomingStaggerPower)
 	{
 		return;
 	}
-
+	
 	// 슈퍼아머 또는 무적 프레임이면 경직 무시
-	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_SuperArmor) ||
+	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Immunity_Damage) ||
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_SuperArmor) ||
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_StaggerImmune))
 	{
 		return;
