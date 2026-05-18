@@ -8,6 +8,7 @@
 
 class UBoxComponent;
 class UNiagaraSystem;
+class UCameraShakeBase;
 
 /**
  * AERNMeleeWeapon - 근접 무기
@@ -52,7 +53,14 @@ public:
 	// 히트 시 나이아가라 이펙트
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Melee")
 	UNiagaraSystem* HitEffect;
-	
+
+	// 적 명중 시 공격자 카메라 흔들림 (Hit Confirmation)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Melee|CameraShake")
+	TSubclassOf<UCameraShakeBase> HitConfirmShakeClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Melee|CameraShake", meta = (ClampMin = "0.0"))
+	float HitConfirmShakeScale = 1.f;
+
 	// 히트박스 Getter (무기 스킬에서 사용)
 	UBoxComponent* GetHitboxComponent() const { return HitboxComponent; }
 };

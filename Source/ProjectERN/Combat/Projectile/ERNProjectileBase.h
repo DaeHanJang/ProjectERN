@@ -15,6 +15,7 @@ class UCurveFloat;
 class USoundBase;
 class USoundAttenuation;
 class UAudioComponent;
+class UCameraShakeBase;
 
 /**
  * AERNProjectileBase - 원거리 투사체 베이스
@@ -196,4 +197,33 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
 		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
 	float ExplosionStaggerPower = 30.f;
+
+	// 폭발 카메라 흔들림 (반경 내 모든 플레이어 카메라 거리 감쇠 흔들림)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode"))
+	TSubclassOf<UCameraShakeBase> ExplosionShakeClass;
+
+	// 폭발 카메라 흔들림 강도 배율 (거리 감쇠와 별개로 곱해짐)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
+	float ExplosionShakeScale = 1.f;
+
+	// 폭발 카메라 흔들림 풀 강도 반경 (cm)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
+	float ExplosionShakeInnerRadius = 300.f;
+
+	// 폭발 카메라 흔들림 0 강도 반경 (cm)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
+	float ExplosionShakeOuterRadius = 1500.f;
+
+	// 폭발 카메라 흔들림 감쇠 곡선
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
+	float ExplosionShakeFalloff = 1.f;
+
+	// 폭발 카메라 흔들림 멀티캐스트 (모든 클라가 로컬에서 PlayWorldCameraShake 실행)
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlayExplosionShake(FVector Origin);
 };

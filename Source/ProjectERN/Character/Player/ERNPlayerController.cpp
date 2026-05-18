@@ -17,6 +17,7 @@
 #include "UI/ERNDamageTextActor.h"
 #include "UI/ERNBossHealthBarWidget.h"
 #include "Character/Enemy/ERNBossCharacter.h"
+#include "Camera/CameraShakeBase.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -456,6 +457,13 @@ void AERNPlayerController::Client_ShowDamageText_Implementation(FVector Location
 	{
 		DamageTextActor->Initialize(Damage);
 	}
+}
+
+void AERNPlayerController::Client_PlayCameraShake_Implementation(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale)
+{
+	if (!ShakeClass || !PlayerCameraManager) return;
+
+	PlayerCameraManager->StartCameraShake(ShakeClass, Scale);
 }
 
 void AERNPlayerController::Client_ShowBossHealthBar_Implementation(AERNBossCharacter* Boss)

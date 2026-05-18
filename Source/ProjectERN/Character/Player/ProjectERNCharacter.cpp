@@ -22,6 +22,9 @@
 #include "Interfaces/IInteractable.h"
 #include "Net/UnrealNetwork.h"
 #include "Shop/Components/ERNShopComponent.h"
+#include "GAS/ERNAttributeSet.h"
+#include "Camera/CameraShakeBase.h"
+#include "Engine/DamageEvents.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -842,4 +845,44 @@ void AProjectERNCharacter::Server_RequestRoll_Implementation(FVector_NetQuantize
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Roll));
 	}
+}
+
+float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	if (ActualDamage > 0.f && HasAuthority())
+	{
+		// 데미지/MaxHealth 비율로 흔들림 강도 분기
+		const float MaxHP = AttributeSet ? AttributeSet->GetMaxHealth() : 0.f;
+		if (MaxHP > 0.f)
+		{
+			const float Ratio = ActualDamage / MaxHP;
+
+			TSubclassOf<UCameraShakeBase> ShakeToPlay = nullptr;
+			if (Ratio < DamageShakeThresholdSmall)
+			{
+				ShakeToPlay = TakeDamageShakeClass_Small;
+			}
+			else if (Ratio < DamageShakeThresholdMedium)
+			{
+				ShakeToPlay = TakeDamageShakeClass_Medium;
+			}
+			else
+			{
+				ShakeToPlay = TakeDamageShakeClass_Big;
+			}
+
+			if (ShakeToPlay)
+			{
+				AERNPlayerController* PC = Cast<AERNPlayerController>(GetController());
+				if (PC)
+				{
+					PC->Client_PlayCameraShake(ShakeToPlay, 1.f);
+				}
+			}
+		}
+	}
+
+	return ActualDamage;
 }

@@ -16,6 +16,8 @@
 #include "Curves/CurveFloat.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Camera/CameraShakeBase.h"
+#include "Camera/PlayerCameraManager.h"
 
 AERNProjectileBase::AERNProjectileBase()
 {
@@ -377,5 +379,43 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 				Player->TryApplyStagger(ExplosionStaggerPower);
 			}
 		}
+	}
+
+	// 폭발 카메라 흔들림 (반경 내 모든 플레이어, 거리 감쇠)
+	if (ExplosionShakeClass)
+	{
+		Multicast_PlayExplosionShake(ExplosionCenter);
+	}
+}
+
+void AERNProjectileBase::Multicast_PlayExplosionShake_Implementation(FVector Origin)
+{
+	if (!ExplosionShakeClass) return;
+
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (!PC || !PC->PlayerCameraManager) continue;
+
+		const FVector CamLoc = PC->PlayerCameraManager->GetCameraLocation();
+		const float Dist = FVector::Dist(CamLoc, Origin);
+
+		float Attenuation = 0.f;
+		if (Dist <= ExplosionShakeInnerRadius)
+		{
+			Attenuation = 1.f;
+		}
+		else if (Dist < ExplosionShakeOuterRadius)
+		{
+			const float Alpha = (Dist - ExplosionShakeInnerRadius) / (ExplosionShakeOuterRadius - ExplosionShakeInnerRadius);
+			Attenuation = FMath::Pow(1.f - Alpha, ExplosionShakeFalloff);
+		}
+
+		if (Attenuation <= 0.f) continue;
+
+		PC->PlayerCameraManager->StartCameraShake(ExplosionShakeClass, ExplosionShakeScale * Attenuation);
 	}
 }

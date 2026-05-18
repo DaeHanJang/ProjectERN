@@ -18,6 +18,7 @@ class UERNEquipmentComponent;
 class UERNShopComponent;
 class UERNInputConfig;
 class UGameplayEffect;
+class UCameraShakeBase;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -184,6 +185,25 @@ public:
 	// 공격 중 움직일 수 있게 하기 위함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
 	bool bCanMoveWhileAttacking = false;
+
+	// 피격 시 카메라 흔들림 (데미지/MaxHealth 비율로 강도 분기)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake")
+	TSubclassOf<UCameraShakeBase> TakeDamageShakeClass_Small;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake")
+	TSubclassOf<UCameraShakeBase> TakeDamageShakeClass_Medium;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake")
+	TSubclassOf<UCameraShakeBase> TakeDamageShakeClass_Big;
+
+	// 데미지/MaxHealth 비율 임계값 — 미만이면 Small, 사이면 Medium, 이상이면 Big
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DamageShakeThresholdSmall = 0.10f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DamageShakeThresholdMedium = 0.30f;
+
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
 protected:
 	// 상태 별 속도
