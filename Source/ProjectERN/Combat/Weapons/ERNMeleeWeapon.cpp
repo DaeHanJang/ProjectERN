@@ -6,6 +6,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "Engine/DamageEvents.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
+#include "Character/Player/ERNPlayerController.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GAS/ERNAttributeSet.h"
@@ -95,6 +96,20 @@ void AERNMeleeWeapon::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActo
 	if (HitEffect)
 	{
 		Multicast_PlayHitEffect(SweepResult.ImpactPoint, SweepResult.ImpactNormal.Rotation());
+	}
+
+	// 공격자에게 Hit Confirmation 카메라 흔들림 (Client RPC → 공격자 본인만 흔들림)
+	if (HitConfirmShakeClass)
+	{
+		ACharacter* OwnerCharForShake = Cast<ACharacter>(GetOwner());
+		if (OwnerCharForShake)
+		{
+			AERNPlayerController* PC = Cast<AERNPlayerController>(OwnerCharForShake->GetController());
+			if (PC)
+			{
+				PC->Client_PlayCameraShake(HitConfirmShakeClass, HitConfirmShakeScale);
+			}
+		}
 	}
 }
 

@@ -12,6 +12,8 @@
 #include "MotionWarpingComponent.h"
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
+#include "AIController.h"
+#include "BrainComponent.h"
 
 AERNEnemyCharacter::AERNEnemyCharacter()
 {
@@ -174,23 +176,51 @@ void AERNEnemyCharacter::Multicast_PlayAttackMontage_Implementation(UAnimMontage
 
 void AERNEnemyCharacter::OnDeath()
 {
+	// BT 중지 — 사망 후 BT가 다른 몽타주를 트리거해 사망 몽타주를 덮어쓰는 것 방지
+	if (HasAuthority())
+	{
+		if (AAIController* AIC = Cast<AAIController>(GetController()))
+		{
+			if (UBrainComponent* Brain = AIC->GetBrainComponent())
+			{
+				Brain->StopLogic(TEXT("Death"));
+			}
+		}
+	}
+
+	// 체력바 즉시 숨김 (모든 클라이언트 동기화)
+	Multicast_HideHealthBar();
+
 	Super::OnDeath();
 
 	if (HasAuthority())
 	{
-		// 골드 드롭
-		SpawnGold();
+		// 몽타주 종료 직전에 정리 (T-pose로 돌아가기 직전 숨김 처리)
+		const float CleanupDelay = DeathMontage
+			? FMath::Max(DeathMontage->GetPlayLength() - DeathCleanupLeadTime, 0.0f)
+			: 0.0f;
 
-		// 아이템 드롭
-		SpawnDrops();
-
-		// 3초 후 제거
-		FTimerHandle DestroyTimer;
-		GetWorld()->GetTimerManager().SetTimer(DestroyTimer, [this]()
+		FTimerHandle CleanupTimer;
+		GetWorld()->GetTimerManager().SetTimer(CleanupTimer, [this]()
 		{
+			// 모든 클라이언트에서 메시 숨김
+			Multicast_HideOnDeath();
+
+			// 골드 드롭
+			SpawnGold();
+
+			// 아이템 드롭
+			SpawnDrops();
+
+			// 액터 제거
 			Destroy();
-		}, 3.0f, false);
+		}, CleanupDelay, false);
 	}
+}
+
+void AERNEnemyCharacter::Multicast_HideOnDeath_Implementation()
+{
+	SetActorHiddenInGame(true);
 }
 
 void AERNEnemyCharacter::SpawnDrops()

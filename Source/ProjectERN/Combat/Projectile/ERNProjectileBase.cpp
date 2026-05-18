@@ -16,6 +16,8 @@
 #include "Curves/CurveFloat.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Camera/CameraShakeBase.h"
+#include "Camera/PlayerCameraManager.h"
 
 AERNProjectileBase::AERNProjectileBase()
 {
@@ -269,17 +271,21 @@ void AERNProjectileBase::InitializeHoming()
 {
 	if (!ProjectileMovement) return;
 
-	AERNEnemyCharacter* EnemyShooter = Cast<AERNEnemyCharacter>(GetOwner());
+	// 외부(AnimNotify 등)에서 이미 주입된 타겟이 있으면 우선 사용
+	AActor* Target = HomingTarget.Get();
 
-	AActor* Target = nullptr;
-	if (EnemyShooter)
+	if (!Target)
 	{
-		Target = GetEnemyBlackboardTarget();
-	}
-	else
-	{
-		// 플레이어 투사체: 락온 미구현 임시로 자동 검색
-		Target = FindHomingTargetForPlayer();
+		AERNEnemyCharacter* EnemyShooter = Cast<AERNEnemyCharacter>(GetOwner());
+		if (EnemyShooter)
+		{
+			Target = GetEnemyBlackboardTarget();
+		}
+		else
+		{
+			// 플레이어 투사체: 락온 미구현 임시로 자동 검색
+			Target = FindHomingTargetForPlayer();
+		}
 	}
 
 	if (Target)
@@ -373,5 +379,43 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 				Player->TryApplyStagger(ExplosionStaggerPower);
 			}
 		}
+	}
+
+	// 폭발 카메라 흔들림 (반경 내 모든 플레이어, 거리 감쇠)
+	if (ExplosionShakeClass)
+	{
+		Multicast_PlayExplosionShake(ExplosionCenter);
+	}
+}
+
+void AERNProjectileBase::Multicast_PlayExplosionShake_Implementation(FVector Origin)
+{
+	if (!ExplosionShakeClass) return;
+
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (!PC || !PC->PlayerCameraManager) continue;
+
+		const FVector CamLoc = PC->PlayerCameraManager->GetCameraLocation();
+		const float Dist = FVector::Dist(CamLoc, Origin);
+
+		float Attenuation = 0.f;
+		if (Dist <= ExplosionShakeInnerRadius)
+		{
+			Attenuation = 1.f;
+		}
+		else if (Dist < ExplosionShakeOuterRadius)
+		{
+			const float Alpha = (Dist - ExplosionShakeInnerRadius) / (ExplosionShakeOuterRadius - ExplosionShakeInnerRadius);
+			Attenuation = FMath::Pow(1.f - Alpha, ExplosionShakeFalloff);
+		}
+
+		if (Attenuation <= 0.f) continue;
+
+		PC->PlayerCameraManager->StartCameraShake(ExplosionShakeClass, ExplosionShakeScale * Attenuation);
 	}
 }
