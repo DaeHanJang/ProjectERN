@@ -1,6 +1,11 @@
 #include "Shop/Provider/ERNDataTableShopProvider.h"
 #include "Inventory/Item/Data/ERNItemTable.h"
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
+#include "Character/Player/ProjectERNCharacter.h"
+#include "Inventory/Components/ERNInventoryComponent.h"
+#include "GAS/ERNAttributeSet.h"
+#include "Inventory/Data/ERNInventoryList.h"
+#include "Inventory/Item/Data/ERNItemRuntimeState.h"
 
 UERNDataTableShopProvider::UERNDataTableShopProvider()
 {
@@ -83,8 +88,111 @@ void UERNDataTableShopProvider::RequestShopData_Implementation(EShopType ShopTyp
 
 void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransaction Transaction)
 {
-    // 페이즈 3 또는 별도 구현 예정
-    Transaction.Result = EERNTransactionResult::InvalidItem;
+    // 트랜잭션 처리 대상 캐릭터 확인
+    AProjectERNCharacter* PlayerChar = Cast<AProjectERNCharacter>(Transaction.Buyer);
+    if (!PlayerChar)
+    {
+        Transaction.Result = EERNTransactionResult::InvalidItem;
+        OnPurchaseComplete.Broadcast(Transaction);
+        return;
+    }
+
+    // 1. 아이템 검색 및 가격/재고 검증
+    if (bIsDataCached && CachedShopData.Contains(Transaction.ShopType))
+    {
+        FERNShopInventory& Inventory = CachedShopData[Transaction.ShopType];
+        FERNShopItemData* TargetItem = nullptr;
+
+        for (FERNShopItemData& Item : Inventory.Items)
+        {
+            if (Item.ItemID == Transaction.ItemID)
+            {
+                TargetItem = &Item;
+                break;
+            }
+        }
+
+        if (!TargetItem)
+        {
+            Transaction.Result = EERNTransactionResult::InvalidItem;
+            OnPurchaseComplete.Broadcast(Transaction);
+            return;
+        }
+
+        // 재고 검사
+        if (TargetItem->StockCount != -1 && TargetItem->StockCount < Transaction.Quantity)
+        {
+            Transaction.Result = EERNTransactionResult::OutOfStock;
+            OnPurchaseComplete.Broadcast(Transaction);
+            return;
+        }
+
+        // 2. 골드 검사 및 차감
+        int32 TotalPrice = TargetItem->Price * Transaction.Quantity;
+        Transaction.TotalPrice = TotalPrice;
+        
+        UERNAttributeSet* AttributeSet = PlayerChar->GetAttributeSet();
+        if (!AttributeSet || AttributeSet->GetGold() < TotalPrice)
+        {
+            Transaction.Result = EERNTransactionResult::InsufficientFunds;
+            OnPurchaseComplete.Broadcast(Transaction);
+            return;
+        }
+
+        // 골드 차감
+        AttributeSet->SetGold(AttributeSet->GetGold() - TotalPrice);
+
+        // 3. 인벤토리 추가
+        UERNInventoryComponent* InvComp = PlayerChar->GetInventoryComponent();
+        if (!InvComp)
+        {
+            // 인벤토리 컴포넌트가 없다면 골드 롤백 후 실패 처리
+            AttributeSet->SetGold(AttributeSet->GetGold() + TotalPrice);
+            Transaction.Result = EERNTransactionResult::InvalidItem;
+            OnPurchaseComplete.Broadcast(Transaction);
+            return;
+        }
+
+        FItemRuntimeState NewItemState;
+        NewItemState.SetItemID(Transaction.ItemID);
+        NewItemState.SetQuantity(Transaction.Quantity);
+
+        TArray<FInventoryItemEntry> ChangedEntries;
+        // MaxStackSize는 하드코딩 또는 아이템 데이터에서 가져올 수 있으나 현재 99로 가정
+        bool bAddSuccess = InvComp->GetInventory().AddItem(NewItemState, InvComp->GetMaxStackSize(), 99, ChangedEntries);
+
+        if (!bAddSuccess)
+        {
+            // 롤백: 골드 복구
+            AttributeSet->SetGold(AttributeSet->GetGold() + TotalPrice);
+            Transaction.Result = EERNTransactionResult::InventoryFull;
+            OnPurchaseComplete.Broadcast(Transaction);
+            return;
+        }
+
+        // 4. 재고 차감 (무제한이 아닐 경우)
+        if (TargetItem->StockCount != -1)
+        {
+            TargetItem->StockCount -= Transaction.Quantity;
+            if (TargetItem->StockCount <= 0)
+            {
+                TargetItem->bIsAvailable = false;
+            }
+        }
+
+        // 5. 트랜잭션 성공 처리
+        Transaction.Result = EERNTransactionResult::Success;
+
+        // 다른 플레이어들에게도 상점 데이터 변경 알림 (멀티플레이어 재고 동기화)
+        // 브로드캐스트는 서버 내의 모든 UERNShopComponent의 OnDataReceived를 트리거
+        OnShopDataReceived.Broadcast(Inventory);
+    }
+    else
+    {
+        Transaction.Result = EERNTransactionResult::InvalidItem;
+    }
+
+    // 6. 구매 결과 반환 (구매자에게만 적용되도록 컴포넌트에서 필터링됨)
     OnPurchaseComplete.Broadcast(Transaction);
 }
 

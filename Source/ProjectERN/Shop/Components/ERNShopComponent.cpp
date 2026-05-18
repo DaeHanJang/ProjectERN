@@ -166,6 +166,7 @@ void UERNShopComponent::Server_RequestPurchase_Implementation(FName ItemID, int3
         ServerTx.ItemID = ItemID;
         ServerTx.Quantity = Quantity;
         ServerTx.Timestamp = GetWorld()->GetTimeSeconds();
+        ServerTx.Buyer = PlayerChar; // Buyer 세팅
 
         // 3. Provider로 검증 및 결제/차감 위임
         IERNShopDataProvider::Execute_RequestPurchase(
@@ -209,10 +210,16 @@ void UERNShopComponent::OnDataReceived(const FERNShopInventory& ShopData)
     UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] OnDataReceived. 아이템 수: %d"),
         ShopData.Items.Num());
 
-    // 서버 사이드에서 이 이벤트가 발생했다면 특정 클라이언트에게 보내주어야 하지만
-    // DummyProvider를 단일 구조로 쓰기 때문에 Server_RequestShopData_Implementation에서
-    // 이미 Client_ReceiveShopData를 호출하여 데이터를 내려보냅니다.
-    // 이 콜백은 현재 호스트의 로컬 이벤트를 위해 유지합니다.
+    // 멀티플레이어 환경에서 서버 Provider의 재고 변경 브로드캐스트를 수신합니다.
+    if (GetOwner()->HasAuthority())
+    {
+        // 현재 상점을 열고 있고, 해당 상점 타입이 갱신된 타입과 같다면
+        if (bIsShopOpen && CurrentShopType == ShopData.ShopType)
+        {
+            // 클라이언트에게 갱신된 상점 데이터를 전송합니다.
+            Client_ReceiveShopData(ShopData);
+        }
+    }
 }
 
 void UERNShopComponent::OnPurchaseComplete(const FERNShopTransaction& Transaction)
@@ -223,6 +230,12 @@ void UERNShopComponent::OnPurchaseComplete(const FERNShopTransaction& Transactio
     // 이 콜백은 서버 측에서 Provider가 검증을 끝낸 후 발생합니다.
     if (GetOwner()->HasAuthority())
     {
+        // 내 트랜잭션인지 확인
+        if (Transaction.Buyer != GetOwner())
+        {
+            return;
+        }
+
         // 1. 서버 측에서 구매 성공 시 인벤토리에 아이템 추가 (안전한 처리)
         if (Transaction.Result == EERNTransactionResult::Success)
         {

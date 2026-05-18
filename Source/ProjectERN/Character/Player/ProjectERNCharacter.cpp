@@ -534,6 +534,20 @@ void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProp
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AProjectERNCharacter, bIsLockOn);
+	DOREPLIFETIME(AProjectERNCharacter, bGodMode);
+}
+
+void AProjectERNCharacter::GodMode()
+{
+	Server_SetGodMode(!bGodMode);
+}
+
+void AProjectERNCharacter::Server_SetGodMode_Implementation(bool bEnable)
+{
+	bGodMode = bEnable;
+	UE_LOG(LogTemp, Warning, TEXT("[GodMode] %s for %s"),
+		bEnable ? TEXT("ON") : TEXT("OFF"),
+		*GetName());
 }
 
 void AProjectERNCharacter::UpdateMovementSpeed()

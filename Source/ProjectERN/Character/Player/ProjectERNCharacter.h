@@ -209,7 +209,18 @@ public:
 	float DamageShakeThresholdMedium = 0.30f;
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
-	
+
+	// 디버그 무적 (HP가 1 아래로 안 떨어짐) — 콘솔 명령 GodMode로 토글
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Debug")
+	bool bGodMode = false;
+
+	// 콘솔 명령: ~ 키 → GodMode 입력으로 토글 (대소문자 무관)
+	UFUNCTION(Exec)
+	void GodMode();
+
+	UFUNCTION(Server, Reliable)
+	void Server_SetGodMode(bool bEnable);
+
 protected:
 	// 상태 별 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
