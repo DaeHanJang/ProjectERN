@@ -10,6 +10,7 @@
 #include "GameplayEffect.h"
 #include "Net/UnrealNetwork.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
+#include "Character/Player/ProjectERNCharacter.h"
 
 AERNCharacterBase::AERNCharacterBase()
 {
@@ -214,8 +215,18 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 
 	if (AttributeSet && ActualDamage > 0.0f)
 	{
+		// 디버그 무적: 플레이어가 GodMode면 HP 최소 1로 클램프
+		float MinHealth = 0.0f;
+		if (const AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(this))
+		{
+			if (Player->bGodMode)
+			{
+				MinHealth = 1.0f;
+			}
+		}
+
 		// AttributeSet의 Health 감소
-		const float NewHealth = FMath::Max(0.0f, AttributeSet->GetHealth() - ActualDamage);
+		const float NewHealth = FMath::Max(MinHealth, AttributeSet->GetHealth() - ActualDamage);
 		AttributeSet->SetHealth(NewHealth);
 
 		UE_LOG(LogTemp, Log, TEXT("%s took %.2f damage. Health: %.2f"), *GetName(), ActualDamage, NewHealth);
