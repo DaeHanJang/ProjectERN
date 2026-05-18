@@ -27,7 +27,6 @@ bool UERNUIManagerSubsystem::RequestOpenUI(EERNUIType UIType)
 
 	// 열기 허용
 	ActiveUIType = UIType;
-	OnUIOpened.Broadcast(UIType);
 	
 	UE_LOG(LogUIManager, Log, TEXT("[UIManager] UI [%d] 열림"), (int32)UIType);
 	return true;
@@ -42,8 +41,6 @@ void UERNUIManagerSubsystem::CloseActiveUI()
 
 	EERNUIType ClosedType = ActiveUIType;
 	ActiveUIType = EERNUIType::None;
-	
-	OnUIClosed.Broadcast(ClosedType);
 	
 	UE_LOG(LogUIManager, Log, TEXT("[UIManager] UI [%d] 닫힘"), (int32)ClosedType);
 }

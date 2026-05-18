@@ -62,6 +62,10 @@ protected:
 	// InteractionDetector Update
 	void UpdateInteractionDetector();
 	
+	// Status Curve Table
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Character")
+	TObjectPtr<UDataTable> StatusCurveTable;
+	
 	/** Character Type - 블루프린트에서 설정 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Character")
 	ECharacterType CharacterType;
@@ -76,6 +80,7 @@ protected:
 	// 태그 기반 입력을 위한 InputConfig 부여
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Input")
 	TObjectPtr<UERNInputConfig> InputConfig;
+
 	
 public:
 	/** Constructor */

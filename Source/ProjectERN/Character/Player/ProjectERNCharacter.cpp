@@ -25,6 +25,7 @@
 #include "GAS/ERNAttributeSet.h"
 #include "Camera/CameraShakeBase.h"
 #include "Engine/DamageEvents.h"
+#include "Inventory/Item/ERNItemActor.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -161,12 +162,26 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 	float ClosestDistSq = MAX_FLT;
 	AActor* ClosestActor = nullptr;
 	
+	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
+	if (!ERNController)
+	{
+		return;
+	}
+	
 	// 감지된 액터를 순회하면서 상호작용 가능 액터인 경우 가장 가까운 액터를 선정
 	for (AActor* Actor : OverlappingActors)
 	{
 		if (!Actor->Implements<UInteractable>())
 		{
 			continue;
+		}
+		
+		if (const AERNItemActor* ItemActor = Cast<AERNItemActor>(Actor))
+		{
+			if (!ItemActor->CanBeInteractedBy(ERNController))
+			{
+				continue;
+			}
 		}
 		
 		const float DistSq = this->GetSquaredDistanceTo(Actor);
@@ -176,12 +191,6 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 			ClosestDistSq = DistSq;
 			ClosestActor = Actor;
 		}
-	}
-	
-	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
-	if (!ERNController)
-	{
-		return;
 	}
 	
 	AActor* CurrentInteractable = ERNController->GetCurrentInteractable();
@@ -200,8 +209,6 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		}
 		IInteractable::Execute_ActivateInteract(ClosestActor);
 	}
-	
-	UE_LOG(LogTemp, Warning, TEXT("New Interactable Actor is %s"), *GetNameSafe(ClosestActor));
 }
 
 void AProjectERNCharacter::Tick(float DeltaSeconds)

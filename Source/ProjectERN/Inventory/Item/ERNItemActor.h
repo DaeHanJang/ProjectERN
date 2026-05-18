@@ -43,7 +43,11 @@ public:
 	// Item DataAsset 적용 진입점
 	UFUNCTION(BlueprintCallable)
 	void ApplyItemDataAsset(const UItemDataAssetBase* DataAsset);
-
+	// Check Owner PlayerController
+	bool CanBeInteractedBy(const APlayerController* PC) const;
+	// 현재 클라만 보이도록 설정
+	void UpdateOwnerOnlyVisibility() const;
+	
 private:
 	// Get ItemManager
 	UItemManagerSubsystem* GetItemManager() const;

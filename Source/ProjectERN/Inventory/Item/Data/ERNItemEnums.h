@@ -42,10 +42,11 @@ enum class EShopType : uint8
 UENUM(BlueprintType)
 enum class EWeaponType : uint8
 {
-	None   UMETA(Hidden),
-	Sword  UMETA(DisplayName="Sword"),
-	Staff  UMETA(DisplayName="Staff"),
-	Polearm UMETA(DisplayName="Rapier")
+	None    UMETA(Hidden),
+	Sword   UMETA(DisplayName="Sword"),
+	Staff   UMETA(DisplayName="Staff"),
+	Polearm UMETA(DisplayName="Rapier"), 
+	All     UMETA(DisplayName="All")
 };
 
 // Consumable Type
