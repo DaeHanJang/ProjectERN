@@ -39,10 +39,6 @@ AERNShopActor::AERNShopActor()
 void AERNShopActor::BeginPlay()
 {
     Super::BeginPlay();
-
-    // 오버랩 이벤트 바인딩
-    InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &AERNShopActor::OnSphereBeginOverlap);
-    InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &AERNShopActor::OnSphereEndOverlap);
 }
 
 // ===== IInteractable 구현 =====
@@ -155,7 +151,6 @@ void AERNShopActor::EndInteract_Implementation(APlayerController* PlayerControll
     if (!ERNPC) return;
     
     //상호작용 프롬프트 및 대상 해제
-    ERNPC->ClearCurrentInteractable();
     if (InteractionPromptWidget)
     {
         InteractionPromptWidget->SetVisibility(false);
@@ -220,44 +215,15 @@ void AERNShopActor::HandleShopClosed()
     }
 }
 
-// ===== 오버랩 이벤트 =====
-
-void AERNShopActor::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent,
-    AActor* OtherActor, UPrimitiveComponent* OtherComp,
-    int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void AERNShopActor::ActivateInteract_Implementation() const
 {
-    AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(OtherActor);
-    if (!Character) return;
-
-    // PlayerController에 현재 상호작용 가능한 액터 설정
-    AERNPlayerController* PC = Cast<AERNPlayerController>(Character->GetController());
-    if (PC)
+    if (InteractionPromptWidget)
     {
-        PC->SetCurrentInteractable(this);
-        UE_LOG(LogShopProvider, Verbose, TEXT("[ShopActor] 상호작용 범위 진입: %s"),
-            *Character->GetName());
-            
-        if (InteractionPromptWidget)
-        {
-            InteractionPromptWidget->SetVisibility(true);
-        }
+        InteractionPromptWidget->SetVisibility(true);
     }
 }
 
-void AERNShopActor::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent,
-    AActor* OtherActor, UPrimitiveComponent* OtherComp,
-    int32 OtherBodyIndex)
+EInteractionExecutionPolicy AERNShopActor::GetInteractionExecutionPolicy_Implementation() const
 {
-    AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(OtherActor);
-    if (!Character) return;
-
-    AERNPlayerController* PC = Cast<AERNPlayerController>(Character->GetController());
-    if (PC)
-    {
-        // 범위를 벗어나면 강제 종료
-        EndInteract_Implementation(PC);
-        
-        UE_LOG(LogShopProvider, Verbose, TEXT("[ShopActor] 상호작용 범위 이탈: %s"),
-            *Character->GetName());
-    }
+    return EInteractionExecutionPolicy::LocalOnly;
 }

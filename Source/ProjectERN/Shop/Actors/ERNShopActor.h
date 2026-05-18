@@ -37,8 +37,14 @@ public:
     /** 상호작용 UI 텍스트 */
     virtual FText GetInteractionText_Implementation() const override;
 
+    /** 상호작용 활성화 (프롬프트 켜기) */
+    virtual void ActivateInteract_Implementation() const override;
+
     /** 상호작용 종료 */
     virtual void EndInteract_Implementation(APlayerController* PlayerController) override;
+
+    /** 상호작용 실행 정책 */
+    virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
 
     
 protected:
@@ -84,15 +90,5 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     bool bIsShopActive = true;
 
-    // ===== 오버랩 이벤트 =====
 
-    UFUNCTION()
-    void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent,
-        AActor* OtherActor, UPrimitiveComponent* OtherComp,
-        int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-    UFUNCTION()
-    void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent,
-        AActor* OtherActor, UPrimitiveComponent* OtherComp,
-        int32 OtherBodyIndex);
 };

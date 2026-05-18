@@ -50,24 +50,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "UI")
 	EERNUIType GetActiveUIType() const { return ActiveUIType; }
 
-	/** 특정 UI가 열려있는지 확인 */
-	UFUNCTION(BlueprintPure, Category = "UI")
-	bool IsUIActive(EERNUIType UIType) const { return ActiveUIType == UIType; }
-
-	/** 아무 UI든 열려있는지 확인 */
-	UFUNCTION(BlueprintPure, Category = "UI")
-	bool IsAnyUIActive() const { return ActiveUIType != EERNUIType::None; }
-
-	// ── 델리게이트 ──
-
-	/** UI가 열릴 때 브로드캐스트 */
-	UPROPERTY(BlueprintAssignable, Category = "UI")
-	FOnUIStateChanged OnUIOpened;
-
-	/** UI가 닫힐 때 브로드캐스트 */
-	UPROPERTY(BlueprintAssignable, Category = "UI")
-	FOnUIStateChanged OnUIClosed;
-
 private:
 	/** 현재 활성화된 UI 타입 */
 	EERNUIType ActiveUIType = EERNUIType::None;

@@ -115,6 +115,10 @@ struct FERNShopTransaction
 
     UPROPERTY(BlueprintReadWrite, Category = "Shop")
     float Timestamp = 0.f;
+
+    // 구매한 플레이어 캐릭터 (멀티플레이어 트랜잭션 식별용)
+    UPROPERTY(BlueprintReadWrite, Category = "Shop")
+    AActor* Buyer = nullptr;
 };
 
 /**
