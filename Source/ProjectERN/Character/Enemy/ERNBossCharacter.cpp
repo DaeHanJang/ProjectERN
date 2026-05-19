@@ -204,21 +204,34 @@ void AERNBossCharacter::PlayPhaseTransitionMontage()
 
 	const FBossPhaseInfo& PhaseInfo = Phases[CurrentPhaseIndex];
 
-	// 페이즈 전환 몽타주 재생
+	// 페이즈 전환 몽타주 재생 — Multicast로 모든 클라이언트에 동기화
 	if (PhaseInfo.PhaseTransitionMontage && GetMesh() && GetMesh()->GetAnimInstance())
 	{
-		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-		AnimInstance->Montage_Play(PhaseInfo.PhaseTransitionMontage);
-
-		// 몽타주 종료 델리게이트
-		FOnMontageEnded EndDelegate;
-		EndDelegate.BindUObject(this, &AERNBossCharacter::OnPhaseTransitionMontageEnded);
-		AnimInstance->Montage_SetEndDelegate(EndDelegate, PhaseInfo.PhaseTransitionMontage);
+		Multicast_PlayPhaseTransitionMontage(PhaseInfo.PhaseTransitionMontage);
 	}
 	else
 	{
 		// 몽타주 없으면 바로 완료 처리
 		OnPhaseTransitionMontageEnded(nullptr, false);
+	}
+}
+
+void AERNBossCharacter::Multicast_PlayPhaseTransitionMontage_Implementation(UAnimMontage* Montage)
+{
+	if (!Montage || !GetMesh() || !GetMesh()->GetAnimInstance())
+	{
+		return;
+	}
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	AnimInstance->Montage_Play(Montage);
+
+	// 종료 콜백은 서버에서만 바인딩 (페이즈 상태 변경/슈퍼아머 해제 등 서버 권한 로직)
+	if (HasAuthority())
+	{
+		FOnMontageEnded EndDelegate;
+		EndDelegate.BindUObject(this, &AERNBossCharacter::OnPhaseTransitionMontageEnded);
+		AnimInstance->Montage_SetEndDelegate(EndDelegate, Montage);
 	}
 }
 

@@ -263,7 +263,8 @@ void AERNProjectileBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AAc
 	else if (OtherPlayer)
 	{
 		OtherPlayer->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), OwnerActor);
-		OtherPlayer->TryApplyStagger(StaggerPower);
+		// 투사체 충돌 지점을 HitOrigin으로 전달 → 플레이어가 투사체 방향 기준 4방향 경직
+		OtherPlayer->TryApplyStagger(StaggerPower, ImpactPoint);
 	}
 
 	// 폭발 투사체면 범위 데미지 추가 적용
@@ -386,7 +387,8 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 			if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(HitActor))
 			{
 				Player->TakeDamage(ExplosionDamage, FDamageEvent(), GetInstigatorController(), OwnerActor);
-				Player->TryApplyStagger(ExplosionStaggerPower);
+				// 폭발 중심을 HitOrigin으로 전달 → 플레이어가 폭발 방향 기준 4방향 경직
+				Player->TryApplyStagger(ExplosionStaggerPower, ExplosionCenter);
 			}
 		}
 	}

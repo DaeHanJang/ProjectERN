@@ -3,9 +3,12 @@
 
 #include "World/ERNWorldManagerSubsystem.h"
 
+#include "ERNDayNightCycleService.h"
 #include "ERNWorldManagerSettings.h"
 #include "MobSpawner.h"
 #include "StructureSpawnService.h"
+#include "Core/ERNGameState.h"
+#include "Data/ERNDayNightCycleConfigDataAsset.h"
 #include "Data/ERNWorldTable.h"
 #include "Data/StructureSpawnConfigDataAsset.h"
 
@@ -34,15 +37,27 @@ void UERNWorldManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		return;
 	}
 
-	CachedSpawnConfig = FoundRow.SpawnConfig;
-
 	//데이터 에셋 (SpawnConfig)를 기반으로 건물 생성을 처리할 Object 생성
+	CachedSpawnConfig = FoundRow.SpawnConfig;
 	StructureSpawnService = NewObject<UStructureSpawnService>(this);
+	
+	//마찬가지로 시간 흐름을 처리할 Object 생성
+	CachedDayNightConfig = FoundRow.DayNightConfig;
+	DayNightCycleService = NewObject<UERNDayNightCycleService>(this);
 }
 
 void UERNWorldManagerSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
+	
+	// 낮밤 서비스 초기화는 서버/클라 모두 해야 함
+	if (DayNightCycleService && !CachedDayNightConfig.IsNull())
+	{
+		DayNightCycleService->Initialize(
+			&InWorld,
+			CachedDayNightConfig.LoadSynchronous()
+		);
+	}
 	
 	//서버 권한 확인
 	//HasAuthority 를 사용하지 못하는 관계상, 클라이언트는 조기 종료.
@@ -53,12 +68,18 @@ void UERNWorldManagerSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	
 	//SpawnConfig 로드 -> StructureSpawnService에게 스폰 요청
 	UStructureSpawnConfigDataAsset* SpawnConfig = CachedSpawnConfig.LoadSynchronous();
-	if (SpawnConfig == nullptr || StructureSpawnService == nullptr)
+	if (SpawnConfig && StructureSpawnService)
 	{
-		return;
+		StructureSpawnService->SpawnStructures(&InWorld, SpawnConfig);
 	}
 	
-	StructureSpawnService->SpawnStructures(&InWorld, SpawnConfig);
+	
+	// 낮밤 시간 흐름 시작 명령
+	if (AERNGameState* GameState = InWorld.GetGameState<AERNGameState>())
+	{
+		GameState->StartDayNightCycle(CachedDayNightConfig->DayToNightDuration);
+	}
+	
 }
 
 // 스포너 ID에 대해 저장된 데이터가 있는지 확인해서 넣어주는 함수
