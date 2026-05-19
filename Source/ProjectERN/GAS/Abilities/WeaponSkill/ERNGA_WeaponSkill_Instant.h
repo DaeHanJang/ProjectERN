@@ -36,6 +36,14 @@ struct FERNWeaponSkillAreaDamageData
 	// 경직도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
 	float StaggerPower = 0.f;
+	
+	// 실제 대미지 적용 시작 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
+	float DamageStartTime = 0.f;
+
+	// 실제 대미지 적용 끝 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
+	float DamageEndTime = 0.f;
 
 	// 범위 판정 위치 지정
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
@@ -180,6 +188,8 @@ private:
 	// MeshComp별로 이번 AreaDamage 구간에서 이미 피격된 Actor 목록을 저장한다. (중복 타격 방지)
 	TMap<TWeakObjectPtr<USkeletalMeshComponent>, TSet<TWeakObjectPtr<AActor>>> HitActorsByMesh;
 	TMap<TWeakObjectPtr<USkeletalMeshComponent>, TWeakObjectPtr<UNiagaraComponent>> AreaEffectsByMesh;
+	// 누적 시간 저장용 Map
+	TMap<TWeakObjectPtr<USkeletalMeshComponent>, float> AreaDamageElapsedTimes;
 	
 	// 범위 대미지 작용 위치
 	FVector GetAreaDamageOrigin(USkeletalMeshComponent* MeshComp) const;
@@ -187,6 +197,9 @@ private:
 	void ApplyAreaDamage(USkeletalMeshComponent* MeshComp, const FVector& Origin);
 	// 범위 대미지 계산
 	float CalculateAreaDamage(AActor* OwnerActor) const;
+	// 범위 대미지 이펙트 취소
+	UFUNCTION(BlueprintCallable)
+	void CleanupAreaDamageEffects();
 	
 	// 투사체 소환 위치 적용
 	bool GetProjectileSpawnTransform(USkeletalMeshComponent* MeshComp, FTransform& OutTransform) const;

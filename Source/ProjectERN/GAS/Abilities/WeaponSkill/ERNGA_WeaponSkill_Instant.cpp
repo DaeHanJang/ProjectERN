@@ -35,6 +35,7 @@ void UERNGA_WeaponSkill_Instant::BeginAreaDamage(USkeletalMeshComponent* MeshCom
 	// 새 AreaDamage 구간이 시작되므로, 이전에 맞은 적 목록을 초기화한다.
 	// 이 구간 안에서는 HitActorsByMesh에 들어간 적에게 다시 데미지를 주지 않는다.
 	HitActorsByMesh.FindOrAdd(MeshComp).Empty();
+	AreaDamageElapsedTimes.Add(MeshComp, 0.f);
 
 	if (AreaDamageData.AreaEffect)
 	{
@@ -50,8 +51,7 @@ void UERNGA_WeaponSkill_Instant::BeginAreaDamage(USkeletalMeshComponent* MeshCom
 			+ OwnerActor->GetActorRightVector() * AreaDamageData.AreaEffectOffset.Y
 			+ OwnerActor->GetActorUpVector() * AreaDamageData.AreaEffectOffset.Z;
 
-		UNiagaraComponent* EffectComponent =
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		UNiagaraComponent* EffectComponent = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 				OwnerActor->GetWorld(),
 				AreaDamageData.AreaEffect,
 				EffectLocation,
@@ -72,6 +72,20 @@ void UERNGA_WeaponSkill_Instant::TickAreaDamage(USkeletalMeshComponent* MeshComp
 	if (!AreaDamageData.bUseAreaDamage || !MeshComp)
 	{
 		return;
+	}
+	
+	// 누적 시간 계산
+	float& ElapsedTime = AreaDamageElapsedTimes.FindOrAdd(MeshComp);
+	ElapsedTime += GetWorld() ? GetWorld()->GetDeltaSeconds() : 0.f;
+
+	const bool bUseDamageWindow = AreaDamageData.DamageEndTime > AreaDamageData.DamageStartTime;
+	if (bUseDamageWindow)
+	{
+		if (ElapsedTime < AreaDamageData.DamageStartTime ||
+			ElapsedTime > AreaDamageData.DamageEndTime)
+		{
+			return;
+		}
 	}
 
 	const FVector Origin = GetAreaDamageOrigin(MeshComp);
@@ -95,6 +109,7 @@ void UERNGA_WeaponSkill_Instant::EndAreaDamage(USkeletalMeshComponent* MeshComp)
 		
 		// 종료된 이펙트 참조는 더 이상 필요 없으므로 제거한다.
 		AreaEffectsByMesh.Remove(MeshComp);
+		AreaDamageElapsedTimes.Remove(MeshComp);
 	}
 	
 	// 이번 AreaDamage 구간의 피격 기록도 제거한다.
@@ -533,6 +548,26 @@ float UERNGA_WeaponSkill_Instant::CalculateAreaDamage(AActor* OwnerActor) const
 	const float CharacterAttackPower = GetCharacterAttackPower(OwnerActor);
 
 	return (WeaponDamage + CharacterAttackPower) * AreaDamageData.DamageMultiplier;
+}
+
+void UERNGA_WeaponSkill_Instant::CleanupAreaDamageEffects()
+{
+	for (auto& Pair : AreaEffectsByMesh)
+	{
+		UNiagaraComponent* EffectComponent = Pair.Value.Get();
+		if (!EffectComponent)
+		{
+			continue;
+		}
+
+		EffectComponent->Deactivate();
+
+		// 바로 끊고 싶으면 Destroy까지 호출
+		// EffectComponent->DestroyComponent();
+	}
+
+	AreaEffectsByMesh.Empty();
+	HitActorsByMesh.Empty();
 }
 
 float UERNGA_WeaponSkill_Instant::GetWeaponBaseDamage(AActor* OwnerActor) const
