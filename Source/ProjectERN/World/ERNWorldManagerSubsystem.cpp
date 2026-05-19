@@ -68,7 +68,7 @@ void UERNWorldManagerSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	
 	//SpawnConfig 로드 -> StructureSpawnService에게 스폰 요청
 	UStructureSpawnConfigDataAsset* SpawnConfig = CachedSpawnConfig.LoadSynchronous();
-	if (SpawnConfig || StructureSpawnService)
+	if (SpawnConfig && StructureSpawnService)
 	{
 		StructureSpawnService->SpawnStructures(&InWorld, SpawnConfig);
 	}
