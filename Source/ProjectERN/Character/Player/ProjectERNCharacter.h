@@ -313,4 +313,11 @@ private:
 	void Server_RequestRoll(FVector_NetQuantizeNormal RollDirection);
 	
 	// *** 멀티 환경에서 방향별 구르기 적용시키기 ***
+	
+public:
+	// 캐릭터 HeavyAttack 입력을 토글로 변경
+	bool TryEndActiveChannelingWeaponSkill();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_RequestEndActiveChannelingWeaponSkill();
 };

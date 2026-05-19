@@ -4,30 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GAS/Abilities/ERNGA_WeaponSkill.h"
+#include "GAS/Abilities/WeaponSkill/ERNWeaponSkillTypes.h"
 #include "ERNGA_WeaponSkill_Instant.generated.h"
 
 class AERNProjectileBase;
 class UNiagaraSystem;
 class UNiagaraComponent;
-
-// 범위 스킬 판정 위치를 정하는 Enum
-UENUM(BlueprintType)
-enum class EWeaponSkillAreaOriginMode : uint8
-{
-	CharacterOffset UMETA(DisplayName = "Character Offset"),
-	MeshSocket UMETA(DisplayName = "Mesh Socket"),
-	WeaponHitbox UMETA(DisplayName = "Weapon Hitbox")
-};
-
-// 투사체 소환 위치를 정하는 Enum
-UENUM(BlueprintType)
-enum class EWeaponSkillProjectileSpawnSource : uint8
-{
-	CharacterSocket UMETA(DisplayName = "Character Socket"),
-	WeaponMuzzle UMETA(DisplayName = "Weapon Muzzle"),
-	WeaponHitbox UMETA(DisplayName = "Weapon Hitbox"),
-	CharacterForward UMETA(DisplayName = "Character Forward")
-};
 
 // 선택에 따라 노출될 변수 조절하기 위한 구조체(범위 공격)
 USTRUCT(BlueprintType)

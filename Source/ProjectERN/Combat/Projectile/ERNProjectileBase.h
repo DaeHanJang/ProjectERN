@@ -83,15 +83,19 @@ public:
 	UNiagaraComponent* TrailEffect;
 
 	// 착탄 시 나이아가라 이펙트
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Impact")
 	UNiagaraSystem* ImpactEffect;
 
+	// 착탄 나이아가라 이펙트 스케일
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Impact")
+	FVector ImpactEffectScale = FVector::OneVector;
+	
 	// 착탄 시 사운드
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Impact")
 	USoundBase* ImpactSound;
 
 	// 사운드 감쇠 설정
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Impact")
 	USoundAttenuation* ImpactSoundAttenuation;
 
 	// 비행 중 루프 사운드
