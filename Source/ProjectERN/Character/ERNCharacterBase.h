@@ -14,6 +14,16 @@ class UGameplayAbility;
 class UGameplayEffect;
 class UAnimMontage;
 
+// 히트 리액션 방향 (수평면 4사분면)
+UENUM(BlueprintType)
+enum class EHitDirection : uint8
+{
+	Front	UMETA(DisplayName = "Front"),
+	Back	UMETA(DisplayName = "Back"),
+	Left	UMETA(DisplayName = "Left"),
+	Right	UMETA(DisplayName = "Right")
+};
+
 UCLASS(Abstract)
 class PROJECTERN_API AERNCharacterBase : public ACharacter, public IAbilitySystemInterface
 {
@@ -76,25 +86,48 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Character")
 	bool IsDead() const { return bIsDead; }
 
-	// 경직 시스템
+	// 경직 시스템 — HitOrigin은 공격자/투사체/폭발 중심 등 데미지 발원 위치 (ZeroVector면 방향 계산 스킵하고 Front fallback)
 	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void TryApplyStagger(float IncomingStaggerPower);
+	void TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin = FVector::ZeroVector);
 
 	// 에디터에서 GE_Stagger 블루프린트 연결
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Stagger")
 	TSubclassOf<UGameplayEffect> StaggerEffect;
 
-	// 에디터에서 히트리액션 몽타주 연결
+	// 기본 히트리액션 몽타주 (4방향 몽타주가 비어 있을 때 fallback)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Stagger")
 	TObjectPtr<UAnimMontage> HitReactionMontage;
+
+	// 방향별 히트리액션 몽타주 (앞/뒤/좌/우 — 비어 있으면 HitReactionMontage로 fallback)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Stagger")
+	TObjectPtr<UAnimMontage> HitReactionMontage_Front;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Stagger")
+	TObjectPtr<UAnimMontage> HitReactionMontage_Back;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Stagger")
+	TObjectPtr<UAnimMontage> HitReactionMontage_Left;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Stagger")
+	TObjectPtr<UAnimMontage> HitReactionMontage_Right;
+
+	// 다운 몽타주 (StaggerPower >= DownResistance 일 때 재생)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Stagger")
+	TObjectPtr<UAnimMontage> DownMontage;
 
 	// 사망 몽타주 (적/플레이어 공통)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat")
 	TObjectPtr<UAnimMontage> DeathMontage;
 
-	// 히트리액션 몽타주 재생 (모든 클라이언트에 동기화)
+	// 히트리액션 몽타주 재생 (모든 클라이언트에 동기화) — 재생할 몽타주를 인자로 전달
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayHitReaction();
+	void Multicast_PlayHitReaction(UAnimMontage* Montage);
+
+protected:
+	// 공격자(HitOrigin) → 내 캐릭터 기준 4방향 판별 (Z 무시, 수평면)
+	EHitDirection ComputeHitDirection(const FVector& HitOrigin) const;
+
+public:
 
 	// 사망 몽타주 재생 (모든 클라이언트에 동기화)
 	UFUNCTION(NetMulticast, Reliable)

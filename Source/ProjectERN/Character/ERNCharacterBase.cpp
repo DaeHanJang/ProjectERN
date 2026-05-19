@@ -241,7 +241,7 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 	return ActualDamage;
 }
 
-void AERNCharacterBase::TryApplyStagger(float IncomingStaggerPower)
+void AERNCharacterBase::TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin)
 {
 	if (!AbilitySystemComponent || !AttributeSet)
 	{
@@ -253,7 +253,7 @@ void AERNCharacterBase::TryApplyStagger(float IncomingStaggerPower)
 	{
 		return;
 	}
-	
+
 	// 슈퍼아머 또는 무적 프레임이면 경직 무시
 	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Immunity_Damage) ||
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_SuperArmor) ||
@@ -276,21 +276,75 @@ void AERNCharacterBase::TryApplyStagger(float IncomingStaggerPower)
 			StaggerEffect->GetDefaultObject<UGameplayEffect>(), 1.f, Context);
 	}
 
-	// 히트리액션 몽타주 재생 (Multicast로 모든 클라이언트에 동기화)
-	if (HitReactionMontage)
+	// 재생할 몽타주 결정: 다운 임계값 초과면 DownMontage, 아니면 방향별 몽타주
+	UAnimMontage* MontageToPlay = nullptr;
+
+	if (IncomingStaggerPower >= AttributeSet->GetDownResistance() && DownMontage)
 	{
-		Multicast_PlayHitReaction();
+		MontageToPlay = DownMontage;
+	}
+	else
+	{
+		const EHitDirection Dir = ComputeHitDirection(HitOrigin);
+		switch (Dir)
+		{
+			case EHitDirection::Front: MontageToPlay = HitReactionMontage_Front; break;
+			case EHitDirection::Back:  MontageToPlay = HitReactionMontage_Back;  break;
+			case EHitDirection::Left:  MontageToPlay = HitReactionMontage_Left;  break;
+			case EHitDirection::Right: MontageToPlay = HitReactionMontage_Right; break;
+		}
+	}
+
+	// 방향별 / 다운 몽타주가 비어 있으면 기본 HitReactionMontage로 fallback
+	if (!MontageToPlay)
+	{
+		MontageToPlay = HitReactionMontage;
+	}
+
+	if (MontageToPlay)
+	{
+		Multicast_PlayHitReaction(MontageToPlay);
 	}
 }
 
-void AERNCharacterBase::Multicast_PlayHitReaction_Implementation()
+EHitDirection AERNCharacterBase::ComputeHitDirection(const FVector& HitOrigin) const
 {
-	if (!HitReactionMontage || !GetMesh()) return;
+	// HitOrigin이 ZeroVector면 방향 정보 없음 → Front fallback
+	if (HitOrigin.IsNearlyZero())
+	{
+		return EHitDirection::Front;
+	}
+
+	// 공격자 방향 벡터 (Z 무시, 수평면)
+	FVector ToAttacker = HitOrigin - GetActorLocation();
+	ToAttacker.Z = 0.f;
+	if (!ToAttacker.Normalize())
+	{
+		return EHitDirection::Front;
+	}
+
+	// 내 캐릭터 Forward/Right도 수평면 투영
+	const FVector Forward = FVector::VectorPlaneProject(GetActorForwardVector(), FVector::UpVector).GetSafeNormal();
+	const FVector Right   = FVector::VectorPlaneProject(GetActorRightVector(),   FVector::UpVector).GetSafeNormal();
+
+	const float DotF = FVector::DotProduct(ToAttacker, Forward);
+	const float DotR = FVector::DotProduct(ToAttacker, Right);
+
+	if (FMath::Abs(DotF) > FMath::Abs(DotR))
+	{
+		return DotF > 0.f ? EHitDirection::Front : EHitDirection::Back;
+	}
+	return DotR > 0.f ? EHitDirection::Right : EHitDirection::Left;
+}
+
+void AERNCharacterBase::Multicast_PlayHitReaction_Implementation(UAnimMontage* Montage)
+{
+	if (!Montage || !GetMesh()) return;
 
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance)
 	{
-		AnimInstance->Montage_Play(HitReactionMontage);
+		AnimInstance->Montage_Play(Montage);
 	}
 }
 
