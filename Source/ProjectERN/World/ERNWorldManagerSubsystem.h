@@ -7,10 +7,12 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "ERNWorldManagerSubsystem.generated.h"
 
-
-struct FERNWorldTableRow;
 class UStructureSpawnService;
 class UStructureSpawnConfigDataAsset;
+class UERNDayNightCycleConfigDataAsset;
+class UERNDayNightCycleService;
+
+struct FERNWorldTableRow;
 
 /**
  * 
@@ -42,7 +44,17 @@ private:
 	UPROPERTY()
 	TObjectPtr<UStructureSpawnService> StructureSpawnService;
 	
+	// 낮밤 설정 데이터 에셋
+	UPROPERTY()
+	TSoftObjectPtr<UERNDayNightCycleConfigDataAsset> CachedDayNightConfig;
+	
+	// 낮밤 시스템
+	UPROPERTY()
+	TObjectPtr<UERNDayNightCycleService> DayNightCycleService;
+	
 	// 몹 스포너 데이터 저장소
 	UPROPERTY()
 	TMap<FName, FSpawnerMobRuntimeStates> SpawnerMobStates;
+	
+	
 };
