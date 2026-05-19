@@ -99,6 +99,11 @@ public:
 	FGameplayAttributeData StaggerResistance;
 	ATTRIBUTE_ACCESSORS(UERNAttributeSet, StaggerResistance)
 
+	// Down Resistance — 이 값 이상의 StaggerPower 공격은 다운 몽타주 재생 (StaggerResistance < DownResistance)
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_DownResistance)
+	FGameplayAttributeData DownResistance;
+	ATTRIBUTE_ACCESSORS(UERNAttributeSet, DownResistance)
+
 protected:
 	UFUNCTION()
 	virtual void OnRep_Health(const FGameplayAttributeData& OldHealth);
@@ -144,4 +149,7 @@ protected:
 
 	UFUNCTION()
 	virtual void OnRep_StaggerResistance(const FGameplayAttributeData& OldStaggerResistance);
+
+	UFUNCTION()
+	virtual void OnRep_DownResistance(const FGameplayAttributeData& OldDownResistance);
 };

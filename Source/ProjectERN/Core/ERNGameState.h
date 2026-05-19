@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
+#include "World/Data/ERNDayNightCycleState.h"
 #include "ERNGameState.generated.h"
 
 class ULevelSequence;
@@ -19,6 +20,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCountdownChanged, int32, Remainin
 
 // 카운트다운 완료 (이동 시작) 시 호출되는 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCountdownFinished);
+
+// 낮,밤 변화시 호출되는 델리게이트
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnDayNightCycleStateChanged, const FERNDayNightCycleState&);
 
 UCLASS()
 class PROJECTERN_API AERNGameState : public AGameStateBase
@@ -111,4 +115,21 @@ protected:
 	// PlayerArray 리플리케이션 콜백
 	virtual void AddPlayerState(APlayerState* PlayerState) override;
 	virtual void RemovePlayerState(APlayerState* PlayerState) override;
+	
+#pragma region DayNightCycle
+public:
+	const FERNDayNightCycleState& GetDayNightCycleState() const { return DayNightCycleState; }
+	void StartDayNightCycle(float InDuration);
+	void StopDayNightCycle();
+	
+	FOnDayNightCycleStateChanged OnDayNightCycleStateChanged;
+	
+protected:
+	UFUNCTION()
+	void OnRep_DayNightCycleState();
+	
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_DayNightCycleState)
+	FERNDayNightCycleState DayNightCycleState;
+#pragma endregion DayNightCycle
 };

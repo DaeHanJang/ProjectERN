@@ -115,7 +115,8 @@ void AERNEnemyCharacter::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AA
 
 	FDamageEvent DamageEvent;
 	Player->TakeDamage(DamageToApply, DamageEvent, GetController(), this);
-	Player->TryApplyStagger(StaggerPowerToApply);
+	// 적 본체 위치를 HitOrigin으로 전달 → 플레이어가 적 방향 기준 4방향 경직 재생
+	Player->TryApplyStagger(StaggerPowerToApply, GetActorLocation());
 }
 
 float AERNEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
