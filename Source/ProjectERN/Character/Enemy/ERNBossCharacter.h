@@ -100,6 +100,10 @@ protected:
 
 	void PlayPhaseTransitionMontage();
 
+	// 페이즈 전환 몽타주 클라이언트 동기화
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayPhaseTransitionMontage(UAnimMontage* Montage);
+
 	// 인트로 컷신 종료 콜백
 	UFUNCTION()
 	void OnIntroCutsceneFinished();
