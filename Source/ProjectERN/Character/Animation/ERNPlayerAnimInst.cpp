@@ -10,6 +10,7 @@
 #include "GAS/ERNGameplayTags.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
 #include "Character/ERNCharacterBase.h"
+#include "Character/Player/ProjectERNCharacter.h"
 
 void UERNPlayerAnimInst::NativeUpdateAnimation(float DeltaSeconds)
 {
@@ -37,10 +38,25 @@ void UERNPlayerAnimInst::NativeUpdateAnimation(float DeltaSeconds)
 	
 	// 공중 확인 (점프/낙하)
 	bIsInAir = MovementComp->IsFalling();
-	
+
 	// 가속 확인
 	bIsAccelerating = MovementComp->GetCurrentAcceleration().Size() > 0.f;
-	
+
+	// 인트로 매달림 중: 위치 델타 기반 Speed 계산을 우회 (걷기 애니메이션 방지)
+	if (AProjectERNCharacter* ProjChar = Cast<AProjectERNCharacter>(Char))
+	{
+		if (ProjChar->bIsHangingFromBird)
+		{
+			Speed = 0.f;
+			Velocity = FVector::ZeroVector;
+			Direction = 0.f;
+			bIsAccelerating = false;
+			bIsInAir = false;
+			bPreviousLocationValid = false;
+			return;
+		}
+	}
+
 	// 컷신 재생 중인지 확인
 	bool bInCutscene = false;
 	if (UGameInstance* GI = Cast<UGameInstance>(Char->GetWorld()->GetGameInstance()))

@@ -179,6 +179,10 @@ public:
 	UFUNCTION(Client, Unreliable)
 	void Client_PlayCameraShake(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale);
 
+	// 화면 페이드 인 (검은화면 → 게임화면, 인트로 시퀀스용)
+	UFUNCTION(Client, Reliable)
+	void Client_StartFadeIn(float Duration);
+
 private:
 	// 보스 체력바 위젯 인스턴스
 	UPROPERTY(Transient)
