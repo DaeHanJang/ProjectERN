@@ -11,6 +11,7 @@
  */
 
 class UStructureSpawnConfigDataAsset;
+class UERNDayNightCycleConfigDataAsset;
 
 USTRUCT(BlueprintType)
 struct PROJECTERN_API FERNWorldTableRow : public FTableRowBase
@@ -23,4 +24,7 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UStructureSpawnConfigDataAsset> SpawnConfig;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSoftObjectPtr<UERNDayNightCycleConfigDataAsset> DayNightConfig;
 };

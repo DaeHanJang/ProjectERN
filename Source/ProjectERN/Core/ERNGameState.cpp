@@ -18,6 +18,9 @@ void AERNGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 
 	DOREPLIFETIME(AERNGameState, CountdownTime);
 	DOREPLIFETIME(AERNGameState, bIsCountingDown);
+	
+	//낮밤 DayNight 관련
+	DOREPLIFETIME(AERNGameState, DayNightCycleState);
 }
 
 void AERNGameState::AddPlayerState(APlayerState* PlayerState)
@@ -36,6 +39,40 @@ void AERNGameState::RemovePlayerState(APlayerState* PlayerState)
 	// 플레이어가 제거되면 델리게이트 브로드캐스트
 	UE_LOG(LogTemp, Log, TEXT("Player removed from GameState. Total players: %d"), PlayerArray.Num());
 	OnPlayerArrayChanged.Broadcast();
+}
+
+// 낮,밤 변화 관련 함수
+void AERNGameState::StartDayNightCycle(float InDuration)
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	DayNightCycleState.bRunning = true;
+	DayNightCycleState.Duration = FMath::Max(InDuration, 0.01f);
+	DayNightCycleState.StartServerWorldTimeSeconds = GetServerWorldTimeSeconds();
+	DayNightCycleState.Revision++;
+	
+	OnRep_DayNightCycleState();
+}
+
+void AERNGameState::StopDayNightCycle()
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	DayNightCycleState.bRunning = false;
+	DayNightCycleState.Revision++;
+	
+	OnRep_DayNightCycleState();
+}
+
+void AERNGameState::OnRep_DayNightCycleState()
+{
+	OnDayNightCycleStateChanged.Broadcast(DayNightCycleState);
 }
 
 void AERNGameState::CheckAllPlayersReady()
