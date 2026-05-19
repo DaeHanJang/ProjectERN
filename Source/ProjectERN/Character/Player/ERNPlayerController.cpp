@@ -466,6 +466,14 @@ void AERNPlayerController::Client_PlayCameraShake_Implementation(TSubclassOf<UCa
 	PlayerCameraManager->StartCameraShake(ShakeClass, Scale);
 }
 
+void AERNPlayerController::Client_StartFadeIn_Implementation(float Duration)
+{
+	if (!PlayerCameraManager) return;
+
+	// 1.0(검은화면) → 0.0(투명) 페이드. 인트로 시작 직전에 미리 검은 화면이어야 자연스러움
+	PlayerCameraManager->StartCameraFade(1.f, 0.f, Duration, FLinearColor::Black, false, false);
+}
+
 void AERNPlayerController::Client_ShowBossHealthBar_Implementation(AERNBossCharacter* Boss)
 {
 	if (!Boss || !BossHealthBarWidgetClass) return;
