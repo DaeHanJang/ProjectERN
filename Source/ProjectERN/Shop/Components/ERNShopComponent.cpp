@@ -73,6 +73,7 @@ void UERNShopComponent::AcquireProvider()
 
 void UERNShopComponent::OpenShop(EShopType ShopType, AActor* TargetNPC)
 {
+    CurrentShopType = ShopType;
     CurrentTargetNPC = TargetNPC;
     bIsShopOpen = true;
 
@@ -109,6 +110,11 @@ TArray<FERNShopItemData> UERNShopComponent::GetCurrentShopItems() const
 
 void UERNShopComponent::Server_RequestShopData_Implementation(EShopType ShopType, AActor* TargetNPC)
 {
+    // 서버 측 컴포넌트 상태 동기화
+    CurrentShopType = ShopType;
+    CurrentTargetNPC = TargetNPC;
+    bIsShopOpen = true;
+
     UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent:Server] 클라이언트로부터 데이터 요청 수신: %d"),
         (int32)ShopType);
 
@@ -236,16 +242,10 @@ void UERNShopComponent::OnPurchaseComplete(const FERNShopTransaction& Transactio
             return;
         }
 
-        // 1. 서버 측에서 구매 성공 시 인벤토리에 아이템 추가 (안전한 처리)
-        if (Transaction.Result == EERNTransactionResult::Success)
-        {
-            if (UERNInventoryComponent* InvComp = GetOwner()->FindComponentByClass<UERNInventoryComponent>())
-            {
-                //InvComp->Server_AddItem(Transaction.ItemID, Transaction.Quantity);
-            }
-        }
+        // 인벤토리 아이템 추가는 Provider(RequestPurchase_Implementation)에서 이미 처리됨
+        // → FInventoryList::AddItem() 직접 호출 + OnInventorySlotChanged 브로드캐스트
 
-        // 2. 결과를 클라이언트에게 전송 (Client RPC)
+        // 결과를 클라이언트에게 전송 (Client RPC)
         // 호스트 플레이어(Listen Server)인 경우 Client RPC가 즉시 로컬에서 실행되어 UI를 갱신합니다.
         Client_PurchaseResult(Transaction);
     }

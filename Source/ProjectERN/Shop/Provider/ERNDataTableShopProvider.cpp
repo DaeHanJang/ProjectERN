@@ -170,6 +170,12 @@ void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransacti
             return;
         }
 
+        // 인벤토리 UI 갱신 (변경된 슬롯마다 델리게이트 브로드캐스트)
+        for (const FInventoryItemEntry& Entry : ChangedEntries)
+        {
+            InvComp->OnInventorySlotChanged.Broadcast(Entry);
+        }
+
         // 4. 재고 차감 (무제한이 아닐 경우)
         if (TargetItem->StockCount != -1)
         {
