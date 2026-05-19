@@ -138,6 +138,53 @@ void UERNGA_WeaponSkill_Instant::FireProjectileFromNotify(USkeletalMeshComponent
 		SpawnParams);
 }
 
+void UERNGA_WeaponSkill_Instant::ExplodeFromNotify(USkeletalMeshComponent* MeshComp)
+{
+	if (!ExplosionData.bUseExplosion || !MeshComp)
+	{
+		return;
+	}
+
+	AActor* OwnerActor = MeshComp->GetOwner();
+	if (!OwnerActor)
+	{
+		return;
+	}
+
+	FTransform ExplosionTransform;
+	if (!GetExplosionTransform(MeshComp, ExplosionTransform))
+	{
+		return;
+	}
+
+	UWorld* World = OwnerActor->GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	if (ExplosionData.ExplosionEffect && World->GetNetMode() != NM_DedicatedServer)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World,
+			ExplosionData.ExplosionEffect,
+			ExplosionTransform.GetLocation(),
+			ExplosionTransform.GetRotation().Rotator(),
+			ExplosionData.EffectScale,
+			true,
+			true,
+			ENCPoolMethod::None,
+			true);
+	}
+
+	if (!OwnerActor->HasAuthority())
+	{
+		return;
+	}
+
+	ApplyExplosionDamage(MeshComp, ExplosionTransform.GetLocation());
+}
+
 FVector UERNGA_WeaponSkill_Instant::GetAreaDamageOrigin(USkeletalMeshComponent* MeshComp) const
 {
 	if (!MeshComp)
@@ -253,6 +300,143 @@ bool UERNGA_WeaponSkill_Instant::GetProjectileSpawnTransform(USkeletalMeshCompon
 		OutTransform.TransformPosition(ProjectileData.SpawnOffset));
 
 	return true;
+}
+
+bool UERNGA_WeaponSkill_Instant::GetExplosionTransform(USkeletalMeshComponent* MeshComp, FTransform& OutTransform) const
+{
+	if (!MeshComp)
+	{
+		return false;
+	}
+
+	AActor* OwnerActor = MeshComp->GetOwner();
+	if (!OwnerActor)
+	{
+		return false;
+	}
+
+	OutTransform = FTransform(
+		OwnerActor->GetActorRotation(),
+		OwnerActor->GetActorLocation(),
+		FVector::OneVector);
+
+	if (ExplosionData.OriginMode == EWeaponSkillAreaOriginMode::WeaponHitbox)
+	{
+		if (const UERNEquipmentComponent* Equipment =
+			OwnerActor->FindComponentByClass<UERNEquipmentComponent>())
+		{
+			if (const AERNMeleeWeapon* MeleeWeapon =
+				Cast<AERNMeleeWeapon>(Equipment->CurrentWeapon))
+			{
+				if (const UBoxComponent* Hitbox = MeleeWeapon->GetHitboxComponent())
+				{
+					OutTransform = Hitbox->GetComponentTransform();
+				}
+			}
+		}
+	}
+	else if (ExplosionData.OriginMode == EWeaponSkillAreaOriginMode::MeshSocket)
+	{
+		if (ExplosionData.MeshSocketName != NAME_None &&
+			MeshComp->DoesSocketExist(ExplosionData.MeshSocketName))
+		{
+			OutTransform = MeshComp->GetSocketTransform(ExplosionData.MeshSocketName);
+		}
+	}
+
+	OutTransform.SetLocation(OutTransform.TransformPosition(ExplosionData.OriginOffset));
+	return true;
+}
+
+float UERNGA_WeaponSkill_Instant::CalculateExplosionDamage(AActor* OwnerActor) const
+{
+	const float CharacterAttackPower = GetCharacterAttackPower(OwnerActor);
+
+	return (ExplosionData.BaseDamage + CharacterAttackPower) * ExplosionData.DamageMultiplier;
+}
+
+void UERNGA_WeaponSkill_Instant::ApplyExplosionDamage(USkeletalMeshComponent* MeshComp, const FVector& Origin)
+{
+	AActor* OwnerActor = MeshComp ? MeshComp->GetOwner() : nullptr;
+	if (!OwnerActor || !OwnerActor->HasAuthority())
+	{
+		return;
+	}
+
+	UWorld* World = OwnerActor->GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	if (ExplosionData.bDrawDebug)
+	{
+		DrawDebugSphere(
+			World,
+			Origin,
+			ExplosionData.DamageRadius,
+			24,
+			FColor::Orange,
+			false,
+			ExplosionData.DebugDrawTime,
+			0,
+			2.f);
+	}
+
+	TArray<FOverlapResult> OverlapResults;
+
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(OwnerActor);
+
+	const bool bHit = World->OverlapMultiByObjectType(
+		OverlapResults,
+		Origin,
+		FQuat::Identity,
+		ObjectQueryParams,
+		FCollisionShape::MakeSphere(ExplosionData.DamageRadius),
+		QueryParams);
+
+	if (!bHit)
+	{
+		return;
+	}
+
+	AController* InstigatorController = nullptr;
+	if (ACharacter* OwnerCharacter = Cast<ACharacter>(OwnerActor))
+	{
+		InstigatorController = OwnerCharacter->GetController();
+	}
+
+	const float DamageToApply = CalculateExplosionDamage(OwnerActor);
+
+	TSet<TWeakObjectPtr<AActor>> DamagedActors;
+
+	for (const FOverlapResult& Result : OverlapResults)
+	{
+		AActor* HitActor = Result.GetActor();
+		if (!HitActor || HitActor == OwnerActor || DamagedActors.Contains(HitActor))
+		{
+			continue;
+		}
+
+		AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(HitActor);
+		if (!Enemy)
+		{
+			continue;
+		}
+
+		DamagedActors.Add(HitActor);
+
+		Enemy->TakeDamage(DamageToApply, FDamageEvent(), InstigatorController, OwnerActor);
+
+		if (ExplosionData.StaggerPower > 0.f)
+		{
+			Enemy->TryApplyStagger(ExplosionData.StaggerPower);
+		}
+	}
 }
 
 void UERNGA_WeaponSkill_Instant::ApplyAreaDamage(USkeletalMeshComponent* MeshComp, const FVector& Origin)

@@ -100,9 +100,50 @@ struct FERNWeaponSkillProjectileData
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Projectile", meta=(EditCondition="bUseProjectile", EditConditionHides))
 	bool bUseSourceRotation = false;
 };
-/**
- * 
- */
+
+// 선택에 따라 노출될 변수 조절하기 위한 구조체(범위 폭발)
+USTRUCT(BlueprintType)
+struct FERNWeaponSkillExplosionData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion")
+	bool bUseExplosion = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
+	float BaseDamage = 50.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
+	float DamageMultiplier = 1.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
+	float DamageRadius = 300.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
+	float StaggerPower = 0.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
+	EWeaponSkillAreaOriginMode OriginMode = EWeaponSkillAreaOriginMode::CharacterOffset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion && OriginMode == EWeaponSkillAreaOriginMode::MeshSocket", EditConditionHides))
+	FName MeshSocketName = FName(TEXT("hand_r"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
+	FVector OriginOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion|VFX", meta=(EditCondition="bUseExplosion", EditConditionHides))
+	TObjectPtr<UNiagaraSystem> ExplosionEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion|VFX", meta=(EditCondition="bUseExplosion", EditConditionHides))
+	FVector EffectScale = FVector::OneVector;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion|Debug", meta=(EditCondition="bUseExplosion", EditConditionHides))
+	bool bDrawDebug = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion|Debug", meta=(EditCondition="bUseExplosion && bDrawDebug", EditConditionHides))
+	float DebugDrawTime = 0.5f;
+};
+
 UCLASS()
 class PROJECTERN_API UERNGA_WeaponSkill_Instant : public UERNGA_WeaponSkill
 {
@@ -118,6 +159,9 @@ public:
 
 	// Notify 투사체 발사
 	void FireProjectileFromNotify(USkeletalMeshComponent* MeshComp);
+	
+	// Explode 적용
+	void ExplodeFromNotify(USkeletalMeshComponent* MeshComp);
 
 protected:
 	// 범위 대미지 데이터
@@ -127,19 +171,34 @@ protected:
 	// 투사체 데이터
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="WeaponSkill|Projectile")
 	FERNWeaponSkillProjectileData ProjectileData;
+	
+	// 폭발 데이터
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="WeaponSkill|Explosion")
+	FERNWeaponSkillExplosionData ExplosionData;
 
 private:
 	// MeshComp별로 이번 AreaDamage 구간에서 이미 피격된 Actor 목록을 저장한다. (중복 타격 방지)
 	TMap<TWeakObjectPtr<USkeletalMeshComponent>, TSet<TWeakObjectPtr<AActor>>> HitActorsByMesh;
 	TMap<TWeakObjectPtr<USkeletalMeshComponent>, TWeakObjectPtr<UNiagaraComponent>> AreaEffectsByMesh;
-
+	
+	// 범위 대미지 작용 위치
 	FVector GetAreaDamageOrigin(USkeletalMeshComponent* MeshComp) const;
-	bool GetProjectileSpawnTransform(USkeletalMeshComponent* MeshComp, FTransform& OutTransform) const;
-
 	// 범위 대미지 적용
 	void ApplyAreaDamage(USkeletalMeshComponent* MeshComp, const FVector& Origin);
 	// 범위 대미지 계산
 	float CalculateAreaDamage(AActor* OwnerActor) const;
+	
+	// 투사체 소환 위치 적용
+	bool GetProjectileSpawnTransform(USkeletalMeshComponent* MeshComp, FTransform& OutTransform) const;
+	// 투사체는 투사체 자체에서 대미지와 폭발 적용
+	
+	// 폭발 위치 적용
+	bool GetExplosionTransform(USkeletalMeshComponent* MeshComp, FTransform& OutTransform) const;
+	// 폭발 대미지 계산
+	float CalculateExplosionDamage(AActor* OwnerActor) const;
+	// 폭발 대미지 적용
+	void ApplyExplosionDamage(USkeletalMeshComponent* MeshComp, const FVector& Origin);
+	
 	// 무기 공격력 받아오기
 	float GetWeaponBaseDamage(AActor* OwnerActor) const;
 	// 캐릭터 공격력 받아오기
