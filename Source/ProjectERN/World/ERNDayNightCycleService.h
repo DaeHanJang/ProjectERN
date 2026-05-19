@@ -43,6 +43,8 @@ private:
 	//GameState 찾고 상태 변경 델리게이트 바인딩
 	void BindGameState();
 	void UnbindGameState();
+	void TryBindGameStateAndSync();
+	
 	
 	//GameState의 낮밤 상태가 변경되었을 때 호출되는 콜백
 	//받은 상태를 SyncFromState()로 넘겨 서비스 상태에 반영
@@ -78,4 +80,6 @@ private:
 	
 	bool bInitialized = false;
 	bool bRunning = false;
+	
+	FTimerHandle GameStateBindRetryTimerHandle;
 };

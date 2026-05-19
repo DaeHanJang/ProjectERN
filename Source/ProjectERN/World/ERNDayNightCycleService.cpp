@@ -45,16 +45,28 @@ void UERNDayNightCycleService::Initialize(UWorld* InWorld, UERNDayNightCycleConf
 	Config = InConfig;
 	
 	CacheLightingActors();
-	BindGameState();
 	
-	if (const AERNGameState* GameState = BoundGameState.Get())
+	TryBindGameStateAndSync();
+
+	if (BoundGameState.IsValid() == false)
 	{
-		SyncFromState(GameState->GetDayNightCycleState());
+		World->GetTimerManager().SetTimer(
+			GameStateBindRetryTimerHandle,
+			this,
+			&UERNDayNightCycleService::TryBindGameStateAndSync,
+			0.1f,
+			true
+		);
 	}
 }
 
 void UERNDayNightCycleService::Shutdown()
 {
+	if (World.IsValid())
+	{
+		World->GetTimerManager().ClearTimer(GameStateBindRetryTimerHandle);
+	}
+	
 	SetTickableTickType(ETickableTickType::Never);
 
 	UnbindGameState();
@@ -145,6 +157,21 @@ void UERNDayNightCycleService::UnbindGameState()
 	BoundGameState.Reset();
 }
 
+void UERNDayNightCycleService::TryBindGameStateAndSync()
+{
+	BindGameState();
+
+	if (const AERNGameState* GameState = BoundGameState.Get())
+	{
+		if (World.IsValid())
+		{
+			World->GetTimerManager().ClearTimer(GameStateBindRetryTimerHandle);
+		}
+
+		SyncFromState(GameState->GetDayNightCycleState());
+	}
+}
+
 void UERNDayNightCycleService::HandleDayNightCycleStateChanged(const FERNDayNightCycleState& State)
 {
 	SyncFromState(State);
@@ -226,6 +253,12 @@ void UERNDayNightCycleService::CacheLightingActors()
 
 void UERNDayNightCycleService::ApplyLighting(float Alpha)
 {
+	// 클라이언트 타이밍상 수집하지 못한 내용이 있다면 재수집 시도
+	if (SunLight.IsValid() == false || SkyLight.IsValid() == false)
+	{
+		CacheLightingActors();
+	}
+	
 	// 태양광 조절
 	if (SunLight.IsValid() == false)
 	{
