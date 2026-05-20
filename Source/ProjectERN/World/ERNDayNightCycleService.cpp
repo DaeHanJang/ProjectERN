@@ -219,7 +219,7 @@ void UERNDayNightCycleService::SyncFromState(const FERNDayNightCycleState& State
 
 void UERNDayNightCycleService::CacheLightingActors()
 {
-	if (World.IsValid() == false)
+	if (World.Get() == nullptr)
 	{
 		UE_LOG(LogTemp,Warning,TEXT("CacheLightingActors() World is not valid"));
 		return;
