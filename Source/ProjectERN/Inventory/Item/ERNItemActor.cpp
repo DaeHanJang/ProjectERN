@@ -82,11 +82,11 @@ void AERNItemActor::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& 
 
 void AERNItemActor::Interact_Implementation(APlayerController* PlayerController)
 {
-	if (!HasAuthority())
+	if (!HasAuthority() || !PlayerController)
 	{
 		return;
 	}
-	if (!PlayerController)
+	if (!CanBeInteractedBy(PlayerController))
 	{
 		return;
 	}
@@ -101,6 +101,7 @@ void AERNItemActor::Interact_Implementation(APlayerController* PlayerController)
 	{
 		InventoryComponent->Server_AddItem(this);
 	}
+	
 	if (PickupSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, PickupSound, GetActorLocation());
@@ -114,6 +115,19 @@ bool AERNItemActor::CanInteract_Implementation() const
 
 void AERNItemActor::ActivateInteract_Implementation() const
 {
+	if (!GetWorld())
+	{
+		return;
+	}
+	
+	if (const APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (!CanBeInteractedBy(PC))
+		{
+			return;
+		}
+	}
+	
 	if (PromptComponent)
 	{
 		PromptComponent->SetVisibility(true);
@@ -159,6 +173,40 @@ void AERNItemActor::ApplyItemDataAsset(const UItemDataAssetBase* DataAsset)
 	SetEffect();
 	// Apply Sound
 	SetSound(DataAsset);
+}
+
+bool AERNItemActor::CanBeInteractedBy(const APlayerController* PC) const
+{
+	return !GetOwner() || GetOwner() == PC;
+}
+
+void AERNItemActor::UpdateOwnerOnlyVisibility() const
+{
+	const bool bOwnerOnly = GetOwner() != nullptr;
+	if (!bOwnerOnly)
+	{
+		return;
+	}
+	
+	const APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	const bool bVisibleToLocalPlayer = CanBeInteractedBy(PC);
+	
+	if (StaticMesh)
+	{
+		StaticMesh->SetVisibility(bVisibleToLocalPlayer, true);
+	}
+	if (SkeletalMesh)
+	{
+		SkeletalMesh->SetVisibility(bVisibleToLocalPlayer, true);
+	}
+	if (EffectComponent)
+	{
+		EffectComponent->SetVisibility(bVisibleToLocalPlayer, true);
+	}
+	if (PromptComponent)
+	{
+		PromptComponent->SetVisibility(false);
+	}
 }
 
 UItemManagerSubsystem* AERNItemActor::GetItemManager() const

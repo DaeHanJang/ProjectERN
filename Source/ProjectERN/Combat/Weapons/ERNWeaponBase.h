@@ -47,18 +47,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon States")
 	FItemRuntimeState ItemRuntimeState;
 	
-	// 무기 스탯
+	// 무기 공격력
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
 	float LightAttackDamage = 10.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
-	float HeavyAttackDamage = 20.0f;
-
+	// 무기 강인도
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
 	float LightAttackStaggerPower = 10.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")
-	float HeavyAttackStaggerPower = 25.f;
 	
 	// 무기 스킬
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Stats")

@@ -417,3 +417,12 @@ void AERNCharacterBase::OnMovementModeChanged(EMovementMode PrevMovementMode, ui
 		AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Movement_WallJumpUsed, 0);
 	}
 }
+
+void AERNCharacterBase::AddGold(const int32 Amount) const
+{
+	const int32 CurrentGold = static_cast<int32>(AttributeSet->GetGold());
+	const int32 NewGold = CurrentGold + Amount;
+	AttributeSet->SetGold(static_cast<float>(NewGold));
+	
+	UE_LOG(LogTemp, Warning, TEXT("PlayerController: %s, Gold: %d"), *GetNameSafe(Controller), static_cast<int32>(AttributeSet->GetGold()));
+}

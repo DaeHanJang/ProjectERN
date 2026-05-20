@@ -10,6 +10,7 @@
 #include "Components/WidgetComponent.h"
 #include "Blueprint/UserWidget.h"
 #include "Character/Player/ERNPlayerController.h"
+#include "Components/AudioComponent.h"
 #include "GAS/ERNAttributeSet.h"
 #include "UI/ERNInteractableWidget.h"
 #include "UI/ERNUIManagerSubsystem.h"
@@ -34,6 +35,10 @@ AERNNightLordGrace::AERNNightLordGrace()
 	// Effect
 	EffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("EffectComponent"));
 	EffectComponent->SetupAttachment(GetRootComponent());
+	
+	// Sound
+	SoundComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("SoundComponent"));
+	SoundComponent->SetupAttachment(GetRootComponent());
 	
 	// Prompt
 	InteractionPromptWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionPromptWidget"));
@@ -99,6 +104,7 @@ void AERNNightLordGrace::Interact_Implementation(APlayerController* PlayerContro
 		FInputModeGameAndUI InputMode;
 		InputMode.SetWidgetToFocus(LevelUpPopupWidget->TakeWidget()); // 포커스 지정!
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(true);
 		PlayerController->SetInputMode(InputMode);
 		PlayerController->SetShowMouseCursor(true);
 	}

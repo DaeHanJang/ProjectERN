@@ -221,7 +221,8 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 		}
 
 		// 무기 스킬 장착
-		if (TSubclassOf<UGameplayAbility> WeaponSkillClass = DA->EquipableAbility.Get())
+		TSubclassOf<UGameplayAbility> WeaponSkillClass = DA->EquipableAbility.Get();
+		if (!DA->EquipableAbility.IsNull() && WeaponSkillClass)
 		{
 			Character->SetWeaponAbility(WeaponSkillClass);
 		}

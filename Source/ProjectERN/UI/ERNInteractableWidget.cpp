@@ -6,7 +6,7 @@
 UERNInteractableWidget::UERNInteractableWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	// 위젯이 키입력을 발을 수 있도록 포커스 불리언 활성화
-	bIsFocusable = true;
+	SetIsFocusable(true);
 }
 
 FReply UERNInteractableWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)

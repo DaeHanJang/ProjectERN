@@ -5,6 +5,16 @@
 #include "CoreMinimal.h"
 #include "ERNDropTable.generated.h"
 
+UENUM(BlueprintType)
+enum class EDropItemType : uint8
+{
+	None       UMETA(DisplayName="None"),
+	Sword      UMETA(DisplayName="Sword"),
+	Staff      UMETA(DisplayName="Staff"),
+	Polearm    UMETA(DisplayName="Polearm"),
+	Consumable UMETA(DisplayName="Consumable")
+};
+
 USTRUCT(BlueprintType)
 struct FERNDropTable : public FTableRowBase
 {
@@ -14,6 +24,10 @@ public:
 	// 아이템 키
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName ItemID = NAME_None;
+	
+	// 아이템 종류
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EDropItemType Type = EDropItemType::None;
 	
 	// 드랍 확률
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

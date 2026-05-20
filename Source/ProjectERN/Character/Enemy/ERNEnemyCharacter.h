@@ -103,16 +103,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
 	TObjectPtr<UDataTable> DropTable;
 	
-	// 골드 보상
+	// 보상 골드
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
-	int32 MinGold = 10;
+	int32 BasicRewordGold = 100;
 
+	// 골드 편차
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
-	int32 MaxGold = 50;
-
-	// 경험치 보상
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
-	int32 ExpReward = 100;
+	int32 RewordGoldVariance = 10;
 
 	// 초기 스탯 (BP마다 다르게 설정, BeginPlay에서 AttributeSet에 적용)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")

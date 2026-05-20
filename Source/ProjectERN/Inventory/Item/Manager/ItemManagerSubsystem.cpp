@@ -5,6 +5,7 @@
 #include "ItemManagerSettings.h"
 #include "Engine/AssetManager.h"
 #include "Inventory/Item/ERNItemActor.h"
+#include "Inventory/Item/Data/EquipableItemDataAsset.h"
 #include "Inventory/Item/Data/ERNDropTable.h"
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
 
@@ -56,27 +57,29 @@ bool UItemManagerSubsystem::ItemValid(const FName ItemID) const
 	return FindItemRow(ItemID) != nullptr;
 }
 
-void UItemManagerSubsystem::SpawnItem(const FItemRuntimeState& ItemRuntimeState, const FVector& Location,
+AActor* UItemManagerSubsystem::SpawnItem(const FItemRuntimeState& ItemRuntimeState, const FVector& Location,
 	const FRotator& Rotation)
 {
 	// World가 존재하지 않고 검증되지 않은 아이템일 때
 	if (!GetWorld() || !ItemValid(ItemRuntimeState.GetItemID()))
 	{
-		return;
+		return nullptr;
 	}
 	
 	// ItemActor 생성
 	AERNItemActor* Item = GetWorld()->SpawnActor<AERNItemActor>(AERNItemActor::StaticClass(), Location, Rotation);
 	if (!Item)
 	{
-		return;
+		return nullptr;
 	}
 	
 	// ItemActor 초기화
 	Item->InitializeRuntimeState(ItemRuntimeState);
+	
+	return Item;
 }
 
-bool UItemManagerSubsystem::RollItemFromDropTable(const UDataTable* DropTable, FItemRuntimeState& OutItemRuntimeState) const
+bool UItemManagerSubsystem::RollItemFromDropTable(const UDataTable* DropTable, FItemRuntimeState& OutItemRuntimeState, EDropItemType DropItemType) const
 {
 	TArray<float> ItemChance;
 	TMap<uint32, FERNDropTable> IndexToItemID;
@@ -89,11 +92,21 @@ bool UItemManagerSubsystem::RollItemFromDropTable(const UDataTable* DropTable, F
 	
 	// 드롭 테이블을 읽어 확률값을 누적시키면 배열에 추가 후 [인덱스, 행 데이터]로 매핑
 	DropTable->ForeachRow<FERNDropTable>(TEXT("DropTableContext"), 
-		[this, &ItemChance, &IndexToItemID, &SumChance](const FName& RowName, const FERNDropTable& Row)
+		[this, &ItemChance, &IndexToItemID, &SumChance, &DropItemType](const FName& RowName, const FERNDropTable& Row)
 		{
 			if (Row.ItemID.IsNone() || !ItemValid(Row.ItemID) || Row.DropChance <= 0 || Row.MinCount <= 0 || Row.MinCount > Row.MaxCount)
 			{
 				return;
+			}
+			
+			// WeaponType 매개변수가 설정되어 있을 경우 WeaponType과 같은 종류의 무기만 추출
+			const FERNItemTable* ItemTable = FindItemRow(Row.ItemID);
+			if (ItemTable->ItemType == EItemType::Equipable)
+			{
+				if (DropItemType != EDropItemType::None && Row.Type != DropItemType)
+				{
+					return;
+				}
 			}
 			
 			SumChance += Row.DropChance;
