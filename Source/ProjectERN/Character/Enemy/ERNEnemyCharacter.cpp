@@ -14,6 +14,8 @@
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "AIController.h"
 #include "BrainComponent.h"
+#include "Character/Player/ERNPlayerState.h"
+#include "Inventory/Item/ERNItemActor.h"
 
 AERNEnemyCharacter::AERNEnemyCharacter()
 {
@@ -231,20 +233,79 @@ void AERNEnemyCharacter::SpawnDrops()
 		return;
 	}
 	
+	UE_LOG(LogTemp, Warning, TEXT("In AERNEnemyCharacter::SpawnDrops"));
+	
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
-		FItemRuntimeState ItemRuntimeState;
-		if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState))
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 		{
-			ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), GetActorRotation());
+			APlayerController* PC = It->Get();
+			if (const AERNPlayerState* PS = PC->GetPlayerState<AERNPlayerState>())
+			{
+				FItemRuntimeState ItemRuntimeState;
+				AActor* Item = nullptr;
+
+				switch (PS->CharacterType)
+				{
+				case ECharacterType::Warrior:
+					if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState, EDropItemType::Sword))
+					{
+						Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), GetActorRotation());
+					}
+					break;
+				case ECharacterType::Mage:
+					if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState, EDropItemType::Staff))
+					{
+						Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), GetActorRotation());
+					}
+					break;
+				case ECharacterType::Support:
+					if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState, EDropItemType::Polearm))
+					{
+						Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), GetActorRotation());
+					}
+					break;
+				default:
+					Item = nullptr;
+					break;
+				}
+				
+				if (Item)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Spawn %s Item"), *GetNameSafe(Item));
+					
+					Item->SetOwner(Cast<AActor>(PC));
+					Item->bOnlyRelevantToOwner = true;
+					if (AERNItemActor* ERNItem = Cast<AERNItemActor>(Item))
+					{
+						ERNItem->UpdateOwnerOnlyVisibility();
+					}
+				}
+			}
 		}
 	}
 }
 
 void AERNEnemyCharacter::SpawnGold()
 {
-	int32 GoldAmount = FMath::RandRange(MinGold, MaxGold);
-	UE_LOG(LogTemp, Log, TEXT("%s dropped %d gold"), *GetName(), GoldAmount);
-
-	// TODO: 골드 스폰
+	const int32 MinGold = BasicRewordGold - RewordGoldVariance / 100.0f * BasicRewordGold;
+	const int32 MaxGold = BasicRewordGold + RewordGoldVariance / 100.0f * BasicRewordGold;
+	const int32 RewordGold = FMath::RandRange(MinGold, MaxGold);
+	
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		const APlayerController* PC = It->Get();
+		if (!PC)
+		{
+			continue;
+		}
+		
+		const AERNCharacterBase* PlayerCharacter = Cast<AERNCharacterBase>(PC->GetPawn());
+		if (!PlayerCharacter)
+		{
+			continue;
+		}
+		
+		PlayerCharacter->AddGold(RewordGold);
+	}
 }

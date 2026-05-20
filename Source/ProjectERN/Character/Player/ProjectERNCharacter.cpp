@@ -12,6 +12,7 @@
 #include "ProjectERN.h"
 #include "AbilitySystemComponent.h"
 #include "ERNPlayerController.h"
+#include "ERNPlayerStatusTable.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Components/SphereComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
@@ -28,6 +29,8 @@
 #include "Actors/Intro/ERNIntroBird.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Inventory/Item/ERNItemActor.h"
+#include "UI/ERNLevelUpWidget.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -153,23 +156,33 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		return;
 	}
 	
-	// 상호작용 감지 콜리전과 겹쳐진 액터 수집
-	TArray<AActor*> OverlappingActors;
-	InteractionDetector->GetOverlappingActors(OverlappingActors);
-	if (OverlappingActors.IsEmpty())
+	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
+	if (!ERNController)
 	{
 		return;
 	}
 	
+	// 상호작용 감지 콜리전과 겹쳐진 액터 수집
+	TArray<AActor*> OverlappingActors;
+	InteractionDetector->GetOverlappingActors(OverlappingActors);
+		
 	float ClosestDistSq = MAX_FLT;
 	AActor* ClosestActor = nullptr;
 	
 	// 감지된 액터를 순회하면서 상호작용 가능 액터인 경우 가장 가까운 액터를 선정
 	for (AActor* Actor : OverlappingActors)
 	{
-		if (!Actor->Implements<UInteractable>())
+		if (!IsValid(Actor) || !Actor->Implements<UInteractable>())
 		{
 			continue;
+		}
+		
+		if (const AERNItemActor* ItemActor = Cast<AERNItemActor>(Actor))
+		{
+			if (!ItemActor->CanBeInteractedBy(ERNController))
+			{
+				continue;
+			}
 		}
 		
 		const float DistSq = this->GetSquaredDistanceTo(Actor);
@@ -181,30 +194,24 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		}
 	}
 	
-	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
-	if (!ERNController)
-	{
-		return;
-	}
-	
 	AActor* CurrentInteractable = ERNController->GetCurrentInteractable();
 	// 대상이 바뀐 경우 기존 대상 종료
-	if (CurrentInteractable && CurrentInteractable != ClosestActor)
+	if (CurrentInteractable != ClosestActor)
 	{
-		IInteractable::Execute_EndInteract(CurrentInteractable, ERNController);
-	}
-	
-	// 현재 상효작용 가능 액터가 존재할 경우 대상이 바뀐 경우 새로 선정
-	if (ClosestActor)
-	{
-		if (CurrentInteractable != ClosestActor)
+		if (IsValid(CurrentInteractable) && CurrentInteractable->Implements<UInteractable>())
+		{
+			IInteractable::Execute_EndInteract(CurrentInteractable, ERNController);
+		}
+		
+		ERNController->ClearCurrentInteractable();
+
+		// 현재 상효작용 가능 액터가 존재할 경우 대상이 바뀐 경우 새로 선정
+		if (ClosestActor)
 		{
 			ERNController->SetCurrentInteractable(ClosestActor);
+			IInteractable::Execute_ActivateInteract(ClosestActor);
 		}
-		IInteractable::Execute_ActivateInteract(ClosestActor);
 	}
-	
-	UE_LOG(LogTemp, Warning, TEXT("New Interactable Actor is %s"), *GetNameSafe(ClosestActor));
 }
 
 void AProjectERNCharacter::Tick(float DeltaSeconds)
@@ -1063,4 +1070,44 @@ float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 	}
 
 	return ActualDamage;
+}
+
+void AProjectERNCharacter::Server_LevelUp_Implementation()
+{
+	if (!StatusCurveTable || !AttributeSet)
+	{
+		return;
+	}
+	
+	const FName CurrentLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel())));
+	const FName NextLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel()) + 1));;
+	
+	const FERNPlayerStatusTable* CurrentRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(CurrentLevel, TEXT("CurrentLevelRow"));
+	const FERNPlayerStatusTable* NewRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(NextLevel, TEXT("TextLevelContext"));
+	if (!NewRow)
+	{
+		return;
+	}
+	
+	if (AttributeSet->GetGold() < CurrentRow->Cost)
+	{
+		return;
+	}
+	
+	AttributeSet->SetGold(AttributeSet->GetGold() - NewRow->Cost);
+	
+	AttributeSet->SetLevel(static_cast<int32>(AttributeSet->GetLevel()) + 1);
+	AttributeSet->SetMaxHealth(NewRow->MaxHealth);
+	AttributeSet->SetHealth(NewRow->MaxHealth);
+	AttributeSet->SetMaxMana(NewRow->MaxMana);
+	AttributeSet->SetMana(NewRow->MaxMana);
+	AttributeSet->SetManaRegenRate(NewRow->ManaRegenRate);
+	AttributeSet->SetMaxStamina(NewRow->MaxStamina);
+	AttributeSet->SetStamina(NewRow->MaxStamina);
+	AttributeSet->SetStaminaRegenRate(NewRow->StaminaRegenRate);
+	AttributeSet->SetAttackPower(NewRow->AttackPower);
+	AttributeSet->SetDefense(NewRow->Defense);
+	AttributeSet->SetStaggerResistance(NewRow->StaggerResistance);
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s Level : %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetLevel()));
 }

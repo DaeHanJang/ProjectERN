@@ -120,6 +120,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> ShopMainWidgetClass;
 	
+	// LevelUp 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> LevelUpWidgetClass;
 

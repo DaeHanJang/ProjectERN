@@ -21,7 +21,7 @@ UERNAttributeSet::UERNAttributeSet()
 	InitDefense(5.f);
 	InitMoveSpeed(600.f);
 	InitLevel(1.f);
-	InitGold(0.f);
+	InitGold(1000000.f);
 	InitStaggerResistance(10.f);
 	InitDownResistance(20.f);
 }

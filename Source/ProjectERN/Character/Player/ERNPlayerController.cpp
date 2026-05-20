@@ -348,7 +348,19 @@ void AERNPlayerController::CheckAndFixCharacterType()
 
 void AERNPlayerController::TryInteract()
 {
+	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (const UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			if (UIManager->GetActiveUIType() != EERNUIType::None)
+			{
+				return;
+			}
+		}
+	}
+	
 	UE_LOG(LogTemp, Warning, TEXT("TryInteract"));
+	
 	if (CurrentInteractableActor.IsValid())
 	{
 		if (IInteractable* Interactable = Cast<IInteractable>(CurrentInteractableActor.Get()))

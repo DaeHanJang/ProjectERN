@@ -39,8 +39,6 @@ void AERNWeaponBase::Init(const FItemRuntimeState& InItemRuntimeState, const UEq
 	ItemRuntimeState = InItemRuntimeState;
 	LightAttackDamage = DA->LightAttackDamage;
 	LightAttackStaggerPower = DA->LightAttackStaggerPower;
-	HeavyAttackDamage = DA->HeavyAttackDamage;
-	HeavyAttackStaggerPower = DA->HeavyAttackStaggerPower;
 	if (!DA->EquipableAbility.IsNull())
 	{
 		WeaponSkill = DA->EquipableAbility.Get();

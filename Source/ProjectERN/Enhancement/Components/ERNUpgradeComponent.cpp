@@ -97,7 +97,6 @@ FERNUpgradePreview UERNUpgradeComponent::GetUpgradePreview(int32 SlotIndex)
         if (const UEquipableItemDataAsset* EquipAsset = Cast<UEquipableItemDataAsset>(BaseAsset))
         {
             Preview.SourceLightAttack = EquipAsset->LightAttackDamage;
-            Preview.SourceHeavyAttack = EquipAsset->HeavyAttackDamage;
         }
     }
 
@@ -122,7 +121,6 @@ FERNUpgradePreview UERNUpgradeComponent::GetUpgradePreview(int32 SlotIndex)
                 if (const UEquipableItemDataAsset* ResultEquip = Cast<UEquipableItemDataAsset>(ResultBase))
                 {
                     Preview.ResultLightAttack = ResultEquip->LightAttackDamage;
-                    Preview.ResultHeavyAttack = ResultEquip->HeavyAttackDamage;
                 }
             }
 
