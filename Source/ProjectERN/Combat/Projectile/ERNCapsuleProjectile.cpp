@@ -14,17 +14,18 @@ AERNCapsuleProjectile::AERNCapsuleProjectile()
 	CapsuleCollision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleCollision"));
 	CapsuleCollision->InitCapsuleSize(20.f, 80.f);
 	CapsuleCollision->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	CapsuleCollision->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel1);
-	CapsuleCollision->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	CapsuleCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
-	CapsuleCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Block);
-	CapsuleCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
-	CapsuleCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
+	CapsuleCollision->SetGenerateOverlapEvents(true);
+	CapsuleCollision->SetCollisionObjectType(ECC_GameTraceChannel1);
+	CapsuleCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
+	CapsuleCollision->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	CapsuleCollision->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+	CapsuleCollision->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	CapsuleCollision->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Ignore);
 
 	CapsuleCollision->OnComponentHit.AddDynamic(this, &AERNCapsuleProjectile::OnHit);
-	CapsuleCollision->OnComponentBeginOverlap.AddDynamic(this, &AERNCapsuleProjectile::OnBeginOverlap);
+	CapsuleCollision->OnComponentBeginOverlap.AddDynamic(this, &AERNCapsuleProjectile::OnPierceOverlap);
 
-	RootComponent = CapsuleCollision;
+	SetRootComponent(CapsuleCollision);
 
 	if (CollisionComponent)
 	{
@@ -63,3 +64,10 @@ void AERNCapsuleProjectile::BeginPlay()
 		}
 	}
 }
+
+UPrimitiveComponent* AERNCapsuleProjectile::GetProjectileCollisionComponent() const
+{
+	// CapsuleCollision이 있다면 교체
+	return CapsuleCollision ? CapsuleCollision : Super::GetProjectileCollisionComponent();
+}
+

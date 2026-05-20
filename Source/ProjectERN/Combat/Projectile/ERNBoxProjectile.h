@@ -3,16 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ERNPiercingProjectile.h"
 #include "Combat/Projectile/ERNProjectileBase.h"
 #include "ERNBoxProjectile.generated.h"
 
 class UBoxComponent;
 
-/**
- * 
- */
 UCLASS()
-class PROJECTERN_API AERNBoxProjectile : public AERNProjectileBase
+class PROJECTERN_API AERNBoxProjectile : public AERNPiercingProjectile
 {
 	GENERATED_BODY()
 
@@ -21,6 +19,8 @@ public:
 	
 protected:
 	virtual void BeginPlay() override;
+	
+	virtual UPrimitiveComponent* GetProjectileCollisionComponent() const override;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Projectile|Collision")
 	TObjectPtr<UBoxComponent> BoxCollision;
