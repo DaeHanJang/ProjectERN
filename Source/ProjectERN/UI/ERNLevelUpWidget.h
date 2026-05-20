@@ -6,6 +6,7 @@
 #include "UI/ERNInteractableWidget.h"
 #include "ERNLevelUpWidget.generated.h"
 
+class UNiagaraSystem;
 struct FOnAttributeChangeData;
 class UTextBlock;
 
@@ -77,6 +78,12 @@ private:
 	
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UTextBlock> NextStaggerTextBlock;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="LevelUp", meta=(AllowPrivateAccess))
+	TObjectPtr<UNiagaraSystem> Effect;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="LevelUp", meta=(AllowPrivateAccess))
+	TObjectPtr<USoundBase> Sound;
 	
 	FDelegateHandle OnLevelChangedHandle;
 	

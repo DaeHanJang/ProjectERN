@@ -53,6 +53,10 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Grace|Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UNiagaraComponent> EffectComponent;
 	
+	// Sound
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Grace|Components", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UAudioComponent> SoundComponent;
+	
 	// Prompt
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Grace|Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UWidgetComponent> InteractionPromptWidget;
