@@ -16,6 +16,11 @@
 #include "GameFramework/GameStateBase.h"
 #include "EngineUtils.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
+#include "Actors/Intro/ERNIntroBird.h"
+#include "Character/Player/ProjectERNCharacter.h"
+#include "Character/Player/ERNPlayerController.h"
+#include "Components/SceneComponent.h"
+#include "GameFramework/GameModeBase.h"
 
 void UERNCutsceneSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -137,6 +142,132 @@ void UERNCutsceneSubsystem::HideLoadingScreen()
 	}
 
 	OnLoadingFinished.Broadcast();
+
+	// 옵션: 로딩 종료 직후 자동 인트로 시작 (서버 권한일 때만 실제 동작)
+	if (UERNGameInstance* GameInst = Cast<UERNGameInstance>(GetGameInstance()))
+	{
+		if (GameInst->ShouldAutoStartIntro())
+		{
+			StartBirdIntroSequence();
+		}
+	}
+}
+
+// ===== 인트로 시퀀스 =====
+
+void UERNCutsceneSubsystem::StartBirdIntroSequence()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// 서버 권한 체크 (Authority GameMode가 있어야 서버)
+	if (World->GetAuthGameMode() == nullptr)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[IntroSequence] Skip — client side"));
+		return;
+	}
+
+	UERNGameInstance* GameInst = Cast<UERNGameInstance>(GetGameInstance());
+	if (!GameInst)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[IntroSequence] GameInstance cast failed"));
+		return;
+	}
+
+	const TSubclassOf<AERNIntroBird> IntroBirdClass = GameInst->GetIntroBirdClass();
+	if (!IntroBirdClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[IntroSequence] IntroBirdClass not set on BP_ERNGameInstance"));
+		return;
+	}
+
+	const float FadeInDuration = GameInst->GetIntroFadeInDuration();
+
+	// 맵의 모든 IntroSpawnGroup 액터 수집 (태그 "IntroSpawnGroup")
+	TArray<AActor*> SpawnGroups;
+	UGameplayStatics::GetAllActorsWithTag(World, FName(TEXT("IntroSpawnGroup")), SpawnGroups);
+
+	if (SpawnGroups.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[IntroSequence] No IntroSpawnGroup found in map"));
+		return;
+	}
+
+	// 그룹 1개 랜덤 선택
+	AActor* ChosenGroup = SpawnGroups[FMath::RandRange(0, SpawnGroups.Num() - 1)];
+
+	// 그룹의 자식 SceneComponent들을 슬롯으로 수집 (Root 제외)
+	TArray<USceneComponent*> Slots;
+	if (USceneComponent* RootComp = ChosenGroup->GetRootComponent())
+	{
+		TArray<USceneComponent*> Children;
+		RootComp->GetChildrenComponents(true, Children);
+		for (USceneComponent* Child : Children)
+		{
+			// 같은 액터 소속 + 이름이 "Slot_"으로 시작하는 컴포넌트만
+			if (Child && Child->GetOwner() == ChosenGroup && Child->GetName().StartsWith(TEXT("Slot_")))
+			{
+				Slots.Add(Child);
+			}
+		}
+	}
+
+	if (Slots.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[IntroSequence] Chosen group has no Slot_ components"));
+		return;
+	}
+
+	// 슬롯 셔플 (Fisher-Yates)
+	for (int32 i = Slots.Num() - 1; i > 0; --i)
+	{
+		const int32 j = FMath::RandRange(0, i);
+		Slots.Swap(i, j);
+	}
+
+	// 모든 PlayerController 수집
+	TArray<AERNPlayerController*> PCs;
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AERNPlayerController* PC = Cast<AERNPlayerController>(It->Get()))
+		{
+			PCs.Add(PC);
+		}
+	}
+
+	// min(PCs, Slots) 만큼 매칭 — 새 스폰 + 부착 + 페이드 인
+	const int32 Count = FMath::Min(PCs.Num(), Slots.Num());
+	for (int32 i = 0; i < Count; ++i)
+	{
+		AERNPlayerController* PC = PCs[i];
+		USceneComponent* Slot = Slots[i];
+		if (!PC || !Slot) continue;
+
+		AProjectERNCharacter* Char = Cast<AProjectERNCharacter>(PC->GetPawn());
+		if (!Char) continue;
+
+		// 새 스폰
+		const FTransform SpawnXform = Slot->GetComponentTransform();
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+		AERNIntroBird* Bird = World->SpawnActor<AERNIntroBird>(IntroBirdClass, SpawnXform, SpawnParams);
+		if (!Bird) continue;
+
+		// 캐릭터 부착 + 매달림 상태 켜기 + 몽타주 재생
+		Char->AttachToIntroBird(Bird);
+
+		// 새 비행 시작
+		Bird->StartFlight();
+
+		// 페이드 인 (해당 클라에)
+		PC->Client_StartFadeIn(FadeInDuration);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[IntroSequence] Started with %d birds (group: %s)"), Count, *ChosenGroup->GetName());
 }
 
 // ===== 컷신 시스템 =====

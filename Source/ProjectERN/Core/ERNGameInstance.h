@@ -142,6 +142,32 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Loading")
 	TSubclassOf<UUserWidget> LoadingWidgetClass;
 
+	// ===== 인트로 시퀀스 =====
+
+	// 인트로용 새 액터 클래스 (BP_IntroBird)
+	UPROPERTY(EditDefaultsOnly, Category = "Intro")
+	TSubclassOf<class AERNIntroBird> IntroBirdClass;
+
+	// 페이드 인 지속 시간 (초)
+	UPROPERTY(EditDefaultsOnly, Category = "Intro")
+	float IntroFadeInDuration = 1.5f;
+
+	// HideLoadingScreen 직후 자동으로 인트로 시작
+	UPROPERTY(EditDefaultsOnly, Category = "Intro")
+	bool bAutoStartIntroOnLoadingFinished = false;
+
+public:
+	// 인트로용 게터들 (서브시스템에서 사용)
+	UFUNCTION(BlueprintPure, Category = "Intro")
+	TSubclassOf<AERNIntroBird> GetIntroBirdClass() const { return IntroBirdClass; }
+
+	UFUNCTION(BlueprintPure, Category = "Intro")
+	float GetIntroFadeInDuration() const { return IntroFadeInDuration; }
+
+	UFUNCTION(BlueprintPure, Category = "Intro")
+	bool ShouldAutoStartIntro() const { return bAutoStartIntroOnLoadingFinished; }
+
+private:
 	// 상점 시스템 초기화
 	void InitializeShopSystem();
 };

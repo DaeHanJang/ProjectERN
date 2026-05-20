@@ -25,6 +25,9 @@
 #include "GAS/ERNAttributeSet.h"
 #include "Camera/CameraShakeBase.h"
 #include "Engine/DamageEvents.h"
+#include "Actors/Intro/ERNIntroBird.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
 #include "Inventory/Item/ERNItemActor.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -361,6 +364,9 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
+	// 인트로 매달림 중에는 이동 입력 차단
+	if (bIsHangingFromBird) return;
+
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
@@ -391,6 +397,8 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 
 void AProjectERNCharacter::MoveEnd()
 {
+	if (bIsHangingFromBird) return;
+
 	CachedMoveInput = FVector2D::ZeroVector;
 	StopSprint();
 }
@@ -406,6 +414,8 @@ void AProjectERNCharacter::Look(const FInputActionValue& Value)
 
 void AProjectERNCharacter::Roll()
 {
+	if (bIsHangingFromBird) return;
+
 	if (!AbilitySystemComponent)
 	{
 		return;
@@ -460,6 +470,13 @@ void AProjectERNCharacter::DoLook(float Yaw, float Pitch)
 
 void AProjectERNCharacter::DoJumpStart()
 {
+	// 새에 매달려 있으면 점프 대신 새에서 해제 요청
+	if (bIsHangingFromBird)
+	{
+		Server_ReleaseFromBird();
+		return;
+	}
+
 	if (!AbilitySystemComponent)
 	{
 		return;
@@ -535,6 +552,7 @@ void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProp
 
 	DOREPLIFETIME(AProjectERNCharacter, bIsLockOn);
 	DOREPLIFETIME(AProjectERNCharacter, bGodMode);
+	DOREPLIFETIME(AProjectERNCharacter, bIsHangingFromBird);
 }
 
 void AProjectERNCharacter::GodMode()
@@ -548,6 +566,144 @@ void AProjectERNCharacter::Server_SetGodMode_Implementation(bool bEnable)
 	UE_LOG(LogTemp, Warning, TEXT("[GodMode] %s for %s"),
 		bEnable ? TEXT("ON") : TEXT("OFF"),
 		*GetName());
+}
+
+// ===== 인트로: 새 매달림 =====
+
+void AProjectERNCharacter::AttachToIntroBird(AERNIntroBird* Bird)
+{
+	if (!HasAuthority() || !Bird || !Bird->GetHangPoint())
+	{
+		return;
+	}
+
+	// 캐릭터를 새의 HangPoint에 부착 — 자동으로 모든 클라에 리플리케이트
+	AttachToComponent(Bird->GetHangPoint(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+
+	// 중력/이동 차단
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->SetMovementMode(MOVE_None);
+	}
+
+	// 새에 등록
+	Bird->SetAttachedPlayer(this);
+
+	// 상태 켜기 (리플리케이트 → OnRep에서 클라가 몽타주 보조 재생)
+	bIsHangingFromBird = true;
+
+	// 모든 머신에 매달림 몽타주 재생
+	Multicast_StartHangingMontage();
+
+	// 소유 클라에 비행 방향으로 시점 회전 + 매달림 FOV 적용
+	const FVector Forward = Bird->GetActorForwardVector();
+	FRotator FacingRot = Forward.Rotation();
+	FacingRot.Pitch = 0.f;
+	FacingRot.Roll = 0.f;
+	Client_OnAttachedToBird(FacingRot);
+}
+
+void AProjectERNCharacter::Server_ReleaseFromBird_Implementation()
+{
+	if (!bIsHangingFromBird)
+	{
+		return;
+	}
+
+	// 새 참조 (DetachFromActor 전에 부모 액터 캐싱)
+	AERNIntroBird* Bird = Cast<AERNIntroBird>(GetAttachParentActor());
+
+	// 부착 해제 — 월드 변환 유지
+	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+	// 중력 복구 → ABP가 Falling 자동 감지
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->SetMovementMode(MOVE_Falling);
+	}
+
+	// 상태 해제
+	bIsHangingFromBird = false;
+
+	// 모든 클라에 몽타주 정지
+	Multicast_StopHangingMontage();
+
+	// 소유 클라에 기본 FOV 복원
+	Client_OnReleasedFromBird();
+
+	// 새에 알림 → 위로 상승 후 destroy
+	if (Bird)
+	{
+		Bird->OnPlayerReleased();
+	}
+}
+
+void AProjectERNCharacter::Multicast_StartHangingMontage_Implementation()
+{
+	if (!HangingMontage || !GetMesh()) return;
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Play(HangingMontage);
+
+		// 첫 섹션을 자기 자신으로 연결 → 무한 루프
+		if (HangingMontage->CompositeSections.Num() > 0)
+		{
+			const FName FirstSection = HangingMontage->CompositeSections[0].SectionName;
+			AnimInstance->Montage_SetNextSection(FirstSection, FirstSection, HangingMontage);
+		}
+	}
+}
+
+void AProjectERNCharacter::Multicast_StopHangingMontage_Implementation()
+{
+	if (!HangingMontage || !GetMesh()) return;
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Stop(0.2f, HangingMontage);
+	}
+}
+
+void AProjectERNCharacter::Client_OnAttachedToBird_Implementation(FRotator FacingRotation)
+{
+	// 시점을 새의 비행 방향으로 회전
+	if (AController* Ctrl = GetController())
+	{
+		Ctrl->SetControlRotation(FacingRotation);
+	}
+
+	// 기본 FOV 캐싱 후 매달림 FOV 적용
+	if (FollowCamera)
+	{
+		CachedDefaultFOV = FollowCamera->FieldOfView;
+		FollowCamera->SetFieldOfView(HangingFOV);
+	}
+}
+
+void AProjectERNCharacter::Client_OnReleasedFromBird_Implementation()
+{
+	// 기본 FOV 복원
+	if (FollowCamera && CachedDefaultFOV > 0.f)
+	{
+		FollowCamera->SetFieldOfView(CachedDefaultFOV);
+	}
+}
+
+void AProjectERNCharacter::OnRep_IsHangingFromBird()
+{
+	// Multicast가 시점 문제로 누락된 경우의 안전망
+	// 상태가 false로 바뀌었는데 몽타주가 아직 돌고 있다면 정지
+	if (!bIsHangingFromBird && HangingMontage && GetMesh())
+	{
+		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+		{
+			if (AnimInstance->Montage_IsPlaying(HangingMontage))
+			{
+				AnimInstance->Montage_Stop(0.2f, HangingMontage);
+			}
+		}
+	}
 }
 
 void AProjectERNCharacter::UpdateMovementSpeed()
@@ -610,6 +766,8 @@ void AProjectERNCharacter::UpdateRotationMode()
 
 void AProjectERNCharacter::LightAttack()
 {
+	if (bIsHangingFromBird) return;
+
 	if (!AbilitySystemComponent)
 	{
 		return;
@@ -640,6 +798,8 @@ void AProjectERNCharacter::LightAttack()
 
 void AProjectERNCharacter::HeavyAttack()
 {
+	if (bIsHangingFromBird) return;
+
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Heavy));
@@ -648,11 +808,15 @@ void AProjectERNCharacter::HeavyAttack()
 
 void AProjectERNCharacter::LockOn()
 {
+	if (bIsHangingFromBird) return;
+
 	ToggleTemporaryLockOn();
 }
 
 void AProjectERNCharacter::ToggleSprint()
 {
+	if (bIsHangingFromBird) return;
+
 	if (!AbilitySystemComponent)
 	{
 		return;

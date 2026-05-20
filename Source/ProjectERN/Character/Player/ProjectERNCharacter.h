@@ -221,6 +221,50 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_SetGodMode(bool bEnable);
 
+	// ===== 인트로: 새에 매달림 =====
+
+	// 매달림 상태 (Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_IsHangingFromBird, BlueprintReadOnly, Category = "Intro")
+	bool bIsHangingFromBird = false;
+
+	// 매달림 루프 몽타주 (BP에서 AM_Shared_Hanging 할당)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	TObjectPtr<UAnimMontage> HangingMontage;
+
+	// 매달림 중 카메라 FOV (기본보다 넓게)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float HangingFOV = 110.f;
+
+	// 매달림 시작 시점에 캐싱한 기본 FOV (해제 시 복원)
+	UPROPERTY(Transient)
+	float CachedDefaultFOV = 90.f;
+
+	// 서버: 새에 부착 (인트로 매니저가 호출)
+	void AttachToIntroBird(class AERNIntroBird* Bird);
+
+	// 서버: 새에서 해제 (Jump 입력 시 호출)
+	UFUNCTION(Server, Reliable)
+	void Server_ReleaseFromBird();
+
+	// 모든 클라: 매달림 몽타주 재생
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StartHangingMontage();
+
+	// 모든 클라: 매달림 몽타주 정지
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopHangingMontage();
+
+	// 해당 클라(소유 PC)에서 비행 방향으로 시점 회전 + 매달림 FOV 적용
+	UFUNCTION(Client, Reliable)
+	void Client_OnAttachedToBird(FRotator FacingRotation);
+
+	// 해당 클라(소유 PC)에서 기본 FOV 복원
+	UFUNCTION(Client, Reliable)
+	void Client_OnReleasedFromBird();
+
+	UFUNCTION()
+	void OnRep_IsHangingFromBird();
+
 protected:
 	// 상태 별 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
