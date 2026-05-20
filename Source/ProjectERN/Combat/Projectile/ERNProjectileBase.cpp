@@ -60,11 +60,21 @@ AERNProjectileBase::AERNProjectileBase()
 
 void AERNProjectileBase::Multicast_PlayImpactEffect_Implementation(FVector Location, FRotator Rotation)
 {
+	// 착탄 스케일 조정 적용을 위해 추가 변수 적용
 	if (ImpactEffect)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ImpactEffect, Location, Rotation);
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			ImpactEffect,
+			Location,
+			Rotation,
+			ImpactEffectScale,
+			true,
+			true,
+			ENCPoolMethod::None,
+			true);
 	}
-
+	
 	if (ImpactSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(

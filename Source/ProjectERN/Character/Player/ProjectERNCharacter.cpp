@@ -26,6 +26,7 @@
 #include "GAS/ERNAttributeSet.h"
 #include "Camera/CameraShakeBase.h"
 #include "Engine/DamageEvents.h"
+#include "GAS/Abilities/WeaponSkill/ERNGA_WeaponSkill_Channeling.h"
 #include "Actors/Intro/ERNIntroBird.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
@@ -800,10 +801,23 @@ void AProjectERNCharacter::HeavyAttack()
 {
 	if (bIsHangingFromBird) return;
 
-	if (AbilitySystemComponent)
+	if (!AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Heavy));
+		return;
 	}
+	
+	// True라면
+	if (TryEndActiveChannelingWeaponSkill())
+	{
+		if (!HasAuthority())
+		{
+			Server_RequestEndActiveChannelingWeaponSkill();
+		}
+
+		return;
+	}
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Heavy));
 }
 
 void AProjectERNCharacter::LockOn()
@@ -1020,6 +1034,45 @@ FVector AProjectERNCharacter::GetRollWorldDirection() const
 	}
 
 	return GetActorForwardVector();
+}
+
+bool AProjectERNCharacter::TryEndActiveChannelingWeaponSkill()
+{
+	if (!AbilitySystemComponent)
+	{
+		return false;
+	}
+
+	const FGameplayTagContainer WeaponSkillTags(TAG_Ability_Attack_Heavy);
+
+	for (FGameplayAbilitySpec& AbilitySpec : AbilitySystemComponent->GetActivatableAbilities())
+	{
+		if (!AbilitySpec.IsActive() || !AbilitySpec.Ability)
+		{
+			continue;
+		}
+
+		if (!AbilitySpec.Ability->GetAssetTags().HasAll(WeaponSkillTags))
+		{
+			continue;
+		}
+
+		for (UGameplayAbility* AbilityInstance : AbilitySpec.GetAbilityInstances())
+		{
+			if (UERNGA_WeaponSkill_Channeling* ChannelingSkill = Cast<UERNGA_WeaponSkill_Channeling>(AbilityInstance))
+			{
+				ChannelingSkill->RequestEndChanneling();
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+void AProjectERNCharacter::Server_RequestEndActiveChannelingWeaponSkill_Implementation()
+{
+	TryEndActiveChannelingWeaponSkill();
 }
 
 void AProjectERNCharacter::Server_RequestRoll_Implementation(FVector_NetQuantizeNormal RollDirection)
