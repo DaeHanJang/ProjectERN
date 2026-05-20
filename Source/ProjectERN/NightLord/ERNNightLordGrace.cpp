@@ -99,6 +99,7 @@ void AERNNightLordGrace::Interact_Implementation(APlayerController* PlayerContro
 		FInputModeGameAndUI InputMode;
 		InputMode.SetWidgetToFocus(LevelUpPopupWidget->TakeWidget()); // 포커스 지정!
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(true);
 		PlayerController->SetInputMode(InputMode);
 		PlayerController->SetShowMouseCursor(true);
 	}

@@ -7,6 +7,7 @@
 #include "Logging/LogMacros.h"
 #include "ProjectERNCharacter.generated.h"
 
+class UERNLevelUpWidget;
 class USphereComponent;
 class USpringArmComponent;
 class UCameraComponent;
@@ -81,10 +82,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Input")
 	TObjectPtr<UERNInputConfig> InputConfig;
 
-	
 public:
 	/** Constructor */
 	AProjectERNCharacter();
+	
+	FORCEINLINE UDataTable* GetStatusCurveTable() const { return StatusCurveTable; }
+	
+	// Level Up
+	UFUNCTION(Server, Reliable)
+	void Server_LevelUp();
 
 protected:
 

@@ -18,6 +18,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int32 Level = 1.0f;
 	
+	// 비용
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 Cost = 1000;
+	
 	// 최대 체력
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float MaxHealth = 100.0f;

@@ -288,8 +288,24 @@ void AERNEnemyCharacter::SpawnDrops()
 
 void AERNEnemyCharacter::SpawnGold()
 {
-	int32 GoldAmount = FMath::RandRange(MinGold, MaxGold);
-	UE_LOG(LogTemp, Log, TEXT("%s dropped %d gold"), *GetName(), GoldAmount);
-
-	// TODO: 골드 스폰
+	const int32 MinGold = BasicRewordGold - RewordGoldVariance / 100.0f * BasicRewordGold;
+	const int32 MaxGold = BasicRewordGold + RewordGoldVariance / 100.0f * BasicRewordGold;
+	const int32 RewordGold = FMath::RandRange(MinGold, MaxGold);
+	
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		const APlayerController* PC = It->Get();
+		if (!PC)
+		{
+			continue;
+		}
+		
+		const AERNCharacterBase* PlayerCharacter = Cast<AERNCharacterBase>(PC->GetPawn());
+		if (!PlayerCharacter)
+		{
+			continue;
+		}
+		
+		PlayerCharacter->AddGold(RewordGold);
+	}
 }
