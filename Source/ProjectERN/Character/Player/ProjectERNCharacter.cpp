@@ -361,6 +361,14 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::ToggleSprint);
+	
+	// Flask
+	InputComp->BindNativeInputAction(
+		InputConfig, 
+		TAG_Input_Flask, 
+		ETriggerEvent::Started, 
+		this, 
+		&AProjectERNCharacter::DrinkFlask);
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
@@ -851,6 +859,19 @@ void AProjectERNCharacter::ToggleSprint()
 
 	// 전력질주 실행
 	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Sprint));
+}
+
+void AProjectERNCharacter::DrinkFlask()
+{
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+	
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Flask));
+	}
 }
 
 void AProjectERNCharacter::StopSprint()

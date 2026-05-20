@@ -139,7 +139,7 @@ void AERNNightLordGrace::EndInteract_Implementation(APlayerController* PlayerCon
 		}
 		else
 		{
-			LevelUpPopupWidget->RemoveFromViewport();
+			LevelUpPopupWidget->RemoveFromParent();
 			LevelUpPopupWidget = nullptr; 
 			
 			ERNPC->SetInputMode(FInputModeGameOnly());
@@ -181,7 +181,7 @@ void AERNNightLordGrace::HandlePopupClosed()
 		{
 			if (LevelUpPopupWidget)
 			{
-				LevelUpPopupWidget->RemoveFromViewport();
+				LevelUpPopupWidget->RemoveFromParent();
 				LevelUpPopupWidget = nullptr; 
 				
 				ERNPC->SetInputMode(FInputModeGameOnly());

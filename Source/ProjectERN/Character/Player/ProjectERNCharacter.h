@@ -123,6 +123,9 @@ protected:
 	
 	/** Called for sprint on input */
 	void ToggleSprint();
+	
+	/** Called for flask on input */
+	void DrinkFlask();
 
 public:
 	/** Handles move inputs from either controls or UI interfaces */
