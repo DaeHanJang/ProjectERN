@@ -2,9 +2,6 @@
 
 
 #include "World/NightRainZoneVisualComponent.h"
-
-#include "DrawDebugHelpers.h"
-
 #include "NiagaraComponent.h"
 #include "GameFramework/GameStateBase.h"
 
@@ -141,21 +138,6 @@ bool UNightRainZoneVisualComponent::UpdateVisual()
 	
 	ZoneNiagaraComponent->SetWorldLocation(VisualLocation);
 	ZoneNiagaraComponent->SetWorldScale3D(VisualScale);
-
-	DrawDebugCircle(
-	GetWorld(),
-	FVector(ZoneCenter.X, ZoneCenter.Y, 7000.f),
-	ZoneRadius,
-	128,
-	FColor::Red,
-	false,
-	1.0f,
-	0,
-	20.0f,
-	FVector(1.f, 0.f, 0.f),
-	FVector(0.f, 1.f, 0.f),
-	false
-);
 	
 	return true;
 }

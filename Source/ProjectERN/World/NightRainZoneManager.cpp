@@ -3,7 +3,9 @@
 
 #include "World/NightRainZoneManager.h"
 
+#include "EngineUtils.h"
 #include "NiagaraComponent.h"
+#include "NightRainZoneCenterPoint.h"
 #include "NightRainZoneVisualComponent.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
@@ -35,7 +37,6 @@ void ANightRainZoneManager::BeginPlay()
 	if (VisualComponent)
 	{
 		VisualComponent->SetNiagaraComponent(NiagaraComponent);
-		VisualComponent->SetZoneState(ZoneState);
 	}
 	
 	if (HasAuthority() == false)
@@ -43,8 +44,7 @@ void ANightRainZoneManager::BeginPlay()
 		return;
 	}
 	
-	StartInitialPhase();
-	StartDamageTimer();
+	GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &ANightRainZoneManager::InitializeZone_ServerOnly));
 }
 
 void ANightRainZoneManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -53,6 +53,19 @@ void ANightRainZoneManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
 	
 	Super::EndPlay(EndPlayReason);
+}
+
+void ANightRainZoneManager::InitializeZone_ServerOnly()
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+
+	CollectZoneCenter();
+
+	StartInitialZoneState();
+	StartDamageTimer();
 }
 
 void ANightRainZoneManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -106,6 +119,7 @@ void ANightRainZoneManager::StartPhase(const FNightRainZonePhaseConfig& PhaseCon
 	NewState.StartRadius = PhaseConfig.StartRadius;
 	NewState.TargetRadius = PhaseConfig.TargetRadius;
 	NewState.PhaseDuration = FMath::Max(PhaseConfig.Duration, 0.01f);
+	NewState.FreezingDuration = PhaseConfig.FreezingDuration;
 	NewState.PhaseStartServerWorldTimeSeconds = GetSyncedServerTimeSeconds();
 	NewState.PhaseIndex = ZoneState.PhaseIndex + 1;
 	NewState.Revision = ZoneState.Revision + 1;
@@ -138,16 +152,13 @@ void ANightRainZoneManager::HandlePhaseFinished()
 		return;
 	}
 	
-	FNightRainZoneState NewState = ZoneState;
-	NewState.StartCenter = ZoneState.TargetCenter;
-	NewState.TargetCenter = ZoneState.TargetCenter;
-	NewState.StartRadius = ZoneState.TargetRadius;
-	NewState.TargetRadius = ZoneState.TargetRadius;
-	NewState.PhaseStartServerWorldTimeSeconds = GetSyncedServerTimeSeconds();
-	NewState.PhaseDuration = 0.f;
-	NewState.Revision++;
+	// 자기장 수렴 대기
+	FreezeCurrentZoneState();
 	
-	SetZoneState_ServerOnly(NewState);
+	if (HasNextShrinkPhase())
+	{
+		GetWorldTimerManager().SetTimer(PhaseTimerHandle, this, &ANightRainZoneManager::HandleWaitFinished, ZoneState.FreezingDuration, false);
+	}
 }
 
 void ANightRainZoneManager::StartDamageTimer()
@@ -194,12 +205,13 @@ void ANightRainZoneManager::TickZoneDamage()
 
 		const float Distance2D = FVector2D::Distance(FVector2D(Pawn->GetActorLocation().X, Pawn->GetActorLocation().Y),FVector2D(Center.X, Center.Y));
 
-		UE_LOG(LogTemp,Warning,TEXT("NightRain DamageCheck Pawn=%s Center=%s Dist2D=%.1f Radius=%.1f Outside=%s"),
+		UE_LOG(LogTemp,Warning,TEXT("NightRain DamageCheck Pawn=%s Center=%s Dist2D=%.1f Radius=%.1f Outside=%s Phase =%d"),
 			*Pawn->GetActorLocation().ToString(),
 			*Center.ToString(),
 			Distance2D,
 			Radius,
-			IsOutsideZone2D(Pawn->GetActorLocation(), Center, Radius) ? TEXT("true") : TEXT("false"));
+			IsOutsideZone2D(Pawn->GetActorLocation(), Center, Radius) ? TEXT("true") : TEXT("false"),
+			ZoneState.PhaseIndex);
 		
 		//자기장 (밤의비) 밖에 누워있는 플레이어는 몹으로 인식함으로 예외 해야함
 		//if (Pawn)
@@ -255,6 +267,156 @@ void ANightRainZoneManager::SetZoneState_ServerOnly(const FNightRainZoneState& N
 	{
 		VisualComponent->SetZoneState(ZoneState);
 	}
+}
+
+void ANightRainZoneManager::CollectZoneCenter()
+{
+	UWorld* World = GetWorld();
+	
+	if (World == nullptr)
+	{
+		UE_LOG(LogTemp,Error,TEXT("World is nullptr"));
+		return;
+	}
+
+	CachedZoneCenterPoints.Reset();
+	constexpr int32 MaxExpectedCenterPoints = 64;
+	CachedZoneCenterPoints.Reserve(MaxExpectedCenterPoints);
+	
+	for (TActorIterator<ANightRainZoneCenterPoint> It(World); It; ++It)
+	{
+		ANightRainZoneCenterPoint* TargetPoint = *It;
+		if (TargetPoint == nullptr)
+		{
+			continue;
+		}
+		CachedZoneCenterPoints.Add(TargetPoint);
+	}
+}
+
+ANightRainZoneCenterPoint* ANightRainZoneManager::ChooseNextZoneCenter(int32 CurrentPhaseIndex)
+{
+	TArray<ANightRainZoneCenterPoint*> Candidates;
+	
+	// 현재 진행된 자기장 페이즈에 따라 자기장 후보를 선별
+	for (ANightRainZoneCenterPoint* TargetPoint : CachedZoneCenterPoints)
+	{
+		if (TargetPoint == nullptr)
+		{
+			continue;
+		}
+		
+		if (TargetPoint->bEnabled == false)
+		{
+			continue;
+		}
+		
+		// 도착할 다음 페이즈에 해당하는 타겟
+		if (TargetPoint->ZoneLevel == (CurrentPhaseIndex + 1))
+		{
+			Candidates.Add(TargetPoint);
+		}
+	}
+	
+	if (Candidates.Num() == 0)
+	{
+		UE_LOG(LogTemp,Warning,TEXT("No candidates found"));
+		return nullptr;
+	}
+	// 후보 중 랜덤 선택
+
+	int32 RandomIndex = FMath::RandRange(0, Candidates.Num() - 1);
+	return Candidates[RandomIndex];
+	
+}
+
+void ANightRainZoneManager::StartInitialZoneState()
+{
+	FNightRainZoneState NewState;
+	NewState.bShrinking = false;
+
+	NewState.StartCenter = InitPhaseConfig.StartCenter;
+	NewState.TargetCenter = InitPhaseConfig.StartCenter;
+
+	NewState.StartRadius = InitPhaseConfig.StartRadius;
+	NewState.TargetRadius = InitPhaseConfig.StartRadius;
+
+	NewState.PhaseDuration = 0.f;
+	NewState.FreezingDuration = InitPhaseConfig.FreezingDuration;
+	NewState.PhaseStartServerWorldTimeSeconds = GetSyncedServerTimeSeconds();
+	NewState.PhaseIndex = 0;
+	NewState.Revision = ZoneState.Revision + 1;
+
+	SetZoneState_ServerOnly(NewState);
+
+	GetWorldTimerManager().SetTimer(
+		PhaseTimerHandle,
+		this,
+		&ANightRainZoneManager::HandleWaitFinished,
+		NewState.FreezingDuration,
+		false);
+}
+
+void ANightRainZoneManager::HandleWaitFinished()
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+
+	StartNextShrinkPhase();
+}
+
+void ANightRainZoneManager::StartNextShrinkPhase()
+{
+	if (HasNextShrinkPhase() == false)
+	{
+		return;
+	}
+
+	const int32 ConfigIndex = ZoneState.PhaseIndex;
+	const int32 NextPhaseIndex = ZoneState.PhaseIndex + 1;
+	
+	if (ShrinkPhaseConfigs.IsValidIndex(ConfigIndex) == false)
+	{
+		return;
+	}
+	
+	ANightRainZoneCenterPoint* NextCenterPoint = ChooseNextZoneCenter(ZoneState.PhaseIndex);
+	if (NextCenterPoint == nullptr)
+	{
+		return;
+	}
+	
+	FNightRainZonePhaseConfig NextPhaseConfig = ShrinkPhaseConfigs[ConfigIndex];
+
+	NextPhaseConfig.StartCenter = ZoneState.TargetCenter;
+	NextPhaseConfig.TargetCenter = NextCenterPoint->GetActorLocation();
+
+	NextPhaseConfig.StartRadius = ZoneState.TargetRadius;
+
+	StartPhase(NextPhaseConfig);
+}
+
+void ANightRainZoneManager::FreezeCurrentZoneState()
+{
+	FNightRainZoneState NewState = ZoneState;
+
+	NewState.bShrinking = false;
+	NewState.StartCenter = ZoneState.TargetCenter;
+	NewState.TargetCenter = ZoneState.TargetCenter;
+	NewState.StartRadius = ZoneState.TargetRadius;
+	NewState.TargetRadius = ZoneState.TargetRadius;
+	NewState.PhaseDuration = 0.f;
+	NewState.PhaseStartServerWorldTimeSeconds = GetSyncedServerTimeSeconds();
+	NewState.Revision++;
+	
+	SetZoneState_ServerOnly(NewState);
+}
+
+bool ANightRainZoneManager::HasNextShrinkPhase() const
+{
+	return ZoneState.PhaseIndex < ShrinkPhaseConfigs.Num();
 }
 
 

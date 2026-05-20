@@ -37,6 +37,9 @@ struct PROJECTERN_API FNightRainZoneState
 	float PhaseDuration = 0.f;
 	
 	UPROPERTY(BlueprintReadOnly)
+	float FreezingDuration = 0.f;
+	
+	UPROPERTY(BlueprintReadOnly)
 	int32 PhaseIndex = 0;
 	
 	UPROPERTY(BlueprintReadOnly)

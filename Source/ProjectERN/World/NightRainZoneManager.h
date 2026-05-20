@@ -7,6 +7,7 @@
 #include "GameFramework/Actor.h"
 #include "NightRainZoneManager.generated.h"
 
+class ANightRainZoneCenterPoint;
 class UNiagaraComponent;
 class UNightRainZoneVisualComponent;
 // 자기장 밤의비 상태가 변할 때 호출되는 델리게이트
@@ -32,7 +33,10 @@ struct FNightRainZonePhaseConfig
 	float TargetRadius = 20000.f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float Duration = 300.f;
+	float Duration = 180.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float FreezingDuration = 300.f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	float DamagePerTick = 10.f;
@@ -70,6 +74,7 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	void InitializeZone_ServerOnly();
 	
 	// 클라이언트가 새 ZoneState를 받았을 때 알림
 	UFUNCTION()
@@ -108,9 +113,24 @@ private:
 	// 서버에서 ZoneState 변경하고 알림
 	void SetZoneState_ServerOnly(const FNightRainZoneState& NewState);
 	
+	// 자기장 중심 포인트 수집
+	void CollectZoneCenter();
+	
+	// 자기장 중심 후보 선별
+	ANightRainZoneCenterPoint* ChooseNextZoneCenter(int32 CurrentPhaseIndex);
+	
+	void StartInitialZoneState();
+	void HandleWaitFinished();
+	void StartNextShrinkPhase();
+	void FreezeCurrentZoneState();
+	bool HasNextShrinkPhase() const;
+	
 private:
 	UPROPERTY(EditAnywhere, Category="Night Rain Zone")
 	FNightRainZonePhaseConfig InitPhaseConfig;
+	
+	UPROPERTY(EditAnywhere, Category="Night Rain Zone")
+	TArray<FNightRainZonePhaseConfig> ShrinkPhaseConfigs;
 	
 	UPROPERTY(ReplicatedUsing = OnRep_ZoneState)
 	FNightRainZoneState ZoneState;
@@ -126,4 +146,7 @@ private:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Night Rain Zone|Visual", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UNightRainZoneVisualComponent> VisualComponent;
+	
+	UPROPERTY()
+	TArray<ANightRainZoneCenterPoint*> CachedZoneCenterPoints;
 };
