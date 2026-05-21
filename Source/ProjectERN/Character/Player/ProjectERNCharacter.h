@@ -91,6 +91,10 @@ public:
 	// Level Up
 	UFUNCTION(Server, Reliable)
 	void Server_LevelUp();
+	
+	// 교회 상호작용
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Attributes")
+	void InteractionChurch() const;
 
 protected:
 

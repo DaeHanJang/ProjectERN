@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "ERNPlayerController.generated.h"
 
+class AChurch;
 class IInteractable;
 class UInputMappingContext;
 class UInputAction;
@@ -183,6 +184,10 @@ public:
 	// 화면 페이드 인 (검은화면 → 게임화면, 인트로 시퀀스용)
 	UFUNCTION(Client, Reliable)
 	void Client_StartFadeIn(float Duration);
+	
+	// 교회 상호작용 후 효과 제거
+	UFUNCTION(Client, Reliable)
+	void Client_CompleteChurchInteraction(AChurch* Church, FVector EffectLocation);
 
 private:
 	// 보스 체력바 위젯 인스턴스

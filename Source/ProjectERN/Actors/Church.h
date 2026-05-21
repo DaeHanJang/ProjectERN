@@ -7,6 +7,7 @@
 #include "Interfaces/IInteractable.h"
 #include "Church.generated.h"
 
+class UNiagaraSystem;
 class UWidgetComponent;
 class UNiagaraComponent;
 class USphereComponent;
@@ -26,18 +27,38 @@ public:
 	virtual void ActivateInteract_Implementation() const override;
 	virtual void EndInteract_Implementation(APlayerController* PlayerController) override;
 	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
+	
+	// Complete Interaction
+	void CompleteInteractionLocally(const FVector EffectLocation) const; 
+	
 
 private:
+	// Collision
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Collision", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<USphereComponent> Collision;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Collision", meta=(AllowPrivateAccess="true"))
+	// Mesh
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Mesh", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UStaticMeshComponent> Mesh;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Collision", meta=(AllowPrivateAccess="true"))
+	// Effect
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Effect", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UNiagaraComponent> EffectComponent;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Collision", meta=(AllowPrivateAccess="true"))
+	// Prompt
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Prompt", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UWidgetComponent> PromptComponent;
+	
+	// VFX
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="VFX", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UNiagaraSystem> InteractionEffect;
+	
+	// SFX
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="SFX", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<USoundBase> InteractionSound;
+	
+	// Interacted PlayerController
+	UPROPERTY(Transient)
+	TArray<APlayerController*> InteractedPlayerControllers;
 	
 };

@@ -26,18 +26,21 @@ void UERNGA_Flask::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 {
 	if (!GetWorld())
 	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 	
 	const AERNCharacterBase* PlayerCharacter = Cast<AERNCharacterBase>(ActorInfo->AvatarActor);
 	if (!PlayerCharacter)
 	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 	
 	const UERNAttributeSet* AttributeSet = PlayerCharacter->GetAttributeSet();
 	if (AttributeSet->GetFlaskQuantity() < 1.0f)
 	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 	

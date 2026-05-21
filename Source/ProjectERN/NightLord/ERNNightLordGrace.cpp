@@ -30,7 +30,7 @@ AERNNightLordGrace::AERNNightLordGrace()
 	// Mesh
 	GraceMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GraceMesh"));
 	GraceMesh->SetupAttachment(GetRootComponent());
-	GraceMesh->SetCollisionProfileName(TEXT("BlockAll"));
+	GraceMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	// Effect
 	EffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("EffectComponent"));
@@ -231,10 +231,11 @@ void AERNNightLordGrace::RestoreAttributes(const AProjectERNCharacter* TargetCha
 		return;
 	}
 	
-	// 체력, 마나, 스테미나 최대치 회복
+	// 체력, 마나, 스테미나, 성배병 최대치 회복
 	AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
 	AttributeSet->SetMana(AttributeSet->GetMaxMana());
 	AttributeSet->SetStamina(AttributeSet->GetMaxStamina());
+	AttributeSet->SetFlaskQuantity(AttributeSet->GetMaxFlaskQuantity());
 	
-	UE_LOG(LogTemp, Warning, TEXT("%s HP: %f, MP: %f, Stamina: %f"), *GetNameSafe(TargetCharacter), AttributeSet->GetHealth(), AttributeSet->GetMana(), AttributeSet->GetStamina());
+	UE_LOG(LogTemp, Warning, TEXT("%s HP: %f, MP: %f, Stamina: %f, Flask: %f"), *GetNameSafe(TargetCharacter), AttributeSet->GetHealth(), AttributeSet->GetMana(), AttributeSet->GetStamina(), AttributeSet->GetFlaskQuantity());
 }

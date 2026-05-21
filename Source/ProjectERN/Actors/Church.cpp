@@ -3,8 +3,12 @@
 #include "Actors/Church.h"
 
 #include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "Character/Player/ERNPlayerController.h"
+#include "Character/Player/ProjectERNCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AChurch::AChurch()
@@ -16,7 +20,7 @@ AChurch::AChurch()
 	// Collision
 	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	SetRootComponent(Collision);
-	Collision->InitSphereRadius(150.0f);
+	Collision->InitSphereRadius(250.0f);
 	Collision->SetCollisionProfileName(TEXT("OverlapAll"));
 	
 	// Mesh
@@ -37,17 +41,39 @@ AChurch::AChurch()
 
 void AChurch::Interact_Implementation(APlayerController* PlayerController)
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
 	
+	if (InteractedPlayerControllers.Contains(PlayerController))
+	{
+		return;
+	}
+	
+	const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(PlayerController->GetPawn());
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+	
+	PlayerCharacter->InteractionChurch();
+	
+	InteractedPlayerControllers.Add(PlayerController);
+	if (AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerController))
+	{
+		PC->Client_CompleteChurchInteraction(this, PlayerCharacter->GetActorLocation());
+	}
 }
 
 bool AChurch::CanInteract_Implementation() const
-{
+{	
 	return !IsActorBeingDestroyed();
 }
 
 void AChurch::ActivateInteract_Implementation() const
 {
-	if (PromptComponent)
+	if (PromptComponent && PromptComponent->bHiddenInGame == false)
 	{
 		PromptComponent->SetVisibility(true);
 	}
@@ -64,4 +90,27 @@ void AChurch::EndInteract_Implementation(APlayerController* PlayerController)
 EInteractionExecutionPolicy AChurch::GetInteractionExecutionPolicy_Implementation() const
 {
 	return EInteractionExecutionPolicy::ServerAuthority;
+}
+
+void AChurch::CompleteInteractionLocally(const FVector EffectLocation) const
+{
+	if (EffectComponent)
+	{
+		EffectComponent->DeactivateImmediate();
+	}
+	
+	if (PromptComponent)
+	{
+		PromptComponent->SetHiddenInGame(true);
+	}
+	
+	if (InteractionEffect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), InteractionEffect, EffectLocation);
+	}
+	
+	if (InteractionSound)
+	{
+		UGameplayStatics::SpawnSoundAtLocation(GetWorld(), InteractionSound, EffectLocation);
+	}
 }
