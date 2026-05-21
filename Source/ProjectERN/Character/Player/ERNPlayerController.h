@@ -189,6 +189,10 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_CompleteChurchInteraction(AChurch* Church, FVector EffectLocation);
 
+	// 인트로 타이틀 위젯 표시 (타이밍은 위젯 내부 UMG Animation으로 관리)
+	UFUNCTION(Client, Reliable)
+	void Client_ShowIntroTitleWidget();
+
 private:
 	// 보스 체력바 위젯 인스턴스
 	UPROPERTY(Transient)

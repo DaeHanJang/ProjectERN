@@ -81,6 +81,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Boss")
 	void PlayIntro();
 
+	// 보스 잠금 (BT + Perception 동시 정지). 잠금 중에는 Perception 콜백이 안 불려서 체력바 트리거 X
+	// — GameState가 보스 조우 컷신 흐름 중에 호출
+	UFUNCTION(BlueprintCallable, Category = "Boss|Encounter")
+	void SetIntroCutsceneLocked(bool bLocked);
+
+	// 현재 잠금 상태 (디버그/조회용)
+	UPROPERTY(BlueprintReadOnly, Category = "Boss|Encounter")
+	bool bIsIntroLocked = false;
+
 	// 현재 페이즈의 체력 비율 조건 체크
 	UFUNCTION(BlueprintPure, Category = "Boss")
 	int32 GetPhaseIndexForCurrentHealth() const;

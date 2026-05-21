@@ -6,10 +6,108 @@
 #include "Net/UnrealNetwork.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
 #include "LevelSequence.h"
+#include "EngineUtils.h"
+#include "TimerManager.h"
+#include "Character/Enemy/ERNBossCharacter.h"
 
 AERNGameState::AERNGameState()
 {
 	bReplicates = true;
+}
+
+void AERNGameState::StartBossEncounterSequence()
+{
+	if (!HasAuthority()) return;
+
+	// 컷신 미설정 시 종료
+	if (BossEncounterCutscene.IsNull())
+	{
+		return;
+	}
+
+	// 맵에서 보스 찾기 (보스맵엔 1마리만 있다고 가정)
+	AERNBossCharacter* Boss = nullptr;
+	for (TActorIterator<AERNBossCharacter> It(GetWorld()); It; ++It)
+	{
+		Boss = *It;
+		break;
+	}
+
+	if (!Boss)
+	{
+		// WP 언로드 등으로 못 찾았으면 재시도 (최대 10회 = 5초)
+		if (BossEncounterRetryCount < 10)
+		{
+			BossEncounterRetryCount++;
+			FTimerHandle Tmp;
+			GetWorldTimerManager().SetTimer(
+				Tmp,
+				this,
+				&AERNGameState::StartBossEncounterSequence,
+				0.5f,
+				false
+			);
+		}
+		return;
+	}
+
+	BossEncounterRetryCount = 0;
+	CachedBoss = Boss;
+
+	// 보스 AI 비활성화 (BT + Perception 정지 → 체력바 트리거 차단)
+	Boss->SetIntroCutsceneLocked(true);
+
+	// 모든 머신에서 컷신 재생
+	Multicast_PlayBossEncounterCutscene();
+
+	UE_LOG(LogTemp, Log, TEXT("[BossEncounter] Started for %s"), *Boss->GetName());
+}
+
+void AERNGameState::Multicast_PlayBossEncounterCutscene_Implementation()
+{
+	if (BossEncounterCutscene.IsNull())
+	{
+		return;
+	}
+
+	UGameInstance* GI = Cast<UGameInstance>(GetWorld()->GetGameInstance());
+	if (!GI) return;
+
+	UERNCutsceneSubsystem* CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>();
+	if (!CutsceneSubsystem) return;
+
+	// 서버에서만 종료 콜백 바인딩 (보스 잠금 해제는 서버 권한)
+	if (HasAuthority())
+	{
+		CutsceneSubsystem->OnCutsceneFinished.AddDynamic(this, &AERNGameState::OnBossEncounterCutsceneFinished);
+	}
+
+	CutsceneSubsystem->PlayCutscene(BossEncounterCutscene.LoadSynchronous());
+}
+
+void AERNGameState::OnBossEncounterCutsceneFinished()
+{
+	// 콜백 해제
+	if (UGameInstance* GI = Cast<UGameInstance>(GetWorld()->GetGameInstance()))
+	{
+		if (UERNCutsceneSubsystem* CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>())
+		{
+			CutsceneSubsystem->OnCutsceneFinished.RemoveDynamic(this, &AERNGameState::OnBossEncounterCutsceneFinished);
+		}
+	}
+
+	if (!HasAuthority()) return;
+
+	if (AERNBossCharacter* Boss = CachedBoss.Get())
+	{
+		// 보스 잠금 해제 → BT/Perception 재개 → 전투 시작
+		Boss->SetIntroCutsceneLocked(false);
+
+		// 체력바 즉시 표시 (perception 자동 감지 기다리지 않고 명시적 호출)
+		Boss->ShowHealthBarToAllPlayers();
+	}
+
+	CachedBoss.Reset();
 }
 
 void AERNGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
