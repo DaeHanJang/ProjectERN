@@ -21,6 +21,7 @@
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BrainComponent.h"
 #include "Perception/AIPerceptionComponent.h"
+#include "Subsystem/ERNSoundSubsystem.h"
 
 AERNBossCharacter::AERNBossCharacter()
 {
@@ -345,9 +346,41 @@ void AERNBossCharacter::ShowHealthBarToAllPlayers()
 	UE_LOG(LogTemp, Log, TEXT("[Boss %s] Health bar shown to all players"), *GetName());
 }
 
+void AERNBossCharacter::Multicast_PlayBossBGM_Implementation()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[Boss BGM] Multicast_PlayBossBGM_Implementation called. bBGMStarted=%d, BossBGM=%s"),
+		bBGMStarted, BossBGM ? *BossBGM->GetName() : TEXT("NULL"));
+
+	if (bBGMStarted || !BossBGM) return;
+	bBGMStarted = true;
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UERNSoundSubsystem* SS = GI->GetSubsystem<UERNSoundSubsystem>())
+		{
+			SS->PlayBGM(BossBGM, BGMFadeInTime);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Boss BGM] SoundSubsystem null"));
+		}
+	}
+}
+
+void AERNBossCharacter::Multicast_StopBossBGM_Implementation()
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UERNSoundSubsystem* SS = GI->GetSubsystem<UERNSoundSubsystem>())
+		{
+			SS->StopBGM(BGMFadeOutTime);
+		}
+	}
+}
+
 void AERNBossCharacter::OnDeath()
 {
-	// 모든 플레이어의 보스 체력바 숨김
+	// 모든 플레이어의 보스 체력바 숨김 + BGM 정지
 	if (HasAuthority())
 	{
 		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
@@ -357,6 +390,9 @@ void AERNBossCharacter::OnDeath()
 				PC->Client_HideBossHealthBar();
 			}
 		}
+
+		// 보스 BGM 페이드 아웃
+		Multicast_StopBossBGM();
 	}
 
 	// 부모 사망 처리 (사망 몽타주 재생, 이동/충돌 비활성화, 딜레이 후 Destroy 등)

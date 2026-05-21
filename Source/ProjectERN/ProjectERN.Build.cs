@@ -56,7 +56,14 @@ public class ProjectERN : ModuleRules
 			"ProjectERN/Shop/Data",
 			"ProjectERN/Shop/Provider",
 			"ProjectERN/Shop/Components",
-			"ProjectERN/Shop/Actors"
+			"ProjectERN/Shop/Actors",
+			
+			// Enhancement System
+			"ProjectERN/Enhancement",
+			"ProjectERN/Enhancement/Data",
+			"ProjectERN/Enhancement/Provider",
+			"ProjectERN/Enhancement/Components",
+			"ProjectERN/Enhancement/Actors"
 		});
 
 		// Uncomment if you are using Slate UI

@@ -96,10 +96,11 @@ void AERNBossAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 				SetTarget(Player);
 			}
 
-			// 보스 체력바 표시 (첫 감지 시)
+			// 보스 체력바 표시 + BGM 재생 (첫 감지 시)
 			if (AERNBossCharacter* Boss = Cast<AERNBossCharacter>(GetPawn()))
 			{
 				Boss->ShowHealthBarToAllPlayers();
+				Boss->Multicast_PlayBossBGM();
 			}
 		}
 		else

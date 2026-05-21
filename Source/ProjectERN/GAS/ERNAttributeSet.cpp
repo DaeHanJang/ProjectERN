@@ -24,6 +24,8 @@ UERNAttributeSet::UERNAttributeSet()
 	InitGold(1000000.f);
 	InitStaggerResistance(10.f);
 	InitDownResistance(20.f);
+	InitMaxFlaskQuantity(3.0f);
+	InitFlaskQuantity(3.0f);
 }
 
 void UERNAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -46,6 +48,8 @@ void UERNAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, Gold, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, StaggerResistance, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, DownResistance, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, MaxFlaskQuantity, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, FlaskQuantity, COND_None, REPNOTIFY_Always);
 }
 
 void UERNAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -170,4 +174,14 @@ void UERNAttributeSet::OnRep_StaggerResistance(const FGameplayAttributeData& Old
 void UERNAttributeSet::OnRep_DownResistance(const FGameplayAttributeData& OldDownResistance)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, DownResistance, OldDownResistance);
+}
+
+void UERNAttributeSet::OnRep_MaxFlaskQuantity(const FGameplayAttributeData& OldMaxFlaskQuantity)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, MaxFlaskQuantity, OldMaxFlaskQuantity);
+}
+
+void UERNAttributeSet::OnRep_FlaskQuantity(const FGameplayAttributeData& OldFlaskQuantity)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, FlaskQuantity, OldFlaskQuantity);
 }

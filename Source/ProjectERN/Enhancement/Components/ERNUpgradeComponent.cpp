@@ -8,8 +8,8 @@
 #include "GameFramework/Character.h"
 #include "Net/UnrealNetwork.h"
 
-// TODO: 나중에 Phase 4에서 UERNGameInstance 정의에 맞게 포함 경로 추가해야 함
-// #include "Core/ERNGameInstance.h"
+// Phase 4 구현 완료: UERNGameInstance 포함 경로 추가
+#include "Core/ERNGameInstance.h"
 
 UERNUpgradeComponent::UERNUpgradeComponent()
 {
@@ -30,8 +30,6 @@ void UERNUpgradeComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 
 void UERNUpgradeComponent::AcquireProvider()
 {
-    // Phase 4 구현 예정: GameInstance에서 UpgradeProvider를 획득합니다.
-    /*
     if (UERNGameInstance* GI = Cast<UERNGameInstance>(GetWorld()->GetGameInstance()))
     {
         DataProvider = Cast<IERNUpgradeDataProvider>(GI->GetUpgradeDataProviderObject());
@@ -46,7 +44,6 @@ void UERNUpgradeComponent::AcquireProvider()
             UE_LOG(LogUpgrade, Log, TEXT("[UpgradeComponent] Provider 획득 성공"));
         }
     }
-    */
 }
 
 // ===== 공개 API =====
@@ -92,11 +89,16 @@ FERNUpgradePreview UERNUpgradeComponent::GetUpgradePreview(int32 SlotIndex)
         Preview.SourceDisplayName = SourceRow->DisplayName;
         Preview.SourceGrade = SourceRow->Grade;
 
-        // DataAsset에서 스탯 읽기
+        // DataAsset에서 스탯 + 아이콘 읽기
         const UItemDataAssetBase* BaseAsset = ItemMgr->LoadItemDataAssetSync(SourceID, EItemAssetLoadFlags::None);
         if (const UEquipableItemDataAsset* EquipAsset = Cast<UEquipableItemDataAsset>(BaseAsset))
         {
             Preview.SourceLightAttack = EquipAsset->LightAttackDamage;
+            Preview.SourceHeavyAttack = EquipAsset->HeavyAttackDamage;
+        }
+        if (BaseAsset)
+        {
+            Preview.SourceIcon = BaseAsset->Icon;
         }
     }
 
@@ -121,12 +123,27 @@ FERNUpgradePreview UERNUpgradeComponent::GetUpgradePreview(int32 SlotIndex)
                 if (const UEquipableItemDataAsset* ResultEquip = Cast<UEquipableItemDataAsset>(ResultBase))
                 {
                     Preview.ResultLightAttack = ResultEquip->LightAttackDamage;
+                    Preview.ResultHeavyAttack = ResultEquip->HeavyAttackDamage;
+                }
+                if (ResultBase)
+                {
+                    Preview.ResultIcon = ResultBase->Icon;
                 }
             }
 
-            // 재료 데이터 조회
+            // 재료 데이터 조회 (이름 + 아이콘 + 등급)
             const FERNItemTable* MatRow = ItemMgr->FindItemRow(Path.RequiredMaterialID);
-            if (MatRow) Preview.MaterialDisplayName = MatRow->DisplayName;
+            if (MatRow)
+            {
+                Preview.MaterialDisplayName = MatRow->DisplayName;
+                Preview.MaterialGrade = MatRow->Grade;
+
+                const UItemDataAssetBase* MatAsset = ItemMgr->LoadItemDataAssetSync(Path.RequiredMaterialID, EItemAssetLoadFlags::None);
+                if (MatAsset)
+                {
+                    Preview.MaterialIcon = MatAsset->Icon;
+                }
+            }
 
             // 현재 재료 보유량 계산
             for (const FInventoryItemEntry& Entry : Items)

@@ -17,6 +17,7 @@ enum class ECharacterType : uint8;
 class UERNInventoryComponent;
 class UERNEquipmentComponent;
 class UERNShopComponent;
+class UERNUpgradeComponent;
 class UERNInputConfig;
 class UGameplayEffect;
 class UCameraShakeBase;
@@ -51,6 +52,10 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** Shop Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UERNShopComponent* ShopComponent;
+
+	/** Upgrade Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UERNUpgradeComponent* UpgradeComponent;
 	
 	/** Interaction Detection Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
@@ -91,6 +96,10 @@ public:
 	// Level Up
 	UFUNCTION(Server, Reliable)
 	void Server_LevelUp();
+	
+	// 교회 상호작용
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Attributes")
+	void InteractionChurch() const;
 
 protected:
 
@@ -124,6 +133,9 @@ protected:
 	/** Called for sprint on input */
 	void ToggleSprint();
 	
+	/** Called for flask on input */
+	void DrinkFlask();
+
 	/** Called for NormalSkill on input */
 	void NormalSkill();
 	
@@ -165,6 +177,9 @@ public:
 
 	/** Returns ShopComponent **/
 	FORCEINLINE class UERNShopComponent* GetShopComponent() const { return ShopComponent; }
+
+	/** Returns UpgradeComponent **/
+	FORCEINLINE class UERNUpgradeComponent* GetUpgradeComponent() const { return UpgradeComponent; }
 	
 	// ************** 임시 락온 기능 구현 **************
 public:
@@ -239,6 +254,10 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_IsHangingFromBird, BlueprintReadOnly, Category = "Intro")
 	bool bIsHangingFromBird = false;
 
+	// 매달림 시 따라갈 새 (Replicated — Tick에서 HangPoint World로 자기 위치 강제 동기화)
+	UPROPERTY(Replicated)
+	TObjectPtr<class AERNIntroBird> AttachedBird;
+
 	// 매달림 루프 몽타주 (BP에서 AM_Shared_Hanging 할당)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
 	TObjectPtr<UAnimMontage> HangingMontage;
@@ -276,6 +295,9 @@ public:
 
 	UFUNCTION()
 	void OnRep_IsHangingFromBird();
+
+	// 매달림 중에는 RepMovement.Location 적용 차단 (attach 자동 업데이트가 위치 책임)
+	virtual void OnRep_ReplicatedMovement() override;
 
 protected:
 	// 상태 별 속도

@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "ERNPlayerController.generated.h"
 
+class AChurch;
 class IInteractable;
 class UInputMappingContext;
 class UInputAction;
@@ -183,6 +184,10 @@ public:
 	// 화면 페이드 인 (검은화면 → 게임화면, 인트로 시퀀스용)
 	UFUNCTION(Client, Reliable)
 	void Client_StartFadeIn(float Duration);
+	
+	// 교회 상호작용 후 효과 제거
+	UFUNCTION(Client, Reliable)
+	void Client_CompleteChurchInteraction(AChurch* Church, FVector EffectLocation);
 
 	// 인트로 타이틀 위젯 표시 (타이밍은 위젯 내부 UMG Animation으로 관리)
 	UFUNCTION(Client, Reliable)

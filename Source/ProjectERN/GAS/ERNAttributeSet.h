@@ -103,6 +103,15 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_DownResistance)
 	FGameplayAttributeData DownResistance;
 	ATTRIBUTE_ACCESSORS(UERNAttributeSet, DownResistance)
+	
+	// Flask
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_MaxFlaskQuantity)
+	FGameplayAttributeData MaxFlaskQuantity;
+	ATTRIBUTE_ACCESSORS(UERNAttributeSet, MaxFlaskQuantity)
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_FlaskQuantity)
+	FGameplayAttributeData FlaskQuantity;
+	ATTRIBUTE_ACCESSORS(UERNAttributeSet, FlaskQuantity)
 
 protected:
 	UFUNCTION()
@@ -152,4 +161,11 @@ protected:
 
 	UFUNCTION()
 	virtual void OnRep_DownResistance(const FGameplayAttributeData& OldDownResistance);
+	
+	UFUNCTION()
+	virtual void OnRep_MaxFlaskQuantity(const FGameplayAttributeData& OldMaxFlaskQuantity);
+	
+	UFUNCTION()
+	virtual void OnRep_FlaskQuantity(const FGameplayAttributeData& OldFlaskQuantity);
+	
 };

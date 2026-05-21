@@ -7,6 +7,7 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Shop/Provider/ERNShopDataProvider.h"
+#include "Enhancement/Provider/ERNUpgradeDataProvider.h"
 #include "ERNGameInstance.generated.h"
 
 class UERNDummyShopProvider;
@@ -79,6 +80,15 @@ public:
 	// 상점 Provider UObject 반환 (캐스팅용)
 	UObject* GetShopDataProviderObject() const { return ShopDataProvider; }
 
+	// ===== 강화 시스템 =====
+
+	// 강화 Provider 반환 (인터페이스)
+	UFUNCTION(BlueprintCallable, Category = "Upgrade")
+	TScriptInterface<IERNUpgradeDataProvider> GetUpgradeDataProvider() const;
+
+	// 강화 Provider UObject 반환 (캐스팅용)
+	UObject* GetUpgradeDataProviderObject() const { return UpgradeDataProvider; }
+
 	// 로딩 위젯 클래스 반환 (서브시스템용)
 	UFUNCTION(BlueprintPure, Category = "Loading")
 	TSubclassOf<UUserWidget> GetLoadingWidgetClass() const { return LoadingWidgetClass; }
@@ -135,6 +145,19 @@ protected:
 	/** 블루프린트에서 지정할 DataTable Provider 클래스 */
 	UPROPERTY(EditDefaultsOnly, Category = "Shop")
 	TSubclassOf<class UERNDataTableShopProvider> DataTableProviderClass;
+
+	// ===== 강화 시스템 =====
+
+	/** 강화 데이터 Provider (UObject) */
+	UPROPERTY()
+	UObject* UpgradeDataProvider = nullptr;
+
+	/** 블루프린트에서 지정할 강화 Provider 클래스 */
+	UPROPERTY(EditDefaultsOnly, Category = "Upgrade")
+	TSubclassOf<class UERNUpgradeProvider> UpgradeProviderClass;
+
+	// 강화 시스템 초기화
+	void InitializeUpgradeSystem();
 
 	// ===== 로딩 화면 =====
 

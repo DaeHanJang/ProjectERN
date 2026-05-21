@@ -3,22 +3,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "GameFramework/Character.h"
 #include "ERNIntroBird.generated.h"
 
 class USceneComponent;
-class USkeletalMeshComponent;
 class UNiagaraComponent;
 class UCurveFloat;
 class AProjectERNCharacter;
 
 /**
- * 인트로 시퀀스용 새 액터.
- * 서버에서 스폰되어 직선 경로로 비행하며, HangPoint에 플레이어 캐릭터를 부착한다.
- * 플레이어가 매달림에서 해제되면 위로 상승 후 자동 Destroy.
+ * 인트로 시퀀스용 새 액터 (ACharacter 기반).
+ * - Deterministic 클라이언트 시뮬레이션: 위치 리플 OFF, Replicated 상태 변수로 동기화 후 각 머신이 동일 계산
+ * - 시간은 GameState::GetServerWorldTimeSeconds()로 동기화 → 모든 머신이 동일 Alpha 계산
+ * - HangPoint에 플레이어 캐릭터를 부착
  */
 UCLASS()
-class PROJECTERN_API AERNIntroBird : public AActor
+class PROJECTERN_API AERNIntroBird : public ACharacter
 {
 	GENERATED_BODY()
 
@@ -28,7 +28,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	// 비행 시작 (서버 권한)
+	// 비행 시작 (서버 권한 — Replicated 상태 변수 세팅)
 	void StartFlight();
 
 	// 부착된 플레이어가 새에서 해제됐을 때 호출 (서버 권한) → 위로 상승 후 Destroy
@@ -43,15 +43,11 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	// 새 스켈레탈 메시
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USkeletalMeshComponent> BirdMesh;
-
-	// 캐릭터가 매달릴 슬롯 (BP에서 위치 조정)
+	// 캐릭터가 매달릴 슬롯 (BP에서 위치 조정, Mesh의 자식)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USceneComponent> HangPoint;
 
-	// 비행 중 재생할 나이아가라 (BP에서 에셋 할당, bAutoActivate=true)
+	// 비행 중 재생할 나이아가라 (BP에서 NiagaraSystem 에셋 할당)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNiagaraComponent> FlightVFX;
 
@@ -64,10 +60,6 @@ protected:
 	// 시작 → 끝까지 걸리는 시간 (초)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flight")
 	float FlightDuration = 4.f;
-
-	// 시간 정규화(0~1) → 진행도(0~1) 곡선. 비어 있으면 선형
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flight")
-	TObjectPtr<UCurveFloat> FlightCurve;
 
 	// === 이탈 후 ===
 
@@ -88,23 +80,49 @@ private:
 	UPROPERTY(Replicated)
 	TObjectPtr<AProjectERNCharacter> AttachedPlayer;
 
-	// 비행 시작 위치 (서버에서 StartFlight 시 캐싱)
-	FVector StartLocation = FVector::ZeroVector;
+	// === 비행 상태 (Replicated — initial replication으로 spawn과 함께 도착) ===
 
-	// 비행 방향 (서버에서 StartFlight 시 캐싱)
-	FVector FlightDirection = FVector::ForwardVector;
-
-	// 비행 경과 시간
-	float ElapsedTime = 0.f;
-
-	// 비행 중 여부 (서버에서만 사용)
+	UPROPERTY(ReplicatedUsing = OnRep_IsFlying)
 	bool bIsFlying = false;
 
-	// 이탈 후 상승 중 여부
+	UPROPERTY(Replicated)
+	FVector StartLocation = FVector::ZeroVector;
+
+	UPROPERTY(Replicated)
+	FVector FlightDirection = FVector::ForwardVector;
+
+	// 서버 시간 기준 비행 시작 시각 (시작 시 lag 보정용 — 그 후엔 사용 안 함)
+	UPROPERTY(Replicated)
+	float FlightStartServerTime = 0.f;
+
+	// 각 머신의 로컬 시간 기준 시작 시각 (Replicated 아님 — Tick에서 GetTimeSeconds()와의 차로 ElapsedTime 계산)
+	float LocalFlightStartTime = 0.f;
+
+	UFUNCTION()
+	void OnRep_IsFlying();
+
+	// === FlyAway 상태 ===
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsFlyingAway)
 	bool bIsFlyingAway = false;
 
-	// FlyAway 시작 시점에 Destroy 예약용 타이머
+	UPROPERTY(Replicated)
+	FVector FlyAwayStartLocation = FVector::ZeroVector;
+
+	UPROPERTY(Replicated)
+	float FlyAwayStartServerTime = 0.f;
+
+	// 각 머신의 로컬 FlyAway 시작 시각
+	float LocalFlyAwayStartTime = 0.f;
+
+	UFUNCTION()
+	void OnRep_IsFlyingAway();
+
+	// FlyAway 종료 시점에 Destroy 예약용 타이머 (서버 전용)
 	FTimerHandle FlyAwayTimerHandle;
 
 	void DestroySelf();
+
+	// 서버 동기화된 현재 시각 반환 (GameState->GetServerWorldTimeSeconds() 래퍼)
+	float GetServerNow() const;
 };
