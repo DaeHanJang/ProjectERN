@@ -30,6 +30,7 @@
 #include "Actors/Intro/ERNIntroBird.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Components/PostProcessComponent.h"
 #include "Inventory/Item/ERNItemActor.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -140,6 +141,14 @@ AProjectERNCharacter::AProjectERNCharacter()
 	InteractionDetector->SetCollisionProfileName(TEXT("OverlapAll"));
 	InteractionDetector->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Ignore);
 	InteractionDetector->SetGenerateOverlapEvents(true);
+	
+	// NightRainZone 자기장 밤의비
+	NightRainPostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("NightRainPostProcessComponent"));
+	NightRainPostProcessComponent->SetupAttachment(FollowCamera);
+	NightRainPostProcessComponent->bEnabled = true;
+	NightRainPostProcessComponent->bUnbound = true;
+	NightRainPostProcessComponent->BlendWeight = 0.f;
+	NightRainPostProcessComponent->Priority = 100.f;
 	
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 

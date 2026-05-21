@@ -16,27 +16,26 @@ struct FNightRainZonePhaseConfig
 {
 	GENERATED_BODY()
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FVector StartCenter = FVector::ZeroVector;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	//0번째 페이즈에서는 ZeroVector. 이후부터는 월드에 배치된 BP_NightRainZoneCenterPoint 로 설정됨
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	FVector TargetCenter = FVector::ZeroVector;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
-	float StartRadius = 100000.f;
+	float TargetRadius = 100000.f;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
-	float TargetRadius = 20000.f;
-	
+	// 자기장 축소 시간
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.01"))
-	float Duration = 180.f;
+	float ShrinkDuration = 180.f;
 	
+	// 자기장 축소 후 대기 시간
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
 	float FreezingDuration = 300.f;
 	
+	// 틱당 데미지
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
 	float DamagePerTick = 10.f;
 	
+	// 데미지 틱 간격
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.01"))
 	float DamageTickInterval = 1.f;
 };
@@ -48,8 +47,5 @@ class PROJECTERN_API UNightRainZonePhaseConfigData : public UDataAsset
 	
 public:
 	UPROPERTY(EditAnywhere, Category="Night Rain Zone")
-	FNightRainZonePhaseConfig InitPhaseConfig;
-	
-	UPROPERTY(EditAnywhere, Category="Night Rain Zone")
-	TArray<FNightRainZonePhaseConfig> ShrinkPhaseConfigs;
+	TArray<FNightRainZonePhaseConfig> PhaseConfigs;
 };

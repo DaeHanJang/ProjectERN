@@ -52,11 +52,8 @@ private:
 	void BroadcastZoneStateChanged();
 	
 	// Server 전용
-	// InitPhaseConfig 에 따라 자기장 페이즈 시작
-	void StartInitialPhase();
-	
 	// 페이즈 타이머 설정
-	void StartPhase(const FNightRainZonePhaseConfig& PhaseConfig);
+	void StartPhase(const FNightRainZonePhaseConfig& PhaseConfig, const FVector& TargetCenterLocation);
 	void StopZone();
 	
 	// 축소 완료 후 최종 위치/반지름으로 상태 고정
