@@ -265,6 +265,9 @@ void UERNCutsceneSubsystem::StartBirdIntroSequence()
 
 		// 페이드 인 (해당 클라에)
 		PC->Client_StartFadeIn(FadeInDuration);
+
+		// 인트로 타이틀 위젯 표시 (위젯 자체 애니메이션으로 페이드 인/홀드/페이드 아웃)
+		PC->Client_ShowIntroTitleWidget();
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("[IntroSequence] Started with %d birds (group: %s)"), Count, *ChosenGroup->GetName());
@@ -345,6 +348,23 @@ void UERNCutsceneSubsystem::StopCutscene()
 	}
 
 	CurrentSequenceActor = nullptr;
+
+	// ViewTarget을 각 PC의 Pawn으로 명시적 복원
+	// — 멀티플레이에서 클라이언트의 ViewTarget이 시퀀서 카메라에서 자동 복귀 안 되는 문제 방지
+	// — 각 머신이 자기 World의 PC만 순회 (서버는 호스트 PC, 클라는 자기 PC)
+	if (UWorld* World = GetWorld())
+	{
+		for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+		{
+			if (APlayerController* PC = It->Get())
+			{
+				if (APawn* Pawn = PC->GetPawn())
+				{
+					PC->SetViewTargetWithBlend(Pawn, 0.f);
+				}
+			}
+		}
+	}
 
 	// 입력 복구
 	if (bInputDisabledDuringCutscene)

@@ -156,6 +156,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Intro")
 	bool bAutoStartIntroOnLoadingFinished = false;
 
+	// 인트로 타이틀 위젯 클래스 (WBP_IntroTitle) — 타이밍은 위젯 내부 Animation에서 관리
+	UPROPERTY(EditDefaultsOnly, Category = "Intro")
+	TSubclassOf<UUserWidget> IntroTitleWidgetClass;
+
 public:
 	// 인트로용 게터들 (서브시스템에서 사용)
 	UFUNCTION(BlueprintPure, Category = "Intro")
@@ -166,6 +170,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Intro")
 	bool ShouldAutoStartIntro() const { return bAutoStartIntroOnLoadingFinished; }
+
+	UFUNCTION(BlueprintPure, Category = "Intro")
+	TSubclassOf<UUserWidget> GetIntroTitleWidgetClass() const { return IntroTitleWidgetClass; }
 
 private:
 	// 상점 시스템 초기화

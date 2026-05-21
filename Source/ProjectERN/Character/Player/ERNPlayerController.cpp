@@ -486,6 +486,22 @@ void AERNPlayerController::Client_StartFadeIn_Implementation(float Duration)
 	PlayerCameraManager->StartCameraFade(1.f, 0.f, Duration, FLinearColor::Black, false, false);
 }
 
+void AERNPlayerController::Client_ShowIntroTitleWidget_Implementation()
+{
+	UERNGameInstance* GameInst = Cast<UERNGameInstance>(GetGameInstance());
+	if (!GameInst) return;
+
+	TSubclassOf<UUserWidget> WidgetClass = GameInst->GetIntroTitleWidgetClass();
+	if (!WidgetClass) return;
+
+	// 위젯은 Construct에서 자체 UMG Animation을 재생하고 종료 시 RemoveFromParent
+	UUserWidget* IntroTitleWidget = CreateWidget<UUserWidget>(this, WidgetClass);
+	if (IntroTitleWidget)
+	{
+		IntroTitleWidget->AddToViewport(100);
+	}
+}
+
 void AERNPlayerController::Client_ShowBossHealthBar_Implementation(AERNBossCharacter* Boss)
 {
 	if (!Boss || !BossHealthBarWidgetClass) return;

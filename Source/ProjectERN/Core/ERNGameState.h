@@ -51,6 +51,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cutscene")
 	TSoftObjectPtr<ULevelSequence> IntroCutscene;
 
+	// 보스 조우 컷신 (보스맵 BeginPlay 시 자동 재생)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cutscene")
+	TSoftObjectPtr<ULevelSequence> BossEncounterCutscene;
+
 	// === 카운트다운 시스템 ===
 
 	// 카운트다운 변경 이벤트 (UI 바인딩용)
@@ -81,11 +85,30 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Countdown")
 	void CancelCountdown();
 
+	// 보스 조우 컷신 시작 — 트리거 박스(AERNBossCutsceneTrigger)에서 호출
+	UFUNCTION(BlueprintCallable, Category = "Boss")
+	void StartBossEncounterSequence();
+
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UFUNCTION()
 	void OnRep_CountdownTime();
+
+	// 모든 머신에서 보스 조우 컷신 재생
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayBossEncounterCutscene();
+
+	// 보스 조우 컷신 종료 콜백 (서버: 보스 잠금 해제 + 체력바 표시)
+	UFUNCTION()
+	void OnBossEncounterCutsceneFinished();
+
+	// 보스 검색 재시도 횟수 (WP 언로드 등 대응)
+	int32 BossEncounterRetryCount = 0;
+
+	// 현재 컷신에 사용 중인 보스 참조 (종료 콜백에서 사용)
+	UPROPERTY()
+	TWeakObjectPtr<class AERNBossCharacter> CachedBoss;
 
 	// 카운트다운 틱 (1초마다)
 	void TickCountdown();
