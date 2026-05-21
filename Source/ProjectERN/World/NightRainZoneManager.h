@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Data/NightRainZoneState.h"
 #include "GameFramework/Actor.h"
+#include "World/Data/NightRainZonePhaseConfigData.h"
 #include "NightRainZoneManager.generated.h"
 
 class ANightRainZoneCenterPoint;
@@ -12,39 +13,6 @@ class UNiagaraComponent;
 class UNightRainZoneVisualComponent;
 // 자기장 밤의비 상태가 변할 때 호출되는 델리게이트
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnNightRainZoneStateChanged, const FNightRainZoneState&);
-
-
-//에디터에서 설정할 초기 설정값
-USTRUCT(BlueprintType)
-struct FNightRainZonePhaseConfig
-{
-	GENERATED_BODY()
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FVector StartCenter = FVector::ZeroVector;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FVector TargetCenter = FVector::ZeroVector;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float StartRadius = 100000.f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float TargetRadius = 20000.f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float Duration = 180.f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float FreezingDuration = 300.f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float DamagePerTick = 10.f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float DamageTickInterval = 1.f;
-};
-
 
 // Is Spatially Loaded = false 를 전제로 만들어진 매니저 엑터입니다. 월드 파티션에서 배치할 때, 꼭 Is Spatially Loaded = false 를 설정해주세요.
 UCLASS()
@@ -126,11 +94,8 @@ private:
 	bool HasNextShrinkPhase() const;
 	
 private:
-	UPROPERTY(EditAnywhere, Category="Night Rain Zone")
-	FNightRainZonePhaseConfig InitPhaseConfig;
-	
-	UPROPERTY(EditAnywhere, Category="Night Rain Zone")
-	TArray<FNightRainZonePhaseConfig> ShrinkPhaseConfigs;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Night Rain Zone", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNightRainZonePhaseConfigData> ZoneConfig;
 	
 	UPROPERTY(ReplicatedUsing = OnRep_ZoneState)
 	FNightRainZoneState ZoneState;

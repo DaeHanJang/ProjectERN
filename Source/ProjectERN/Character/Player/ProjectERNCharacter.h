@@ -196,15 +196,21 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake")
 	TSubclassOf<UCameraShakeBase> TakeDamageShakeClass_Big;
 
-	// 데미지/MaxHealth 비율 임계값 — 미만이면 Small, 사이면 Medium, 이상이면 Big
+	// 데미지/MaxHealth 비율 임계값 — 미만이면 없음, 10 이하면 small, 20 이하면 medium, 30 이상이면 Big
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float DamageShakeThresholdSmall = 0.10f;
+	float DamageShakeThresholdSmall = 10.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float DamageShakeThresholdMedium = 0.30f;
+	float DamageShakeThresholdMedium = 20.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DamageShakeThresholdBig = 30.f;
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
+	// StaggerPower에 따른 카메라 흔들림을 위한 경직 재정의
+	virtual void TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin = FVector::ZeroVector) override;
+	
 	// 디버그 무적 (HP가 1 아래로 안 떨어짐) — 콘솔 명령 GodMode로 토글
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Debug")
 	bool bGodMode = false;
