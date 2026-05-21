@@ -73,6 +73,7 @@ void UERNShopComponent::AcquireProvider()
 
 void UERNShopComponent::OpenShop(EShopType ShopType, AActor* TargetNPC)
 {
+    CurrentShopType = ShopType;
     CurrentTargetNPC = TargetNPC;
     bIsShopOpen = true;
 
@@ -91,13 +92,13 @@ void UERNShopComponent::CloseShop()
     UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] 상점 닫기"));
 }
 
-void UERNShopComponent::TryPurchaseItem(FName ItemID, int32 Quantity)
+void UERNShopComponent::TryPurchaseItem(FGuid UniqueID, int32 Quantity)
 {
-    UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] 구매 시도: %s x%d"), *ItemID.ToString(), Quantity);
+    UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] 구매 시도: %s x%d"), *UniqueID.ToString(), Quantity);
 
     // 보안 및 검증을 위해 필수 데이터와 타겟 NPC만 담아 서버로 위임 (Proxy Pattern)
     // 호스트 클라이언트도 RPC 함수를 호출하여 동일한 서버 검증 파이프라인을 타게 함
-    Server_RequestPurchase(ItemID, Quantity, CurrentTargetNPC);
+    Server_RequestPurchase(UniqueID, Quantity, CurrentTargetNPC);
 }
 
 TArray<FERNShopItemData> UERNShopComponent::GetCurrentShopItems() const
@@ -109,6 +110,11 @@ TArray<FERNShopItemData> UERNShopComponent::GetCurrentShopItems() const
 
 void UERNShopComponent::Server_RequestShopData_Implementation(EShopType ShopType, AActor* TargetNPC)
 {
+    // 서버 측 컴포넌트 상태 동기화
+    CurrentShopType = ShopType;
+    CurrentTargetNPC = TargetNPC;
+    bIsShopOpen = true;
+
     UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent:Server] 클라이언트로부터 데이터 요청 수신: %d"),
         (int32)ShopType);
 
@@ -138,10 +144,10 @@ void UERNShopComponent::Server_RequestShopData_Implementation(EShopType ShopType
     }
 }
 
-void UERNShopComponent::Server_RequestPurchase_Implementation(FName ItemID, int32 Quantity, AActor* TargetNPC)
+void UERNShopComponent::Server_RequestPurchase_Implementation(FGuid UniqueID, int32 Quantity, AActor* TargetNPC)
 {
     UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent:Server] 구매 요청 수신: %s x%d"),
-        *ItemID.ToString(), Quantity);
+        *UniqueID.ToString(), Quantity);
 
     // 1. 보안 검증: Target NPC 유효성 및 플레이어와의 거리 체크 (핵 방지)
     ACharacter* PlayerChar = Cast<ACharacter>(GetOwner());
@@ -163,7 +169,8 @@ void UERNShopComponent::Server_RequestPurchase_Implementation(FName ItemID, int3
     {
         FERNShopTransaction ServerTx;
         ServerTx.ShopType = CurrentShopType; // 위임 패턴의 핵심: 현재 열린 상점 명시
-        ServerTx.ItemID = ItemID;
+        ServerTx.UniqueID = UniqueID;
+        // ItemID는 식별만으로는 필요 없으나, 추가 처리를 위해 나중에 채울 수 있음
         ServerTx.Quantity = Quantity;
         ServerTx.Timestamp = GetWorld()->GetTimeSeconds();
         ServerTx.Buyer = PlayerChar; // Buyer 세팅
@@ -236,16 +243,10 @@ void UERNShopComponent::OnPurchaseComplete(const FERNShopTransaction& Transactio
             return;
         }
 
-        // 1. 서버 측에서 구매 성공 시 인벤토리에 아이템 추가 (안전한 처리)
-        if (Transaction.Result == EERNTransactionResult::Success)
-        {
-            if (UERNInventoryComponent* InvComp = GetOwner()->FindComponentByClass<UERNInventoryComponent>())
-            {
-                //InvComp->Server_AddItem(Transaction.ItemID, Transaction.Quantity);
-            }
-        }
+        // 인벤토리 아이템 추가는 Provider(RequestPurchase_Implementation)에서 이미 처리됨
+        // → FInventoryList::AddItem() 직접 호출 + OnInventorySlotChanged 브로드캐스트
 
-        // 2. 결과를 클라이언트에게 전송 (Client RPC)
+        // 결과를 클라이언트에게 전송 (Client RPC)
         // 호스트 플레이어(Listen Server)인 경우 Client RPC가 즉시 로컬에서 실행되어 UI를 갱신합니다.
         Client_PurchaseResult(Transaction);
     }

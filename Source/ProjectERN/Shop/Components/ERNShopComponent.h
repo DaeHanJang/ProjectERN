@@ -44,7 +44,7 @@ public:
 
     /** 아이템 구매 시도 */
     UFUNCTION(BlueprintCallable, Category = "Shop")
-    void TryPurchaseItem(FName ItemID, int32 Quantity = 1);
+    void TryPurchaseItem(FGuid UniqueID, int32 Quantity = 1);
 
     /** 현재 상점 아이템 목록 반환 */
     UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Shop")
@@ -72,7 +72,7 @@ protected:
 
     /** 클라이언트 → 서버: 구매 요청 (안전한 파라미터) */
     UFUNCTION(Server, Reliable, Category = "Shop")
-    void Server_RequestPurchase(FName ItemID, int32 Quantity, AActor* TargetNPC);
+    void Server_RequestPurchase(FGuid UniqueID, int32 Quantity, AActor* TargetNPC);
 
     // ===== Client RPC =====
 

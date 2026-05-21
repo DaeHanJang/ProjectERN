@@ -7,6 +7,7 @@
 #include "Logging/LogMacros.h"
 #include "ProjectERNCharacter.generated.h"
 
+class UERNLevelUpWidget;
 class USphereComponent;
 class USpringArmComponent;
 class UCameraComponent;
@@ -16,6 +17,7 @@ enum class ECharacterType : uint8;
 class UERNInventoryComponent;
 class UERNEquipmentComponent;
 class UERNShopComponent;
+class UERNUpgradeComponent;
 class UERNInputConfig;
 class UGameplayEffect;
 class UCameraShakeBase;
@@ -51,6 +53,10 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** Shop Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UERNShopComponent* ShopComponent;
+
+	/** Upgrade Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UERNUpgradeComponent* UpgradeComponent;
 	
 	/** Interaction Detection Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
@@ -62,6 +68,10 @@ class AProjectERNCharacter : public AERNCharacterBase
 protected:
 	// InteractionDetector Update
 	void UpdateInteractionDetector();
+	
+	// Status Curve Table
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Character")
+	TObjectPtr<UDataTable> StatusCurveTable;
 	
 	/** Character Type - 블루프린트에서 설정 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Character")
@@ -77,10 +87,20 @@ protected:
 	// 태그 기반 입력을 위한 InputConfig 부여
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Input")
 	TObjectPtr<UERNInputConfig> InputConfig;
-	
+
 public:
 	/** Constructor */
 	AProjectERNCharacter();
+	
+	FORCEINLINE UDataTable* GetStatusCurveTable() const { return StatusCurveTable; }
+	
+	// Level Up
+	UFUNCTION(Server, Reliable)
+	void Server_LevelUp();
+	
+	// 교회 상호작용
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Attributes")
+	void InteractionChurch() const;
 
 protected:
 
@@ -113,6 +133,9 @@ protected:
 	
 	/** Called for sprint on input */
 	void ToggleSprint();
+	
+	/** Called for flask on input */
+	void DrinkFlask();
 
 public:
 	/** Handles move inputs from either controls or UI interfaces */
@@ -149,6 +172,9 @@ public:
 
 	/** Returns ShopComponent **/
 	FORCEINLINE class UERNShopComponent* GetShopComponent() const { return ShopComponent; }
+
+	/** Returns UpgradeComponent **/
+	FORCEINLINE class UERNUpgradeComponent* GetUpgradeComponent() const { return UpgradeComponent; }
 	
 	// ************** 임시 락온 기능 구현 **************
 public:
@@ -222,6 +248,50 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetGodMode(bool bEnable);
+
+	// ===== 인트로: 새에 매달림 =====
+
+	// 매달림 상태 (Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_IsHangingFromBird, BlueprintReadOnly, Category = "Intro")
+	bool bIsHangingFromBird = false;
+
+	// 매달림 루프 몽타주 (BP에서 AM_Shared_Hanging 할당)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	TObjectPtr<UAnimMontage> HangingMontage;
+
+	// 매달림 중 카메라 FOV (기본보다 넓게)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float HangingFOV = 110.f;
+
+	// 매달림 시작 시점에 캐싱한 기본 FOV (해제 시 복원)
+	UPROPERTY(Transient)
+	float CachedDefaultFOV = 90.f;
+
+	// 서버: 새에 부착 (인트로 매니저가 호출)
+	void AttachToIntroBird(class AERNIntroBird* Bird);
+
+	// 서버: 새에서 해제 (Jump 입력 시 호출)
+	UFUNCTION(Server, Reliable)
+	void Server_ReleaseFromBird();
+
+	// 모든 클라: 매달림 몽타주 재생
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StartHangingMontage();
+
+	// 모든 클라: 매달림 몽타주 정지
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopHangingMontage();
+
+	// 해당 클라(소유 PC)에서 비행 방향으로 시점 회전 + 매달림 FOV 적용
+	UFUNCTION(Client, Reliable)
+	void Client_OnAttachedToBird(FRotator FacingRotation);
+
+	// 해당 클라(소유 PC)에서 기본 FOV 복원
+	UFUNCTION(Client, Reliable)
+	void Client_OnReleasedFromBird();
+
+	UFUNCTION()
+	void OnRep_IsHangingFromBird();
 
 protected:
 	// 상태 별 속도
@@ -329,4 +399,10 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NightRain|PostProcess", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UPostProcessComponent> NightRainPostProcessComponent;
 #pragma endregion
+public:
+	// 캐릭터 HeavyAttack 입력을 토글로 변경
+	bool TryEndActiveChannelingWeaponSkill();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_RequestEndActiveChannelingWeaponSkill();
 };

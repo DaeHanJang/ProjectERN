@@ -43,6 +43,7 @@ void UERNDataTableShopProvider::Initialize_Implementation(UObject* Owner)
         // 상점 아이템 데이터 구성
         FERNShopItemData ShopItem;
         ShopItem.ItemID = ProductData->ItemID;
+        ShopItem.UniqueID = FGuid::NewGuid(); // 고유 ID 부여
         ShopItem.Price = ProductData->Price;
         ShopItem.StockCount = ProductData->MaxStock;
         ShopItem.bIsAvailable = (ShopItem.StockCount != 0); // 재고가 0이면 구매 불가
@@ -105,7 +106,7 @@ void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransacti
 
         for (FERNShopItemData& Item : Inventory.Items)
         {
-            if (Item.ItemID == Transaction.ItemID)
+            if (Item.UniqueID == Transaction.UniqueID)
             {
                 TargetItem = &Item;
                 break;
@@ -154,7 +155,7 @@ void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransacti
         }
 
         FItemRuntimeState NewItemState;
-        NewItemState.SetItemID(Transaction.ItemID);
+        NewItemState.SetItemID(TargetItem->ItemID);
         NewItemState.SetQuantity(Transaction.Quantity);
 
         TArray<FInventoryItemEntry> ChangedEntries;
@@ -170,6 +171,12 @@ void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransacti
             return;
         }
 
+        // 인벤토리 UI 갱신 (변경된 슬롯마다 델리게이트 브로드캐스트)
+        for (const FInventoryItemEntry& Entry : ChangedEntries)
+        {
+            InvComp->OnInventorySlotChanged.Broadcast(Entry);
+        }
+
         // 4. 재고 차감 (무제한이 아닐 경우)
         if (TargetItem->StockCount != -1)
         {
@@ -179,6 +186,9 @@ void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransacti
                 TargetItem->bIsAvailable = false;
             }
         }
+
+        // 트랜잭션에 원래 ItemID 기록 (UI 등에서 식별/출력용)
+        Transaction.ItemID = TargetItem->ItemID;
 
         // 5. 트랜잭션 성공 처리
         Transaction.Result = EERNTransactionResult::Success;

@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "ERNPlayerController.generated.h"
 
+class AChurch;
 class IInteractable;
 class UInputMappingContext;
 class UInputAction;
@@ -121,6 +122,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> ShopMainWidgetClass;
 	
+	// LevelUp 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> LevelUpWidgetClass;
 
@@ -179,6 +181,18 @@ public:
 	// 카메라 흔들림 (공격자 본인/피격자 본인 등 단일 PC 대상)
 	UFUNCTION(Client, Unreliable)
 	void Client_PlayCameraShake(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale);
+
+	// 화면 페이드 인 (검은화면 → 게임화면, 인트로 시퀀스용)
+	UFUNCTION(Client, Reliable)
+	void Client_StartFadeIn(float Duration);
+	
+	// 교회 상호작용 후 효과 제거
+	UFUNCTION(Client, Reliable)
+	void Client_CompleteChurchInteraction(AChurch* Church, FVector EffectLocation);
+
+	// 인트로 타이틀 위젯 표시 (타이밍은 위젯 내부 UMG Animation으로 관리)
+	UFUNCTION(Client, Reliable)
+	void Client_ShowIntroTitleWidget();
 
 private:
 	// 보스 체력바 위젯 인스턴스

@@ -12,6 +12,7 @@
 #include "ProjectERN.h"
 #include "AbilitySystemComponent.h"
 #include "ERNPlayerController.h"
+#include "ERNPlayerStatusTable.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Components/SphereComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
@@ -22,9 +23,14 @@
 #include "Interfaces/IInteractable.h"
 #include "Net/UnrealNetwork.h"
 #include "Shop/Components/ERNShopComponent.h"
+#include "Enhancement/Components/ERNUpgradeComponent.h"
 #include "GAS/ERNAttributeSet.h"
 #include "Camera/CameraShakeBase.h"
-#include "Engine/DamageEvents.h"
+#include "GAS/Abilities/WeaponSkill/ERNGA_WeaponSkill_Channeling.h"
+#include "Actors/Intro/ERNIntroBird.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
+#include "Inventory/Item/ERNItemActor.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -124,6 +130,9 @@ AProjectERNCharacter::AProjectERNCharacter()
 	// Create Shop Component
 	ShopComponent = CreateDefaultSubobject<UERNShopComponent>(TEXT("ShopComponent"));
 
+	// Create Upgrade Component
+	UpgradeComponent = CreateDefaultSubobject<UERNUpgradeComponent>(TEXT("UpgradeComponent"));
+
 	// Create Interaction Detection Component
 	InteractionDetector = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionDetector"));
 	InteractionDetector->SetupAttachment(GetRootComponent());
@@ -200,23 +209,33 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		return;
 	}
 	
-	// 상호작용 감지 콜리전과 겹쳐진 액터 수집
-	TArray<AActor*> OverlappingActors;
-	InteractionDetector->GetOverlappingActors(OverlappingActors);
-	if (OverlappingActors.IsEmpty())
+	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
+	if (!ERNController)
 	{
 		return;
 	}
 	
+	// 상호작용 감지 콜리전과 겹쳐진 액터 수집
+	TArray<AActor*> OverlappingActors;
+	InteractionDetector->GetOverlappingActors(OverlappingActors);
+		
 	float ClosestDistSq = MAX_FLT;
 	AActor* ClosestActor = nullptr;
 	
 	// 감지된 액터를 순회하면서 상호작용 가능 액터인 경우 가장 가까운 액터를 선정
 	for (AActor* Actor : OverlappingActors)
 	{
-		if (!Actor->Implements<UInteractable>())
+		if (!IsValid(Actor) || !Actor->Implements<UInteractable>())
 		{
 			continue;
+		}
+		
+		if (const AERNItemActor* ItemActor = Cast<AERNItemActor>(Actor))
+		{
+			if (!ItemActor->CanBeInteractedBy(ERNController))
+			{
+				continue;
+			}
 		}
 		
 		const float DistSq = this->GetSquaredDistanceTo(Actor);
@@ -228,30 +247,24 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		}
 	}
 	
-	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
-	if (!ERNController)
-	{
-		return;
-	}
-	
 	AActor* CurrentInteractable = ERNController->GetCurrentInteractable();
 	// 대상이 바뀐 경우 기존 대상 종료
-	if (CurrentInteractable && CurrentInteractable != ClosestActor)
+	if (CurrentInteractable != ClosestActor)
 	{
-		IInteractable::Execute_EndInteract(CurrentInteractable, ERNController);
-	}
-	
-	// 현재 상효작용 가능 액터가 존재할 경우 대상이 바뀐 경우 새로 선정
-	if (ClosestActor)
-	{
-		if (CurrentInteractable != ClosestActor)
+		if (IsValid(CurrentInteractable) && CurrentInteractable->Implements<UInteractable>())
+		{
+			IInteractable::Execute_EndInteract(CurrentInteractable, ERNController);
+		}
+		
+		ERNController->ClearCurrentInteractable();
+
+		// 현재 상효작용 가능 액터가 존재할 경우 대상이 바뀐 경우 새로 선정
+		if (ClosestActor)
 		{
 			ERNController->SetCurrentInteractable(ClosestActor);
+			IInteractable::Execute_ActivateInteract(ClosestActor);
 		}
-		IInteractable::Execute_ActivateInteract(ClosestActor);
 	}
-	
-	UE_LOG(LogTemp, Warning, TEXT("New Interactable Actor is %s"), *GetNameSafe(ClosestActor));
 }
 
 void AProjectERNCharacter::Tick(float DeltaSeconds)
@@ -400,10 +413,21 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::ToggleSprint);
+	
+	// Flask
+	InputComp->BindNativeInputAction(
+		InputConfig, 
+		TAG_Input_Flask, 
+		ETriggerEvent::Started, 
+		this, 
+		&AProjectERNCharacter::DrinkFlask);
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
+	// 인트로 매달림 중에는 이동 입력 차단
+	if (bIsHangingFromBird) return;
+
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
@@ -434,6 +458,8 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 
 void AProjectERNCharacter::MoveEnd()
 {
+	if (bIsHangingFromBird) return;
+
 	CachedMoveInput = FVector2D::ZeroVector;
 	StopSprint();
 }
@@ -449,6 +475,8 @@ void AProjectERNCharacter::Look(const FInputActionValue& Value)
 
 void AProjectERNCharacter::Roll()
 {
+	if (bIsHangingFromBird) return;
+
 	if (!AbilitySystemComponent)
 	{
 		return;
@@ -503,6 +531,13 @@ void AProjectERNCharacter::DoLook(float Yaw, float Pitch)
 
 void AProjectERNCharacter::DoJumpStart()
 {
+	// 새에 매달려 있으면 점프 대신 새에서 해제 요청
+	if (bIsHangingFromBird)
+	{
+		Server_ReleaseFromBird();
+		return;
+	}
+
 	if (!AbilitySystemComponent)
 	{
 		return;
@@ -578,6 +613,7 @@ void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProp
 
 	DOREPLIFETIME(AProjectERNCharacter, bIsLockOn);
 	DOREPLIFETIME(AProjectERNCharacter, bGodMode);
+	DOREPLIFETIME(AProjectERNCharacter, bIsHangingFromBird);
 }
 
 void AProjectERNCharacter::GodMode()
@@ -591,6 +627,144 @@ void AProjectERNCharacter::Server_SetGodMode_Implementation(bool bEnable)
 	UE_LOG(LogTemp, Warning, TEXT("[GodMode] %s for %s"),
 		bEnable ? TEXT("ON") : TEXT("OFF"),
 		*GetName());
+}
+
+// ===== 인트로: 새 매달림 =====
+
+void AProjectERNCharacter::AttachToIntroBird(AERNIntroBird* Bird)
+{
+	if (!HasAuthority() || !Bird || !Bird->GetHangPoint())
+	{
+		return;
+	}
+
+	// 캐릭터를 새의 HangPoint에 부착 — 자동으로 모든 클라에 리플리케이트
+	AttachToComponent(Bird->GetHangPoint(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+
+	// 중력/이동 차단
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->SetMovementMode(MOVE_None);
+	}
+
+	// 새에 등록
+	Bird->SetAttachedPlayer(this);
+
+	// 상태 켜기 (리플리케이트 → OnRep에서 클라가 몽타주 보조 재생)
+	bIsHangingFromBird = true;
+
+	// 모든 머신에 매달림 몽타주 재생
+	Multicast_StartHangingMontage();
+
+	// 소유 클라에 비행 방향으로 시점 회전 + 매달림 FOV 적용
+	const FVector Forward = Bird->GetActorForwardVector();
+	FRotator FacingRot = Forward.Rotation();
+	FacingRot.Pitch = 0.f;
+	FacingRot.Roll = 0.f;
+	Client_OnAttachedToBird(FacingRot);
+}
+
+void AProjectERNCharacter::Server_ReleaseFromBird_Implementation()
+{
+	if (!bIsHangingFromBird)
+	{
+		return;
+	}
+
+	// 새 참조 (DetachFromActor 전에 부모 액터 캐싱)
+	AERNIntroBird* Bird = Cast<AERNIntroBird>(GetAttachParentActor());
+
+	// 부착 해제 — 월드 변환 유지
+	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+	// 중력 복구 → ABP가 Falling 자동 감지
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->SetMovementMode(MOVE_Falling);
+	}
+
+	// 상태 해제
+	bIsHangingFromBird = false;
+
+	// 모든 클라에 몽타주 정지
+	Multicast_StopHangingMontage();
+
+	// 소유 클라에 기본 FOV 복원
+	Client_OnReleasedFromBird();
+
+	// 새에 알림 → 위로 상승 후 destroy
+	if (Bird)
+	{
+		Bird->OnPlayerReleased();
+	}
+}
+
+void AProjectERNCharacter::Multicast_StartHangingMontage_Implementation()
+{
+	if (!HangingMontage || !GetMesh()) return;
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Play(HangingMontage);
+
+		// 첫 섹션을 자기 자신으로 연결 → 무한 루프
+		if (HangingMontage->CompositeSections.Num() > 0)
+		{
+			const FName FirstSection = HangingMontage->CompositeSections[0].SectionName;
+			AnimInstance->Montage_SetNextSection(FirstSection, FirstSection, HangingMontage);
+		}
+	}
+}
+
+void AProjectERNCharacter::Multicast_StopHangingMontage_Implementation()
+{
+	if (!HangingMontage || !GetMesh()) return;
+
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Stop(0.2f, HangingMontage);
+	}
+}
+
+void AProjectERNCharacter::Client_OnAttachedToBird_Implementation(FRotator FacingRotation)
+{
+	// 시점을 새의 비행 방향으로 회전
+	if (AController* Ctrl = GetController())
+	{
+		Ctrl->SetControlRotation(FacingRotation);
+	}
+
+	// 기본 FOV 캐싱 후 매달림 FOV 적용
+	if (FollowCamera)
+	{
+		CachedDefaultFOV = FollowCamera->FieldOfView;
+		FollowCamera->SetFieldOfView(HangingFOV);
+	}
+}
+
+void AProjectERNCharacter::Client_OnReleasedFromBird_Implementation()
+{
+	// 기본 FOV 복원
+	if (FollowCamera && CachedDefaultFOV > 0.f)
+	{
+		FollowCamera->SetFieldOfView(CachedDefaultFOV);
+	}
+}
+
+void AProjectERNCharacter::OnRep_IsHangingFromBird()
+{
+	// Multicast가 시점 문제로 누락된 경우의 안전망
+	// 상태가 false로 바뀌었는데 몽타주가 아직 돌고 있다면 정지
+	if (!bIsHangingFromBird && HangingMontage && GetMesh())
+	{
+		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+		{
+			if (AnimInstance->Montage_IsPlaying(HangingMontage))
+			{
+				AnimInstance->Montage_Stop(0.2f, HangingMontage);
+			}
+		}
+	}
 }
 
 void AProjectERNCharacter::UpdateMovementSpeed()
@@ -653,6 +827,8 @@ void AProjectERNCharacter::UpdateRotationMode()
 
 void AProjectERNCharacter::LightAttack()
 {
+	if (bIsHangingFromBird) return;
+
 	if (!AbilitySystemComponent)
 	{
 		return;
@@ -683,19 +859,38 @@ void AProjectERNCharacter::LightAttack()
 
 void AProjectERNCharacter::HeavyAttack()
 {
-	if (AbilitySystemComponent)
+	if (bIsHangingFromBird) return;
+
+	if (!AbilitySystemComponent)
 	{
-		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Heavy));
+		return;
 	}
+	
+	// True라면
+	if (TryEndActiveChannelingWeaponSkill())
+	{
+		if (!HasAuthority())
+		{
+			Server_RequestEndActiveChannelingWeaponSkill();
+		}
+
+		return;
+	}
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Heavy));
 }
 
 void AProjectERNCharacter::LockOn()
 {
+	if (bIsHangingFromBird) return;
+
 	ToggleTemporaryLockOn();
 }
 
 void AProjectERNCharacter::ToggleSprint()
 {
+	if (bIsHangingFromBird) return;
+
 	if (!AbilitySystemComponent)
 	{
 		return;
@@ -716,6 +911,19 @@ void AProjectERNCharacter::ToggleSprint()
 
 	// 전력질주 실행
 	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Sprint));
+}
+
+void AProjectERNCharacter::DrinkFlask()
+{
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+	
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Flask));
+	}
 }
 
 void AProjectERNCharacter::StopSprint()
@@ -901,6 +1109,45 @@ FVector AProjectERNCharacter::GetRollWorldDirection() const
 	return GetActorForwardVector();
 }
 
+bool AProjectERNCharacter::TryEndActiveChannelingWeaponSkill()
+{
+	if (!AbilitySystemComponent)
+	{
+		return false;
+	}
+
+	const FGameplayTagContainer WeaponSkillTags(TAG_Ability_Attack_Heavy);
+
+	for (FGameplayAbilitySpec& AbilitySpec : AbilitySystemComponent->GetActivatableAbilities())
+	{
+		if (!AbilitySpec.IsActive() || !AbilitySpec.Ability)
+		{
+			continue;
+		}
+
+		if (!AbilitySpec.Ability->GetAssetTags().HasAll(WeaponSkillTags))
+		{
+			continue;
+		}
+
+		for (UGameplayAbility* AbilityInstance : AbilitySpec.GetAbilityInstances())
+		{
+			if (UERNGA_WeaponSkill_Channeling* ChannelingSkill = Cast<UERNGA_WeaponSkill_Channeling>(AbilityInstance))
+			{
+				ChannelingSkill->RequestEndChanneling();
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+void AProjectERNCharacter::Server_RequestEndActiveChannelingWeaponSkill_Implementation()
+{
+	TryEndActiveChannelingWeaponSkill();
+}
+
 void AProjectERNCharacter::Server_RequestRoll_Implementation(FVector_NetQuantizeNormal RollDirection)
 {
 	PendingRollDirection = RollDirection.GetSafeNormal();
@@ -916,4 +1163,58 @@ float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	
 	return ActualDamage;
+}
+
+void AProjectERNCharacter::Server_LevelUp_Implementation()
+{
+	if (!StatusCurveTable || !AttributeSet)
+	{
+		return;
+	}
+	
+	const FName CurrentLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel())));
+	const FName NextLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel()) + 1));;
+	
+	const FERNPlayerStatusTable* CurrentRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(CurrentLevel, TEXT("CurrentLevelRow"));
+	const FERNPlayerStatusTable* NewRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(NextLevel, TEXT("TextLevelContext"));
+	if (!NewRow)
+	{
+		return;
+	}
+	
+	if (AttributeSet->GetGold() < CurrentRow->Cost)
+	{
+		return;
+	}
+	
+	AttributeSet->SetGold(AttributeSet->GetGold() - NewRow->Cost);
+	
+	AttributeSet->SetLevel(static_cast<int32>(AttributeSet->GetLevel()) + 1);
+	AttributeSet->SetMaxHealth(NewRow->MaxHealth);
+	AttributeSet->SetHealth(NewRow->MaxHealth);
+	AttributeSet->SetMaxMana(NewRow->MaxMana);
+	AttributeSet->SetMana(NewRow->MaxMana);
+	AttributeSet->SetManaRegenRate(NewRow->ManaRegenRate);
+	AttributeSet->SetMaxStamina(NewRow->MaxStamina);
+	AttributeSet->SetStamina(NewRow->MaxStamina);
+	AttributeSet->SetStaminaRegenRate(NewRow->StaminaRegenRate);
+	AttributeSet->SetAttackPower(NewRow->AttackPower);
+	AttributeSet->SetDefense(NewRow->Defense);
+	AttributeSet->SetStaggerResistance(NewRow->StaggerResistance);
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s Level : %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetLevel()));
+}
+
+void AProjectERNCharacter::InteractionChurch_Implementation() const
+{
+	if (!AttributeSet)
+	{
+		return;
+	}
+	
+	const int32 NewFlaskQuantity = static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()) + 1;
+	AttributeSet->SetMaxFlaskQuantity(NewFlaskQuantity);
+	AttributeSet->SetFlaskQuantity(NewFlaskQuantity);
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s, MaxFlaskQuantity: %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()));
 }

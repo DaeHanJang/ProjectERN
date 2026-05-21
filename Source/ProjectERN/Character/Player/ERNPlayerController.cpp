@@ -9,6 +9,7 @@
 #include "Blueprint/UserWidget.h"
 #include "ProjectERN.h"
 #include "ProjectERNCharacter.h"
+#include "Actors/Church.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Core/ERNGameInstance.h"
@@ -350,7 +351,19 @@ void AERNPlayerController::CheckAndFixCharacterType()
 
 void AERNPlayerController::TryInteract()
 {
+	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (const UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			if (UIManager->GetActiveUIType() != EERNUIType::None)
+			{
+				return;
+			}
+		}
+	}
+	
 	UE_LOG(LogTemp, Warning, TEXT("TryInteract"));
+	
 	if (CurrentInteractableActor.IsValid())
 	{
 		if (IInteractable* Interactable = Cast<IInteractable>(CurrentInteractableActor.Get()))
@@ -468,6 +481,30 @@ void AERNPlayerController::Client_PlayCameraShake_Implementation(TSubclassOf<UCa
 	PlayerCameraManager->StartCameraShake(ShakeClass, Scale);
 }
 
+void AERNPlayerController::Client_StartFadeIn_Implementation(float Duration)
+{
+	if (!PlayerCameraManager) return;
+
+	// 1.0(검은화면) → 0.0(투명) 페이드. 인트로 시작 직전에 미리 검은 화면이어야 자연스러움
+	PlayerCameraManager->StartCameraFade(1.f, 0.f, Duration, FLinearColor::Black, false, false);
+}
+
+void AERNPlayerController::Client_ShowIntroTitleWidget_Implementation()
+{
+	UERNGameInstance* GameInst = Cast<UERNGameInstance>(GetGameInstance());
+	if (!GameInst) return;
+
+	TSubclassOf<UUserWidget> WidgetClass = GameInst->GetIntroTitleWidgetClass();
+	if (!WidgetClass) return;
+
+	// 위젯은 Construct에서 자체 UMG Animation을 재생하고 종료 시 RemoveFromParent
+	UUserWidget* IntroTitleWidget = CreateWidget<UUserWidget>(this, WidgetClass);
+	if (IntroTitleWidget)
+	{
+		IntroTitleWidget->AddToViewport(100);
+	}
+}
+
 void AERNPlayerController::Client_ShowBossHealthBar_Implementation(AERNBossCharacter* Boss)
 {
 	if (!Boss || !BossHealthBarWidgetClass) return;
@@ -507,7 +544,6 @@ void AERNPlayerController::Client_HideBossHealthBar_Implementation()
 		BossHealthBarWidget->ResetAccumulatedDamage();
 	}
 }
-
 
 //-------------------------NightRainZone 밤의비 자기장 --------------------------------//
 #pragma region NightRainZone
@@ -592,3 +628,10 @@ void AERNPlayerController::SetNightRainPostProcessBlendWeight_Local(float BlendW
 }
 #pragma endregion
 //------------------------- NightRain --------------------------------//
+void AERNPlayerController::Client_CompleteChurchInteraction_Implementation(AChurch* Church, FVector EffectLocation)
+{
+	if (Church)
+	{
+		Church->CompleteInteractionLocally(EffectLocation);
+	}
+}

@@ -8,6 +8,7 @@
 #include "Shop/Provider/ERNDummyShopProvider.h"
 #include "Shop/Provider/ERNNetworkShopProvider.h"
 #include "Shop/Provider/ERNDataTableShopProvider.h"
+#include "Enhancement/Provider/ERNUpgradeProvider.h"
 
 UERNGameInstance::UERNGameInstance()
 {
@@ -36,7 +37,11 @@ void UERNGameInstance::Init()
 	}
 
 	// 상점 시스템 초기화
+	// 상점 시스템 초기화
 	InitializeShopSystem();
+
+	// 강화 시스템 초기화
+	InitializeUpgradeSystem();
 }
 
 void UERNGameInstance::HostSession(FString ServerName, int32 MaxPlayers)
@@ -293,6 +298,43 @@ TScriptInterface<IERNShopDataProvider> UERNGameInstance::GetShopDataProvider() c
 	{
 		Result.SetObject(ShopDataProvider);
 		Result.SetInterface(Cast<IERNShopDataProvider>(ShopDataProvider));
+	}
+	return Result;
+}
+
+// ===== 강화 시스템 =====
+
+void UERNGameInstance::InitializeUpgradeSystem()
+{
+	if (UpgradeProviderClass)
+	{
+		UpgradeDataProvider = NewObject<UObject>(this, UpgradeProviderClass);
+		UE_LOG(LogTemp, Log, TEXT("[GameInstance] BP_UpgradeProvider 생성 완료"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[GameInstance] UpgradeProviderClass가 할당되지 않았습니다! (에디터에서 BP 연결 필요)"));
+		UpgradeDataProvider = NewObject<UERNUpgradeProvider>(this); // 에러 방지용 기본 생성
+	}
+
+	if (UpgradeDataProvider)
+	{
+		IERNUpgradeDataProvider* Provider = Cast<IERNUpgradeDataProvider>(UpgradeDataProvider);
+		if (Provider)
+		{
+			IERNUpgradeDataProvider::Execute_Initialize(UpgradeDataProvider, this);
+			UE_LOG(LogTemp, Log, TEXT("[GameInstance] 강화 시스템 초기화(캐싱) 완료"));
+		}
+	}
+}
+
+TScriptInterface<IERNUpgradeDataProvider> UERNGameInstance::GetUpgradeDataProvider() const
+{
+	TScriptInterface<IERNUpgradeDataProvider> Result;
+	if (UpgradeDataProvider)
+	{
+		Result.SetObject(UpgradeDataProvider);
+		Result.SetInterface(Cast<IERNUpgradeDataProvider>(UpgradeDataProvider));
 	}
 	return Result;
 }

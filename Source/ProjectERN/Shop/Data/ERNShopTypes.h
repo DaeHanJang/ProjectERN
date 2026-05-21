@@ -63,6 +63,9 @@ struct FERNShopItemData
     FName ItemID;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    FGuid UniqueID;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     int32 Price = 0;  // 룬 단위
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
@@ -103,6 +106,9 @@ struct FERNShopTransaction
 
     UPROPERTY(BlueprintReadWrite, Category = "Shop")
     FName ItemID;
+
+    UPROPERTY(BlueprintReadWrite, Category = "Shop")
+    FGuid UniqueID;
 
     UPROPERTY(BlueprintReadWrite, Category = "Shop")
     int32 Quantity = 1;

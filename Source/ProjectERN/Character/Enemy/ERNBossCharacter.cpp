@@ -17,6 +17,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
 #include "LevelSequence.h"
+#include "AIController.h"
+#include "BehaviorTree/BehaviorTreeComponent.h"
+#include "BrainComponent.h"
+#include "Perception/AIPerceptionComponent.h"
 
 AERNBossCharacter::AERNBossCharacter()
 {
@@ -250,6 +254,28 @@ void AERNBossCharacter::OnPhaseTransitionMontageEnded(UAnimMontage* Montage, boo
 		{
 			BossAIC->SwitchBehaviorTree(CurrentPhase.PhaseBehaviorTree);
 		}
+	}
+}
+
+void AERNBossCharacter::SetIntroCutsceneLocked(bool bLocked)
+{
+	if (!HasAuthority()) return;
+	bIsIntroLocked = bLocked;
+
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if (!AIC) return;
+
+	// BT 정지/재개 → 보스 idle 상태로 가만히
+	if (UBrainComponent* Brain = AIC->GetBrainComponent())
+	{
+		if (bLocked) Brain->StopLogic(TEXT("BossEncounterCutscene"));
+		else         Brain->RestartLogic();
+	}
+
+	// Perception 활성/비활성 → 감지 콜백 차단 → 체력바 트리거 X
+	if (UAIPerceptionComponent* PerceptionComp = AIC->GetPerceptionComponent())
+	{
+		PerceptionComp->SetActive(!bLocked);
 	}
 }
 

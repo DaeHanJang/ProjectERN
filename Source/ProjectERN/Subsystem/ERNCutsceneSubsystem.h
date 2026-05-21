@@ -12,6 +12,7 @@ class ULevelSequencePlayer;
 class ALevelSequenceActor;
 class SWidget;
 class AERNCharacterBase;
+class AERNIntroBird;
 
 // 로딩 시작/종료 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLoadingStarted);
@@ -82,6 +83,13 @@ public:
 	// 컷신 재생 중 여부
 	UFUNCTION(BlueprintPure, Category = "Cutscene")
 	bool IsPlayingCutscene() const { return bIsPlayingCutscene; }
+
+	// ===== 인트로 시퀀스 (새 매달림 → 점프 해제) =====
+	// 데이터(IntroBirdClass / FadeInDuration / AutoStart)는 BP_ERNGameInstance에서 설정
+
+	// 인트로 시퀀스 시작 (서버에서만 동작) — 그룹 1개 랜덤 선택 → 새 N마리 스폰 → 플레이어 부착 → 페이드 인
+	UFUNCTION(BlueprintCallable, Category = "Intro")
+	void StartBirdIntroSequence();
 
 protected:
 	// 로딩 화면 콜백 (맵 로딩 완료 시)

@@ -44,6 +44,10 @@ public:
 	
 	// 소모품 어빌리티 설정
 	void SetConsumableAbility(TSubclassOf<UGameplayAbility> NewConsumableAbility);
+	
+	// 골드 추가
+	UFUNCTION(BlueprintCallable, Category = "Attributes")
+	void AddGold(const int32 Amount) const;
 
 protected:
 	virtual void BeginPlay() override;
