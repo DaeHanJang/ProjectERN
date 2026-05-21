@@ -15,9 +15,9 @@ class PROJECTERN_API ANightRainZoneCenterPoint : public ATargetPoint
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Night Rain Zone")
 	bool bEnabled = true;
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Night Rain Zone")
 	int32 ZoneLevel = 0;
 };

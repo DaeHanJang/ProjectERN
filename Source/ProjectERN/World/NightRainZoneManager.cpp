@@ -160,6 +160,9 @@ void ANightRainZoneManager::HandlePhaseFinished()
 	// 자기장 수렴 대기
 	FreezeCurrentZoneState();
 	
+	// 자기장 후보 재설정
+	UpdateZoneCenterPoints();
+	
 	if (HasNextShrinkPhase())
 	{
 		GetWorldTimerManager().SetTimer(PhaseTimerHandle, this, &ANightRainZoneManager::HandleWaitFinished, ZoneState.FreezingDuration, false);
@@ -418,12 +421,12 @@ void ANightRainZoneManager::StartNextShrinkPhase()
 	}
 	
 	FNightRainZonePhaseConfig NextPhaseConfig = ZoneConfig->ShrinkPhaseConfigs[ConfigIndex];
-
-	NextPhaseConfig.StartCenter = ZoneState.TargetCenter;
+	
+	NextPhaseConfig.StartCenter = GetCurrentCenter();
 	NextPhaseConfig.TargetCenter = NextCenterPoint->GetActorLocation();
 
-	NextPhaseConfig.StartRadius = ZoneState.TargetRadius;
-
+	NextPhaseConfig.StartRadius = GetCurrentRadius();
+	
 	StartPhase(NextPhaseConfig);
 }
 
@@ -449,7 +452,53 @@ bool ANightRainZoneManager::HasNextShrinkPhase() const
 	{
 		return false;
 	}
-	return ZoneState.PhaseIndex < ZoneConfig->ShrinkPhaseConfigs.Num();
+	if (ZoneState.PhaseIndex >= ZoneConfig->ShrinkPhaseConfigs.Num())
+	{
+		return false;
+	}
+	
+	// 아직 남아있는 자기장 단계가 있다면 도달할 수 있는지 확인
+	for (ANightRainZoneCenterPoint* CenterPoint : CachedZoneCenterPoints)
+	{
+		if (IsValid(CenterPoint) == false)
+		{
+			continue;
+		}
+	
+		// 활성화 가능하고 다음 단계인 페이즈가 있다면 추가 진행 가능
+		if (CenterPoint->bEnabled && (CenterPoint->ZoneLevel == ZoneState.PhaseIndex + 1))
+		{
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+void ANightRainZoneManager::UpdateZoneCenterPoints()
+{
+	FVector CurrentZoneLocation = GetCurrentCenter();
+	float CurrentRadius = GetCurrentRadius();
+	for (ANightRainZoneCenterPoint* CenterPoint : CachedZoneCenterPoints)
+	{
+		if (IsValid(CenterPoint) == false)
+		{
+			continue;
+		}
+	
+		if (CenterPoint->bEnabled == false)
+		{
+			continue;
+		}
+		
+		FVector CenterPointLocation = CenterPoint->GetActorLocation();
+		CenterPointLocation.Z = 0;
+		
+		if ( FVector::DistSquared2D(CurrentZoneLocation, CenterPointLocation ) > FMath::Square(CurrentRadius))
+		{
+			CenterPoint->bEnabled = false;
+		}
+	}
 }
 
 

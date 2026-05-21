@@ -87,11 +87,23 @@ private:
 	// 자기장 중심 후보 선별
 	ANightRainZoneCenterPoint* ChooseNextZoneCenter(int32 CurrentPhaseIndex);
 	
+	// 초기 자기장 상태 설정
 	void StartInitialZoneState();
+	
+	// 대기상태 종료 핸들
 	void HandleWaitFinished();
+	
+	// 다음 자기장 페이즈 시작
 	void StartNextShrinkPhase();
+	
+	// 수렴 후 대기
 	void FreezeCurrentZoneState();
+	
+	// 다음 자기장 단계가 있는지 확인
 	bool HasNextShrinkPhase() const;
+	
+	// 수렴한 원에 따라 갈 수 있는 자기장 후보 재설정
+	void UpdateZoneCenterPoints();
 	
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Night Rain Zone", meta = (AllowPrivateAccess = "true"))
