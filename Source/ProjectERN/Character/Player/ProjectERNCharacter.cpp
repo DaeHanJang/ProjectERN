@@ -88,7 +88,7 @@ AProjectERNCharacter::AProjectERNCharacter()
 	InteractionDetector->SetCollisionProfileName(TEXT("OverlapAll"));
 	InteractionDetector->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Ignore);
 	InteractionDetector->SetGenerateOverlapEvents(true);
-	
+
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
@@ -130,22 +130,24 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 	}
 
 	// GAS 초기화는 부모 클래스에서 처리
-	
+
 	// InteractionDetector 감지 시작
 	if (!GetWorldTimerManager().IsTimerActive(DetectionTimerHandle))
 	{
-		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector, 0.2f, true, 0.0f);
+		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector,
+		                                0.2f, true, 0.0f);
 	}
 }
 
 void AProjectERNCharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
-	
+
 	// InteractionDetector 감지 시작
 	if (!GetWorldTimerManager().IsTimerActive(DetectionTimerHandle))
 	{
-		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector, 0.2f, true, 0.0f);
+		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector,
+		                                0.2f, true, 0.0f);
 	}
 }
 
@@ -156,20 +158,20 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 	{
 		return;
 	}
-	
+
 	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
 	if (!ERNController)
 	{
 		return;
 	}
-	
+
 	// 상호작용 감지 콜리전과 겹쳐진 액터 수집
 	TArray<AActor*> OverlappingActors;
 	InteractionDetector->GetOverlappingActors(OverlappingActors);
-		
+
 	float ClosestDistSq = MAX_FLT;
 	AActor* ClosestActor = nullptr;
-	
+
 	// 감지된 액터를 순회하면서 상호작용 가능 액터인 경우 가장 가까운 액터를 선정
 	for (AActor* Actor : OverlappingActors)
 	{
@@ -177,7 +179,7 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		{
 			continue;
 		}
-		
+
 		if (const AERNItemActor* ItemActor = Cast<AERNItemActor>(Actor))
 		{
 			if (!ItemActor->CanBeInteractedBy(ERNController))
@@ -185,16 +187,16 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 				continue;
 			}
 		}
-		
+
 		const float DistSq = this->GetSquaredDistanceTo(Actor);
-		
+
 		if (ClosestDistSq > DistSq)
 		{
 			ClosestDistSq = DistSq;
 			ClosestActor = Actor;
 		}
 	}
-	
+
 	AActor* CurrentInteractable = ERNController->GetCurrentInteractable();
 	// 대상이 바뀐 경우 기존 대상 종료
 	if (CurrentInteractable != ClosestActor)
@@ -203,7 +205,7 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		{
 			IInteractable::Execute_EndInteract(CurrentInteractable, ERNController);
 		}
-		
+
 		ERNController->ClearCurrentInteractable();
 
 		// 현재 상효작용 가능 액터가 존재할 경우 대상이 바뀐 경우 새로 선정
@@ -361,6 +363,20 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::ToggleSprint);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_NormalSkill,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::NormalSkill);
+	
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_UltimateSkill,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::UltimateSkill);
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
@@ -382,7 +398,7 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 	const bool bIsLanding =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing);
-	
+
 	const bool bIsGetHit =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Stagger);
@@ -429,7 +445,7 @@ void AProjectERNCharacter::Roll()
 	{
 		// 구르기 방향 결정
 		PendingRollDirection = RollDirection;
-		
+
 		// 구르기 태그를 가진 어빌리티 실행 시도
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Roll));
 	}
@@ -565,8 +581,8 @@ void AProjectERNCharacter::Server_SetGodMode_Implementation(bool bEnable)
 {
 	bGodMode = bEnable;
 	UE_LOG(LogTemp, Warning, TEXT("[GodMode] %s for %s"),
-		bEnable ? TEXT("ON") : TEXT("OFF"),
-		*GetName());
+	       bEnable ? TEXT("ON") : TEXT("OFF"),
+	       *GetName());
 }
 
 // ===== 인트로: 새 매달림 =====
@@ -714,25 +730,29 @@ void AProjectERNCharacter::UpdateMovementSpeed()
 		return;
 	}
 
-	const bool bIsSprinting = AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(
-		TAG_State_Movement_Sprinting);
+	// 태그 부여 여부 확인 (대시 스킬)
+	const bool bIsDashSkill = AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_DashSkill);
 
+	// 태그 부여 여부 확인 (전력질주)
+	const bool bIsSprinting = AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Sprinting);
+
+	// 태그 부여 여부 확인 (공격 중)
+	const bool bIsAttacking = AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking);
+
+
+	// 상황 별 속도 설정
 	float NewSpeed = DefaultSpeed;
+	if (bIsDashSkill) { NewSpeed = DashSkillSpeed; } // 대시 스킬
+	else if (bIsSprinting) { NewSpeed = SprintSpeed; } // 전력질주
+	else if (bIsLockOn) { NewSpeed = TargetingSpeed; } // 락온 상태
 
-	if (bIsSprinting)
-	{
-		NewSpeed = SprintSpeed;
-	}
-	else if (bIsLockOn)
-	{
-		NewSpeed = TargetingSpeed;
-	}
+	// 공격 중 속도는 별도로 적용
+	if (bIsAttacking) { NewSpeed = AttackingSpeed; }
 
-	if (AbilitySystemComponent && (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)))
-	{
-		NewSpeed = AttackingSpeed;
-	}
-
+	// 속도 적용
 	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
 }
 
@@ -805,7 +825,7 @@ void AProjectERNCharacter::HeavyAttack()
 	{
 		return;
 	}
-	
+
 	// True라면
 	if (TryEndActiveChannelingWeaponSkill())
 	{
@@ -851,6 +871,36 @@ void AProjectERNCharacter::ToggleSprint()
 
 	// 전력질주 실행
 	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Sprint));
+}
+
+void AProjectERNCharacter::NormalSkill()
+{
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Skill_Normal));
+}
+
+void AProjectERNCharacter::UltimateSkill()
+{
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Skill_Ultimate));
 }
 
 void AProjectERNCharacter::StopSprint()
@@ -1085,7 +1135,8 @@ void AProjectERNCharacter::Server_RequestRoll_Implementation(FVector_NetQuantize
 	}
 }
 
-float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
+                                       AController* EventInstigator, AActor* DamageCauser)
 {
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
@@ -1131,24 +1182,26 @@ void AProjectERNCharacter::Server_LevelUp_Implementation()
 	{
 		return;
 	}
-	
+
 	const FName CurrentLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel())));
 	const FName NextLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel()) + 1));;
-	
-	const FERNPlayerStatusTable* CurrentRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(CurrentLevel, TEXT("CurrentLevelRow"));
-	const FERNPlayerStatusTable* NewRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(NextLevel, TEXT("TextLevelContext"));
+
+	const FERNPlayerStatusTable* CurrentRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(
+		CurrentLevel, TEXT("CurrentLevelRow"));
+	const FERNPlayerStatusTable* NewRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(
+		NextLevel, TEXT("TextLevelContext"));
 	if (!NewRow)
 	{
 		return;
 	}
-	
+
 	if (AttributeSet->GetGold() < CurrentRow->Cost)
 	{
 		return;
 	}
-	
+
 	AttributeSet->SetGold(AttributeSet->GetGold() - NewRow->Cost);
-	
+
 	AttributeSet->SetLevel(static_cast<int32>(AttributeSet->GetLevel()) + 1);
 	AttributeSet->SetMaxHealth(NewRow->MaxHealth);
 	AttributeSet->SetHealth(NewRow->MaxHealth);
@@ -1161,6 +1214,6 @@ void AProjectERNCharacter::Server_LevelUp_Implementation()
 	AttributeSet->SetAttackPower(NewRow->AttackPower);
 	AttributeSet->SetDefense(NewRow->Defense);
 	AttributeSet->SetStaggerResistance(NewRow->StaggerResistance);
-	
+
 	UE_LOG(LogTemp, Warning, TEXT("%s Level : %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetLevel()));
 }

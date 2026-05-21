@@ -123,6 +123,12 @@ protected:
 	
 	/** Called for sprint on input */
 	void ToggleSprint();
+	
+	/** Called for NormalSkill on input */
+	void NormalSkill();
+	
+	/** Called for UltimateSkill on input */
+	void UltimateSkill();
 
 public:
 	/** Handles move inputs from either controls or UI interfaces */
@@ -287,6 +293,9 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
 	float SprintSpeed = 1000;	// 전력질주 속도
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
+	float DashSkillSpeed  = 1500;	// 대시 스킬용 속도 (전사 일반 스킬)
 	
 	// 회전 보간 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Movement")
