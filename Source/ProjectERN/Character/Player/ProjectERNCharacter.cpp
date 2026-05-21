@@ -25,13 +25,11 @@
 #include "Shop/Components/ERNShopComponent.h"
 #include "GAS/ERNAttributeSet.h"
 #include "Camera/CameraShakeBase.h"
-#include "Engine/DamageEvents.h"
 #include "GAS/Abilities/WeaponSkill/ERNGA_WeaponSkill_Channeling.h"
 #include "Actors/Intro/ERNIntroBird.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Inventory/Item/ERNItemActor.h"
-#include "UI/ERNLevelUpWidget.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -361,6 +359,14 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::ToggleSprint);
+	
+	// Flask
+	InputComp->BindNativeInputAction(
+		InputConfig, 
+		TAG_Input_Flask, 
+		ETriggerEvent::Started, 
+		this, 
+		&AProjectERNCharacter::DrinkFlask);
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
@@ -853,6 +859,19 @@ void AProjectERNCharacter::ToggleSprint()
 	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Sprint));
 }
 
+void AProjectERNCharacter::DrinkFlask()
+{
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+	
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Flask));
+	}
+}
+
 void AProjectERNCharacter::StopSprint()
 {
 	if (!AbilitySystemComponent)
@@ -1163,4 +1182,18 @@ void AProjectERNCharacter::Server_LevelUp_Implementation()
 	AttributeSet->SetStaggerResistance(NewRow->StaggerResistance);
 	
 	UE_LOG(LogTemp, Warning, TEXT("%s Level : %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetLevel()));
+}
+
+void AProjectERNCharacter::InteractionChurch_Implementation() const
+{
+	if (!AttributeSet)
+	{
+		return;
+	}
+	
+	const int32 NewFlaskQuantity = static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()) + 1;
+	AttributeSet->SetMaxFlaskQuantity(NewFlaskQuantity);
+	AttributeSet->SetFlaskQuantity(NewFlaskQuantity);
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s, MaxFlaskQuantity: %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()));
 }

@@ -8,6 +8,7 @@
 #include "InputAction.h"
 #include "Blueprint/UserWidget.h"
 #include "ProjectERN.h"
+#include "Actors/Church.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Core/ERNGameInstance.h"
@@ -539,5 +540,13 @@ void AERNPlayerController::Client_HideBossHealthBar_Implementation()
 	{
 		BossHealthBarWidget->SetVisibility(ESlateVisibility::Hidden);
 		BossHealthBarWidget->ResetAccumulatedDamage();
+	}
+}
+
+void AERNPlayerController::Client_CompleteChurchInteraction_Implementation(AChurch* Church, FVector EffectLocation)
+{
+	if (Church)
+	{
+		Church->CompleteInteractionLocally(EffectLocation);
 	}
 }
