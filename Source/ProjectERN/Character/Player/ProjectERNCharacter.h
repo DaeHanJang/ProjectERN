@@ -17,6 +17,7 @@ enum class ECharacterType : uint8;
 class UERNInventoryComponent;
 class UERNEquipmentComponent;
 class UERNShopComponent;
+class UERNUpgradeComponent;
 class UERNInputConfig;
 class UGameplayEffect;
 class UCameraShakeBase;
@@ -51,6 +52,10 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** Shop Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UERNShopComponent* ShopComponent;
+
+	/** Upgrade Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	UERNUpgradeComponent* UpgradeComponent;
 	
 	/** Interaction Detection Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
@@ -166,6 +171,9 @@ public:
 
 	/** Returns ShopComponent **/
 	FORCEINLINE class UERNShopComponent* GetShopComponent() const { return ShopComponent; }
+
+	/** Returns UpgradeComponent **/
+	FORCEINLINE class UERNUpgradeComponent* GetUpgradeComponent() const { return UpgradeComponent; }
 	
 	// ************** 임시 락온 기능 구현 **************
 public:

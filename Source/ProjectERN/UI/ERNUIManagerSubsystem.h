@@ -16,6 +16,7 @@ enum class EERNUIType : uint8
 	Shop      UMETA(DisplayName = "Shop"),
 	Inventory UMETA(DisplayName = "Inventory"),
 	LevelUp   UMETA(DisplayName = "LevelUp"),
+	Upgrade   UMETA(DisplayName = "Upgrade"),
 };
 
 /**

@@ -23,6 +23,7 @@
 #include "Interfaces/IInteractable.h"
 #include "Net/UnrealNetwork.h"
 #include "Shop/Components/ERNShopComponent.h"
+#include "Enhancement/Components/ERNUpgradeComponent.h"
 #include "GAS/ERNAttributeSet.h"
 #include "Camera/CameraShakeBase.h"
 #include "GAS/Abilities/WeaponSkill/ERNGA_WeaponSkill_Channeling.h"
@@ -78,6 +79,9 @@ AProjectERNCharacter::AProjectERNCharacter()
 
 	// Create Shop Component
 	ShopComponent = CreateDefaultSubobject<UERNShopComponent>(TEXT("ShopComponent"));
+
+	// Create Upgrade Component
+	UpgradeComponent = CreateDefaultSubobject<UERNUpgradeComponent>(TEXT("UpgradeComponent"));
 
 	// Create Interaction Detection Component
 	InteractionDetector = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionDetector"));

@@ -74,6 +74,9 @@ struct FERNUpgradePreview
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     int32 SourceHeavyAttack = 0;
 
+    UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
+    TSoftObjectPtr<UTexture2D> SourceIcon;
+
     // 강화 후 아이템 정보
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     FName ResultItemID;
@@ -90,6 +93,9 @@ struct FERNUpgradePreview
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     int32 ResultHeavyAttack = 0;
 
+    UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
+    TSoftObjectPtr<UTexture2D> ResultIcon;
+
     // 필요 재료 정보
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     FName RequiredMaterialID;
@@ -102,6 +108,12 @@ struct FERNUpgradePreview
 
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     int32 CurrentMaterialCount = 0;  // 플레이어가 현재 보유한 재료 수
+
+    UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
+    TSoftObjectPtr<UTexture2D> MaterialIcon;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
+    EItemGrade MaterialGrade = EItemGrade::None;
 
     // 강화 가능 여부
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")

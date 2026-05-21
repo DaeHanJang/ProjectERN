@@ -9,6 +9,7 @@
 
 class UERNShopComponent;
 class UERNShopItemSlotWidget;
+class UTextBlock;
 
 /**
  * 상점 아이템 구매 전 Yes/No를 확인하는 팝업 위젯
@@ -30,6 +31,12 @@ public:
 	// 팝업을 호출한 슬롯 위젯 (취소 시 버튼 복구용)
 	UPROPERTY(BlueprintReadWrite, Category = "Shop|Purchase")
 	UERNShopItemSlotWidget* OwnerSlotWidget = nullptr;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> ItemNameText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> PriceText;
 
 protected:
 	virtual void NativeConstruct() override;
