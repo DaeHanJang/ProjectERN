@@ -221,6 +221,25 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	// 매달림 중: 매 frame 새의 HangPoint World로 위치 강제 + 새 진행 방향으로 회전 동기화 (모든 머신)
+	// → attach 없이 deterministic 추적 → RepMovement/BasedMovement/NetSmoothing 경로 우회
+	if (bIsHangingFromBird && AttachedBird)
+	{
+		if (USceneComponent* HP = AttachedBird->GetHangPoint())
+		{
+			FRotator BirdFacing = AttachedBird->GetActorForwardVector().Rotation();
+			BirdFacing.Pitch = 0.f;
+			BirdFacing.Roll = 0.f;
+
+			SetActorLocationAndRotation(
+				HP->GetComponentLocation(),
+				BirdFacing,
+				false, nullptr, ETeleportType::TeleportPhysics
+			);
+		}
+		return;
+	}
+
 	const bool bIsSprinting =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Sprinting);
@@ -564,6 +583,7 @@ void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProp
 	DOREPLIFETIME(AProjectERNCharacter, bIsLockOn);
 	DOREPLIFETIME(AProjectERNCharacter, bGodMode);
 	DOREPLIFETIME(AProjectERNCharacter, bIsHangingFromBird);
+	DOREPLIFETIME(AProjectERNCharacter, AttachedBird);
 }
 
 void AProjectERNCharacter::GodMode()
@@ -588,8 +608,14 @@ void AProjectERNCharacter::AttachToIntroBird(AERNIntroBird* Bird)
 		return;
 	}
 
-	// 캐릭터를 새의 HangPoint에 부착 — 자동으로 모든 클라에 리플리케이트
-	AttachToComponent(Bird->GetHangPoint(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+	// attach 대신 새 참조만 Replicated로 동기화 → 모든 머신에서 Tick으로 HangPoint World 강제 추적
+	AttachedBird = Bird;
+
+	// 시작 위치를 즉시 HangPoint로 (서버에서 1회) — Tick 도착 전 한 프레임 어긋남 방지
+	if (USceneComponent* HP = Bird->GetHangPoint())
+	{
+		SetActorLocation(HP->GetComponentLocation(), false, nullptr, ETeleportType::TeleportPhysics);
+	}
 
 	// 중력/이동 차단
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
@@ -621,11 +647,9 @@ void AProjectERNCharacter::Server_ReleaseFromBird_Implementation()
 		return;
 	}
 
-	// 새 참조 (DetachFromActor 전에 부모 액터 캐싱)
-	AERNIntroBird* Bird = Cast<AERNIntroBird>(GetAttachParentActor());
-
-	// 부착 해제 — 월드 변환 유지
-	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	// 새 참조 캐싱 후 해제 (Replicated → 모든 머신에서 Tick 추적 중단)
+	AERNIntroBird* Bird = AttachedBird;
+	AttachedBird = nullptr;
 
 	// 중력 복구 → ABP가 Falling 자동 감지
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
@@ -715,6 +739,19 @@ void AProjectERNCharacter::OnRep_IsHangingFromBird()
 			}
 		}
 	}
+}
+
+void AProjectERNCharacter::OnRep_ReplicatedMovement()
+{
+	// 매달림 중에는 RepMovement.Location 적용 차단
+	// → 서버 송신 시점 위치(과거)로 SetActorLocation되어 deterministic 새 위치와 충돌하는 흔들림 방지
+	// → attach 자동 업데이트가 위치 책임 (ReplicatedBasedMovement는 별도 OnRep이라 attach 동기화는 정상)
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+
+	Super::OnRep_ReplicatedMovement();
 }
 
 void AProjectERNCharacter::UpdateMovementSpeed()

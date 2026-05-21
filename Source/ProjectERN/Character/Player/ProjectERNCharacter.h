@@ -248,6 +248,10 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_IsHangingFromBird, BlueprintReadOnly, Category = "Intro")
 	bool bIsHangingFromBird = false;
 
+	// 매달림 시 따라갈 새 (Replicated — Tick에서 HangPoint World로 자기 위치 강제 동기화)
+	UPROPERTY(Replicated)
+	TObjectPtr<class AERNIntroBird> AttachedBird;
+
 	// 매달림 루프 몽타주 (BP에서 AM_Shared_Hanging 할당)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
 	TObjectPtr<UAnimMontage> HangingMontage;
@@ -285,6 +289,9 @@ public:
 
 	UFUNCTION()
 	void OnRep_IsHangingFromBird();
+
+	// 매달림 중에는 RepMovement.Location 적용 차단 (attach 자동 업데이트가 위치 책임)
+	virtual void OnRep_ReplicatedMovement() override;
 
 protected:
 	// 상태 별 속도
