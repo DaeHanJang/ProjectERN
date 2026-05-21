@@ -52,7 +52,6 @@ private:
 	void BroadcastZoneStateChanged();
 	
 	// Server 전용
-	
 	// InitPhaseConfig 에 따라 자기장 페이즈 시작
 	void StartInitialPhase();
 	
@@ -68,6 +67,11 @@ private:
 	
 	// 서버에서 플레이어 순회하며 처리
 	void TickZoneDamage();
+	
+	// 자기장 안/밖 상태 판정용
+	void StartInCircleCheckTimer();
+	void StopInCircleCheckTimer();
+	void TickInCircleCheck();
 	
 	// 평면 거리 자기방 안/밖 여부 계산
 	bool IsOutsideZone2D(const FVector& WorldLocation, const FVector& Center, float Radius)const;
@@ -106,6 +110,7 @@ private:
 	void UpdateZoneCenterPoints();
 	
 private:
+	// 자기장 설정 Data Asset
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Night Rain Zone", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNightRainZonePhaseConfigData> ZoneConfig;
 	
@@ -118,12 +123,20 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Night Rain Zone|Visual", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<USceneComponent> SceneRootComponent;
 	
+	// 자기장 나이아가라 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Night Rain Zone|Visual", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UNiagaraComponent> NiagaraComponent;
 	
+	// NightRainZoneManager 에 설정된 자기장 나이아가라 컴포넌트를 시각화 하는 기능을 담당하는 비쥬얼 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Night Rain Zone|Visual", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UNightRainZoneVisualComponent> VisualComponent;
 	
 	UPROPERTY()
 	TArray<ANightRainZoneCenterPoint*> CachedZoneCenterPoints;
+	
+	FTimerHandle InCircleCheckTimerHandle;
+	
+	// 자기장 안/밖 여부 확인 주기
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Night Rain Zone|Effect", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
+	float InCircleCheckInterval = 0.2f;
 };

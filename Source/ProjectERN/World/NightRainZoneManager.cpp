@@ -7,6 +7,7 @@
 #include "NiagaraComponent.h"
 #include "NightRainZoneCenterPoint.h"
 #include "NightRainZoneVisualComponent.h"
+#include "Character/Player/ERNPlayerController.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
@@ -44,12 +45,15 @@ void ANightRainZoneManager::BeginPlay()
 		return;
 	}
 	
+	// 월드에 배치된 NightRainZoneCenterPoint 들이 준비될때 까지 1틱 대기
 	GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &ANightRainZoneManager::InitializeZone_ServerOnly));
 }
 
 void ANightRainZoneManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	StopDamageTimer();
+	StopInCircleCheckTimer();
+
 	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
 	
 	Super::EndPlay(EndPlayReason);
@@ -66,6 +70,7 @@ void ANightRainZoneManager::InitializeZone_ServerOnly()
 
 	StartInitialZoneState();
 	StartDamageTimer();
+	StartInCircleCheckTimer();
 }
 
 void ANightRainZoneManager::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -218,6 +223,8 @@ void ANightRainZoneManager::TickZoneDamage()
 
 		const float Distance2D = FVector2D::Distance(FVector2D(Pawn->GetActorLocation().X, Pawn->GetActorLocation().Y),FVector2D(Center.X, Center.Y));
 
+		/*
+		// 디버깅용 로직
 		UE_LOG(LogTemp,Warning,TEXT("NightRain DamageCheck Pawn=%s Center=%s Dist2D=%.1f Radius=%.1f Outside=%s Phase =%d"),
 			*Pawn->GetActorLocation().ToString(),
 			*Center.ToString(),
@@ -225,15 +232,76 @@ void ANightRainZoneManager::TickZoneDamage()
 			Radius,
 			IsOutsideZone2D(Pawn->GetActorLocation(), Center, Radius) ? TEXT("true") : TEXT("false"),
 			ZoneState.PhaseIndex);
+		*/
 		
-		//자기장 (밤의비) 밖에 누워있는 플레이어는 몹으로 인식함으로 예외 해야함
-		//if (Pawn)
-		
+		// 데미지 적용
 		if (IsOutsideZone2D(Pawn->GetActorLocation(), Center, Radius))
 		{
 			ApplyZoneDamage(Pawn);
 		}
 	}
+}
+
+void ANightRainZoneManager::StartInCircleCheckTimer()
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	TickInCircleCheck();
+	
+	GetWorldTimerManager().SetTimer(InCircleCheckTimerHandle, this, &ANightRainZoneManager::TickInCircleCheck, InCircleCheckInterval, true);
+}
+
+void ANightRainZoneManager::StopInCircleCheckTimer()
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	GetWorldTimerManager().ClearTimer(InCircleCheckTimerHandle);
+	
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		AERNPlayerController* PC = Cast<AERNPlayerController>(It->Get());
+		APawn* Pawn = PC ? PC->GetPawn() : nullptr;
+		
+		if (Pawn == nullptr)
+		{
+			PC->UpdateNightRainPostProcessState_ServerOnly(false);
+			continue;
+		}
+
+		PC->UpdateNightRainPostProcessState_ServerOnly(false);
+	}
+}
+
+void ANightRainZoneManager::TickInCircleCheck()
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	const FVector Center = GetCurrentCenter();
+	const float Radius = GetCurrentRadius();
+	
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		AERNPlayerController* PC = Cast<AERNPlayerController>(It->Get());
+		APawn* Pawn = PC ? PC->GetPawn() : nullptr;
+		if (Pawn == nullptr)
+		{
+			PC->UpdateNightRainPostProcessState_ServerOnly(false);
+			continue;
+		}
+		
+		const bool bOutsizeCircle = IsOutsideZone2D(Pawn->GetActorLocation(), Center, Radius);
+		PC->UpdateNightRainPostProcessState_ServerOnly(bOutsizeCircle);
+	}
+	
 }
 
 bool ANightRainZoneManager::IsOutsideZone2D(const FVector& WorldLocation, const FVector& Center, float Radius) const

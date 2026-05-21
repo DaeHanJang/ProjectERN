@@ -19,6 +19,7 @@ class UERNShopComponent;
 class UERNInputConfig;
 class UGameplayEffect;
 class UCameraShakeBase;
+class UPostProcessComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -319,4 +320,13 @@ private:
 	void Server_RequestRoll(FVector_NetQuantizeNormal RollDirection);
 	
 	// *** 멀티 환경에서 방향별 구르기 적용시키기 ***
+	
+	// NightRainZone 자기장 밤의비
+#pragma region NightRainZone
+public:
+	UPostProcessComponent* GetNightRainPostProcessComponent() const { return NightRainPostProcessComponent; }
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NightRain|PostProcess", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UPostProcessComponent> NightRainPostProcessComponent;
+#pragma endregion
 };
