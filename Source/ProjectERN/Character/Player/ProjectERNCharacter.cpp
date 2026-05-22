@@ -13,6 +13,8 @@
 #include "AbilitySystemComponent.h"
 #include "ERNPlayerController.h"
 #include "ERNPlayerStatusTable.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Components/SphereComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
@@ -1293,4 +1295,61 @@ void AProjectERNCharacter::InteractionChurch_Implementation() const
 	AttributeSet->SetFlaskQuantity(NewFlaskQuantity);
 	
 	UE_LOG(LogTemp, Warning, TEXT("%s, MaxFlaskQuantity: %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()));
+}
+
+void AProjectERNCharacter::Multicast_PlayWeaponSkillInstantNiagaraEffects_Implementation(
+	const TArray<FERNWeaponSkillInstantNiagaraSpawnData>& Effects)
+{
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+
+	for (const FERNWeaponSkillInstantNiagaraSpawnData& EffectData : Effects)
+	{
+		// 이펙트가 없다면 Continue (발동하지 않음)
+		if (!EffectData.NiagaraSystem)
+		{
+			continue;
+		}
+
+		// 시간차 적용되지 않았다면
+		if (EffectData.StartDelay <= 0.f)
+		{
+			// 즉시 발동
+			SpawnWeaponSkillInstantNiagaraEffect_Local(EffectData);
+			continue;
+		}
+
+		// 시간차 적용되었다면 타이머로 딜레이적용
+		FTimerHandle TimerHandle;
+		GetWorldTimerManager().SetTimer(
+			TimerHandle,
+			FTimerDelegate::CreateUObject(
+				this,
+				&AProjectERNCharacter::SpawnWeaponSkillInstantNiagaraEffect_Local,
+				EffectData),
+			EffectData.StartDelay,
+			false);
+	}
+}
+
+void AProjectERNCharacter::SpawnWeaponSkillInstantNiagaraEffect_Local(FERNWeaponSkillInstantNiagaraSpawnData EffectData)
+{
+	// 나이아가라 적용되지 않았다면 return
+	if (!EffectData.NiagaraSystem || !GetWorld())
+	{
+		return;
+	}
+
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(),
+		EffectData.NiagaraSystem,
+		EffectData.Location,
+		EffectData.Rotation,
+		EffectData.Scale,
+		true,
+		true,
+		ENCPoolMethod::None,
+		true);
 }

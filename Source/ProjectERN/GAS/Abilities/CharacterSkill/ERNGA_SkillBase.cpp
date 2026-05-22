@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "Character/Player/ProjectERNCharacter.h"
 #include "GAS/ERNGameplayTags.h"
 
 UERNGA_SkillBase::UERNGA_SkillBase()

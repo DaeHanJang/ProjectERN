@@ -7,9 +7,11 @@
 #include "GameplayTagContainer.h"
 #include "ERNGA_SkillBase.generated.h"
 
+class AProjectERNCharacter;
 class UAnimMontage;
-class UGameplayEffect;
 class UAbilityTask_PlayMontageAndWait;
+class UGameplayEffect;
+class UNiagaraSystem;
 
 // 몽타주 섹션 구조체
 USTRUCT(BlueprintType)
@@ -89,7 +91,7 @@ public:
 	UFUNCTION(BlueprintPure, Category="ERN|Skill|Cooldown")
 	float GetSkillCooldownDuration() const { return CooldownDuration; }
 
-	// UI에서 이 스킬 슬롯의 쿨다운 태그를 읽을 때 사용 
+	// UI에서 이 스킬 슬롯의 쿨다운 태그를 읽을 때 사용
 	UFUNCTION(BlueprintPure, Category="ERN|Skill|Cooldown")
 	FGameplayTagContainer GetSkillCooldownTags() const { return CooldownTags; };
 
