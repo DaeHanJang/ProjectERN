@@ -121,7 +121,7 @@ void AERNPlayerController::BeginPlay()
 				{
 					InteractableInventoryWidget->OnWidgetClosed.AddUniqueDynamic(this, &AERNPlayerController::InventoryClose);
 				}
-				InventoryWidget->AddToViewport();
+				InventoryWidget->AddToViewport(100);
 				RefreshInventoryWidget();
 			}
 		}
@@ -515,7 +515,7 @@ void AERNPlayerController::Client_ShowBossHealthBar_Implementation(AERNBossChara
 		BossHealthBarWidget = CreateWidget<UERNBossHealthBarWidget>(this, BossHealthBarWidgetClass);
 		if (BossHealthBarWidget)
 		{
-			BossHealthBarWidget->AddToViewport(100); // 높은 ZOrder로 최상위 표시
+			BossHealthBarWidget->AddToViewport(50); // 높은 ZOrder로 최상위 표시
 		}
 	}
 
