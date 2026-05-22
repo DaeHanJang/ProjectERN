@@ -16,6 +16,7 @@ class AERNDamageTextActor;
 class AERNBossCharacter;
 class UERNBossHealthBarWidget;
 class UCameraShakeBase;
+class UPostProcessComponent;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -207,4 +208,33 @@ private:
 
 	// 캐릭터 타입 체크 시작 시간
 	float CharacterTypeCheckStartTime;
+	
+	
+#pragma region NightRainZone
+public:
+	void UpdateNightRainPostProcessState_ServerOnly(bool bShouldEnable);
+	
+	UFUNCTION(Client, Reliable)
+	void Client_SetNightRainZonePostProcessEnabled(bool bEnabled);
+	
+private:
+	void SetNightRainZonePostProcessEnabled_Local(bool bEnabled);
+	void TickNightRainZonePostProcessBlend();
+	
+	UPostProcessComponent* FindNightRainPostProcessComponent() const;
+	void SetNightRainPostProcessBlendWeight_Local(float BlendWeight);
+	
+private:
+	// 서버와 로컬을 비교
+	bool bServerNightRainPostProcessEnabled = false;
+	bool bLocalNightRainPostProcessEnabled = false;
+	
+	float CurrentNightRainPostProcessBlendWeight = 0.f;
+	float TargetNightRainPostProcessBlendWeight = 0.f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "NightRain|PostProcess", meta = (ClampMin = "0.01"))
+	float NightRainPostProcessInterpSpeed = 8.f;
+	
+	FTimerHandle NightRainPostProcessBlendTimerHandle;
+#pragma endregion
 };

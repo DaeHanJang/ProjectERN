@@ -30,9 +30,60 @@
 #include "Actors/Intro/ERNIntroBird.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Components/PostProcessComponent.h"
 #include "Inventory/Item/ERNItemActor.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
+
+void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin)
+{
+	Super::TryApplyStagger(IncomingStaggerPower, HitOrigin);
+	
+	if (!AbilitySystemComponent || !AttributeSet)
+	{
+		return;
+	}
+
+	// 이미 사망 처리됐으면 경직/히트리액션 무시 (사망 몽타주 보존)
+	if (bIsDead)
+	{
+		return;
+	}
+	
+	// 무적이면 카메라 흔들림 무시
+	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Immunity_Damage))
+	{
+		return;
+	}
+	
+	// 최소 경직을 위한 데미지 DamageShakeThresholdSmall 이상일 때만 흔들림
+	if (IncomingStaggerPower >= DamageShakeThresholdSmall && HasAuthority())
+	{
+		// 경직도에 따른 카메라 흔들림 분류
+		TSubclassOf<UCameraShakeBase> ShakeToPlay = nullptr;
+		if (IncomingStaggerPower < DamageShakeThresholdMedium)
+		{
+			ShakeToPlay = TakeDamageShakeClass_Small;
+		}
+		else if (IncomingStaggerPower < DamageShakeThresholdBig)
+		{
+			ShakeToPlay = TakeDamageShakeClass_Medium;
+		}
+		else
+		{
+			ShakeToPlay = TakeDamageShakeClass_Big;
+		}
+
+		if (ShakeToPlay)
+		{
+			AERNPlayerController* PC = Cast<AERNPlayerController>(GetController());
+			if (PC)
+			{
+				PC->Client_PlayCameraShake(ShakeToPlay, 1.f);
+			}
+		}
+	}
+}
 
 AProjectERNCharacter::AProjectERNCharacter()
 {
@@ -90,6 +141,14 @@ AProjectERNCharacter::AProjectERNCharacter()
 	InteractionDetector->SetCollisionProfileName(TEXT("OverlapAll"));
 	InteractionDetector->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Ignore);
 	InteractionDetector->SetGenerateOverlapEvents(true);
+	
+	// NightRainZone 자기장 밤의비
+	NightRainPostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("NightRainPostProcessComponent"));
+	NightRainPostProcessComponent->SetupAttachment(FollowCamera);
+	NightRainPostProcessComponent->bEnabled = true;
+	NightRainPostProcessComponent->bUnbound = true;
+	NightRainPostProcessComponent->BlendWeight = 0.f;
+	NightRainPostProcessComponent->Priority = 100.f;
 	
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 
@@ -1148,40 +1207,7 @@ void AProjectERNCharacter::Server_RequestRoll_Implementation(FVector_NetQuantize
 float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-
-	if (ActualDamage > 0.f && HasAuthority())
-	{
-		// 데미지/MaxHealth 비율로 흔들림 강도 분기
-		const float MaxHP = AttributeSet ? AttributeSet->GetMaxHealth() : 0.f;
-		if (MaxHP > 0.f)
-		{
-			const float Ratio = ActualDamage / MaxHP;
-
-			TSubclassOf<UCameraShakeBase> ShakeToPlay = nullptr;
-			if (Ratio < DamageShakeThresholdSmall)
-			{
-				ShakeToPlay = TakeDamageShakeClass_Small;
-			}
-			else if (Ratio < DamageShakeThresholdMedium)
-			{
-				ShakeToPlay = TakeDamageShakeClass_Medium;
-			}
-			else
-			{
-				ShakeToPlay = TakeDamageShakeClass_Big;
-			}
-
-			if (ShakeToPlay)
-			{
-				AERNPlayerController* PC = Cast<AERNPlayerController>(GetController());
-				if (PC)
-				{
-					PC->Client_PlayCameraShake(ShakeToPlay, 1.f);
-				}
-			}
-		}
-	}
-
+	
 	return ActualDamage;
 }
 
