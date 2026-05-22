@@ -102,9 +102,6 @@ void AERNGameState::OnBossEncounterCutsceneFinished()
 	{
 		// 보스 잠금 해제 → BT/Perception 재개 → 전투 시작
 		Boss->SetIntroCutsceneLocked(false);
-
-		// 체력바 즉시 표시 (perception 자동 감지 기다리지 않고 명시적 호출)
-		Boss->ShowHealthBarToAllPlayers();
 	}
 
 	CachedBoss.Reset();

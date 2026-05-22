@@ -9,6 +9,7 @@
 class ULevelSequence;
 class UBehaviorTree;
 class UAnimMontage;
+class USoundBase;
 
 // 보스 페이즈 정보
 USTRUCT(BlueprintType)
@@ -73,6 +74,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|UI")
 	FText BossName;
 
+	// 보스전 BGM (감지 시 재생)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Sound")
+	TObjectPtr<USoundBase> BossBGM;
+
+	// BGM 페이드 인 시간 (초)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Sound", meta = (ClampMin = "0.0"))
+	float BGMFadeInTime = 1.0f;
+
+	// BGM 페이드 아웃 시간 (사망 시)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Sound", meta = (ClampMin = "0.0"))
+	float BGMFadeOutTime = 2.0f;
+
+	// BGM 시작됐는지 여부 (중복 발사 방지)
+	UPROPERTY(BlueprintReadOnly, Category = "Boss|Sound")
+	bool bBGMStarted = false;
+
 	// 페이즈 전환
 	UFUNCTION(BlueprintCallable, Category = "Boss")
 	void TransitionToPhase(int32 NewPhaseIndex);
@@ -97,7 +114,15 @@ public:
 	// 모든 플레이어에게 보스 체력바 표시 (AIC에서 호출)
 	UFUNCTION(BlueprintCallable, Category = "Boss|UI")
 	void ShowHealthBarToAllPlayers();
-	
+
+	// 모든 머신에서 보스 BGM 재생 (AIC가 첫 감지 시 호출)
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayBossBGM();
+
+	// 모든 머신에서 보스 BGM 정지 (사망 시 호출)
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_StopBossBGM();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnDeath() override;
