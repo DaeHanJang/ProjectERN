@@ -6,6 +6,7 @@
 #include "GAS/ERNAttributeSet.h"
 #include "Inventory/Data/ERNInventoryList.h"
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
+#include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 
 UERNDataTableShopProvider::UERNDataTableShopProvider()
 {
@@ -159,8 +160,21 @@ void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransacti
         NewItemState.SetQuantity(Transaction.Quantity);
 
         TArray<FInventoryItemEntry> ChangedEntries;
-        // MaxStackSize는 하드코딩 또는 아이템 데이터에서 가져올 수 있으나 현재 99로 가정
-        bool bAddSuccess = InvComp->GetInventory().AddItem(NewItemState, InvComp->GetMaxStackSize(), 99, ChangedEntries);
+        
+        // 아이템의 실제 최대 중첩(Stack) 사이즈를 데이터 테이블에서 조회
+        int32 ActualMaxStackSize = 99; // 기본값 (안전 장치)
+        if (UGameInstance* GI = PlayerChar->GetGameInstance())
+        {
+            if (UItemManagerSubsystem* ItemMgr = GI->GetSubsystem<UItemManagerSubsystem>())
+            {
+                if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(TargetItem->ItemID))
+                {
+                    ActualMaxStackSize = ItemRow->MaxStackSize;
+                }
+            }
+        }
+
+        bool bAddSuccess = InvComp->GetInventory().AddItem(NewItemState, InvComp->GetMaxSlotSize(), ActualMaxStackSize, ChangedEntries);
 
         if (!bAddSuccess)
         {

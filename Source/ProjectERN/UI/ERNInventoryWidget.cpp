@@ -51,7 +51,7 @@ void UERNInventoryWidget::RefreshFromCurrentCharacter()
 		BoundInventoryComponent = InventoryComponent;
 		
 		// 슬롯 생성
-		CreateSlot(InventoryComponent->GetMaxStackSize(), ColumnSize);
+		CreateSlot(InventoryComponent->GetMaxSlotSize(), ColumnSize);
 		
 		// 인벤토리 갱신 이벤트 바인딩
 		InventoryComponent->OnInventorySlotChanged.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateInventorySlot);
@@ -271,7 +271,7 @@ FReply UERNInventoryWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, 
 	if (FocusSlotIndex != -1)
 	{
 		// 인벤토리 네비게이션 (Up, Left, Down, Right)
-		const int32 NextIndex = GetNavigationTargetSlotIndex(InKeyEvent.GetKey(), InventoryComponent->GetMaxStackSize());
+		const int32 NextIndex = GetNavigationTargetSlotIndex(InKeyEvent.GetKey(), InventoryComponent->GetMaxSlotSize());
 		if (NextIndex != INDEX_NONE)
 		{			
 			UpdateFocusSlotIndex(NextIndex);

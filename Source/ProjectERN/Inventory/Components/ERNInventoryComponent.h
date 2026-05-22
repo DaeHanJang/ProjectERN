@@ -26,7 +26,7 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	// Getter
-	FORCEINLINE int32 GetMaxStackSize() const { return MaxSlotSize; }
+	FORCEINLINE int32 GetMaxSlotSize() const { return MaxSlotSize; }
 	FORCEINLINE const FInventoryList& GetInventory() const { return Inventory; }
 	FORCEINLINE FInventoryList& GetInventory() { return Inventory; }
 	FORCEINLINE const int32 GetItemQuantity(const int32 SlotIndex) const { return Inventory.GetItemQuantity(SlotIndex); }

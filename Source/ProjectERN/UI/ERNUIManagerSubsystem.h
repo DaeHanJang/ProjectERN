@@ -51,7 +51,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "UI")
 	EERNUIType GetActiveUIType() const { return ActiveUIType; }
 
+	/** 구매 확인 팝업 등록 (기존 팝업이 있다면 닫음) */
+	UFUNCTION(BlueprintCallable, Category = "UI|Popup")
+	void RegisterConfirmPurchasePopup(class UERNConfirmPurchaseWidget* NewPopup);
+
+	/** 현재 열려있는 구매 확인 팝업 닫기 */
+	UFUNCTION(BlueprintCallable, Category = "UI|Popup")
+	void CloseConfirmPurchasePopup();
+
 private:
 	/** 현재 활성화된 UI 타입 */
 	EERNUIType ActiveUIType = EERNUIType::None;
+
+	/** 현재 열려있는 구매 확인 팝업 참조 */
+	UPROPERTY()
+	TObjectPtr<class UERNConfirmPurchaseWidget> ActiveConfirmPurchasePopup = nullptr;
 };

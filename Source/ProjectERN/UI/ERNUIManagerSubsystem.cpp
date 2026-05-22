@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "UI/ERNUIManagerSubsystem.h"
+#include "UI/ERNConfirmPurchaseWidget.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogUIManager, Log, All);
 
@@ -42,5 +43,28 @@ void UERNUIManagerSubsystem::CloseActiveUI()
 	EERNUIType ClosedType = ActiveUIType;
 	ActiveUIType = EERNUIType::None;
 	
+	// 전체 UI가 닫힐 때, 연관된 서브 팝업들도 전부 닫기
+	CloseConfirmPurchasePopup();
+
 	UE_LOG(LogUIManager, Log, TEXT("[UIManager] UI [%d] 닫힘"), (int32)ClosedType);
+}
+
+void UERNUIManagerSubsystem::RegisterConfirmPurchasePopup(UERNConfirmPurchaseWidget* NewPopup)
+{
+	// 이미 열려있는 팝업이 있다면 취소(닫기) 처리
+	if (ActiveConfirmPurchasePopup && ActiveConfirmPurchasePopup != NewPopup)
+	{
+		ActiveConfirmPurchasePopup->OnNoClicked(); // 버튼 상태를 복구하고 팝업을 닫음
+	}
+	
+	ActiveConfirmPurchasePopup = NewPopup;
+}
+
+void UERNUIManagerSubsystem::CloseConfirmPurchasePopup()
+{
+	if (ActiveConfirmPurchasePopup)
+	{
+		ActiveConfirmPurchasePopup->OnNoClicked();
+		ActiveConfirmPurchasePopup = nullptr;
+	}
 }

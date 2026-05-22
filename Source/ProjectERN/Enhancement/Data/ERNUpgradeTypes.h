@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "Inventory/Item/Data/ERNItemEnums.h"
-#include "Engine/DataTable.h"
 #include "ERNUpgradeTypes.generated.h"
 
 // ===== 로그 카테고리 =====
@@ -15,39 +14,10 @@ enum class EUpgradeResult : uint8
 {
     Success,
     MaterialInsufficient,   // 단석 부족
-    AlreadyMaxGrade,        // 이미 최고 등급 (Legendary)
+    AlreadyMaxGrade,        // 이미 최고 등급
     InvalidItem,            // 유효하지 않은 아이템
-    NoUpgradePath,          // 강화 경로 없음
+    NoUpgradePath,          // 강화 경로 없음 (NextGradeItemID가 None)
     InventoryError,         // 인벤토리 교체 실패
-};
-
-// ===== 구조체 =====
-
-/**
- * 강화 경로 데이터 테이블 Row 구조체
- * DT_UpgradePath에서 사용하며, "어떤 아이템이 → 어떤 아이템으로 변하는지"를 정의
- */
-USTRUCT(BlueprintType)
-struct FERNUpgradePathTable : public FTableRowBase
-{
-    GENERATED_BODY()
-
-    // 강화 대상 아이템 (DT_ItemTable의 RowName, 외래 키)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Upgrade")
-    FName SourceItemID;
-
-    // 강화 결과 아이템 (DT_ItemTable의 RowName, 외래 키)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Upgrade")
-    FName ResultItemID;
-
-    // 필요 재료 아이템 (단석의 DT_ItemTable RowName)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Upgrade")
-    FName RequiredMaterialID;
-
-    // 필요 재료 수량
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Upgrade",
-        meta = (ClampMin = "1", UIMin = "1"))
-    int32 RequiredMaterialCount = 1;
 };
 
 /**
@@ -96,18 +66,15 @@ struct FERNUpgradePreview
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     TSoftObjectPtr<UTexture2D> ResultIcon;
 
-    // 필요 재료 정보
+    // 필요 재료 정보 (소모 수량은 1개 고정)
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     FName RequiredMaterialID;
 
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     FText MaterialDisplayName;
-
+    
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
-    int32 RequiredMaterialCount = 0;
-
-    UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
-    int32 CurrentMaterialCount = 0;  // 플레이어가 현재 보유한 재료 수
+    int32 CurrentMaterialCount = 0;  // UI 표기용 현재 보유 수량
 
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     TSoftObjectPtr<UTexture2D> MaterialIcon;
@@ -115,7 +82,7 @@ struct FERNUpgradePreview
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     EItemGrade MaterialGrade = EItemGrade::None;
 
-    // 강화 가능 여부
+    // 강화 가능 여부 (재료 1개 이상 보유 시 true)
     UPROPERTY(BlueprintReadOnly, Category = "Upgrade")
     bool bCanUpgrade = false;
 };
@@ -140,12 +107,9 @@ struct FERNUpgradeTransaction
     UPROPERTY(BlueprintReadWrite, Category = "Upgrade")
     FName ResultItemID;
 
-    // 소모 재료 정보
+    // 소모 재료 아이템 (1개 고정 소모)
     UPROPERTY(BlueprintReadWrite, Category = "Upgrade")
     FName MaterialItemID;
-
-    UPROPERTY(BlueprintReadWrite, Category = "Upgrade")
-    int32 MaterialCost = 0;
 
     // 결과
     UPROPERTY(BlueprintReadWrite, Category = "Upgrade")

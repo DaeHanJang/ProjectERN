@@ -11,6 +11,22 @@
 void UERNConfirmPurchaseWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	
+	// 위젯이 생성될 때 포커스를 받아야 마우스 입력을 최우선으로 처리할 수 있음
+	SetIsFocusable(true);
+}
+
+FReply UERNConfirmPurchaseWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	// 좌클릭이나 우클릭이 발생하면 팝업 취소(No) 처리
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton || 
+		InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
+	{
+		OnNoClicked();
+		return FReply::Handled();
+	}
+	
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
 void UERNConfirmPurchaseWidget::SetupPopup(const FERNShopItemData& InItemData)
@@ -29,10 +45,11 @@ void UERNConfirmPurchaseWidget::SetupPopup(const FERNShopItemData& InItemData)
 				FLinearColor GradeColor = FLinearColor::White;
 				switch (Row->Grade)
 				{
-					case EItemGrade::Common: GradeColor = FLinearColor(0.8f, 0.8f, 0.8f, 1.f); break;
-					case EItemGrade::Uncommon: GradeColor = FLinearColor(0.2f, 0.5f, 1.0f, 1.f); break;
-					case EItemGrade::Rare: GradeColor = FLinearColor(0.6f, 0.2f, 0.9f, 1.f); break;
-					case EItemGrade::Legendary: GradeColor = FLinearColor(1.0f, 0.85f, 0.0f, 1.f); break;
+					case EItemGrade::Common: GradeColor = FLinearColor(0.65f, 0.65f, 0.65f, 1.0f); break;
+					case EItemGrade::Uncommon: GradeColor = FLinearColor(0.2f, 1.0f, 1.0f, 1.0f); break;
+					case EItemGrade::Rare: GradeColor = FLinearColor(0.2f, 0.05f, 1.0f, 1.0f); break;
+					case EItemGrade::Legendary: GradeColor = FLinearColor(1.0f, 0.265f, 0.0f, 1.0f); break;
+					default: GradeColor = FLinearColor::White; break;
 				}
 				ItemNameText->SetColorAndOpacity(FSlateColor(GradeColor));
 			}

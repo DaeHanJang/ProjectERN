@@ -38,20 +38,23 @@ public:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> PriceText;
 
-protected:
-	virtual void NativeConstruct() override;
-
-	// 아이템 데이터 (팝업에 표시할 정보)
-	UPROPERTY(BlueprintReadOnly, Category = "Shop|Purchase")
-	FERNShopItemData CachedItemData;
-
 	// Yes 버튼 클릭 핸들러
 	UFUNCTION(BlueprintCallable, Category = "Shop|Purchase")
 	void OnYesClicked();
 
-	// No 버튼 클릭 핸들러
+	// No 버튼 클릭 핸들러 (UI 매니저에서도 호출 가능하도록 public으로 공개)
 	UFUNCTION(BlueprintCallable, Category = "Shop|Purchase")
 	void OnNoClicked();
+
+protected:
+	virtual void NativeConstruct() override;
+
+	// 바탕(블러/배경) 클릭 시 팝업을 닫도록 입력 처리 오버라이드
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	// 아이템 데이터 (팝업에 표시할 정보)
+	UPROPERTY(BlueprintReadOnly, Category = "Shop|Purchase")
+	FERNShopItemData CachedItemData;
 	
 	// 블루프린트에서 UI 요소를 업데이트할 수 있도록 이벤트를 제공
 	UFUNCTION(BlueprintImplementableEvent, Category = "Shop|Purchase")
