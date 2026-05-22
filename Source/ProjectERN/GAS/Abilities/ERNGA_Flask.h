@@ -7,6 +7,7 @@
 #include "ERNGA_Flask.generated.h"
 
 class UNiagaraSystem;
+
 /**
  * 
  */

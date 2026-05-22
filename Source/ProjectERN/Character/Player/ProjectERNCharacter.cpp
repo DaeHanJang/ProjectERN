@@ -449,6 +449,14 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started, 
 		this, 
 		&AProjectERNCharacter::DrinkFlask);
+	
+	// Consumable
+	InputComp->BindNativeInputAction(
+		InputConfig, 
+		TAG_Input_Consumable, 
+		ETriggerEvent::Started, 
+		this, 
+		&AProjectERNCharacter::UseConsumable);
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
@@ -966,9 +974,32 @@ void AProjectERNCharacter::DrinkFlask()
 		return;
 	}
 	
+	if (AttributeSet->GetFlaskQuantity() < 1)
+	{
+		return;
+	}
+	
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Flask));
+	}
+}
+
+void AProjectERNCharacter::UseConsumable()
+{
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+	
+	if (EquipmentComponent->GetCurrentConsumableQuantity() < 1)
+	{
+		return;
+	}
+	
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Consumable));
 	}
 }
 

@@ -136,6 +136,9 @@ protected:
 	
 	/** Called for flask on input */
 	void DrinkFlask();
+	
+	/** Called for Consumable on input */
+	void UseConsumable();
 
 public:
 	/** Handles move inputs from either controls or UI interfaces */

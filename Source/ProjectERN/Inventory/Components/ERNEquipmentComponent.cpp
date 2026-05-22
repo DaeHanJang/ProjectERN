@@ -379,3 +379,20 @@ void UERNEquipmentComponent::Server_UnequipItem_Implementation(const int32 Quant
 	UE_LOG(LogTemp, Warning, TEXT("DropConsumable: %s, Quantity: %d"), *DropItemRuntimeState.GetItemID().ToString(), DropItemRuntimeState.GetQuantity());
 	UE_LOG(LogTemp, Warning, TEXT("CurrentConsumable: %s, Quantity: %d"), *CurrentConsumable.GetItemID().ToString(), CurrentConsumable.GetQuantity());
 }
+
+void UERNEquipmentComponent::Server_UseCurrentConsumableQuantity_Implementation()
+{
+	CurrentConsumable.AddQuantity(-1);
+	
+	if (CurrentConsumable.GetQuantity() <= 0)
+	{
+		CurrentConsumable.Init();
+		ConsumableSlot.Init();
+	}
+	else
+	{
+		ConsumableSlot.SetItemRuntimeState(CurrentConsumable);
+	}
+
+	OnConsumableSlotChanged.Broadcast(ConsumableSlot);
+}

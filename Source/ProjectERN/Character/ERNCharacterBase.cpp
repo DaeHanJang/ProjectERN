@@ -8,9 +8,11 @@
 #include "Components/CapsuleComponent.h"
 #include "Abilities/GameplayAbility.h"
 #include "GameplayEffect.h"
+#include "NiagaraFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Kismet/GameplayStatics.h"
 
 AERNCharacterBase::AERNCharacterBase()
 {
@@ -425,4 +427,34 @@ void AERNCharacterBase::AddGold(const int32 Amount) const
 	AttributeSet->SetGold(static_cast<float>(NewGold));
 	
 	UE_LOG(LogTemp, Warning, TEXT("PlayerController: %s, Gold: %d"), *GetNameSafe(Controller), static_cast<int32>(AttributeSet->GetGold()));
+}
+
+void AERNCharacterBase::Server_RequestEffectAndSound_Implementation(UNiagaraSystem* Effect, FVector EffectLocation,
+	USoundBase* Sound, FVector SoundLocation)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	Multicast_PlayEffectAndSound(Effect, EffectLocation, Sound, SoundLocation);
+}
+
+void AERNCharacterBase::Multicast_PlayEffectAndSound_Implementation(UNiagaraSystem* Effect, FVector EffectLocation,
+	USoundBase* Sound, FVector SoundLocation)
+{
+	if (!GetWorld())
+	{
+		return;
+	}
+	
+	if (Effect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), Effect, EffectLocation);
+	}
+	
+	if (Sound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), Sound, SoundLocation);
+	}
 }

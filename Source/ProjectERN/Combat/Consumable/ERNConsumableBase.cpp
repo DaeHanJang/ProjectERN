@@ -2,9 +2,8 @@
 
 #include "Combat/Consumable/ERNConsumableBase.h"
 
-#include "Abilities/GameplayAbility.h"
 #include "Components/SphereComponent.h"
-#include "Inventory/Item/Data/ConsumableItemDataAsset.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 
 // Sets default values
 AERNConsumableBase::AERNConsumableBase()
@@ -16,24 +15,36 @@ AERNConsumableBase::AERNConsumableBase()
 	// Collision
 	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	SetRootComponent(Collision);
+	Collision->SetCollisionProfileName(TEXT("BlockAllDynamic"));
+	Collision->SetNotifyRigidBodyCollision(true);
 	
 	// Mesh
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 	Mesh->SetupAttachment(GetRootComponent());
 	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	// MovementComponent
+	MovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("MovementComponent"));
 }
 
-void AERNConsumableBase::Init(const FItemRuntimeState& InRuntimeState, const UConsumableItemDataAsset* DA)
+void AERNConsumableBase::BeginPlay()
 {
-	if (!DA)
+	Super::BeginPlay();
+	
+	Collision->OnComponentHit.AddDynamic(this, &AERNConsumableBase::OnCollisionHit);
+}
+
+void AERNConsumableBase::OnCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	if (!HasAuthority())
 	{
 		return;
 	}
 	
-	if (!DA->ConsumableAbility.IsNull())
-	{
-		GA = DA->ConsumableAbility.Get();
-	}
-	RuntimeState.SetItemID(InRuntimeState.GetItemID());
-	RuntimeState.SetQuantity(InRuntimeState.GetQuantity());
+	ApplyEffect();
+}
+
+void AERNConsumableBase::ApplyEffect()
+{
 }

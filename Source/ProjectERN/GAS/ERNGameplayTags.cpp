@@ -13,7 +13,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Input_HeavyAttack, "Input.HeavyAttack")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_LockOn, "Input.LockOn")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_Sprint, "Input.Sprint")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_Flask, "Input.Flask")
-UE_DEFINE_GAMEPLAY_TAG(TAG_Input_UseConsumable, "Input.UseConsumable")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Input_Consumable, "Input.Consumable")
 
 // 전투 상태
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Attacking, "State.Combat.Attacking")
@@ -26,8 +26,8 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Jump, "Ability.Movement.Jump")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_WallJump, "Ability.Movement.WallJump")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Roll, "Ability.Movement.Roll")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Sprint, "Ability.Movement.Sprint")
-UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_UseConsumable, "Ability.Movement.UseConsumable")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Flask, "Ability.Movement.Flask")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Consumable, "Ability.Movement.Consumable")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Attack_Light, "Ability.Attack.Light")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Attack_Heavy, "Ability.Attack.Heavy")
 
@@ -42,6 +42,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Landing, "State.Movement.Landing")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Sprinting, "State.Movement.Sprinting")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_WallJumpUsed, "State.Movement.WallJumpUsed")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Flask, "State.Movement.Flask")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Consumable, "State.Movement.Consumable")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Immunity_Damage, "State.Immunity.Damage")
 
 // 소모 자원
@@ -55,3 +56,6 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Buff_AttackPower, "Buff.AttackPower")
 
 // GameplayCue 태그
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Cast_Buff_AttackPower, "GameplayCue.Cast.Buff.AttackPower")
+
+// 이벤트
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Consumable_Throw, "Event.Consumable.Throw")
