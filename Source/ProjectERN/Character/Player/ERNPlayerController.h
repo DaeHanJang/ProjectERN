@@ -194,6 +194,31 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_ShowIntroTitleWidget();
 
+	// ===== 채팅 시스템 =====
+
+	// 채팅 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Chat")
+	TSubclassOf<UUserWidget> ChatWidgetClass;
+
+	// 채팅 위젯을 숨길 맵 이름 목록 (부분 일치)
+	UPROPERTY(EditAnywhere, Category = "UI|Chat")
+	TArray<FString> HideChatWidgetMapNames;
+
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "UI|Chat")
+	UUserWidget* ChatWidget = nullptr;
+
+	// 클라가 채팅 입력 후 호출 (위젯 OnTextCommitted에서 호출)
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "UI|Chat")
+	void Server_SendChat(const FString& Message);
+
+	// 서버가 각 클라에 채팅 전달
+	UFUNCTION(Client, Reliable)
+	void Client_ReceiveChat(const FString& Sender, const FString& Message);
+
+	// 채팅 수신 시 BP에서 위젯에 메시지 추가 (Sender + Message)
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI|Chat")
+	void OnReceiveChatMessage(const FString& Sender, const FString& Message);
+
 private:
 	// 보스 체력바 위젯 인스턴스
 	UPROPERTY(Transient)

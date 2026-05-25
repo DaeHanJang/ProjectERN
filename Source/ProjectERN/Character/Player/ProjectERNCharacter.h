@@ -277,6 +277,9 @@ public:
 	// 서버: 새에 부착 (인트로 매니저가 호출)
 	void AttachToIntroBird(class AERNIntroBird* Bird);
 
+	// 부착된 새 반환 (PC가 조향 RPC 호출 시 사용)
+	class AERNIntroBird* GetAttachedBird() const { return AttachedBird; }
+
 	// 서버: 새에서 해제 (Jump 입력 시 호출)
 	UFUNCTION(Server, Reliable)
 	void Server_ReleaseFromBird();

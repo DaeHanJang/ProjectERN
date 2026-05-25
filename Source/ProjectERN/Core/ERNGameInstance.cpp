@@ -33,6 +33,9 @@ void UERNGameInstance::Init()
 			SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &UERNGameInstance::OnFindSessionsComplete);
 			SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UERNGameInstance::OnJoinSessionComplete);
 			SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &UERNGameInstance::OnDestroySessionComplete);
+
+			// Steam Overlay에서 "Join Game" 클릭 시 자동 조인
+			SessionInterface->OnSessionUserInviteAcceptedDelegates.AddUObject(this, &UERNGameInstance::OnSessionUserInviteAccepted);
 		}
 	}
 
@@ -62,14 +65,16 @@ void UERNGameInstance::HostSession(FString ServerName, int32 MaxPlayers)
 		return;
 	}
 
-	// 세션 설정
+	// 세션 설정 (bUseSteam에 따라 LAN/Steam 모드 분기)
 	FOnlineSessionSettings SessionSettings;
-	SessionSettings.bIsLANMatch = true;
+	SessionSettings.bIsLANMatch = !bUseSteam;
 	SessionSettings.NumPublicConnections = MaxPlayers;
 	SessionSettings.bShouldAdvertise = true;
-	SessionSettings.bUsesPresence = false;
+	SessionSettings.bUsesPresence = bUseSteam;            // Steam 모드에서만 Friend Presence
+	SessionSettings.bAllowInvites = bUseSteam;            // Steam Overlay 초대 허용
 	SessionSettings.bAllowJoinInProgress = true;
 	SessionSettings.bAllowJoinViaPresence = true;
+	SessionSettings.bUseLobbiesIfAvailable = bUseSteam;   // Steam Lobby 사용 (친구 초대 안정성)
 
 	// 커스텀 세션 정보 (서버 이름)
 	SessionSettings.Set(FName("SERVER_NAME"), ServerName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
@@ -108,9 +113,9 @@ void UERNGameInstance::FindSessions(FString SearchQuery)
 	// 검색어 저장
 	CurrentSearchQuery = SearchQuery;
 
-	// 세션 검색 설정
+	// 세션 검색 설정 (bUseSteam에 따라 LAN/Steam 모드 분기)
 	SessionSearch = MakeShareable(new FOnlineSessionSearch());
-	SessionSearch->bIsLanQuery = true;
+	SessionSearch->bIsLanQuery = !bUseSteam;
 	SessionSearch->MaxSearchResults = 20;
 
 	UE_LOG(LogTemp, Log, TEXT("Starting session search with query: '%s'..."), *SearchQuery);
@@ -245,6 +250,42 @@ void UERNGameInstance::OnDestroySessionComplete(FName SessionName, bool bWasSucc
 			PendingServerName.Empty();
 		}
 	}
+}
+
+// Steam Overlay에서 친구가 "Join Game" 클릭 시 자동 호출
+void UERNGameInstance::OnSessionUserInviteAccepted(
+	const bool bWasSuccessful,
+	const int32 ControllerId,
+	FUniqueNetIdPtr UserId,
+	const FOnlineSessionSearchResult& InviteResult)
+{
+	if (!bWasSuccessful)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Steam invite accepted but bWasSuccessful=false"));
+		return;
+	}
+
+	if (!UserId.IsValid() || !InviteResult.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Steam invite accepted but UserId or InviteResult invalid"));
+		return;
+	}
+
+	if (!SessionInterface.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SessionInterface not valid in invite accept"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Steam invite accepted - joining session..."));
+
+	// 기존 세션 있으면 정리 후 조인 (LeaveSession은 비동기라 단순화: 바로 조인)
+	if (SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		SessionInterface->DestroySession(NAME_GameSession);
+	}
+
+	SessionInterface->JoinSession(*UserId, NAME_GameSession, InviteResult);
 }
 
 void UERNGameInstance::JoinByIP(FString IPAddress)

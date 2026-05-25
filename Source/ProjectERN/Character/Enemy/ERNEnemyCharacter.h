@@ -10,6 +10,7 @@ class UWidgetComponent;
 class AERNProjectileBase;
 class UBoxComponent;
 class UMotionWarpingComponent;
+class USoundBase;
 
 USTRUCT(BlueprintType)
 struct FEnemyHitboxConfig
@@ -27,6 +28,10 @@ struct FEnemyHitboxConfig
 	// 이 히트박스가 줄 경직력
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float StaggerPower = 10.f;
+
+	// 히트 시 재생할 사운드 (Multicast로 모든 머신에서 재생)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<USoundBase> HitSound;
 };
 
 USTRUCT(BlueprintType)
@@ -72,6 +77,10 @@ public:
 	// 사망 직전 메시 숨김 (몽타주 종료 직전 T-pose 방지용)
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_HideOnDeath();
+
+	// 히트 사운드를 모든 머신에서 재생 (Unreliable — 빈도 높을 수 있고 놓쳐도 OK)
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlayHitSound(USoundBase* Sound, FVector Location);
 
 protected:
 	virtual void BeginPlay() override;
