@@ -13,6 +13,7 @@
 #include "AbilitySystemComponent.h"
 #include "ERNPlayerController.h"
 #include "ERNPlayerStatusTable.h"
+#include "ERNSkillNiagaraComponent.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Character/Player/ERNPlayerState.h"
@@ -93,6 +94,8 @@ AProjectERNCharacter::AProjectERNCharacter()
 	InteractionDetector->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Ignore);
 	InteractionDetector->SetGenerateOverlapEvents(true);
 
+	// Create Skill Niagara Component
+	SkillNiagaraComponent = CreateDefaultSubobject<UERNSkillNiagaraComponent>(TEXT("SkillNiagaraComponent"));
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
@@ -100,6 +103,10 @@ AProjectERNCharacter::AProjectERNCharacter()
 
 	// 기본값 설정
 	CharacterType = ECharacterType::Warrior;
+	
+	// 캐릭터 겹쳤을 때 카메라 조정 방지
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 }
 
 void AProjectERNCharacter::BeginPlay()

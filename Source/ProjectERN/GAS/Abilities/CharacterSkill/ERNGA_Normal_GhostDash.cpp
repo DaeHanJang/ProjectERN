@@ -4,6 +4,7 @@
 #include "GAS/Abilities/CharacterSkill/ERNGA_Normal_GhostDash.h"
 
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
+#include "Character/Player/ERNSkillNiagaraComponent.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Combat/Weapons/ERNWeaponBase.h"
 #include "Components/CapsuleComponent.h"
@@ -40,6 +41,8 @@ void UERNGA_Normal_GhostDash::ActivateAbility(const FGameplayAbilitySpecHandle H
 	ApplyGhostDashCollision(Character);
 	// 투명도 적용
 	ApplyGhostDashVisual(Character);
+	// 나이아가라 출력
+	StartGhostDashNiagaraEffects(Character);
 	// 이동속도를 갱신
 	Character->UpdateMovementSpeed();
 	Character->UpdateRotationMode();
@@ -48,7 +51,7 @@ void UERNGA_Normal_GhostDash::ActivateAbility(const FGameplayAbilitySpecHandle H
 	// MontageSections[0]을 Start 섹션으로 두면 된다.
 	// 몽타주 내부에서 Start -> Loop로 이어지도록 섹션 연결을 잡는다.
 	PlayConfiguredMontage(0);
-
+	
 	// 대시 지속시간이 끝나면 어빌리티를 종료한다.
 	UAbilityTask_WaitDelay* WaitDelayTask = UAbilityTask_WaitDelay::WaitDelay(this, SkillDuration);
 	if (!WaitDelayTask)
@@ -73,6 +76,8 @@ void UERNGA_Normal_GhostDash::EndAbility(const FGameplayAbilitySpecHandle Handle
 	{
 		// 충돌 복구
 		ClearGhostDashCollision(Character);
+		// 나이아가라 이펙트 종료
+		StopGhostDashNiagaraEffects(Character);
 		// 투명도 복구
 		ClearGhostDashVisual();
 		// 속도/방향 복구
@@ -157,7 +162,7 @@ void UERNGA_Normal_GhostDash::ApplyGhostDashCollision(AProjectERNCharacter* Char
 	PreviousCapsuleResponse = Capsule->GetCollisionResponseToChannel(GhostPassThroughChannel);
 	PreviousProjectileResponse = Capsule->GetCollisionResponseToChannel(GhostPassProjectileChannel);
 
-	// GhostDash 중에는 지정 채널과 충돌하지 않게 한다.
+	// 스킬 사용 중에는 지정 채널과 충돌하지 않게 한다.
 	Capsule->SetCollisionResponseToChannel(GhostPassThroughChannel, ECR_Ignore);
 	Capsule->SetCollisionResponseToChannel(GhostPassProjectileChannel, ECR_Ignore);
 }
@@ -169,10 +174,33 @@ void UERNGA_Normal_GhostDash::ClearGhostDashCollision(AProjectERNCharacter* Char
 		return;
 	}
 
-	Character->GetCapsuleComponent()->SetCollisionResponseToChannel(
-		GhostPassThroughChannel,
-		PreviousCapsuleResponse);
-	Character->GetCapsuleComponent()->SetCollisionResponseToChannel(
-		GhostPassProjectileChannel,
-		PreviousProjectileResponse);
+	// Collision 원상 복구
+	Character->GetCapsuleComponent()->SetCollisionResponseToChannel(GhostPassThroughChannel, PreviousCapsuleResponse);
+	Character->GetCapsuleComponent()->SetCollisionResponseToChannel(GhostPassProjectileChannel, PreviousProjectileResponse);
+}
+
+void UERNGA_Normal_GhostDash::StartGhostDashNiagaraEffects(AProjectERNCharacter* Character)
+{
+	if (!Character || GhostDashNiagaraEffects.IsEmpty())
+	{
+		return;
+	}
+
+	if (UERNSkillNiagaraComponent* NiagaraComponent = Character->FindComponentByClass<UERNSkillNiagaraComponent>())
+	{
+		NiagaraComponent->StartEffects(GhostDashNiagaraEffects);
+	}
+}
+
+void UERNGA_Normal_GhostDash::StopGhostDashNiagaraEffects(AProjectERNCharacter* Character)
+{
+	if (!Character || GhostDashNiagaraEffects.IsEmpty())
+	{
+		return;
+	}
+
+	if (UERNSkillNiagaraComponent* NiagaraComponent = Character->FindComponentByClass<UERNSkillNiagaraComponent>())
+	{
+		NiagaraComponent->StopEffects(GhostDashNiagaraEffects);
+	}
 }

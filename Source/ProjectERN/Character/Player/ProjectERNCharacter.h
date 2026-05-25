@@ -23,6 +23,7 @@ class UERNUpgradeComponent;
 class UERNInputConfig;
 class UGameplayEffect;
 class UCameraShakeBase;
+class UERNSkillNiagaraComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -64,9 +65,13 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** Interaction Detection Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USphereComponent* InteractionDetector;
-
+	
 	// InteractionDetector TimerHandle
 	FTimerHandle DetectionTimerHandle;
+	
+	/** Skill Niagara Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+	UERNSkillNiagaraComponent* SkillNiagaraComponent;
 
 protected:
 	// InteractionDetector Update

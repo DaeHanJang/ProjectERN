@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GAS/Abilities/CharacterSkill/ERNGA_NormalSkillBase.h"
+#include "GAS/Abilities/CharacterSkill/ERNSkillNiagaraTypes.h"
 #include "Engine/EngineTypes.h"
 #include "ERNGA_Normal_GhostDash.generated.h"
 
@@ -70,4 +71,12 @@ private:
 	// 충돌 제거 복구
 	void ClearGhostDashCollision(AProjectERNCharacter* Character);
 	
+protected:
+	// 스킬 지속 중 유지할 나이아가라 이펙트 배열
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Skill|Niagara")
+	TArray<FERNSkillAttachedNiagaraEffect> GhostDashNiagaraEffects;
+
+private:
+	void StartGhostDashNiagaraEffects(AProjectERNCharacter* Character);
+	void StopGhostDashNiagaraEffects(AProjectERNCharacter* Character);
 };
