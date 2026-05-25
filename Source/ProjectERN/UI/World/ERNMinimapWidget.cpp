@@ -91,7 +91,7 @@ FVector2D UERNMinimapWidget::WorldToMapPosition(const FVector& WorldLocation) co
 	const float NormalizedX = FMath::Clamp((WorldLocation.X - WorldMin.X) / WorldSize.X, 0.f, 1.f);
 	const float NormalizedY = FMath::Clamp((WorldLocation.Y - WorldMin.Y) / WorldSize.Y, 0.f, 1.f);
 	
-	return FVector2D(NormalizedX * MapSize.X, (1.f - NormalizedY) * MapSize.Y);
+	return FVector2D(NormalizedX * MapSize.X, (1 - NormalizedY) * MapSize.Y);
 }
 
 void UERNMinimapWidget::RebuildStaticMarkers()

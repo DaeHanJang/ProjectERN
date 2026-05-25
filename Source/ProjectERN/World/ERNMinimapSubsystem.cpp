@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "World/ERNMinimapTargetPoint.h"
 #include "World/ERNMinimapSubsystem.h"
+#include "World/ERNMinimapTargetPoint.h"
 
 void UERNMinimapSubsystem::RegisterTarget(AERNMinimapTargetPoint* Target)
 {
