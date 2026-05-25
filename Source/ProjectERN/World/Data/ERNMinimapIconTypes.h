@@ -13,4 +13,7 @@ enum class EERNMinimapIconType : uint8
 	Church		UMETA(DisplayName = "Church"),
 	Castle		UMETA(DisplayName = "Castle"),
 	Player		UMETA(DisplayName = "Player"),
+	PlayerPin1	UMETA(DisplayName = "PlayerPin1"),	
+	PlayerPin2	UMETA(DisplayName = "PlayerPin2"),	
+	PlayerPin3	UMETA(DisplayName = "PlayerPin3"),	
 };

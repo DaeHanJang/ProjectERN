@@ -9,6 +9,7 @@
 #include "World/ERNMinimapSubsystem.h"
 #include "World/ERNMinimapTargetPoint.h"
 #include "World/Data/ERNMinimapIconDataAsset.h"
+#include "Character/Player/ERNPlayerController.h"
 
 void UERNMinimapWidget::PlayOpenAnimation()
 {
@@ -55,9 +56,32 @@ void UERNMinimapWidget::NativeDestruct()
 
 FReply UERNMinimapWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
+	// 좌클릭 : 미니맵 잡기
 	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
 		SetKeyboardFocus();
+		return FReply::Handled();
+	}
+	
+	// 드래그 : 미니맵 이동
+
+	// 휠 클릭 : 핀
+	if (InMouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton)
+	{
+		if (MarkerLayer == nullptr)
+		{
+			return FReply::Handled();
+		}
+		
+		const FVector2D MapPosition = MarkerLayer->GetCachedGeometry().AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
+		
+		const FVector WorldLocation = MapToWorldPosition(MapPosition);
+		
+		if (AERNPlayerController* PC = Cast<AERNPlayerController>(GetOwningPlayer()))
+		{
+			PC->Server_RequestCreateMinimapPin(WorldLocation);
+		}
+		
 		return FReply::Handled();
 	}
 	
@@ -92,6 +116,24 @@ FVector2D UERNMinimapWidget::WorldToMapPosition(const FVector& WorldLocation) co
 	const float NormalizedY = FMath::Clamp((WorldLocation.Y - WorldMin.Y) / WorldSize.Y, 0.f, 1.f);
 	
 	return FVector2D(NormalizedX * MapSize.X, (1 - NormalizedY) * MapSize.Y);
+}
+
+FVector UERNMinimapWidget::MapToWorldPosition(const FVector2D& MapPosition) const
+{
+	const FVector2D WorldSize = WorldMax - WorldMin;
+	
+	if (FMath::IsNearlyZero(MapSize.X) || FMath::IsNearlyZero(MapSize.Y))
+	{
+		return FVector::ZeroVector;
+	}
+	
+	const float NormalizedX = FMath::Clamp(MapPosition.X / MapSize.X, 0.f, 1.f);
+	const float NormalizedY = FMath::Clamp(MapPosition.Y / MapSize.Y, 0.f, 1.f);
+	
+	const float WorldX = WorldMin.X + NormalizedX * WorldSize.X;
+	const float WorldY = WorldMin.Y + (1.f - NormalizedY) * WorldSize.Y;
+	
+	return FVector(WorldX, WorldY, 0.f);
 }
 
 void UERNMinimapWidget::RebuildStaticMarkers()

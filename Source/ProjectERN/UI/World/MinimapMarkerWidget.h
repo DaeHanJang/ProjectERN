@@ -20,6 +20,9 @@ class PROJECTERN_API UMinimapMarkerWidget : public UUserWidget
 public:
 	void SetMarkerData(UTexture2D* IconTexture, AERNMinimapTargetPoint* Target);
 	
+protected:
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	
 private:
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UImage> IconImage;

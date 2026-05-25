@@ -36,6 +36,10 @@ public:
 	// 월드 맵 좌표를 미니맵 UI 좌표로 변환
 	FVector2D WorldToMapPosition(const FVector& WorldLocation) const;
 	
+	// 맵 좌표 -> 월드 좌표 (Pin 찍을 때 사용)
+	FVector MapToWorldPosition(const FVector2D& MapPosition) const;
+	
+	
 	// 마커 생성
 	void RebuildStaticMarkers();
 	
@@ -62,8 +66,7 @@ public:
 	
 private:
 	void HandleTargetsChanged();
-	
-	
+
 private:
 	// 열기 애니메이션
 	UPROPERTY(meta=(BindWidgetAnim), Transient)

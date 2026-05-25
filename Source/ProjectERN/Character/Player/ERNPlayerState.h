@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
+#include "World/Data/ERNMinimapIconTypes.h"
 #include "ERNPlayerState.generated.h"
 
 UENUM(BlueprintType)
@@ -99,4 +100,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Attributes")
 	float GetMaxStamina() const;
+	
+	// 플레이어 접속 번호
+#pragma region Minimap
+public:
+	//접속 순서에 따른 플레이어 넘버. 만약 직업이 겹쳐도 구분 가능
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="Player Info")
+	int32 PlayerNumber = 0;
+	
+	void SetPlayerNumber_ServerOnly(int32 InNumber);
+	
+	EERNMinimapIconType GetMinimapPinIconType() const;
+#pragma endregion Minimap
 };

@@ -26,6 +26,8 @@ void AERNPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AERNPlayerState, CharacterType);
 	DOREPLIFETIME(AERNPlayerState, PlayerNickname);
 	DOREPLIFETIME(AERNPlayerState, bIsReady);
+	
+	DOREPLIFETIME(AERNPlayerState, PlayerNumber);
 }
 
 void AERNPlayerState::SetNickname(const FString& Nickname)
@@ -244,3 +246,30 @@ float AERNPlayerState::GetMaxStamina() const
 	}
 	return 100.f;
 }
+
+#pragma region Minimap
+void AERNPlayerState::SetPlayerNumber_ServerOnly(int32 InNumber)
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	PlayerNumber = InNumber;
+}
+
+EERNMinimapIconType AERNPlayerState::GetMinimapPinIconType() const
+{
+	switch (PlayerNumber)
+	{
+	case 1:
+		return EERNMinimapIconType::PlayerPin1;
+	case 2:
+		return EERNMinimapIconType::PlayerPin2;
+	case 3:
+		return EERNMinimapIconType::PlayerPin3;
+	default:
+		return EERNMinimapIconType::PlayerPin1;
+	}
+}
+#pragma endregion

@@ -21,7 +21,10 @@ public:
 	
 	void RegisterTarget(AERNMinimapTargetPoint* Target);
 	void UnregisterTarget(AERNMinimapTargetPoint* Target);
+	
+	// 미니맵 위젯에게 타겟 좌표들을 OutTargets에 담아서 넘겨줌
 	void GetTargets(TArray<AERNMinimapTargetPoint*>& OutTargets) const;
+	void NotifyTargetsChanged() const;
 	
 private:
 	int32 RemoveInvalidTargets();

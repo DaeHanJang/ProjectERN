@@ -51,6 +51,11 @@ void UERNMinimapSubsystem::GetTargets(TArray<AERNMinimapTargetPoint*>& OutTarget
 	}
 }
 
+void UERNMinimapSubsystem::NotifyTargetsChanged() const
+{
+	OnTargetsChanged.Broadcast();
+}
+
 int32 UERNMinimapSubsystem::RemoveInvalidTargets()
 {
 	int32 RemovedCount = 0;

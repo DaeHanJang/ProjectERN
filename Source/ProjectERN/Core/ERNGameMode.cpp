@@ -82,3 +82,57 @@ UClass* AERNGameMode::GetDefaultPawnClassForController_Implementation(AControlle
 	// 기본 Pawn 클래스 반환 (블루프린트에서 설정된 DefaultPawnClass)
 	return Super::GetDefaultPawnClassForController_Implementation(InController);
 }
+
+void AERNGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+	
+	if (NewPlayer == nullptr)
+	{
+		return;
+	}
+	
+	if (AERNPlayerState* PS = NewPlayer->GetPlayerState<AERNPlayerState>())
+	{
+		PS->SetPlayerNumber_ServerOnly(AssignPlayerNumber());
+	}
+}
+
+void AERNGameMode::Logout(AController* ExitingController)
+{
+	if (ExitingController == nullptr)
+	{
+		return;
+	}
+	
+	if (AERNPlayerState* PS = ExitingController->GetPlayerState<AERNPlayerState>())
+	{
+		ReleasePlayerNumber(PS->PlayerNumber);
+	}
+	
+	Super::Logout(ExitingController);
+}
+
+// 최대 동시 접속 인원
+static constexpr int32 MAX_PLAYER_COUNT = 3;
+int32 AERNGameMode::AssignPlayerNumber()
+{
+	for (int32 Number = 1; Number <= MAX_PLAYER_COUNT; ++Number)
+	{
+		if (UsedPlayerNumbers.Contains(Number) == false)
+		{
+			UsedPlayerNumbers.Add(Number);
+			return Number;
+		}
+	}
+	
+	return 0;
+}
+
+void AERNGameMode::ReleasePlayerNumber(int32 PlayerNumber)
+{
+	if (PlayerNumber > 0)
+	{
+		UsedPlayerNumbers.Remove(PlayerNumber);
+	}
+}

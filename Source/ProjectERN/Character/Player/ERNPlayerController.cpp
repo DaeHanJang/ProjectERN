@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Character/Player/ERNPlayerController.h"
+
+#include "EngineUtils.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "Engine/LocalPlayer.h"
@@ -23,6 +25,7 @@
 #include "Camera/CameraShakeBase.h"
 #include "Components/PostProcessComponent.h"
 #include "UI/World/ERNMinimapWidget.h"
+#include "World/ERNMinimapPinPoint.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -760,5 +763,89 @@ void AERNPlayerController::MinimapClose()
 		SetInputMode(InputMode);
 		bShowMouseCursor = false;
 	}
+}
+
+void AERNPlayerController::Server_RequestCreateMinimapPin_Implementation(FVector WorldLocation)
+{
+	if (MinimapPinClass == nullptr)
+	{
+		return;
+	}
+	
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+	
+	AERNPlayerState* ERNPlayerState = GetPlayerState<AERNPlayerState>();
+	if (ERNPlayerState == nullptr)
+	{
+		return;
+	}
+	
+	// 기존 핀 삭제
+	DestroyOwnedMinimapPins_ServerOnly();
+	
+	// 이후 새로 생성
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = GetPawn();
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AERNMinimapPinPoint* NewPin = World->SpawnActor<AERNMinimapPinPoint>(
+		MinimapPinClass,
+		WorldLocation,
+		FRotator::ZeroRotator,
+		SpawnParams);
+
+	if (NewPin == nullptr)
+	{
+		return;
+	}
+
+	NewPin->InitializePin(ERNPlayerState->GetMinimapPinIconType(), ERNPlayerState);
+}
+
+void AERNPlayerController::Server_RequestRemoveMinimapPin_Implementation(AERNMinimapPinPoint* PinActor)
+{
+	if (IsValid(PinActor) == false)
+	{
+		return;
+	}
+	
+	// 본인 핀만 제거
+	if (PinActor->GetOwnerPlayerState() != PlayerState)
+	{
+		return;
+	}
+	
+	PinActor->Destroy();
+}
+
+void AERNPlayerController::DestroyOwnedMinimapPins_ServerOnly()
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || PlayerState == nullptr)
+	{
+		return;
+	}
+	
+	// 본인의 모든 핀 청소
+	for(TActorIterator<AERNMinimapPinPoint> It(World); It; ++It)
+	{
+		AERNMinimapPinPoint* Pin = *It;
+		
+		if (IsValid(Pin) == false)
+		{
+			continue;
+		}
+		
+		if (Pin->GetOwnerPlayerState() == PlayerState)
+		{
+			Pin->Destroy();
+		}
+	}
+	
 }
 #pragma endregion

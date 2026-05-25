@@ -14,21 +14,32 @@ class PROJECTERN_API AERNMinimapTargetPoint : public ATargetPoint
 {
 	GENERATED_BODY()
 
+public:
+	AERNMinimapTargetPoint();
+	
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	virtual FVector GetMinimapWorldLocation() const { return GetActorLocation(); }
+	
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, ReplicatedUsing=OnRep_MinimapMarkerData, Category="Minimap")
+	EERNMinimapIconType IconType = EERNMinimapIconType::Building;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, ReplicatedUsing=OnRep_MinimapMarkerData, Category="Minimap")
+	bool bVisibleOnMinimap = true;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, ReplicatedUsing=OnRep_MinimapMarkerData, Category="Minimap", meta=(ClampMin="0.1"))
+	float IconScale = 1.f;
+	
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
+	UFUNCTION()
+	virtual void OnRep_MinimapMarkerData();
 	
-public:
-	FVector GetMinimapWorldLocation() const { return GetActorLocation();}
-	
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Minimap")
-	EERNMinimapIconType IconType = EERNMinimapIconType::Building;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Minimap")
-	bool bVisibleOnMinimap = true;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Minimap", meta=(ClampMin="0.1"))
-	float IconScale = 1.f;
+	void RegisterToMinimapSubsystem();
+	void UnregisterFromMinimapSubsystem();
+	void NotifyMinimapChanged() const;
+
 };
