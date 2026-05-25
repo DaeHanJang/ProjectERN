@@ -72,6 +72,12 @@ void AERNIntroBird::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AERNIntroBird, bIsFlyingAway);
 	DOREPLIFETIME(AERNIntroBird, FlyAwayStartLocation);
 	DOREPLIFETIME(AERNIntroBird, FlyAwayStartServerTime);
+	DOREPLIFETIME(AERNIntroBird, CurrentSteeringOffset);
+}
+
+void AERNIntroBird::Server_SetSteeringInput_Implementation(float Input)
+{
+	CurrentSteeringInput = FMath::Clamp(Input, -1.f, 1.f);
 }
 
 float AERNIntroBird::GetServerNow() const
@@ -120,15 +126,32 @@ void AERNIntroBird::Tick(float DeltaTime)
 	// 모든 머신이 자기 로컬 시간 기반으로 일관 계산 (시작 시 한 번 lag 보정 후 자체 진행)
 	if (bIsFlying)
 	{
+		// 서버: 키 누르고 있는 동안 좌우 입력 누적 (떼면 그 위치 유지, 한계 없음)
+		if (HasAuthority() && !FMath::IsNearlyZero(CurrentSteeringInput))
+		{
+			CurrentSteeringOffset += CurrentSteeringInput * SteeringSpeed * DeltaTime;
+		}
+
 		const float ElapsedTime = FMath::Max(0.f, GetWorld()->GetTimeSeconds() - LocalFlightStartTime);
 		const float Alpha = FMath::Clamp(ElapsedTime / FMath::Max(FlightDuration, KINDA_SMALL_NUMBER), 0.f, 1.f);
-		const FVector NewLocation = StartLocation + FlightDirection * (FlightDistance * Alpha);
+
+		// 직진(FlightDirection)은 그대로 + 좌우 누적 오프셋만 추가
+		const FVector Right = FVector::CrossProduct(FVector::UpVector, FlightDirection).GetSafeNormal();
+		const FVector NewLocation = StartLocation
+			+ FlightDirection * (FlightDistance * Alpha)
+			+ Right * CurrentSteeringOffset;
 		SetActorLocation(NewLocation);
 
 		// 비행 종료 처리는 서버만 (Replicated bool로 클라에 전파)
 		if (HasAuthority() && Alpha >= 1.f)
 		{
 			bIsFlying = false;
+
+			// 끝 지점 도달 → 캐릭터가 자동으로 새에서 내림 (Jump 입력과 동일 효과)
+			if (AttachedPlayer)
+			{
+				AttachedPlayer->Server_ReleaseFromBird();
+			}
 		}
 	}
 	else if (bIsFlyingAway)

@@ -75,6 +75,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "FlyAway")
 	float FlyAwaySpeed = 800.f;
 
+	// === 조향 (2D 레이싱: 직진은 그대로, 좌우 입력만 추가로 누적 이동) ===
+
+	// 좌우 이동 속도 (cm/s) - A/D 누르고 있는 동안 매 틱 누적, 떼면 그 자리 유지
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flight|Steering")
+	float SteeringSpeed = 600.f;
+
+public:
+	// 로컬 클라가 매 입력마다 호출 - 서버에 현재 입력값(-1~1) 전달
+	UFUNCTION(Server, Unreliable)
+	void Server_SetSteeringInput(float Input);
+
 private:
 	// 부착된 플레이어 (Replicated)
 	UPROPERTY(Replicated)
@@ -114,6 +125,15 @@ private:
 
 	// 각 머신의 로컬 FlyAway 시작 시각
 	float LocalFlyAwayStartTime = 0.f;
+
+	// === 조향 상태 ===
+
+	// 서버 권한 누적 좌우 오프셋 (모든 클라 리플 → deterministic 위치 계산)
+	UPROPERTY(Replicated)
+	float CurrentSteeringOffset = 0.f;
+
+	// 서버용 현재 입력값 (-1~1) - 리플 불필요 (서버에서만 누적에 사용)
+	float CurrentSteeringInput = 0.f;
 
 	UFUNCTION()
 	void OnRep_IsFlyingAway();

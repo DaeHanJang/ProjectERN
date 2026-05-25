@@ -453,11 +453,18 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
-	// 인트로 매달림 중에는 이동 입력 차단
-	if (bIsHangingFromBird) return;
-
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
+
+	// 인트로 매달림 중: 좌우 입력만 새 조향에 전달
+	if (bIsHangingFromBird)
+	{
+		if (AttachedBird)
+		{
+			AttachedBird->Server_SetSteeringInput(MovementVector.X);
+		}
+		return;
+	}
 
 	// 입력 값 갱신(Sprint에 사용)
 	CachedMoveInput = MovementVector;
@@ -486,7 +493,15 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 
 void AProjectERNCharacter::MoveEnd()
 {
-	if (bIsHangingFromBird) return;
+	// 인트로 매달림 중: 키 뗐을 때 새 입력을 0으로 리셋
+	if (bIsHangingFromBird)
+	{
+		if (AttachedBird)
+		{
+			AttachedBird->Server_SetSteeringInput(0.f);
+		}
+		return;
+	}
 
 	CachedMoveInput = FVector2D::ZeroVector;
 	StopSprint();
