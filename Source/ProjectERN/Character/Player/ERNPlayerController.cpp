@@ -127,6 +127,30 @@ void AERNPlayerController::BeginPlay()
 		}
 	}
 
+	// 채팅 위젯 생성 (로컬 플레이어만)
+	if (IsLocalPlayerController() && ChatWidgetClass)
+	{
+		// 숨겨야 할 맵인지 확인 (메인 메뉴 등)
+		bool bShouldHide = false;
+		for (const FString& MapName : HideChatWidgetMapNames)
+		{
+			if (CurrentMapName.Contains(MapName))
+			{
+				bShouldHide = true;
+				break;
+			}
+		}
+
+		if (!bShouldHide)
+		{
+			ChatWidget = CreateWidget<UUserWidget>(this, ChatWidgetClass);
+			if (ChatWidget)
+			{
+				ChatWidget->AddToViewport(50);	// ZOrder: HUD 위, 메뉴 아래
+			}
+		}
+	}
+
 	// 닉네임 전송 (로컬 플레이어만) - 타이머로 재시도
 	if (IsLocalPlayerController())
 	{
@@ -634,4 +658,42 @@ void AERNPlayerController::Client_CompleteChurchInteraction_Implementation(AChur
 	{
 		Church->CompleteInteractionLocally(EffectLocation);
 	}
+}
+
+// ===== 채팅 시스템 =====
+
+void AERNPlayerController::Server_SendChat_Implementation(const FString& Message)
+{
+	if (Message.IsEmpty()) return;
+
+	// 길이 제한 200자
+	const FString TrimmedMessage = Message.Left(200);
+
+	// 닉네임 결정
+	FString Sender = TEXT("Player");
+	if (AERNPlayerState* PS = GetPlayerState<AERNPlayerState>())
+	{
+		if (!PS->PlayerNickname.IsEmpty())
+		{
+			Sender = PS->PlayerNickname;
+		}
+	}
+
+	// 모든 PlayerController에 Client RPC 전송
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AERNPlayerController* TargetPC = Cast<AERNPlayerController>(It->Get()))
+		{
+			TargetPC->Client_ReceiveChat(Sender, TrimmedMessage);
+		}
+	}
+}
+
+void AERNPlayerController::Client_ReceiveChat_Implementation(const FString& Sender, const FString& Message)
+{
+	// BP가 ChatWidget의 AddMessage 노드 호출 (최대 20개)
+	OnReceiveChatMessage(Sender, Message);
 }
