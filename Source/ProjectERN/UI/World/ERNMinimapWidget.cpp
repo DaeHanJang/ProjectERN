@@ -5,6 +5,7 @@
 
 #include "EngineUtils.h"
 #include "MinimapMarkerWidget.h"
+#include "MinimapNightRainZoneWidget.h"
 #include "MinimapPlayerMarkerWidget.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
@@ -13,9 +14,9 @@
 #include "World/Data/ERNMinimapIconDataAsset.h"
 #include "Character/Player/ERNPlayerController.h"
 #include "Character/Player/ERNPlayerState.h"
-#include "Character/Player/ProjectERNCharacter.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
+#include "World/NightRainZoneManager.h"
 
 
 void UERNMinimapWidget::PlayOpenAnimation()
@@ -48,7 +49,7 @@ void UERNMinimapWidget::NativeConstruct()
 
 void UERNMinimapWidget::NativeDestruct()
 {
-	StopPlayerMarkerRefresh();
+	StopDynamicMinimapRefresh();
 	
 	if (TargetsChangedHandle.IsValid())
 	{
@@ -109,18 +110,6 @@ FReply UERNMinimapWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKe
 	}
 
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
-}
-
-void UERNMinimapWidget::NativeTick(const FGeometry& Ingeometry, float InDeltaTime)
-{
-	Super::NativeTick(Ingeometry, InDeltaTime);
-	
-	if (GetVisibility() != ESlateVisibility::Visible)
-	{
-		return;
-	}
-	
-	RefreshPlayerMarkers();
 }
 
 FVector2D UERNMinimapWidget::WorldToMapPosition(const FVector& WorldLocation) const
@@ -229,6 +218,142 @@ void UERNMinimapWidget::HandleTargetsChanged()
 	{
 		RebuildStaticMarkers();
 	}
+}
+
+void UERNMinimapWidget::RefreshDynamicMinimapElements()
+{
+	RefreshPlayerMarkers();
+	RefreshNightRainZone();
+}
+
+void UERNMinimapWidget::HideNightRainZoneWidgets()
+{
+	if (CurrentZoneWidget)
+	{
+		CurrentZoneWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	
+	if (TargetZoneWidget)
+	{
+		TargetZoneWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UERNMinimapWidget::UpdateNightRainZoneCircle(TObjectPtr<UMinimapNightRainZoneWidget>& ZoneWidget, TSubclassOf<UMinimapNightRainZoneWidget> ZoneWidgetClass,
+													const FVector& WorldCenter, float WorldRadius, int32 ZOrder)
+{
+	if (NightRainZoneLayer == nullptr || ZoneWidgetClass == nullptr)
+	{
+		return;
+	}
+	
+	if (IsValid(ZoneWidget.Get()) == false)
+	{
+		ZoneWidget = CreateWidget<UMinimapNightRainZoneWidget>(this, ZoneWidgetClass);
+		if (ZoneWidget == nullptr)
+		{
+			return;
+		}
+		
+		ZoneWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+		
+		if (UCanvasPanelSlot* ZoneSlot = NightRainZoneLayer->AddChildToCanvas(ZoneWidget))
+		{
+			ZoneSlot->SetAutoSize(false);
+			ZoneSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+			ZoneSlot->SetZOrder(ZOrder);
+		}
+	}
+	
+	ZoneWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+	
+	const FVector2D MapCenter = WorldToMapPosition(WorldCenter);
+	const FVector2D MapRadius = WorldRadiusToMapRadius(WorldRadius);
+	
+	ZoneWidget->UpdateZone(MapCenter, MapRadius);
+}
+
+void UERNMinimapWidget::RefreshNightRainZone()
+{
+	if (NightRainZoneLayer == nullptr || CurrentNightRainZoneWidgetClass == nullptr)
+	{		
+		HideNightRainZoneWidgets();
+		return;
+	}
+	
+	ANightRainZoneManager* ZoneManager = FindNightRainZoneManager();
+	if (ZoneManager == nullptr)
+	{
+		//자기장을 안쓰는 맵에서는 자기장 숨김
+		HideNightRainZoneWidgets();
+		return;
+	}
+	
+	const FNightRainZoneState& ZoneState = ZoneManager->GetZoneState();
+
+	// 아직 신호가 오지 않은 경우 숨김
+	if (ZoneState.Revision <= 0)
+	{
+		HideNightRainZoneWidgets();
+		return;
+	}
+	
+	const FVector CurrentWorldCenter = ZoneManager->GetCurrentCenter();
+	const float CurrentWorldRadius = ZoneManager->GetCurrentRadius();
+	
+	UpdateNightRainZoneCircle(CurrentZoneWidget, CurrentNightRainZoneWidgetClass, CurrentWorldCenter, CurrentWorldRadius, 1);
+	
+	// 수축중일 때에는 목표 자기장도 같이 보이도록 설정
+	if (ZoneState.bShrinking && TargetNightRainZoneWidgetClass)
+	{
+		UpdateNightRainZoneCircle(TargetZoneWidget, TargetNightRainZoneWidgetClass, ZoneState.TargetCenter, ZoneState.TargetRadius, 2);
+	}
+	else if (TargetZoneWidget)
+	{
+		TargetZoneWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+ANightRainZoneManager* UERNMinimapWidget::FindNightRainZoneManager()
+{
+	// 이미 초기화 된 상태
+	if (CachedNightRainZoneManager.IsValid())
+	{
+		return CachedNightRainZoneManager.Get();
+	}
+	
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return nullptr;
+	}
+	
+	for (TActorIterator<ANightRainZoneManager> ZoneManagerIterator(World); ZoneManagerIterator; ++ZoneManagerIterator)
+	{
+		ANightRainZoneManager* ZoneManager = *ZoneManagerIterator;
+		if (IsValid(ZoneManager))
+		{
+			CachedNightRainZoneManager = ZoneManager;
+			return ZoneManager;
+		}
+	}
+	
+	return nullptr;
+}
+
+FVector2D UERNMinimapWidget::WorldRadiusToMapRadius(float WorldRadius) const
+{
+	const FVector2D WorldSize = WorldMax - WorldMin;
+	
+	if (FMath::IsNearlyZero(WorldSize.X) || FMath::IsNearlyZero(WorldSize.Y))
+	{
+		return FVector2D::ZeroVector;
+	}
+	
+	const float MapRadiusX = WorldRadius / WorldSize.X * MapSize.X;
+	const float MapRadiusY = WorldRadius / WorldSize.Y * MapSize.Y;
+	
+	return FVector2D(MapRadiusX, MapRadiusY);
 }
 
 void UERNMinimapWidget::RefreshPlayerMarkers()
@@ -341,9 +466,9 @@ float UERNMinimapWidget::WorldYawToMapAngle(float WorldYaw) const
 	return FRotator::NormalizeAxis(-(90.f - WorldYaw + 180.f));
 }
 
-void UERNMinimapWidget::StartPlayerMarkerRefresh()
+void UERNMinimapWidget::StartDynamicMinimapRefresh()
 {
-	RefreshPlayerMarkers();
+	RefreshDynamicMinimapElements();
 	
 	UWorld* World = GetWorld();
 	if (World == nullptr)
@@ -351,16 +476,17 @@ void UERNMinimapWidget::StartPlayerMarkerRefresh()
 		return;
 	}
 	
-	World->GetTimerManager().SetTimer(PlayerMarkerRefreshTimerHandle, this, &UERNMinimapWidget::RefreshPlayerMarkers, 
-									PlayerMarkerRefreshInterval, true);
+	// 타이머 생성. RefreshDynamicMinimapElements 에서 자기장, 플레이어 위치 최신화
+	World->GetTimerManager().SetTimer(DynamicMinimapRefreshTimerHandle, this, &UERNMinimapWidget::RefreshDynamicMinimapElements, DynamicMinimapRefreshInterval, true);
 }
 
-void UERNMinimapWidget::StopPlayerMarkerRefresh()
+void UERNMinimapWidget::StopDynamicMinimapRefresh()
 {
 	UWorld* World = GetWorld();
 	if (World == nullptr)
 	{
 		return;
 	}
-	World->GetTimerManager().ClearTimer(PlayerMarkerRefreshTimerHandle);
+	
+	World->GetTimerManager().ClearTimer(DynamicMinimapRefreshTimerHandle);
 }

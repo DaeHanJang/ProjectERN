@@ -6,6 +6,8 @@
 #include "UI/ERNInteractableWidget.h"
 #include "ERNMinimapWidget.generated.h"
 
+class ANightRainZoneManager;
+class UMinimapNightRainZoneWidget;
 class UMinimapPlayerMarkerWidget;
 class UERNMinimapIconDataAsset;
 class UMinimapMarkerWidget;
@@ -33,9 +35,6 @@ protected:
 	
 	// WASD는 무시
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
-	
-	// 짧은 주기 플레이어 위치, 방향 최신화
-	virtual void NativeTick(const FGeometry& InGeometry, float InDeltaTime) override;
 
 public:
 	// 월드 맵 좌표를 미니맵 UI 좌표로 변환
@@ -49,22 +48,45 @@ public:
 	void RebuildStaticMarkers();
 	
 	void RefreshStaticMarkers();
-	
-	void StartPlayerMarkerRefresh();
-	void StopPlayerMarkerRefresh();
 			
 	// PlayerController에서 호출. 플레이어 위치 마커는 타이머로 갱신
 	void RefreshPlayerMarkers();
 	float WorldYawToMapAngle(float WorldYaw) const;
 	
+	// 자기장 + 플레이어 위치 최신화 같이 일정 주기로 진행
+	void StartDynamicMinimapRefresh();
+	void StopDynamicMinimapRefresh();
+	
 public:
+	// ---레이어 모음---
+	// 자기장 레이어
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UCanvasPanel> NightRainZoneLayer;
+	
+	// 주요 고정 건물 마커 레이어
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UCanvasPanel> MarkerLayer;
+	
+	// 플레이어 실시간 위치 & 방향 마커 레이어
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UCanvasPanel> PlayerMarkerLayer;
+	
+	
+	// ---위젯 클래스 모음---
+	UPROPERTY(EditDefaultsOnly, Category="Minimap")
+	TSubclassOf<UMinimapNightRainZoneWidget> CurrentNightRainZoneWidgetClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Minimap")
+	TSubclassOf<UMinimapNightRainZoneWidget> TargetNightRainZoneWidgetClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Minimap")
+	TSubclassOf<UMinimapPlayerMarkerWidget> PlayerMarkerWidgetClass;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Minimap")
 	TSubclassOf<UMinimapMarkerWidget> MarkerWidgetClass;
 	
-	UPROPERTY(EditDefaultsOnly, Category="Minimap")
+	// 아이콘 텍스처
+	UPROPERTY(EditDefaultsOnly, Category="Minimap|Texture")
 	TObjectPtr<UERNMinimapIconDataAsset> IconDataAsset;
 	
 	// 실제 월드 최소 좌표, 최대 좌표. 월드에 따라 설정 필요. 월드에 따라 자동으로 넘겨주는 함수 없음
@@ -77,16 +99,19 @@ public:
 	UPROPERTY(EditAnywhere, Category="Minimap|Map")
 	FVector2D MapSize = FVector2D(1024.f, 1024.f);
 	
-	// 플레이어 실시간 위치 & 방향
-	UPROPERTY(meta=(BindWidget))
-	TObjectPtr<UCanvasPanel> PlayerMarkerLayer;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Minimap")
-	TSubclassOf<UMinimapPlayerMarkerWidget> PlayerMarkerWidgetClass;
-	
 private:
 	void HandleTargetsChanged();
 
+	void RefreshDynamicMinimapElements();
+	
+	void RefreshNightRainZone();
+	void HideNightRainZoneWidgets();
+	
+	// 위젯, 위젯 클래스, 중심점, 반지름, zorder
+	void UpdateNightRainZoneCircle(TObjectPtr<UMinimapNightRainZoneWidget>& ZoneWidget, TSubclassOf<UMinimapNightRainZoneWidget> ZoneWidgetClass, const FVector& WorldCenter, float WorldRadius, int32 ZOrder);
+	
+	ANightRainZoneManager* FindNightRainZoneManager();
+	FVector2D WorldRadiusToMapRadius(float WorldRadius) const;
 private:
 	// 열기 애니메이션
 	UPROPERTY(meta=(BindWidgetAnim), Transient)
@@ -102,8 +127,17 @@ private:
 	TMap<APawn*, TObjectPtr<UMinimapPlayerMarkerWidget>> PlayerMarkerWidgets;
 	
 	// 틱 갱신 주기
-	UPROPERTY(EditAnywhere, Category="Minimap|Player Marker", meta=(ClampMin="0.01"), meta=(PrivateAcessAllow = "true"))
-	float PlayerMarkerRefreshInterval = 0.2f;
+	UPROPERTY(EditAnywhere, Category="Minimap|Dynamic", meta=(ClampMin="0.01", AllowPrivateAccess = "true"))
+	float DynamicMinimapRefreshInterval  = 0.2f;
 	
-	FTimerHandle PlayerMarkerRefreshTimerHandle;
+	FTimerHandle DynamicMinimapRefreshTimerHandle;
+	
+	// 자기장
+	TWeakObjectPtr<ANightRainZoneManager> CachedNightRainZoneManager;
+	
+	UPROPERTY()
+	TObjectPtr<UMinimapNightRainZoneWidget> CurrentZoneWidget;
+
+	UPROPERTY()
+	TObjectPtr<UMinimapNightRainZoneWidget> TargetZoneWidget;
 };

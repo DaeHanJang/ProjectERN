@@ -735,7 +735,7 @@ void AERNPlayerController::MinimapOpen()
 		if (UERNMinimapWidget* ERNMinimapWidget = Cast<UERNMinimapWidget>(MinimapWidget))
 		{
 			ERNMinimapWidget->RefreshStaticMarkers();
-			ERNMinimapWidget->StartPlayerMarkerRefresh();
+			ERNMinimapWidget->StartDynamicMinimapRefresh();
 			ERNMinimapWidget->PlayOpenAnimation();
 		}
 	}
@@ -761,7 +761,7 @@ void AERNPlayerController::MinimapClose()
 		// 플레이어 마커 타이머 정리
 		if (UERNMinimapWidget* ERNMinimapWidget = Cast<UERNMinimapWidget>(MinimapWidget))
 		{
-			ERNMinimapWidget->StopPlayerMarkerRefresh();
+			ERNMinimapWidget->StopDynamicMinimapRefresh();
 		}
 		
 		MinimapWidget->SetVisibility(ESlateVisibility::Collapsed);
