@@ -42,13 +42,34 @@ struct FERNShopProductTable : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     FName ItemID;
 
-    // 얼마에 파는가?
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
-    int32 Price = 0;
+    // 4. 무작위 등장 확률 가중치 (높을수록 잘 등장)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop", meta=(ClampMin="0.0"))
+    float SpawnWeight = 50.0f;
 
-    // 몇 개나 파는가? (-1: 무제한, 0 이상: 제한 수량)
+    // 5. 몇 개나 파는가? (-1: 무제한, 0 이상: 제한 수량)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     int32 MaxStock = -1;
+
+    // 6. 최소 등장 보장 여부 (true면 랜덤을 무시하고 최우선 배치)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    bool bGuaranteed = false;
+};
+
+/**
+ * 상인의 카테고리별 진열 슬롯 수량 설정
+ */
+USTRUCT(BlueprintType)
+struct FERNShopSlotConfig
+{
+    GENERATED_BODY()
+
+    /** 대상 카테고리 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop Config")
+    EItemType Category = EItemType::Equipable;
+
+    /** 해당 카테고리에서 선정할 랜덤 아이템 수 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop Config", meta = (ClampMin = "0", ClampMax = "20"))
+    int32 SlotCount = 3;
 };
 
 /**
@@ -61,6 +82,10 @@ struct FERNShopItemData
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     FName ItemID;
+
+    // UI에서 카테고리별 탭(Tab) 분류 및 정렬을 위해 추가
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    EItemType ItemCategory = EItemType::Equipable;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     FGuid UniqueID;
@@ -101,6 +126,10 @@ struct FERNShopTransaction
 {
     GENERATED_BODY()
 
+    /** 구매 대상 상인의 고유 식별자 */
+    UPROPERTY(BlueprintReadWrite, Category = "Shop")
+    FName ShopID;
+
     UPROPERTY(BlueprintReadWrite, Category = "Shop")
     EShopType ShopType = EShopType::None;
 
@@ -134,6 +163,10 @@ USTRUCT(BlueprintType)
 struct FERNShopInventory
 {
     GENERATED_BODY()
+
+    /** 상인별 고유 식별자 (캐시 관리용 Key) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    FName ShopID;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     EShopType ShopType = EShopType::None;

@@ -38,6 +38,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Shop")
     void OpenShop(EShopType ShopType, AActor* TargetNPC = nullptr);
 
+    /** 마스터 테이블 방식 상점 열기 (페이즈 4) */
+    UFUNCTION(BlueprintCallable, Category = "Shop")
+    void OpenShopRandom(FName RequestShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, AActor* TargetNPC = nullptr);
+
     /** 상점 닫기 */
     UFUNCTION(BlueprintCallable, Category = "Shop")
     void CloseShop();
@@ -70,6 +74,10 @@ protected:
     UFUNCTION(Server, Reliable, Category = "Shop")
     void Server_RequestShopData(EShopType ShopType, AActor* TargetNPC);
 
+    /** 클라이언트 → 서버: 단일 마스터 테이블 기반 상점 생성 및 열기 요청 */
+    UFUNCTION(Server, Reliable, Category = "Shop")
+    void Server_OpenShopRandom(FName RequestShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, AActor* TargetNPC);
+
     /** 클라이언트 → 서버: 구매 요청 (안전한 파라미터) */
     UFUNCTION(Server, Reliable, Category = "Shop")
     void Server_RequestPurchase(FGuid UniqueID, int32 Quantity, AActor* TargetNPC);
@@ -101,6 +109,10 @@ private:
 
     // 현재 열린 상점 타입
     EShopType CurrentShopType = EShopType::None;
+
+    // 현재 열려있는 상점의 ShopID (트랜잭션 결제 시 사용)
+    UPROPERTY(BlueprintReadOnly, Category = "Shop", meta = (AllowPrivateAccess = "true"))
+    FName CurrentShopID;
 
     // 로컬 캐시 (수신된 상점 데이터)
     FERNShopInventory CurrentShopData;
