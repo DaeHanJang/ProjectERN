@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
+#include "Character/Player/ProjectERNCharacter.h"
 #include "Combat/Projectile/ERNProjectileBase.h"
 #include "Combat/Weapons/ERNMeleeWeapon.h"
 #include "Combat/Weapons/ERNRangedWeapon.h"
@@ -17,7 +18,6 @@
 #include "GameFramework/Character.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
 #include "NiagaraComponent.h"
-#include "NiagaraFunctionLibrary.h"
 #include "GAS/ERNAttributeSet.h"
 
 UERNGA_WeaponSkill_Instant::UERNGA_WeaponSkill_Instant()
@@ -37,34 +37,7 @@ void UERNGA_WeaponSkill_Instant::BeginAreaDamage(USkeletalMeshComponent* MeshCom
 	HitActorsByMesh.FindOrAdd(MeshComp).Empty();
 	AreaDamageElapsedTimes.Add(MeshComp, 0.f);
 
-	if (AreaDamageData.AreaEffect)
-	{
-		AActor* OwnerActor = MeshComp->GetOwner();
-		if (!OwnerActor)
-		{
-			return;
-		}
-
-		const FVector EffectLocation =
-			OwnerActor->GetActorLocation()
-			+ OwnerActor->GetActorForwardVector() * AreaDamageData.AreaEffectOffset.X
-			+ OwnerActor->GetActorRightVector() * AreaDamageData.AreaEffectOffset.Y
-			+ OwnerActor->GetActorUpVector() * AreaDamageData.AreaEffectOffset.Z;
-
-		UNiagaraComponent* EffectComponent = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-				OwnerActor->GetWorld(),
-				AreaDamageData.AreaEffect,
-				EffectLocation,
-				OwnerActor->GetActorRotation(),
-				FVector::OneVector,
-				false);
-
-		if (EffectComponent)
-		{
-			// NotifyEnd에서 끄기 위해 생성한 NiagaraComponent를 MeshComp 기준으로 저장한다.
-			AreaEffectsByMesh.Add(MeshComp, EffectComponent);
-		}
-	}
+	PlayInstantNiagaraEffects(EERNWeaponSkillInstantEffectTrigger::AreaBegin, MeshComp);
 }
 
 void UERNGA_WeaponSkill_Instant::TickAreaDamage(USkeletalMeshComponent* MeshComp)
@@ -73,7 +46,7 @@ void UERNGA_WeaponSkill_Instant::TickAreaDamage(USkeletalMeshComponent* MeshComp
 	{
 		return;
 	}
-	
+
 	// 누적 시간 계산
 	float& ElapsedTime = AreaDamageElapsedTimes.FindOrAdd(MeshComp);
 	ElapsedTime += GetWorld() ? GetWorld()->GetDeltaSeconds() : 0.f;
@@ -99,6 +72,9 @@ void UERNGA_WeaponSkill_Instant::EndAreaDamage(USkeletalMeshComponent* MeshComp)
 		return;
 	}
 
+	// 나이아가라 이펙트 적용
+	PlayInstantNiagaraEffects(EERNWeaponSkillInstantEffectTrigger::AreaEnd, MeshComp);
+
 	// BeginAreaDamage에서 생성해 저장한 NiagaraComponent를 찾아 종료한다.
 	if (TWeakObjectPtr<UNiagaraComponent>* EffectPtr = AreaEffectsByMesh.Find(MeshComp))
 	{
@@ -106,14 +82,15 @@ void UERNGA_WeaponSkill_Instant::EndAreaDamage(USkeletalMeshComponent* MeshComp)
 		{
 			EffectPtr->Get()->Deactivate();
 		}
-		
+
 		// 종료된 이펙트 참조는 더 이상 필요 없으므로 제거한다.
 		AreaEffectsByMesh.Remove(MeshComp);
 		AreaDamageElapsedTimes.Remove(MeshComp);
 	}
-	
+
 	// 이번 AreaDamage 구간의 피격 기록도 제거한다.
 	// 다음 스킬 사용 때는 같은 적도 다시 맞을 수 있어야 한다.
+	AreaDamageElapsedTimes.Remove(MeshComp);
 	HitActorsByMesh.Remove(MeshComp);
 }
 
@@ -137,8 +114,11 @@ void UERNGA_WeaponSkill_Instant::FireProjectileFromNotify(USkeletalMeshComponent
 	}
 
 	const FRotator SpawnRotation = ProjectileData.bUseSourceRotation
-		? SpawnTransform.GetRotation().Rotator()
-		: OwnerActor->GetActorForwardVector().Rotation();
+		                               ? SpawnTransform.GetRotation().Rotator()
+		                               : OwnerActor->GetActorForwardVector().Rotation();
+
+	// 투사체 발사 시 적용할 나이아가라 이펙트
+	PlayInstantNiagaraEffects(EERNWeaponSkillInstantEffectTrigger::ProjectileFire, MeshComp);
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = OwnerActor;
@@ -160,8 +140,9 @@ void UERNGA_WeaponSkill_Instant::ExplodeFromNotify(USkeletalMeshComponent* MeshC
 		return;
 	}
 
+	// 서버에서만 처리
 	AActor* OwnerActor = MeshComp->GetOwner();
-	if (!OwnerActor)
+	if (!OwnerActor || !OwnerActor->HasAuthority())
 	{
 		return;
 	}
@@ -172,31 +153,9 @@ void UERNGA_WeaponSkill_Instant::ExplodeFromNotify(USkeletalMeshComponent* MeshC
 		return;
 	}
 
-	UWorld* World = OwnerActor->GetWorld();
-	if (!World)
-	{
-		return;
-	}
-
-	if (ExplosionData.ExplosionEffect && World->GetNetMode() != NM_DedicatedServer)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			World,
-			ExplosionData.ExplosionEffect,
-			ExplosionTransform.GetLocation(),
-			ExplosionTransform.GetRotation().Rotator(),
-			ExplosionData.EffectScale,
-			true,
-			true,
-			ENCPoolMethod::None,
-			true);
-	}
-
-	if (!OwnerActor->HasAuthority())
-	{
-		return;
-	}
-
+	// 폭발 나이아가라 적용
+	PlayInstantNiagaraEffects(EERNWeaponSkillInstantEffectTrigger::Explosion, MeshComp);
+	// 폭발(범위)대미지 적용
 	ApplyExplosionDamage(MeshComp, ExplosionTransform.GetLocation());
 }
 
@@ -236,8 +195,8 @@ FVector UERNGA_WeaponSkill_Instant::GetAreaDamageOrigin(USkeletalMeshComponent* 
 			MeshComp->DoesSocketExist(AreaDamageData.MeshSocketName))
 		{
 			return MeshComp
-				->GetSocketTransform(AreaDamageData.MeshSocketName)
-				.TransformPosition(AreaDamageData.OriginOffset);
+			       ->GetSocketTransform(AreaDamageData.MeshSocketName)
+			       .TransformPosition(AreaDamageData.OriginOffset);
 		}
 	}
 
@@ -247,7 +206,8 @@ FVector UERNGA_WeaponSkill_Instant::GetAreaDamageOrigin(USkeletalMeshComponent* 
 		+ OwnerActor->GetActorUpVector() * AreaDamageData.OriginOffset.Z;
 }
 
-bool UERNGA_WeaponSkill_Instant::GetProjectileSpawnTransform(USkeletalMeshComponent* MeshComp, FTransform& OutTransform) const
+bool UERNGA_WeaponSkill_Instant::GetProjectileSpawnTransform(USkeletalMeshComponent* MeshComp,
+                                                             FTransform& OutTransform) const
 {
 	if (!MeshComp)
 	{
@@ -263,7 +223,7 @@ bool UERNGA_WeaponSkill_Instant::GetProjectileSpawnTransform(USkeletalMeshCompon
 	OutTransform = FTransform(
 		OwnerActor->GetActorRotation(),
 		OwnerActor->GetActorLocation()
-			+ OwnerActor->GetActorForwardVector() * ProjectileData.CharacterForwardDistance,
+		+ OwnerActor->GetActorForwardVector() * ProjectileData.CharacterForwardDistance,
 		FVector::OneVector);
 
 	switch (ProjectileData.SpawnSource)
@@ -360,6 +320,117 @@ bool UERNGA_WeaponSkill_Instant::GetExplosionTransform(USkeletalMeshComponent* M
 	}
 
 	OutTransform.SetLocation(OutTransform.TransformPosition(ExplosionData.OriginOffset));
+	return true;
+}
+
+void UERNGA_WeaponSkill_Instant::PlayInstantNiagaraEffects(
+	EERNWeaponSkillInstantEffectTrigger Trigger,
+	USkeletalMeshComponent* MeshComp) const
+{
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	// 서버에서만 처리
+	AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(MeshComp->GetOwner());
+	if (!Character || !Character->HasAuthority())
+	{
+		return;
+	}
+
+	// 이펙트 소환
+	TArray<FERNWeaponSkillInstantNiagaraSpawnData> SpawnEffects;
+
+	for (const FERNWeaponSkillInstantNiagaraEffect& EffectData : InstantNiagaraEffects)
+	{
+		if (!EffectData.bUseEffect || EffectData.Trigger != Trigger || !EffectData.NiagaraSystem)
+		{
+			continue;
+		}
+
+		// 스폰 위치 적용
+		FTransform SpawnTransform;
+		if (!GetInstantNiagaraEffectTransform(MeshComp, EffectData, SpawnTransform))
+		{
+			continue;
+		}
+
+		FERNWeaponSkillInstantNiagaraSpawnData SpawnData;
+		SpawnData.NiagaraSystem = EffectData.NiagaraSystem;
+		SpawnData.Location = SpawnTransform.GetLocation();
+		SpawnData.Rotation = SpawnTransform.GetRotation().Rotator();
+		SpawnData.Scale = EffectData.Scale;
+		SpawnData.StartDelay = EffectData.StartDelay;
+
+		SpawnEffects.Add(SpawnData);
+	}
+
+	// 스폰할 이펙트가 존재한다면
+	if (!SpawnEffects.IsEmpty())
+	{
+		// 캐릭터로 멀티캐스트
+		Character->Multicast_PlayWeaponSkillInstantNiagaraEffects(SpawnEffects);
+	}
+}
+
+bool UERNGA_WeaponSkill_Instant::GetInstantNiagaraEffectTransform(USkeletalMeshComponent* MeshComp,
+                                                                  const FERNWeaponSkillInstantNiagaraEffect& EffectData,
+                                                                  FTransform& OutTransform) const
+{
+	if (!MeshComp)
+	{
+		return false;
+	}
+
+	AActor* OwnerActor = MeshComp->GetOwner();
+	if (!OwnerActor)
+	{
+		return false;
+	}
+
+	// 무기의 WeaponHitbox에 이펙트 적용
+	if (EffectData.OriginMode == EWeaponSkillAreaOriginMode::WeaponHitbox)
+	{
+		if (const UERNEquipmentComponent* Equipment =
+			OwnerActor->FindComponentByClass<UERNEquipmentComponent>())
+		{
+			if (const AERNMeleeWeapon* MeleeWeapon =
+				Cast<AERNMeleeWeapon>(Equipment->CurrentWeapon))
+			{
+				if (const UBoxComponent* Hitbox = MeleeWeapon->GetHitboxComponent())
+				{
+					OutTransform = Hitbox->GetComponentTransform();
+					OutTransform.SetLocation(OutTransform.TransformPosition(EffectData.LocationOffset));
+					OutTransform.ConcatenateRotation(EffectData.RotationOffset.Quaternion());
+					return true;
+				}
+			}
+		}
+	}
+
+	// 캐릭터의 MeshSocket에 이펙트 적용
+	if (EffectData.OriginMode == EWeaponSkillAreaOriginMode::MeshSocket)
+	{
+		if (EffectData.MeshSocketName != NAME_None &&
+			MeshComp->DoesSocketExist(EffectData.MeshSocketName))
+		{
+			OutTransform = MeshComp->GetSocketTransform(EffectData.MeshSocketName);
+			OutTransform.SetLocation(OutTransform.TransformPosition(EffectData.LocationOffset));
+			OutTransform.ConcatenateRotation(EffectData.RotationOffset.Quaternion());
+			return true;
+		}
+	}
+
+	OutTransform = FTransform(
+		OwnerActor->GetActorRotation(),
+		OwnerActor->GetActorLocation()
+		+ OwnerActor->GetActorForwardVector() * EffectData.LocationOffset.X
+		+ OwnerActor->GetActorRightVector() * EffectData.LocationOffset.Y
+		+ OwnerActor->GetActorUpVector() * EffectData.LocationOffset.Z,
+		FVector::OneVector);
+
+	OutTransform.ConcatenateRotation(EffectData.RotationOffset.Quaternion());
 	return true;
 }
 

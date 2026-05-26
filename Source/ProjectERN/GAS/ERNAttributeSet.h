@@ -112,6 +112,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_FlaskQuantity)
 	FGameplayAttributeData FlaskQuantity;
 	ATTRIBUTE_ACCESSORS(UERNAttributeSet, FlaskQuantity)
+	
+	// Shield
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes", ReplicatedUsing = OnRep_Shield)
+	FGameplayAttributeData Shield;
+	ATTRIBUTE_ACCESSORS(UERNAttributeSet, Shield)
 
 protected:
 	UFUNCTION()
@@ -168,4 +173,6 @@ protected:
 	UFUNCTION()
 	virtual void OnRep_FlaskQuantity(const FGameplayAttributeData& OldFlaskQuantity);
 	
+	UFUNCTION()
+	virtual void OnRep_Shield(const FGameplayAttributeData& OldShield);
 };
