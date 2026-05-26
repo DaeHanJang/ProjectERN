@@ -75,12 +75,29 @@ void UERNCutsceneSubsystem::OnPostLoadMapWithWorld(UWorld* LoadedWorld)
 			FTimerDelegate::CreateUObject(this, &UERNCutsceneSubsystem::EnsureLoadingWidgetInViewport));
 	}
 
+	// 9초 시점에 새 인트로 시작 (서버에서 spawn + 부착) — 1초 동안 클라 리플리케이션 도착할 시간 확보
+	if (UERNGameInstance* GameInst = Cast<UERNGameInstance>(GetGameInstance()))
+	{
+		if (GameInst->ShouldAutoStartIntro())
+		{
+			FTimerHandle IntroTimerHandle;
+			LoadedWorld->GetTimerManager().SetTimer(
+				IntroTimerHandle,
+				this,
+				&UERNCutsceneSubsystem::StartBirdIntroSequence,
+				9.0f,
+				false
+			);
+		}
+	}
+
+	// 10초 시점에 로딩 화면 제거 (새 spawn보다 1초 늦게 — 이때 플레이어는 이미 새에 매달려있음)
 	FTimerHandle TimerHandle;
 	LoadedWorld->GetTimerManager().SetTimer(
 		TimerHandle,
 		this,
 		&UERNCutsceneSubsystem::HideLoadingScreen,
-		5.0f,
+		10.0f,
 		false
 	);
 }
@@ -172,14 +189,7 @@ void UERNCutsceneSubsystem::HideLoadingScreen()
 
 	OnLoadingFinished.Broadcast();
 
-	// 옵션: 로딩 종료 직후 자동 인트로 시작 (서버 권한일 때만 실제 동작)
-	if (UERNGameInstance* GameInst = Cast<UERNGameInstance>(GetGameInstance()))
-	{
-		if (GameInst->ShouldAutoStartIntro())
-		{
-			StartBirdIntroSequence();
-		}
-	}
+	// 새 인트로는 로딩 종료 1초 전(OnPostLoadMapWithWorld의 9초 타이머)에 이미 시작됨 — 여기선 호출 안 함
 }
 
 // ===== 인트로 시퀀스 =====

@@ -28,6 +28,9 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	// SeamlessTravel 시 옛 PS → 새 PS로 커스텀 필드 복사 (CharacterType/Nickname 보존)
+	virtual void CopyProperties(APlayerState* PlayerState) override;
+
 	// 캐릭터 타입
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Character")
 	ECharacterType CharacterType;
