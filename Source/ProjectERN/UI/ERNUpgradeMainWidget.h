@@ -3,14 +3,15 @@
 #include "CoreMinimal.h"
 #include "UI/ERNInteractableWidget.h"
 #include "Enhancement/Data/ERNUpgradeTypes.h"
+#include "UI/ERNInventorySlotWidget.h"
+#include "Inventory/Components/ERNEquipmentComponent.h"
 #include "ERNUpgradeMainWidget.generated.h"
 
 class UERNUpgradeComponent;
 class UERNInventoryComponent;
-class UERNUpgradeSlotWidget;
 class UERNUpgradePreviewWidget;
 class UERNUpgradeMaterialTooltipWidget;
-class UScrollBox;
+class UUniformGridPanel;
 class UTextBlock;
 class UButton;
 
@@ -30,9 +31,25 @@ public:
 protected:
     // === 블루프린트 바인딩 위젯 ===
 
-    // 인벤토리 장비 슬롯을 담을 ScrollBox
+    // 인벤토리 장비 슬롯을 담을 격자 패널 (대안 3)
     UPROPERTY(meta = (BindWidget))
-    TObjectPtr<UScrollBox> InventoryScrollBox;
+    TObjectPtr<UUniformGridPanel> UpgradeInventoryGrid;
+
+    // 인벤토리 슬롯 위젯 클래스
+    UPROPERTY(EditDefaultsOnly, Category = "Upgrade UI")
+    TSubclassOf<UERNInventorySlotWidget> SlotWidgetClass;
+
+    // 슬롯 기본 이미지
+    UPROPERTY(EditDefaultsOnly, Category = "Upgrade UI")
+    TSoftObjectPtr<UTexture2D> InventorySlotImage;
+
+    // 슬롯 포커스 (클릭) 이미지
+    UPROPERTY(EditDefaultsOnly, Category = "Upgrade UI")
+    TSoftObjectPtr<UTexture2D> FocusSlotImage;
+
+    // 장착 무기 슬롯
+    UPROPERTY(meta = (BindWidget))
+    TObjectPtr<UERNInventorySlotWidget> EquipableSlotWidget;
 
     // 재료 정보 표시 (레거시 - MaterialTooltipWidget 사용 시 생략 가능)
     UPROPERTY(meta = (BindWidgetOptional))
@@ -40,10 +57,6 @@ protected:
 
     UPROPERTY(meta = (BindWidgetOptional))
     TObjectPtr<UTextBlock> MaterialCountText;
-
-    // 슬롯 위젯 클래스 (블루프린트에서 할당)
-    UPROPERTY(EditDefaultsOnly, Category = "Upgrade UI")
-    TSubclassOf<UERNUpgradeSlotWidget> SlotWidgetClass;
 
     // 강화 전/후 프리뷰 위젯 (Phase 7에서 구현)
     UPROPERTY(meta = (BindWidgetOptional))
@@ -77,15 +90,14 @@ protected:
 
     // === 내부 함수 ===
 
-    /** 인벤토리에서 장비 아이템만 필터링하여 슬롯 생성 */
+    /** 인벤토리 슬롯 생성 (대안 3) */
     void PopulateInventorySlots();
+
+    /** 시각적 상태 통합 갱신 및 프리뷰 갱신 */
+    void UpdateVisuals();
 
     /** 선택 초기화 (프리뷰 숨김 처리 등) */
     void ClearSelection();
-
-    /** 슬롯 클릭 시 호출 (강화 미리보기 갱신) */
-    UFUNCTION()
-    void OnSlotSelected(int32 SlotIndex);
 
     /** 강화 확인 버튼 (E키) 클릭 시 */
     UFUNCTION(BlueprintCallable, Category = "Upgrade UI")
@@ -99,16 +111,56 @@ protected:
     UFUNCTION()
     void OnInventorySlotChanged(const FInventoryItemEntry& Entry);
 
+    /** 장착 무기 변경 콜백 */
+    UFUNCTION()
+    void OnEquipableSlotChanged(const FInventoryItemEntry& Entry);
+
     // 성공 이벤트를 블루프린트에서 연출하기 위함
     UFUNCTION(BlueprintImplementableEvent, Category = "Upgrade UI")
     void BP_OnUpgradeSuccess();
 
+    // 슬롯 인터랙션 콜백
+    UFUNCTION()
+    void OnSlotHoveredCallback(const int32 Index);
+
+    UFUNCTION()
+    void OnSlotUnhoveredCallback(const int32 Index);
+    
+    UFUNCTION()
+    void OnSlotDoubleClickedCallback(const int32 Index);
+
+    UFUNCTION()
+    void OnSlotClickedCallback(const int32 Index);
+
+    // 입력 처리 (키보드, 게임패드 포커스)
+    virtual FReply NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+    virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+    virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+    // 타이머 처리용
+    void UnhoverDelay();
+
+    // 등급별 색상 반환
+    FColor ItemGradeByColor(EItemGrade Grade);
+
 private:
     UPROPERTY()
-    UERNUpgradeComponent* UpgradeCompRef = nullptr;
+    UERNUpgradeComponent* UpgradeCompRef;
 
     UPROPERTY()
-    UERNInventoryComponent* InventoryRef = nullptr;
+    UERNInventoryComponent* InventoryRef;
 
-    int32 SelectedSlotIndex = INDEX_NONE;
+    // 생성된 슬롯 위젯들
+    UPROPERTY()
+    TArray<UERNInventorySlotWidget*> SlotWidgets;
+
+    // 상태 관리 (인벤토리 로직 100% 동일화)
+    int32 FocusSlotIndex = -1;
+    int32 HoveredSlotIndex = -1;
+    
+    FTimerHandle UnhoverTimerHandle;
+    
+    const int32 ColumnSize = 4; // 인벤토리 가로 슬롯 개수
+    
+    const int32 GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize, const int32 CurrentIndex) const;
 };

@@ -32,7 +32,7 @@ public:
 	
 	// 열기 애니메이션 재생
 	void PlayOpenAnimation();
-	
+
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
