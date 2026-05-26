@@ -28,6 +28,19 @@ void AERNPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AERNPlayerState, bIsReady);
 }
 
+void AERNPlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+
+	// SeamlessTravel 시 새로 spawn되는 PS에 옛 PS의 값을 옮겨줘야 GameMode가 올바른 캐릭터로 spawn함
+	if (AERNPlayerState* NewPS = Cast<AERNPlayerState>(PlayerState))
+	{
+		NewPS->CharacterType = CharacterType;
+		NewPS->PlayerNickname = PlayerNickname;
+		// bIsReady는 새 맵에선 의미 없으므로 복사 안 함
+	}
+}
+
 void AERNPlayerState::SetNickname(const FString& Nickname)
 {
 	Server_SetNickname(Nickname);
