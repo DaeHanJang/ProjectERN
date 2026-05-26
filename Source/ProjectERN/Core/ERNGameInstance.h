@@ -27,6 +27,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Network")
 	bool bUseSteam = false;
 
+	// LAN/Steam 모드 전환 (기존 세션/검색결과 정리 + NetDriver 재구성)
+	UFUNCTION(BlueprintCallable, Category = "Network")
+	void SetUseSteam(bool bNewUseSteam);
+
 	// 세션 생성 (Host)
 	UFUNCTION(BlueprintCallable, Category = "Network")
 	void HostSession(FString ServerName, int32 MaxPlayers = 3);
@@ -147,6 +151,16 @@ protected:
 	// 생성할 세션 정보 임시 저장
 	FString PendingServerName;
 	int32 PendingMaxPlayers;
+
+	// JoinSessionByIndex가 기존 세션 정리 후 재시도할 때 사용
+	bool bHasPendingJoin = false;
+	int32 PendingJoinIndex = -1;
+
+	// bUseSteam 값에 맞게 GameNetDriver 정의를 런타임에 swap
+	void ConfigureNetDriverForMode();
+
+	// bUseSteam 값에 맞는 OSS의 SessionInterface로 재취득 + 델리게이트 재바인딩
+	void RebindSessionInterface();
 
 	// ===== 상점 시스템 =====
 
