@@ -50,37 +50,49 @@ void UERNCutsceneSubsystem::Deinitialize()
 
 void UERNCutsceneSubsystem::OnPostLoadMapWithWorld(UWorld* LoadedWorld)
 {
-	if (LoadedWorld)
-	{
-		FTimerHandle TimerHandle;
-		LoadedWorld->GetTimerManager().SetTimer(
-			TimerHandle,
-			this,
-			&UERNCutsceneSubsystem::HideLoadingScreen,
-			5.0f,
-			false
-		);
-	}
-	else
+	if (!LoadedWorld)
 	{
 		HideLoadingScreen();
-	}
-}
-
-void UERNCutsceneSubsystem::ShowLoadingScreen()
-{
-	UE_LOG(LogTemp, Warning, TEXT("[CutsceneSubsystem] ShowLoadingScreen called. bIsLoading=%d"), bIsLoading);
-
-	if (bIsLoading)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[CutsceneSubsystem] Already loading, skip"));
 		return;
 	}
 
-	bIsLoading = true;
-	OnLoadingStarted.Broadcast();
+	// SeamlessTravel 도중 슬레이트가 무효화되거나 분리될 수 있음 — 로딩 중이면 옛 위젯을 즉시 분리하고
+	// 재부착은 다음 틱으로 지연 (클라에서 SeamlessTravel 직후 LocalPlayer/HUD 재구성으로 viewport overlay 상태가
+	// 어긋난 프레임에 추가하면 렌더 패스가 누락되는 케이스 방지)
+	if (bIsLoading)
+	{
+		if (LoadingSlateWidget.IsValid())
+		{
+			if (UGameViewportClient* VC = GetGameInstance() ? GetGameInstance()->GetGameViewportClient() : nullptr)
+			{
+				VC->RemoveViewportWidgetContent(LoadingSlateWidget.ToSharedRef());
+			}
+			LoadingSlateWidget.Reset();
+		}
+		LoadingWidget = nullptr;
 
-	// GameInstance에서 LoadingWidgetClass 가져오기
+		LoadedWorld->GetTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateUObject(this, &UERNCutsceneSubsystem::EnsureLoadingWidgetInViewport));
+	}
+
+	FTimerHandle TimerHandle;
+	LoadedWorld->GetTimerManager().SetTimer(
+		TimerHandle,
+		this,
+		&UERNCutsceneSubsystem::HideLoadingScreen,
+		5.0f,
+		false
+	);
+}
+
+void UERNCutsceneSubsystem::EnsureLoadingWidgetInViewport()
+{
+	// 이미 살아있는 슬레이트가 부착돼 있으면 no-op
+	if (LoadingSlateWidget.IsValid())
+	{
+		return;
+	}
+
 	UERNGameInstance* GameInst = Cast<UERNGameInstance>(GetGameInstance());
 	if (!GameInst)
 	{
@@ -105,7 +117,7 @@ void UERNCutsceneSubsystem::ShowLoadingScreen()
 	LoadingWidget = CreateWidget<UUserWidget>(GetGameInstance(), GameInst->GetLoadingWidgetClass());
 	if (LoadingWidget)
 	{
-		// 낮은 레벨의 Slate 위젯으로 추가 (맵 전환에도 유지됨)
+		// 낮은 레벨의 Slate 위젯으로 추가 (맵 전환에도 유지됨 — 클라는 OnPostLoadMapWithWorld에서 재부착)
 		TSharedRef<SWidget> SlateWidget = LoadingWidget->TakeWidget();
 		ViewportClient->AddViewportWidgetContent(SlateWidget, 9999);
 		LoadingSlateWidget = SlateWidget;
@@ -115,6 +127,22 @@ void UERNCutsceneSubsystem::ShowLoadingScreen()
 	{
 		UE_LOG(LogTemp, Error, TEXT("[CutsceneSubsystem] Failed to create loading widget!"));
 	}
+}
+
+void UERNCutsceneSubsystem::ShowLoadingScreen()
+{
+	UE_LOG(LogTemp, Warning, TEXT("[CutsceneSubsystem] ShowLoadingScreen called. bIsLoading=%d"), bIsLoading);
+
+	if (bIsLoading)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[CutsceneSubsystem] Already loading, skip"));
+		return;
+	}
+
+	bIsLoading = true;
+	OnLoadingStarted.Broadcast();
+
+	EnsureLoadingWidgetInViewport();
 }
 
 void UERNCutsceneSubsystem::HideLoadingScreen()

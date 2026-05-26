@@ -697,7 +697,8 @@ void AProjectERNCharacter::AttachToIntroBird(AERNIntroBird* Bird)
 		Move->SetMovementMode(MOVE_None);
 	}
 
-	// 새에 등록
+	// 새에 등록 + 소유권 설정 (Server RPC가 클라에서 서버로 전송되려면 Owner 필요)
+	Bird->SetOwner(GetController());
 	Bird->SetAttachedPlayer(this);
 
 	// 상태 켜기 (리플리케이트 → OnRep에서 클라가 몽타주 보조 재생)
