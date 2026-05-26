@@ -13,6 +13,7 @@ class UERNMinimapIconDataAsset;
 class UMinimapMarkerWidget;
 class UCanvasPanel;
 class APawn;
+class UWidget;
 /**
  * 
  */
@@ -29,9 +30,6 @@ protected:
 	virtual void NativeConstruct() override;
 	
 	virtual void NativeDestruct() override;
-	
-	// 마우스 입력은 가능
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	
 	// WASD는 무시
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
@@ -57,7 +55,30 @@ public:
 	void StartDynamicMinimapRefresh();
 	void StopDynamicMinimapRefresh();
 	
+	// 지도 조작 관련
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	
+	void ApplyMapTransform();
+	// 확대 줌인 줌아웃 처리
+	void SetMapZoomAtScreenPosition(float NewZoom, const FVector2D& ScreenPosition);
+	void AddMapPanOffsetByScreenDelta(const FVector2D& CurrentScreenPosition);
+	// 맵 밖으로 나가지 못하게 드래그 범위 제한
+	void ClampMapPanOffset();
+	// 마커 아이콘 크기는 줌 배율에 역보정을 걸어서 일정 크기 유지
+	float GetMarkerRenderScale() const;
+	void ApplyMarkerRenderScale();
+	
 public:
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UWidget> MapViewport;
+	
+	// 레이어 관리 상위 위젯. 지도 이동, 줌인 기능등에 사용
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UCanvasPanel> MapContent;
+	
 	// ---레이어 모음---
 	// 자기장 레이어
 	UPROPERTY(meta=(BindWidget))
@@ -140,4 +161,21 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UMinimapNightRainZoneWidget> TargetZoneWidget;
+	
+	
+	// 지도 조작 관련
+	UPROPERTY(EditAnywhere, Category="Minimap|Transform", meta=(ClampMin="0.1", AllowPrivateAccess = "true"))
+	float MinMapZoom = 1.0f;
+	
+	UPROPERTY(EditAnywhere, Category="Minimap|Transform", meta=(ClampMin="0.01", AllowPrivateAccess = "true"))
+	float MaxMapZoom = 4.0f;
+	
+	UPROPERTY(EditAnywhere, Category="Minimap|Transform", meta=(ClampMin="1.01", AllowPrivateAccess = "true"))
+	float MouseWheelZoomMultiplier = 1.15f;
+	
+	float CurrentMapZoom = 1.0f;
+	FVector2D CurrentMapPanOffset = FVector2D::ZeroVector;
+	
+	bool bIsDraggingMap = false;
+	FVector2D LastDragScreenPosition = FVector2D::ZeroVector;
 };

@@ -63,40 +63,6 @@ void UERNMinimapWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
-FReply UERNMinimapWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
-{
-	// 좌클릭 : 미니맵 잡기
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
-	{
-		SetKeyboardFocus();
-		return FReply::Handled();
-	}
-	
-	// 드래그 : 미니맵 이동
-
-	// 휠 클릭 : 핀
-	if (InMouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton)
-	{
-		if (MarkerLayer == nullptr)
-		{
-			return FReply::Handled();
-		}
-		
-		const FVector2D MapPosition = MarkerLayer->GetCachedGeometry().AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
-		
-		const FVector WorldLocation = MapToWorldPosition(MapPosition);
-		
-		if (AERNPlayerController* PC = Cast<AERNPlayerController>(GetOwningPlayer()))
-		{
-			PC->Server_RequestCreateMinimapPin(WorldLocation);
-		}
-		
-		return FReply::Handled();
-	}
-	
-	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
-}
-
 FReply UERNMinimapWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
 	const FKey Key = InKeyEvent.GetKey();
@@ -199,6 +165,8 @@ void UERNMinimapWidget::RebuildStaticMarkers()
 	}
 	
 	bStaticMarkersDirty = false;
+	
+	ApplyMarkerRenderScale();
 }
 
 void UERNMinimapWidget::RefreshStaticMarkers()
@@ -224,6 +192,8 @@ void UERNMinimapWidget::RefreshDynamicMinimapElements()
 {
 	RefreshPlayerMarkers();
 	RefreshNightRainZone();
+	
+	ApplyMarkerRenderScale();
 }
 
 void UERNMinimapWidget::HideNightRainZoneWidgets()
@@ -489,4 +459,210 @@ void UERNMinimapWidget::StopDynamicMinimapRefresh()
 	}
 	
 	World->GetTimerManager().ClearTimer(DynamicMinimapRefreshTimerHandle);
+}
+
+// 지도 조작 관련
+
+FReply UERNMinimapWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	// 좌클릭 : 미니맵 잡기
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		SetKeyboardFocus();
+		
+		bIsDraggingMap = true;
+		LastDragScreenPosition = InMouseEvent.GetScreenSpacePosition();
+		
+		return FReply::Handled().CaptureMouse(TakeWidget());
+	}
+	
+	// 휠 클릭 : 핀
+	if (InMouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton)
+	{
+		if (MapContent == nullptr)
+		{
+			return FReply::Handled();
+		}
+		
+		const FVector2D MapPosition = MapContent->GetCachedGeometry().AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
+		
+		const FVector WorldLocation = MapToWorldPosition(MapPosition);
+		
+		if (AERNPlayerController* PC = Cast<AERNPlayerController>(GetOwningPlayer()))
+		{
+			PC->Server_RequestCreateMinimapPin(WorldLocation);
+		}
+		
+		return FReply::Handled();
+	}
+	
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+FReply UERNMinimapWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	//드래그 종료
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && bIsDraggingMap)
+	{
+		bIsDraggingMap = false;
+		return FReply::Handled().ReleaseMouseCapture();
+	}
+	
+	return Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
+}
+
+
+FReply UERNMinimapWidget::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (bIsDraggingMap == false)
+	{
+		return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
+	}
+	
+	AddMapPanOffsetByScreenDelta(InMouseEvent.GetScreenSpacePosition());
+	
+	return FReply::Handled();
+}
+
+FReply UERNMinimapWidget::NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	// 휠 줌인 & 줌아웃
+	const float WheelDelta = InMouseEvent.GetWheelDelta();
+	
+	if (FMath::IsNearlyZero(WheelDelta))
+	{
+		return FReply::Handled();
+	}
+	
+	const float ZoomMultiplier = FMath::Pow(MouseWheelZoomMultiplier, WheelDelta);
+	SetMapZoomAtScreenPosition(CurrentMapZoom * ZoomMultiplier, InMouseEvent.GetScreenSpacePosition());
+	
+	return FReply::Handled();
+}
+
+void UERNMinimapWidget::ApplyMapTransform()
+{
+	if (MapContent == nullptr)
+	{
+		return;
+	}
+	
+	FWidgetTransform MapTransform;
+	MapTransform.Translation = CurrentMapPanOffset;
+	MapTransform.Scale = FVector2D(CurrentMapZoom, CurrentMapZoom);
+	
+	MapContent->SetRenderTransformPivot(FVector2D::ZeroVector);
+	MapContent->SetRenderTransform(MapTransform);
+}
+
+void UERNMinimapWidget::SetMapZoomAtScreenPosition(float NewZoom, const FVector2D& ScreenPosition)
+{
+	if (MapViewport == nullptr)
+	{
+		return;
+	}
+	
+	const float OldZoom = CurrentMapZoom;
+	const float ClampedNewZoom = FMath::Clamp(NewZoom, MinMapZoom, MaxMapZoom);
+	
+	if (FMath::IsNearlyEqual(OldZoom, ClampedNewZoom))
+	{
+		return;
+	}
+	
+	const FVector2D MouseLocalPosition = MapViewport->GetCachedGeometry().AbsoluteToLocal(ScreenPosition);
+	
+	const float ZoomRatio = ClampedNewZoom / OldZoom;
+	
+	CurrentMapPanOffset = MouseLocalPosition - ((MouseLocalPosition - CurrentMapPanOffset) * ZoomRatio);
+	
+	CurrentMapZoom = ClampedNewZoom;
+	
+	ClampMapPanOffset();
+	ApplyMapTransform();
+	ApplyMarkerRenderScale();
+}
+
+void UERNMinimapWidget::AddMapPanOffsetByScreenDelta(const FVector2D& CurrentScreenPosition)
+{
+	if (MapViewport == nullptr)
+	{
+		return;
+	}
+	
+	const FGeometry& ViewportGeometry = MapViewport->GetCachedGeometry();
+	
+	const FVector2D LastLocalPosition = ViewportGeometry.AbsoluteToLocal(LastDragScreenPosition);
+	const FVector2D CurrentLocalPosition = ViewportGeometry.AbsoluteToLocal(CurrentScreenPosition);
+	
+	CurrentMapPanOffset += CurrentLocalPosition - LastLocalPosition;
+	LastDragScreenPosition = CurrentScreenPosition;
+	
+	ClampMapPanOffset();
+	ApplyMapTransform();
+}
+
+void UERNMinimapWidget::ClampMapPanOffset()
+{
+	if (MapViewport == nullptr)
+	{
+		return;
+	}
+	
+	const FVector2D ViewportSize = MapViewport->GetCachedGeometry().GetLocalSize();
+	const FVector2D ScaledMapSize = MapSize * CurrentMapZoom;
+	
+	auto ClampAxis = [](float Offset, float ViewSize, float ContentSize)
+	{
+		if (ContentSize <= ViewSize)
+		{
+			return (ViewSize - ContentSize) * 0.5f;
+		}
+		
+		return FMath::Clamp(Offset, ViewSize - ContentSize, 0.f);
+	};
+	
+	CurrentMapPanOffset.X = ClampAxis(CurrentMapPanOffset.X, ViewportSize.X, ScaledMapSize.X);
+	CurrentMapPanOffset.Y = ClampAxis(CurrentMapPanOffset.Y, ViewportSize.Y, ScaledMapSize.Y);
+	
+}
+
+float UERNMinimapWidget::GetMarkerRenderScale() const
+{
+	if (FMath::IsNearlyZero(CurrentMapZoom))
+	{
+		return 1.f;
+	}
+	
+	return 1.f / CurrentMapZoom;
+}
+
+void UERNMinimapWidget::ApplyMarkerRenderScale()
+{
+	const float MarkerRenderScale = GetMarkerRenderScale();
+	
+	if (MarkerLayer)
+	{
+		for (int32 ChildIndex = 0; ChildIndex < MarkerLayer->GetChildrenCount(); ++ChildIndex)
+		{
+			if (UWidget* ChildWidget = MarkerLayer->GetChildAt(ChildIndex))
+			{
+				ChildWidget->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+				ChildWidget->SetRenderScale(FVector2D(MarkerRenderScale, MarkerRenderScale));
+			}
+		}
+	}
+	
+	if (PlayerMarkerLayer)
+	{
+		for (int32 ChildIndex = 0; ChildIndex < PlayerMarkerLayer->GetChildrenCount(); ++ChildIndex)
+		{
+			if (UWidget* ChildWidget = PlayerMarkerLayer->GetChildAt(ChildIndex))
+			{
+				ChildWidget->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+				ChildWidget->SetRenderScale(FVector2D(MarkerRenderScale, MarkerRenderScale));
+			}
+		}
+	}
+	
 }
