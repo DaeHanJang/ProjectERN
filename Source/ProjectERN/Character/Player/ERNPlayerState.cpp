@@ -272,4 +272,19 @@ EERNMinimapIconType AERNPlayerState::GetMinimapPinIconType() const
 		return EERNMinimapIconType::PlayerPin1;
 	}
 }
+
+EERNMinimapIconType AERNPlayerState::GetMinimapPlayerMarkerIconType() const
+{
+	switch (PlayerNumber)
+	{
+	case 1:
+		return EERNMinimapIconType::PlayerMarker1;
+	case 2:
+		return EERNMinimapIconType::PlayerMarker2;
+	case 3:
+		return EERNMinimapIconType::PlayerMarker3;
+	default:
+		return EERNMinimapIconType::PlayerMarker1;
+	}
+}
 #pragma endregion

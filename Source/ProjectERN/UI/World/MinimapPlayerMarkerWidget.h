@@ -8,6 +8,7 @@
 
 class UImage;
 class APawn;
+class UTexture2D;
 
 /**
  * 
@@ -20,6 +21,7 @@ class PROJECTERN_API UMinimapPlayerMarkerWidget : public UUserWidget
 public:
 	void SetPlayerPawn(APawn* InPawn);
 	void UpdateMarker(const FVector2D& MapPosition, float YawDegrees);
+	void SetIconTexture(UTexture2D* IconTexture);
 	
 private:
 	UPROPERTY(meta=(BindWidget))

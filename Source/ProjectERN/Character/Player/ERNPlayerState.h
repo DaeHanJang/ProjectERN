@@ -111,5 +111,6 @@ public:
 	void SetPlayerNumber_ServerOnly(int32 InNumber);
 	
 	EERNMinimapIconType GetMinimapPinIconType() const;
+	EERNMinimapIconType GetMinimapPlayerMarkerIconType() const;
 #pragma endregion Minimap
 };

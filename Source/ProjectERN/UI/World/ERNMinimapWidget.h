@@ -6,9 +6,11 @@
 #include "UI/ERNInteractableWidget.h"
 #include "ERNMinimapWidget.generated.h"
 
+class UMinimapPlayerMarkerWidget;
 class UERNMinimapIconDataAsset;
 class UMinimapMarkerWidget;
 class UCanvasPanel;
+class APawn;
 /**
  * 
  */
@@ -32,6 +34,9 @@ protected:
 	// WASD는 무시
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	
+	// 짧은 주기 플레이어 위치, 방향 최신화
+	virtual void NativeTick(const FGeometry& InGeometry, float InDeltaTime) override;
+
 public:
 	// 월드 맵 좌표를 미니맵 UI 좌표로 변환
 	FVector2D WorldToMapPosition(const FVector& WorldLocation) const;
@@ -55,6 +60,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Minimap")
 	TObjectPtr<UERNMinimapIconDataAsset> IconDataAsset;
 	
+	// 실제 월드 최소 좌표, 최대 좌표. 월드에 따라 설정 필요. 월드에 따라 자동으로 넘겨주는 함수 없음
 	UPROPERTY(EditAnywhere, Category="Minimap|Map")
 	FVector2D WorldMin = FVector2D(-50000.f, -50000.f);
 	
@@ -64,8 +70,18 @@ public:
 	UPROPERTY(EditAnywhere, Category="Minimap|Map")
 	FVector2D MapSize = FVector2D(1024.f, 1024.f);
 	
+	// 플레이어 실시간 위치 & 방향
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UCanvasPanel> PlayerMarkerLayer;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Minimap")
+	TSubclassOf<UMinimapPlayerMarkerWidget> PlayerMarkerWidgetClass;
+	
 private:
 	void HandleTargetsChanged();
+	
+	void RefreshPlayerMarkers();
+	float WorldYawToMapAngle(float WorldYaw) const;
 
 private:
 	// 열기 애니메이션
@@ -74,7 +90,9 @@ private:
 	
 	FDelegateHandle TargetsChangedHandle;
 	
-	// 더티 플래그. 값이 변할 때 처리하는 기법
+	// 더티 플래그. 값이 변할 때 처리하는 기법. 주요 고정 목표에 사용
 	bool bStaticMarkersDirty = true;
 	
+	UPROPERTY()
+	TMap<APawn*, TObjectPtr<UMinimapPlayerMarkerWidget>> PlayerMarkerWidgets;
 };

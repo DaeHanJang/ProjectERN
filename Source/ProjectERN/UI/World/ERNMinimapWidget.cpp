@@ -3,13 +3,20 @@
 
 #include "UI/World/ERNMinimapWidget.h"
 
+#include "EngineUtils.h"
 #include "MinimapMarkerWidget.h"
+#include "MinimapPlayerMarkerWidget.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "World/ERNMinimapSubsystem.h"
 #include "World/ERNMinimapTargetPoint.h"
 #include "World/Data/ERNMinimapIconDataAsset.h"
 #include "Character/Player/ERNPlayerController.h"
+#include "Character/Player/ERNPlayerState.h"
+#include "Character/Player/ProjectERNCharacter.h"
+#include "GameFramework/GameStateBase.h"
+#include "GameFramework/PlayerState.h"
+
 
 void UERNMinimapWidget::PlayOpenAnimation()
 {
@@ -103,6 +110,18 @@ FReply UERNMinimapWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKe
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
+void UERNMinimapWidget::NativeTick(const FGeometry& Ingeometry, float InDeltaTime)
+{
+	Super::NativeTick(Ingeometry, InDeltaTime);
+	
+	if (GetVisibility() != ESlateVisibility::Visible)
+	{
+		return;
+	}
+	
+	RefreshPlayerMarkers();
+}
+
 FVector2D UERNMinimapWidget::WorldToMapPosition(const FVector& WorldLocation) const
 {
 	const FVector2D WorldSize = WorldMax - WorldMin;
@@ -138,8 +157,14 @@ FVector UERNMinimapWidget::MapToWorldPosition(const FVector2D& MapPosition) cons
 
 void UERNMinimapWidget::RebuildStaticMarkers()
 {
-	if (MarkerLayer == nullptr || MarkerWidgetClass ==  nullptr || IconDataAsset == nullptr)
+	if (MarkerLayer == nullptr || MarkerWidgetClass ==  nullptr)
 	{
+		return;
+	}
+	
+	if (IconDataAsset == nullptr)
+	{
+		UE_LOG(LogTemp,Warning,TEXT("UERNMinimapWidget IconDataAsset is null"));
 		return;
 	}
 	
@@ -203,4 +228,114 @@ void UERNMinimapWidget::HandleTargetsChanged()
 	{
 		RebuildStaticMarkers();
 	}
+}
+
+void UERNMinimapWidget::RefreshPlayerMarkers()
+{
+	if (PlayerMarkerLayer == nullptr || PlayerMarkerWidgetClass == nullptr || GetWorld() == nullptr)
+	{
+		return;
+	}
+	
+	if (IconDataAsset == nullptr)
+	{
+		UE_LOG(LogTemp,Warning,TEXT("UERNMinimapWidget IconDataAsset is null"));
+		return;
+	}
+	
+	AGameStateBase* GameState = GetWorld()->GetGameState();
+	if (GameState == nullptr)
+	{
+		return;
+	}
+	
+	TSet<APawn*> CurrentPlayerPawns;
+	
+	// todo 병목 확인 필요, 최적화 여부 결정 필요
+	// PlayerState의 PC가 조작하는 Pawn을 찾아냄. 틱 주기 * 플레이어 수 만큼 반복됨.
+	for (APlayerState* CurrentPlayerState : GameState->PlayerArray)
+	{
+		if (CurrentPlayerState == nullptr)
+		{
+			continue;
+		}
+		
+		AERNPlayerState* ERNPlayerState = Cast<AERNPlayerState>(CurrentPlayerState);
+		if (ERNPlayerState == nullptr)
+		{
+			continue;
+		}
+		
+		APawn* CurrentPlayerPawn = ERNPlayerState->GetPawn();
+		if (IsValid(CurrentPlayerPawn) == false)
+		{
+			continue;
+		}
+		
+		CurrentPlayerPawns.Add(CurrentPlayerPawn);
+		
+		UMinimapPlayerMarkerWidget* PlayerMarkerWidget  = nullptr;
+		
+		// 캐릭터에 마커 클래스 연동
+		if (TObjectPtr<UMinimapPlayerMarkerWidget>* FoundMarkerWidgetPtr = PlayerMarkerWidgets.Find(CurrentPlayerPawn))
+		{
+			PlayerMarkerWidget = FoundMarkerWidgetPtr->Get();
+		}
+		
+		// 존재하지 않으면 생성 먼저
+		if (IsValid(PlayerMarkerWidget) == false)
+		{
+			PlayerMarkerWidget = CreateWidget<UMinimapPlayerMarkerWidget>(this, PlayerMarkerWidgetClass);
+			if (PlayerMarkerWidget == nullptr)
+			{
+				continue;
+			}
+		
+			PlayerMarkerWidget->SetPlayerPawn(CurrentPlayerPawn);
+			PlayerMarkerWidgets.Add(CurrentPlayerPawn, PlayerMarkerWidget);
+		
+			if (UCanvasPanelSlot* PlayerMarkerCanvasSlot = PlayerMarkerLayer->AddChildToCanvas(PlayerMarkerWidget))
+			{
+				PlayerMarkerCanvasSlot ->SetAutoSize(true);
+				PlayerMarkerCanvasSlot ->SetAlignment(FVector2D(0.5f, 0.5f));
+			}
+		}
+		
+		// 마커 최신화
+		UTexture2D* PlayerMarkerIconTexture = IconDataAsset->FindIconTexture(ERNPlayerState->GetMinimapPlayerMarkerIconType());
+		
+		PlayerMarkerWidget->SetIconTexture(PlayerMarkerIconTexture);
+		
+		const FVector2D PlayerMapPosition = WorldToMapPosition(CurrentPlayerPawn->GetActorLocation());
+		const float PlayerMapYaw = WorldYawToMapAngle(CurrentPlayerPawn->GetActorRotation().Yaw);
+			
+		PlayerMarkerWidget->UpdateMarker(PlayerMapPosition, PlayerMapYaw);
+	}
+
+	// 플레이어 마커의 존재가 유효하지 않으면 제거.
+	for (auto PlayerMarkerIter = PlayerMarkerWidgets.CreateIterator(); PlayerMarkerIter; ++PlayerMarkerIter)
+	{
+		APawn* TrackedPlayerPawn  = PlayerMarkerIter.Key();
+		UMinimapPlayerMarkerWidget* TrackedMarkerWidget  = PlayerMarkerIter.Value();
+		
+		const bool bHasInvalidPawn = IsValid(TrackedPlayerPawn) == false;
+		const bool bHasMissingPawn = CurrentPlayerPawns.Contains(TrackedPlayerPawn) == false;
+		const bool bHasInvalidMarkerWidget = IsValid(TrackedMarkerWidget) == false;
+
+		// Pawn 제거 || 수집된 플레이어 목록에 없음(플레이어 캐릭터가 아닌 클래스에 빙의중) || 위젯이 유효하지 않음 
+		if (bHasInvalidPawn || bHasMissingPawn || bHasInvalidMarkerWidget)
+		{
+			if (TrackedMarkerWidget)
+			{
+				TrackedMarkerWidget->RemoveFromParent();
+			}
+
+			PlayerMarkerIter.RemoveCurrent();
+		}
+	}
+}
+
+float UERNMinimapWidget::WorldYawToMapAngle(float WorldYaw) const
+{
+	return 90.f - WorldYaw;
 }
