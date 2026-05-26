@@ -26,6 +26,7 @@ UERNAttributeSet::UERNAttributeSet()
 	InitDownResistance(20.f);
 	InitMaxFlaskQuantity(3.0f);
 	InitFlaskQuantity(3.0f);
+	InitShield(0.f);
 }
 
 void UERNAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -50,6 +51,7 @@ void UERNAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, DownResistance, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, MaxFlaskQuantity, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, FlaskQuantity, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UERNAttributeSet, Shield, COND_None, REPNOTIFY_Always);
 }
 
 void UERNAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -67,6 +69,11 @@ void UERNAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, f
 	else if (Attribute == GetStaminaAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue, 0.f, GetMaxStamina());
+	}
+	else if (Attribute == GetShieldAttribute())
+	{
+		// No Max for Shield
+		NewValue = FMath::Max(0.f, NewValue);
 	}
 }
 
@@ -93,6 +100,10 @@ void UERNAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMod
 	else if (Data.EvaluatedData.Attribute == GetStaminaAttribute())
 	{
 		SetStamina(FMath::Clamp(GetStamina(), 0.f, GetMaxStamina()));
+	}
+	else if (Data.EvaluatedData.Attribute == GetShieldAttribute())
+	{
+		SetShield(FMath::Max(0.f, GetShield()));
 	}
 }
 
@@ -184,4 +195,10 @@ void UERNAttributeSet::OnRep_MaxFlaskQuantity(const FGameplayAttributeData& OldM
 void UERNAttributeSet::OnRep_FlaskQuantity(const FGameplayAttributeData& OldFlaskQuantity)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, FlaskQuantity, OldFlaskQuantity);
+}
+
+void UERNAttributeSet::OnRep_Shield(const FGameplayAttributeData& OldShield)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UERNAttributeSet, Shield, OldShield);
+
 }

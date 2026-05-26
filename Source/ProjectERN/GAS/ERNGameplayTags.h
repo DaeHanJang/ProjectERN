@@ -58,9 +58,12 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Data_Cost_Mana)		// 소모할 마나
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Data_Cooldown)		// 스킬에 적용할 쿨다운
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Regen_StaminaBlocked)	// 스태미나 재생 막기
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Regen_ManaBlocked)		// 마나 재생 막기
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Data_Shield_Amount)		// 적용 실드량
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Data_Shield_Duration)	// 실드 지속 시간
 
 // 버프 적용
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Buff_AttackPower)	// 공격력 증가 태그
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Buff_Shield)	// 실드 적용 태그
 
 // 캐릭터 스킬 쿨다운 상태
 // 스킬은 캐릭터마다 Normal/Ultimate가 한 개씩 부여되기 때문에 스킬마다가 아닌 Normal/Ultimate Slot별로 쿨타임을 적용.
@@ -69,3 +72,4 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Cooldown_Skill_Ultimate)		// Ultimate 스킬 
 
 // GameplayCue 태그
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GameplayCue_Cast_Buff_AttackPower)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GameplayCue_Buff_Shield_Aura)

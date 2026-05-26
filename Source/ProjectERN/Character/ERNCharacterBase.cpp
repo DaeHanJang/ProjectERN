@@ -215,6 +215,31 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 
 	if (AttributeSet && ActualDamage > 0.0f)
 	{
+		float RemainingDamage = ActualDamage;
+		// 실드 적용 시 체력 감소 대신 적용
+		if (AttributeSet->GetShield() > 0.f)
+		{
+			// 현재 실드
+			const float CurrentShield = AttributeSet->GetShield();
+			// 흡수한 대미지
+			const float AbsorbedDamage = FMath::Min(CurrentShield, RemainingDamage);
+			// 남은 실드
+			const float RemainingShield = CurrentShield - AbsorbedDamage;
+			
+			// 남은 실드 적용
+			AttributeSet->SetShield(RemainingShield);
+			RemainingDamage -= AbsorbedDamage;
+			
+			// 실드 모두 소진 시
+			if (RemainingShield <= 0.f && AbilitySystemComponent)
+			{
+				// TAG_Buff_Shield 태그 찾아서 제거
+				FGameplayTagContainer ShieldTags;
+				ShieldTags.AddTag(TAG_Buff_Shield);
+				AbilitySystemComponent->RemoveActiveEffectsWithGrantedTags(ShieldTags);
+			}
+		}
+		
 		// 디버그 무적: 플레이어가 GodMode면 HP 최소 1로 클램프
 		float MinHealth = 0.0f;
 		if (const AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(this))
@@ -224,12 +249,12 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 				MinHealth = 1.0f;
 			}
 		}
-
+		
 		// AttributeSet의 Health 감소
-		const float NewHealth = FMath::Max(MinHealth, AttributeSet->GetHealth() - ActualDamage);
+		const float NewHealth = FMath::Max(MinHealth, AttributeSet->GetHealth() - RemainingDamage);
 		AttributeSet->SetHealth(NewHealth);
 
-		UE_LOG(LogTemp, Log, TEXT("%s took %.2f damage. Health: %.2f"), *GetName(), ActualDamage, NewHealth);
+		UE_LOG(LogTemp, Log, TEXT("%s took %.2f damage. Health: %.2f"), *GetName(), RemainingDamage, NewHealth);
 
 		// 사망 체크
 		if (NewHealth <= 0.0f)

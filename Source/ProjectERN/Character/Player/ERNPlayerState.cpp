@@ -244,3 +244,18 @@ float AERNPlayerState::GetMaxStamina() const
 	}
 	return 100.f;
 }
+
+float AERNPlayerState::GetCurrentShield() const
+{
+	if (APawn* Pawn = GetPawn())
+	{
+		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(Pawn))
+		{
+			if (const UERNAttributeSet* AS = Character->GetAttributeSet())
+			{
+				return AS->GetShield();
+			}
+		}
+	}
+	return 0.f;
+}

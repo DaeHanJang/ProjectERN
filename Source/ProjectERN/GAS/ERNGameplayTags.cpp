@@ -55,9 +55,12 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Cost_Mana, "Data.Cost.Mana")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Cooldown, "Data.Cooldown")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Regen_StaminaBlocked, "State.Regen.StaminaBlocked")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Regen_ManaBlocked, "State.Regen.ManaBlocked")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Shield_Amount, "Data.Shield.Amount")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Shield_Duration, "Data.Shield.Duration")
 
 // 버프
 UE_DEFINE_GAMEPLAY_TAG(TAG_Buff_AttackPower, "Buff.AttackPower")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Buff_Shield, "Buff.Shield")
 
 // 캐릭터 스킬 쿨다운 상태
 UE_DEFINE_GAMEPLAY_TAG(TAG_Cooldown_Skill_Normal, "Cooldown.Skill.Normal")
@@ -65,3 +68,4 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Cooldown_Skill_Ultimate, "Cooldown.Skill.Ultimate")
 
 // GameplayCue 태그
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Cast_Buff_AttackPower, "GameplayCue.Cast.Buff.AttackPower")
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Buff_Shield_Aura, "GameplayCue.Buff.Shield.Aura")

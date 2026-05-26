@@ -99,4 +99,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Attributes")
 	float GetMaxStamina() const;
+	
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Attributes")
+	float GetCurrentShield() const;
 };

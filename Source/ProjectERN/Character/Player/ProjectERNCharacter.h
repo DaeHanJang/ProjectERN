@@ -236,16 +236,7 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake")
 	TSubclassOf<UCameraShakeBase> TakeDamageShakeClass_Big;
-
-	/*
-	// 데미지/MaxHealth 비율 임계값 — 미만이면 Small, 사이면 Medium, 이상이면 Big
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake",
-		meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float DamageShakeThresholdSmall = 0.10f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float DamageShakeThresholdMedium = 0.30f;
-	*/
+	
 	// 데미지/MaxHealth 비율 임계값 — 미만이면 없음, 10 이하면 small, 20 이하면 medium, 30 이상이면 Big
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float DamageShakeThresholdSmall = 10.f;
