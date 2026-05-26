@@ -28,6 +28,10 @@ public:
     virtual void HandleReceivedData_Implementation(const FERNShopInventory& ShopData) override;
     virtual void HandlePurchaseResult_Implementation(const FERNShopTransaction& Transaction) override;
 
+    /** 마스터 테이블과 슬롯 설정으로부터 무작위 상점 인벤토리를 생성합니다. */
+    UFUNCTION(BlueprintCallable, Category = "Shop|Generation")
+    FERNShopInventory GenerateRandomInventory(FName ShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs);
+
     // ===== 델리게이트 선언부 (Provider 구현체에는 필수) =====
     UPROPERTY(BlueprintAssignable, Category = "Shop")
     FOnShopDataReceived OnShopDataReceived;
@@ -50,9 +54,16 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category ="Shop")
     TSubclassOf<UERNDataTableShopProvider> DataTableProviderClass;
     
-    // 초기화 시 데이터 테이블을 파싱하여 캐싱해둘 맵 (상점 타입별로 인벤토리 분류)
+    /** 랜덤 시드 (0 = 완전 랜덤, 양수 = 시드 고정) — 디버깅용 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop Debug")
+    int32 DebugRandomSeed = 0;
+
+public:
+    // 상인 ID별로 생성된 인벤토리를 캐싱하는 맵
     UPROPERTY()
-    TMap<EShopType, FERNShopInventory> CachedShopData;
+    TMap<FName, FERNShopInventory> CachedShopData;
+
+protected:
     
     // 데이터가 캐싱되어 준비되었는지 여부 
     bool bIsDataCached = false;

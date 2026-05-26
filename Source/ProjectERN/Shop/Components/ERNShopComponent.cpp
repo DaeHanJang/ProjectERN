@@ -71,6 +71,19 @@ void UERNShopComponent::AcquireProvider()
 
 // ===== 공개 API =====
 
+void UERNShopComponent::OpenShopRandom(FName RequestShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, AActor* TargetNPC)
+{
+    CurrentShopID = RequestShopID;
+    CurrentShopType = ShopType;
+    CurrentTargetNPC = TargetNPC;
+    bIsShopOpen = true;
+
+    UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] 마스터 테이블 기반 상점 열기: %s (Authority: %s)"),
+        *RequestShopID.ToString(), GetOwner()->HasAuthority() ? TEXT("Server") : TEXT("Client"));
+
+    Server_OpenShopRandom(RequestShopID, ShopType, SlotConfigs, TargetNPC);
+}
+
 void UERNShopComponent::OpenShop(EShopType ShopType, AActor* TargetNPC)
 {
     CurrentShopType = ShopType;
@@ -107,6 +120,34 @@ TArray<FERNShopItemData> UERNShopComponent::GetCurrentShopItems() const
 }
 
 // ===== Server RPC =====
+
+void UERNShopComponent::Server_OpenShopRandom_Implementation(FName RequestShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, AActor* TargetNPC)
+{
+    CurrentShopID = RequestShopID;
+    CurrentShopType = ShopType;
+    CurrentTargetNPC = TargetNPC;
+    bIsShopOpen = true;
+
+    if (DataProvider)
+    {
+        if (UERNDataTableShopProvider* DTProvider = Cast<UERNDataTableShopProvider>(Cast<UObject>(DataProvider)))
+        {
+            FERNShopInventory InventoryData;
+
+            if (DTProvider->CachedShopData.Contains(RequestShopID))
+            {
+                InventoryData = DTProvider->CachedShopData[RequestShopID];
+            }
+            else
+            {
+                InventoryData = DTProvider->GenerateRandomInventory(RequestShopID, ShopType, SlotConfigs);
+                DTProvider->CachedShopData.Add(RequestShopID, InventoryData);
+            }
+
+            Client_ReceiveShopData(InventoryData);
+        }
+    }
+}
 
 void UERNShopComponent::Server_RequestShopData_Implementation(EShopType ShopType, AActor* TargetNPC)
 {
@@ -168,6 +209,7 @@ void UERNShopComponent::Server_RequestPurchase_Implementation(FGuid UniqueID, in
     if (DataProvider)
     {
         FERNShopTransaction ServerTx;
+        ServerTx.ShopID = CurrentShopID;
         ServerTx.ShopType = CurrentShopType; // 위임 패턴의 핵심: 현재 열린 상점 명시
         ServerTx.UniqueID = UniqueID;
         // ItemID는 식별만으로는 필요 없으나, 추가 처리를 위해 나중에 채울 수 있음

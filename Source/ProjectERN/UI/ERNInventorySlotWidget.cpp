@@ -25,6 +25,29 @@ FReply UERNInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeome
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
+FReply UERNInventorySlotWidget::NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		OnSlotDoubleClicked.Broadcast(SlotIndex);
+		return FReply::Handled();
+	}
+	
+	return Super::NativeOnMouseButtonDoubleClick(InGeometry, InMouseEvent);
+}
+
+void UERNInventorySlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
+	OnSlotHovered.Broadcast(SlotIndex);
+}
+
+void UERNInventorySlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseLeave(InMouseEvent);
+	OnSlotUnhovered.Broadcast(SlotIndex);
+}
+
 void UERNInventorySlotWidget::SetInventorySlotImage(UTexture2D* NewTexture) const
 {
 	if (NewTexture)
