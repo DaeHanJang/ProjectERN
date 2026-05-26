@@ -50,6 +50,13 @@ public:
 	
 	void RefreshStaticMarkers();
 	
+	void StartPlayerMarkerRefresh();
+	void StopPlayerMarkerRefresh();
+			
+	// PlayerController에서 호출. 플레이어 위치 마커는 타이머로 갱신
+	void RefreshPlayerMarkers();
+	float WorldYawToMapAngle(float WorldYaw) const;
+	
 public:
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UCanvasPanel> MarkerLayer;
@@ -79,9 +86,6 @@ public:
 	
 private:
 	void HandleTargetsChanged();
-	
-	void RefreshPlayerMarkers();
-	float WorldYawToMapAngle(float WorldYaw) const;
 
 private:
 	// 열기 애니메이션
@@ -93,6 +97,13 @@ private:
 	// 더티 플래그. 값이 변할 때 처리하는 기법. 주요 고정 목표에 사용
 	bool bStaticMarkersDirty = true;
 	
+	// 플레이어 위치 위젯
 	UPROPERTY()
 	TMap<APawn*, TObjectPtr<UMinimapPlayerMarkerWidget>> PlayerMarkerWidgets;
+	
+	// 틱 갱신 주기
+	UPROPERTY(EditAnywhere, Category="Minimap|Player Marker", meta=(ClampMin="0.01"), meta=(PrivateAcessAllow = "true"))
+	float PlayerMarkerRefreshInterval = 0.2f;
+	
+	FTimerHandle PlayerMarkerRefreshTimerHandle;
 };

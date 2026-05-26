@@ -735,6 +735,7 @@ void AERNPlayerController::MinimapOpen()
 		if (UERNMinimapWidget* ERNMinimapWidget = Cast<UERNMinimapWidget>(MinimapWidget))
 		{
 			ERNMinimapWidget->RefreshStaticMarkers();
+			ERNMinimapWidget->StartPlayerMarkerRefresh();
 			ERNMinimapWidget->PlayOpenAnimation();
 		}
 	}
@@ -757,6 +758,12 @@ void AERNPlayerController::MinimapClose()
 			UIManager->CloseActiveUI();
 		}
 
+		// 플레이어 마커 타이머 정리
+		if (UERNMinimapWidget* ERNMinimapWidget = Cast<UERNMinimapWidget>(MinimapWidget))
+		{
+			ERNMinimapWidget->StopPlayerMarkerRefresh();
+		}
+		
 		MinimapWidget->SetVisibility(ESlateVisibility::Collapsed);
 
 		FInputModeGameOnly InputMode;

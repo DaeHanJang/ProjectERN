@@ -36,7 +36,6 @@ void UERNMinimapWidget::NativeConstruct()
 	
 	SetVisibility(ESlateVisibility::Collapsed);
 	
-	
 	if (UERNMinimapSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UERNMinimapSubsystem>() : nullptr)
 	{
 		TargetsChangedHandle = Subsystem->OnTargetsChanged.AddUObject(
@@ -49,6 +48,8 @@ void UERNMinimapWidget::NativeConstruct()
 
 void UERNMinimapWidget::NativeDestruct()
 {
+	StopPlayerMarkerRefresh();
+	
 	if (TargetsChangedHandle.IsValid())
 	{
 		if (UERNMinimapSubsystem* Subsystem = GetWorld() ? GetWorld()->GetSubsystem<UERNMinimapSubsystem>() : nullptr)
@@ -134,7 +135,7 @@ FVector2D UERNMinimapWidget::WorldToMapPosition(const FVector& WorldLocation) co
 	const float NormalizedX = FMath::Clamp((WorldLocation.X - WorldMin.X) / WorldSize.X, 0.f, 1.f);
 	const float NormalizedY = FMath::Clamp((WorldLocation.Y - WorldMin.Y) / WorldSize.Y, 0.f, 1.f);
 	
-	return FVector2D(NormalizedX * MapSize.X, (1 - NormalizedY) * MapSize.Y);
+	return FVector2D(NormalizedX * MapSize.X, NormalizedY * MapSize.Y);
 }
 
 FVector UERNMinimapWidget::MapToWorldPosition(const FVector2D& MapPosition) const
@@ -150,7 +151,7 @@ FVector UERNMinimapWidget::MapToWorldPosition(const FVector2D& MapPosition) cons
 	const float NormalizedY = FMath::Clamp(MapPosition.Y / MapSize.Y, 0.f, 1.f);
 	
 	const float WorldX = WorldMin.X + NormalizedX * WorldSize.X;
-	const float WorldY = WorldMin.Y + (1.f - NormalizedY) * WorldSize.Y;
+	const float WorldY = WorldMin.Y + NormalizedY * WorldSize.Y;
 	
 	return FVector(WorldX, WorldY, 0.f);
 }
@@ -337,5 +338,29 @@ void UERNMinimapWidget::RefreshPlayerMarkers()
 
 float UERNMinimapWidget::WorldYawToMapAngle(float WorldYaw) const
 {
-	return 90.f - WorldYaw;
+	return FRotator::NormalizeAxis(-(90.f - WorldYaw + 180.f));
+}
+
+void UERNMinimapWidget::StartPlayerMarkerRefresh()
+{
+	RefreshPlayerMarkers();
+	
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+	
+	World->GetTimerManager().SetTimer(PlayerMarkerRefreshTimerHandle, this, &UERNMinimapWidget::RefreshPlayerMarkers, 
+									PlayerMarkerRefreshInterval, true);
+}
+
+void UERNMinimapWidget::StopPlayerMarkerRefresh()
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+	World->GetTimerManager().ClearTimer(PlayerMarkerRefreshTimerHandle);
 }
