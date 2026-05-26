@@ -95,6 +95,10 @@ protected:
     UFUNCTION()
     void OnUpgradeResultReceived(const FERNUpgradeTransaction& Transaction);
 
+    /** 인벤토리 변경(강화 후 데이터 동기화 완료 시점) 콜백 */
+    UFUNCTION()
+    void OnInventorySlotChanged(const FInventoryItemEntry& Entry);
+
     // 성공 이벤트를 블루프린트에서 연출하기 위함
     UFUNCTION(BlueprintImplementableEvent, Category = "Upgrade UI")
     void BP_OnUpgradeSuccess();

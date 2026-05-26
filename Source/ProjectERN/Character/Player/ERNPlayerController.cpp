@@ -669,13 +669,20 @@ void AERNPlayerController::Server_SendChat_Implementation(const FString& Message
 	// 길이 제한 200자
 	const FString TrimmedMessage = Message.Left(200);
 
-	// 닉네임 결정
+	// 닉네임 + 색상 결정 (PlayerId 기반 팔레트 인덱싱)
 	FString Sender = TEXT("Player");
+	FLinearColor SenderColor = FLinearColor::White;
 	if (AERNPlayerState* PS = GetPlayerState<AERNPlayerState>())
 	{
 		if (!PS->PlayerNickname.IsEmpty())
 		{
 			Sender = PS->PlayerNickname;
+		}
+
+		if (ChatColorPalette.Num() > 0)
+		{
+			const int32 Index = FMath::Abs(PS->GetPlayerId()) % ChatColorPalette.Num();
+			SenderColor = ChatColorPalette[Index];
 		}
 	}
 
@@ -687,13 +694,13 @@ void AERNPlayerController::Server_SendChat_Implementation(const FString& Message
 	{
 		if (AERNPlayerController* TargetPC = Cast<AERNPlayerController>(It->Get()))
 		{
-			TargetPC->Client_ReceiveChat(Sender, TrimmedMessage);
+			TargetPC->Client_ReceiveChat(Sender, TrimmedMessage, SenderColor);
 		}
 	}
 }
 
-void AERNPlayerController::Client_ReceiveChat_Implementation(const FString& Sender, const FString& Message)
+void AERNPlayerController::Client_ReceiveChat_Implementation(const FString& Sender, const FString& Message, FLinearColor SenderColor)
 {
 	// BP가 ChatWidget의 AddMessage 노드 호출 (최대 20개)
-	OnReceiveChatMessage(Sender, Message);
+	OnReceiveChatMessage(Sender, Message, SenderColor);
 }

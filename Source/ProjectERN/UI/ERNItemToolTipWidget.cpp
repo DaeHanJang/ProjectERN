@@ -112,10 +112,32 @@ void UERNItemToolTipWidget::UpdateTooltip(FName ItemID, int32 ItemPrice)
 				}
 			}
 			
-			// 차후 추가될 가격 정보 등 연동 (당장은 아이콘과 이름만 필수 요구됨)
+			// 가격 정보 연동 (0원이면 인벤토리 등 가격이 필요 없는 상황으로 간주하고 UI 숨김 처리)
 			if (PriceText)
 			{
-				PriceText->SetText(FText::AsNumber(ItemPrice));
+				if (ItemPrice > 0)
+				{
+					PriceText->SetText(FText::AsNumber(ItemPrice));
+					if (UPanelWidget* ParentPanel = PriceText->GetParent())
+					{
+						ParentPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+					}
+					else
+					{
+						PriceText->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+					}
+				}
+				else
+				{
+					if (UPanelWidget* ParentPanel = PriceText->GetParent())
+					{
+						ParentPanel->SetVisibility(ESlateVisibility::Collapsed);
+					}
+					else
+					{
+						PriceText->SetVisibility(ESlateVisibility::Collapsed);
+					}
+				}
 			}
 		}
 	}

@@ -28,6 +28,12 @@ void UERNUpgradeMainWidget::NativeConstruct()
     {
         UpgradeCompRef->OnUpgradeResult.AddDynamic(this, &UERNUpgradeMainWidget::OnUpgradeResultReceived);
     }
+    
+    // 인벤토리 동기화 완료 이벤트 바인딩
+    if (InventoryRef)
+    {
+        InventoryRef->OnInventorySlotChanged.AddDynamic(this, &UERNUpgradeMainWidget::OnInventorySlotChanged);
+    }
 
     // 강화 실행 버튼 바인딩
     if (UpgradeButton)
@@ -47,6 +53,12 @@ void UERNUpgradeMainWidget::NativeDestruct()
     {
         UpgradeCompRef->OnUpgradeResult.RemoveDynamic(this, &UERNUpgradeMainWidget::OnUpgradeResultReceived);
     }
+    
+    if (InventoryRef)
+    {
+        InventoryRef->OnInventorySlotChanged.RemoveDynamic(this, &UERNUpgradeMainWidget::OnInventorySlotChanged);
+    }
+    
     Super::NativeDestruct();
 }
 
@@ -236,13 +248,17 @@ void UERNUpgradeMainWidget::OnUpgradeConfirmed()
 
 void UERNUpgradeMainWidget::OnUpgradeResultReceived(const FERNUpgradeTransaction& Transaction)
 {
-    // 성공 시: 슬롯 목록 갱신 + 미리보기 갱신
+    // 성공 시 이벤트 연출만 처리, 슬롯 갱신은 OnInventorySlotChanged가 담당하여 최신 데이터 적용
     if (Transaction.Result == EUpgradeResult::Success)
     {
-        PopulateInventorySlots();
-        // 강화 완료 연출 (블루프린트 이벤트 호출)
         BP_OnUpgradeSuccess();
     }
 
     // TODO: 결과에 따른 토스트 메시지 표시
+}
+
+void UERNUpgradeMainWidget::OnInventorySlotChanged(const FInventoryItemEntry& Entry)
+{
+    // 인벤토리가 갱신(강화, 획득 등)되면 그제서야 UI 슬롯 목록을 갱신 (리플리케이션 지연으로 인한 낡은 데이터 표시 방지)
+    PopulateInventorySlots();
 }

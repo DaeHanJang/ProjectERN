@@ -15,77 +15,176 @@ UERNDataTableShopProvider::UERNDataTableShopProvider()
 void UERNDataTableShopProvider::Initialize_Implementation(UObject* Owner)
 {
     OwnerObject = Owner;
-    
+    bIsDataCached = true;
+    UE_LOG(LogShopProvider, Log, TEXT("[DataTableProvider] 초기화 완료 (단일 마스터 테이블 방식 랜덤 생성 모드 대기)"));
+}
+
+FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs)
+{
+    FERNShopInventory NewInventory;
+    NewInventory.ShopID = ShopID;
+    NewInventory.ShopType = ShopType;
+
     if (!ShopProductTable)
     {
-        UE_LOG(LogShopProvider, Error, TEXT("[DataTableProvider] ShopProductTable이 할당되지 않아 캐싱을 진행할 수 없습니다!"));
-        return;
+        UE_LOG(LogShopProvider, Warning, TEXT("GenerateRandomInventory: 마스터 테이블(ShopProductTable)이 할당되지 않았습니다."));
+        return NewInventory;
     }
-    
-    // 상점 상품 데이터 테이블의 모든 Row 가져오기
-    TArray<FERNShopProductTable*> AllProducts;
-    ShopProductTable->GetAllRows<FERNShopProductTable>(TEXT("ShopProviderCache"), AllProducts);
-    
-    // Row를 순회하며 상점 타입별로 아이템 캐싱
-    for (FERNShopProductTable* ProductData : AllProducts)
+
+    TArray<FERNShopProductTable*> AllEntries;
+    ShopProductTable->GetAllRows<FERNShopProductTable>(TEXT("GenerateRandomInventory"), AllEntries);
+
+    FRandomStream RandStream;
+    if (DebugRandomSeed > 0) RandStream.Initialize(DebugRandomSeed);
+    else RandStream.GenerateNewSeed();
+
+    UItemManagerSubsystem* ItemMgr = nullptr;
+    if (OwnerObject && OwnerObject->GetWorld())
     {
-        if (!ProductData || ProductData->ShopType == EShopType::None) continue;
-        
-        UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider] ★ 캐싱 상품: %s (상점: %d)"), *ProductData->ItemID.ToString(), (int32)ProductData->ShopType);
-
-        // 해당 상점 타입의 인벤토리가 맵에 없을 경우 새로 생성
-        if (!CachedShopData.Contains(ProductData->ShopType))
+        if (UGameInstance* GI = OwnerObject->GetWorld()->GetGameInstance())
         {
-            FERNShopInventory NewInventory;
-            NewInventory.ShopType = ProductData->ShopType;
-            CachedShopData.Add(ProductData->ShopType, NewInventory);
+            ItemMgr = GI->GetSubsystem<UItemManagerSubsystem>();
         }
-        
-        // 상점 아이템 데이터 구성
-        FERNShopItemData ShopItem;
-        ShopItem.ItemID = ProductData->ItemID;
-        ShopItem.UniqueID = FGuid::NewGuid(); // 고유 ID 부여
-        ShopItem.Price = ProductData->Price;
-        ShopItem.StockCount = ProductData->MaxStock;
-        ShopItem.bIsAvailable = (ShopItem.StockCount != 0); // 재고가 0이면 구매 불가
-
-        // 캐싱 맵의 해당 상점 타입 인벤토리에 아이템 추가
-        CachedShopData[ProductData->ShopType].Items.Add(ShopItem);
     }
 
-    bIsDataCached = true;
-    UE_LOG(LogShopProvider, Log, TEXT("[DataTableProvider] 초기화 및 상점 테이블 캐싱 완료. 총 %d종류의 상점 인벤토리가 준비되었습니다."), CachedShopData.Num());
+    for (const FERNShopSlotConfig& Config : SlotConfigs)
+    {
+        TArray<FERNShopProductTable> Candidates;
+        for (FERNShopProductTable* Entry : AllEntries)
+        {
+            if (Entry && Entry->ShopType == ShopType)
+            {
+                EItemType ActualItemType = EItemType::None;
+                if (ItemMgr)
+                {
+                    if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(Entry->ItemID))
+                    {
+                        ActualItemType = ItemRow->ItemType;
+                    }
+                }
+
+                if (ActualItemType == Config.Category)
+                {
+                    Candidates.Add(*Entry);
+                }
+            }
+        }
+
+        int32 SelectedCount = 0;
+
+        for (auto It = Candidates.CreateIterator(); It; ++It)
+        {
+            if (It->bGuaranteed && SelectedCount < Config.SlotCount)
+            {
+                FERNShopItemData ItemData;
+                ItemData.ItemID = It->ItemID;
+                ItemData.ItemCategory = Config.Category;
+                ItemData.StockCount = It->MaxStock;
+                
+                int32 ActualBuyPrice = 0;
+                if (ItemMgr)
+                {
+                    if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(ItemData.ItemID))
+                    {
+                        for (const FItemShopPrice& ShopPrice : ItemRow->ShopPrices)
+                        {
+                            if (ShopPrice.ShopType == ShopType)
+                            {
+                                ActualBuyPrice = ShopPrice.BuyPrice;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                ItemData.Price = ActualBuyPrice;
+                ItemData.bIsAvailable = (ItemData.StockCount != 0);
+                ItemData.UniqueID = FGuid::NewGuid();
+
+                NewInventory.Items.Add(ItemData);
+                It.RemoveCurrent();
+                SelectedCount++;
+            }
+        }
+
+        while (SelectedCount < Config.SlotCount && Candidates.Num() > 0)
+        {
+            float TotalWeight = 0.f;
+            for (const auto& C : Candidates) TotalWeight += C.SpawnWeight;
+
+            if (TotalWeight <= 0.f) break;
+
+            float RandomValue = RandStream.FRandRange(0.f, TotalWeight);
+            float Accumulated = 0.f;
+
+            for (int32 i = 0; i < Candidates.Num(); ++i)
+            {
+                Accumulated += Candidates[i].SpawnWeight;
+                if (RandomValue <= Accumulated)
+                {
+                    FERNShopItemData ItemData;
+                    ItemData.ItemID = Candidates[i].ItemID;
+                    ItemData.ItemCategory = Config.Category;
+                    ItemData.StockCount = Candidates[i].MaxStock;
+                    
+                    int32 ActualBuyPrice = 0;
+                    if (ItemMgr)
+                    {
+                        if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(ItemData.ItemID))
+                        {
+                            for (const FItemShopPrice& ShopPrice : ItemRow->ShopPrices)
+                            {
+                                if (ShopPrice.ShopType == ShopType)
+                                {
+                                    ActualBuyPrice = ShopPrice.BuyPrice;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    ItemData.Price = ActualBuyPrice;
+                    ItemData.bIsAvailable = (ItemData.StockCount != 0);
+                    ItemData.UniqueID = FGuid::NewGuid();
+
+                    NewInventory.Items.Add(ItemData);
+                    Candidates.RemoveAt(i);
+                    SelectedCount++;
+                    break;
+                }
+            }
+        }
+    }
+
+    // 섞인 순서로 추가된 아이템들을 카테고리(EItemType) 우선순위에 따라 정렬 (장비 -> 소모품 순)
+    NewInventory.Items.Sort([](const FERNShopItemData& A, const FERNShopItemData& B)
+    {
+        return A.ItemCategory < B.ItemCategory;
+    });
+
+    UE_LOG(LogShopProvider, Warning, TEXT("====================================="));
+    UE_LOG(LogShopProvider, Warning, TEXT("[%s] 랜덤 생성 완료. 총 %d개 아이템 생성됨. (아래는 최종 정렬 결과)"), *ShopID.ToString(), NewInventory.Items.Num());
+    
+    for (int32 i = 0; i < NewInventory.Items.Num(); ++i)
+    {
+        const FERNShopItemData& Item = NewInventory.Items[i];
+        FString CategoryStr = (Item.ItemCategory == EItemType::Equipable) ? TEXT("장비(Equipable)") : 
+                              (Item.ItemCategory == EItemType::Consumable) ? TEXT("소모품(Consumable)") : TEXT("기타");
+
+        UE_LOG(LogShopProvider, Warning, TEXT("  -> [%d] ItemID: %s | 분류: %s"), i, *Item.ItemID.ToString(), *CategoryStr);
+    }
+    UE_LOG(LogShopProvider, Warning, TEXT("====================================="));
+
+    return NewInventory;
 }
 
 void UERNDataTableShopProvider::RequestShopData_Implementation(EShopType ShopType)
 {
-    // 캐싱된 맵에 해당 상점 타입의 데이터가 있는지 확인
-    if (bIsDataCached && CachedShopData.Contains(ShopType))
-    {
-        // 캐싱된 데이터를 찾아 즉시 UI로 전달
-        const FERNShopInventory& CachedInventory = CachedShopData[ShopType];
-        
-        UE_LOG(LogShopProvider, Log, TEXT("[DataTableProvider] 상점 타입 [%d] 에 대한 캐싱 데이터 %d개 로드 및 전달 완료!"), 
-            (int32)ShopType, CachedInventory.Items.Num());
-
-        OnShopDataReceived.Broadcast(CachedInventory);
-    }
-    else
-    {
-        UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider] 상점 타입 [%d] 에 대한 캐싱 데이터를 찾을 수 없습니다. (빈 인벤토리 전달)"), (int32)ShopType);
-        UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider Debug] bIsDataCached = %s, CachedShopData.Num() = %d"), 
-            bIsDataCached ? TEXT("True") : TEXT("False"), CachedShopData.Num());
-        
-        for (auto& Pair : CachedShopData)
-        {
-            UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider Debug] 발견된 캐시 상점 타입: %d"), (int32)Pair.Key);
-        }
-        
-        // 데이터가 없으면 빈 인벤토리로 반환
-        FERNShopInventory EmptyInventory;
-        EmptyInventory.ShopType = ShopType;
-        OnShopDataReceived.Broadcast(EmptyInventory);
-    }
+    // [리팩토링 페이즈 2] 
+    // 인터페이스가 ShopType만 받으므로 여기서는 처리 불가능합니다. (페이즈 4에서 Component가 우회하여 접근 예정)
+    FERNShopInventory EmptyInventory;
+    EmptyInventory.ShopType = ShopType;
+    OnShopDataReceived.Broadcast(EmptyInventory);
 }
 
 void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransaction Transaction)
@@ -100,9 +199,9 @@ void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransacti
     }
 
     // 1. 아이템 검색 및 가격/재고 검증
-    if (bIsDataCached && CachedShopData.Contains(Transaction.ShopType))
+    if (bIsDataCached && CachedShopData.Contains(Transaction.ShopID))
     {
-        FERNShopInventory& Inventory = CachedShopData[Transaction.ShopType];
+        FERNShopInventory& Inventory = CachedShopData[Transaction.ShopID];
         FERNShopItemData* TargetItem = nullptr;
 
         for (FERNShopItemData& Item : Inventory.Items)
@@ -222,11 +321,8 @@ void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransacti
 
 FERNShopInventory UERNDataTableShopProvider::GetCachedShopData_Implementation(EShopType ShopType)
 {
-    if (bIsDataCached && CachedShopData.Contains(ShopType))
-    {
-        return CachedShopData[ShopType];
-    }
-    // 찾지 못경우 빈 인벤토리 반환
+    // 페이즈 4 통합 전까지는 인터페이스 호환을 위해 빈 인벤토리를 반환합니다. 
+    // 실제 캐시 접근은 ShopID 기반으로 직접(Casting) 이루어집니다.
     return FERNShopInventory();
 }
 

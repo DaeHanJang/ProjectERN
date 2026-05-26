@@ -39,6 +39,12 @@ AERNShopActor::AERNShopActor()
 void AERNShopActor::BeginPlay()
 {
     Super::BeginPlay();
+
+    // 하이브리드 ID 방식: 개발자가 명시적으로 ShopID를 지정하지 않았다면, 액터의 고유 인스턴스 이름을 사용
+    if (ShopID.IsNone())
+    {
+        ShopID = GetFName();
+    }
 }
 
 // ===== IInteractable 구현 =====
@@ -128,7 +134,7 @@ void AERNShopActor::Interact_Implementation(APlayerController* PlayerController)
 
     // 상점 열기 (자신을 TargetNPC로 전달하여 위임 패턴에 사용)
     UE_LOG(LogShopProvider, Log, TEXT("[ShopActor] 상점 열기 요청: %s"), *ShopDisplayName.ToString());
-    ShopComp->OpenShop(ShopType, this);
+    ShopComp->OpenShopRandom(ShopID, ShopType, SlotConfigs, this);
 }
 
 bool AERNShopActor::CanInteract_Implementation() const

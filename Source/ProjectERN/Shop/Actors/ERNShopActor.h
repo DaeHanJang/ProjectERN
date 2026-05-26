@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "Interfaces/IInteractable.h"
 #include "Inventory/Item/Data/ERNItemEnums.h"
+#include "Shop/Data/ERNShopTypes.h"
 #include "ERNShopActor.generated.h"
 
 class USphereComponent;
@@ -73,6 +74,14 @@ protected:
     UWidgetComponent* InteractionPromptWidget;
 
     // ===== 상점 설정 =====
+
+    /** 상인 고유 ID (예: "ForestMerchant_01") - 캐시 식별 및 무작위 저장용 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    FName ShopID;
+    
+    /** 진열할 아이템의 카테고리별 슬롯 갯수 구성표 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    TArray<FERNShopSlotConfig> SlotConfigs;
 
     /** 이 상점의 타입 (World, Boss 등) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")

@@ -204,6 +204,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "UI|Chat")
 	TArray<FString> HideChatWidgetMapNames;
 
+	// 채팅 송신자 색상 팔레트 (PlayerId % Num()로 인덱싱)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Chat")
+	TArray<FLinearColor> ChatColorPalette;
+
 	UPROPERTY(BlueprintReadOnly, Transient, Category = "UI|Chat")
 	UUserWidget* ChatWidget = nullptr;
 
@@ -211,13 +215,13 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "UI|Chat")
 	void Server_SendChat(const FString& Message);
 
-	// 서버가 각 클라에 채팅 전달
+	// 서버가 각 클라에 채팅 전달 (송신자 색 포함)
 	UFUNCTION(Client, Reliable)
-	void Client_ReceiveChat(const FString& Sender, const FString& Message);
+	void Client_ReceiveChat(const FString& Sender, const FString& Message, FLinearColor SenderColor);
 
-	// 채팅 수신 시 BP에서 위젯에 메시지 추가 (Sender + Message)
+	// 채팅 수신 시 BP에서 위젯에 메시지 추가 (Sender + Message + Color)
 	UFUNCTION(BlueprintImplementableEvent, Category = "UI|Chat")
-	void OnReceiveChatMessage(const FString& Sender, const FString& Message);
+	void OnReceiveChatMessage(const FString& Sender, const FString& Message, FLinearColor SenderColor);
 
 private:
 	// 보스 체력바 위젯 인스턴스
