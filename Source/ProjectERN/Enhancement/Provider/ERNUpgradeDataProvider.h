@@ -14,19 +14,22 @@ class UERNUpgradeDataProvider : public UInterface
 /**
  * 강화 Provider 인터페이스
  * 강화 경로 조회, 검증, 처리를 추상화합니다.
+ * 
+ * [리팩토링] 아이템 테이블(FERNItemTable)의 NextGradeItemID를 직접 참조하는 방식으로 전환.
+ *            기존 FERNUpgradePathTable 별도 캐시 방식은 제거되었습니다.
  */
 class IERNUpgradeDataProvider
 {
     GENERATED_BODY()
 
 public:
-    /** Provider 초기화 (경로 테이블 캐싱) */
+    /** Provider 초기화 */
     UFUNCTION(BlueprintNativeEvent, Category = "Upgrade")
     void Initialize(UObject* Owner);
 
-    /** 특정 아이템의 강화 경로 조회 (캐시에서) */
+    /** 특정 아이템의 강화 정보 조회 (아이템 테이블 NextGradeItemID 기반, 재료 수량은 1개 고정) */
     UFUNCTION(BlueprintNativeEvent, Category = "Upgrade")
-    bool GetUpgradePath(FName SourceItemID, FERNUpgradePathTable& OutPath);
+    bool GetUpgradeInfo(FName SourceItemID, FName& OutResultItemID, FName& OutMaterialID);
 
     /** 강화 트랜잭션 처리 (서버 측에서 호출) */
     UFUNCTION(BlueprintNativeEvent, Category = "Upgrade")

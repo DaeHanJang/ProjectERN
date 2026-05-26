@@ -90,7 +90,7 @@ FERNUpgradePreview UERNUpgradeComponent::GetUpgradePreview(int32 SlotIndex)
         Preview.SourceGrade = SourceRow->Grade;
 
         // DataAsset에서 스탯 + 아이콘 읽기
-        const UItemDataAssetBase* BaseAsset = ItemMgr->LoadItemDataAssetSync(SourceID, EItemAssetLoadFlags::None);
+        const UItemDataAssetBase* BaseAsset = ItemMgr->LoadItemDataAssetSync(SourceID, EItemAssetLoadFlags::UI);
         if (const UEquipableItemDataAsset* EquipAsset = Cast<UEquipableItemDataAsset>(BaseAsset))
         {
             Preview.SourceLightAttack = EquipAsset->LightAttackDamage;
@@ -102,60 +102,57 @@ FERNUpgradePreview UERNUpgradeComponent::GetUpgradePreview(int32 SlotIndex)
         }
     }
 
-    // 강화 경로 조회
-    if (DataProvider)
+    // 강화 경로 조회: 아이템 테이블의 NextGradeItemID 직접 참조
+    if (SourceRow && !SourceRow->NextGradeItemID.IsNone())
     {
-        FERNUpgradePathTable Path;
-        if (IERNUpgradeDataProvider::Execute_GetUpgradePath(Cast<UObject>(DataProvider), SourceID, Path))
+        Preview.ResultItemID = SourceRow->NextGradeItemID;
+        Preview.RequiredMaterialID = SourceRow->UpgradeMaterialID;
+
+        // 결과 아이템 데이터 조회
+        const FERNItemTable* ResultRow = ItemMgr->FindItemRow(SourceRow->NextGradeItemID);
+        if (ResultRow)
         {
-            Preview.ResultItemID = Path.ResultItemID;
-            Preview.RequiredMaterialID = Path.RequiredMaterialID;
-            Preview.RequiredMaterialCount = Path.RequiredMaterialCount;
+            Preview.ResultDisplayName = ResultRow->DisplayName;
+            Preview.ResultGrade = ResultRow->Grade;
 
-            // 결과 아이템 데이터 조회
-            const FERNItemTable* ResultRow = ItemMgr->FindItemRow(Path.ResultItemID);
-            if (ResultRow)
+            const UItemDataAssetBase* ResultBase = ItemMgr->LoadItemDataAssetSync(SourceRow->NextGradeItemID, EItemAssetLoadFlags::UI);
+            if (const UEquipableItemDataAsset* ResultEquip = Cast<UEquipableItemDataAsset>(ResultBase))
             {
-                Preview.ResultDisplayName = ResultRow->DisplayName;
-                Preview.ResultGrade = ResultRow->Grade;
-
-                const UItemDataAssetBase* ResultBase = ItemMgr->LoadItemDataAssetSync(Path.ResultItemID, EItemAssetLoadFlags::None);
-                if (const UEquipableItemDataAsset* ResultEquip = Cast<UEquipableItemDataAsset>(ResultBase))
-                {
-                    Preview.ResultLightAttack = ResultEquip->LightAttackDamage;
-                    Preview.ResultHeavyAttack = ResultEquip->HeavyAttackDamage;
-                }
-                if (ResultBase)
-                {
-                    Preview.ResultIcon = ResultBase->Icon;
-                }
+                Preview.ResultLightAttack = ResultEquip->LightAttackDamage;
+                Preview.ResultHeavyAttack = ResultEquip->HeavyAttackDamage;
             }
-
-            // 재료 데이터 조회 (이름 + 아이콘 + 등급)
-            const FERNItemTable* MatRow = ItemMgr->FindItemRow(Path.RequiredMaterialID);
-            if (MatRow)
+            if (ResultBase)
             {
-                Preview.MaterialDisplayName = MatRow->DisplayName;
-                Preview.MaterialGrade = MatRow->Grade;
-
-                const UItemDataAssetBase* MatAsset = ItemMgr->LoadItemDataAssetSync(Path.RequiredMaterialID, EItemAssetLoadFlags::None);
-                if (MatAsset)
-                {
-                    Preview.MaterialIcon = MatAsset->Icon;
-                }
+                Preview.ResultIcon = ResultBase->Icon;
             }
-
-            // 현재 재료 보유량 계산
-            for (const FInventoryItemEntry& Entry : Items)
-            {
-                if (Entry.GetItemID() == Path.RequiredMaterialID)
-                {
-                    Preview.CurrentMaterialCount += Entry.GetQuantity();
-                }
-            }
-
-            Preview.bCanUpgrade = (Preview.CurrentMaterialCount >= Path.RequiredMaterialCount);
         }
+
+        // 재료 데이터 조회 (이름 + 아이콘 + 등급)
+        const FERNItemTable* MatRow = ItemMgr->FindItemRow(SourceRow->UpgradeMaterialID);
+        if (MatRow)
+        {
+            Preview.MaterialDisplayName = MatRow->DisplayName;
+            Preview.MaterialGrade = MatRow->Grade;
+
+            const UItemDataAssetBase* MatAsset = ItemMgr->LoadItemDataAssetSync(SourceRow->UpgradeMaterialID, EItemAssetLoadFlags::UI);
+            if (MatAsset)
+            {
+                Preview.MaterialIcon = MatAsset->Icon;
+            }
+        }
+
+        // 현재 재료 보유량 합산
+        Preview.CurrentMaterialCount = 0;
+        for (const FInventoryItemEntry& Entry : Items)
+        {
+            if (Entry.GetItemID() == SourceRow->UpgradeMaterialID)
+            {
+                Preview.CurrentMaterialCount += Entry.GetQuantity();
+            }
+        }
+        
+        // 1개 이상 보유 시 강화 가능
+        Preview.bCanUpgrade = (Preview.CurrentMaterialCount >= 1);
     }
 
     return Preview;

@@ -23,6 +23,10 @@ public:
 
 	virtual void Init() override;
 
+	// Steam 모드 사용 여부 (false=LAN, true=Steam) - BP 메뉴 체크박스로 토글
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Network")
+	bool bUseSteam = false;
+
 	// 세션 생성 (Host)
 	UFUNCTION(BlueprintCallable, Category = "Network")
 	void HostSession(FString ServerName, int32 MaxPlayers = 3);
@@ -126,11 +130,19 @@ protected:
 	// 세션 파괴 완료 콜백
 	void OnDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 
+	// Steam Overlay에서 "Join Game" 클릭 시 호출 (친구 초대 수락)
+	void OnSessionUserInviteAccepted(
+		const bool bWasSuccessful,
+		const int32 ControllerId,
+		FUniqueNetIdPtr UserId,
+		const FOnlineSessionSearchResult& InviteResult);
+
 	// Delegate Handles
 	FDelegateHandle OnCreateSessionCompleteDelegateHandle;
 	FDelegateHandle OnFindSessionsCompleteDelegateHandle;
 	FDelegateHandle OnJoinSessionCompleteDelegateHandle;
 	FDelegateHandle OnDestroySessionCompleteDelegateHandle;
+	FDelegateHandle OnSessionUserInviteAcceptedDelegateHandle;
 
 	// 생성할 세션 정보 임시 저장
 	FString PendingServerName;

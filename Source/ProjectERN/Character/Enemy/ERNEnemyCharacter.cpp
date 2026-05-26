@@ -3,8 +3,12 @@
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "GAS/ERNAttributeSet.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Components/BoxComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "UI/ERNEnemyHealthBarWidget.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Character/Player/ERNPlayerController.h"
@@ -25,6 +29,16 @@ AERNEnemyCharacter::AERNEnemyCharacter()
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 200.0f, 0.0f);
+
+	// 모든 적의 Capsule/Mesh는 Camera 채널과 충돌하지 않도록 (카메라 SpringArm trace 등에 잡히지 않음)
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	}
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	}
 
 	// 머리 위 체력바 위젯 컴포넌트
 	HealthBarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarWidget"));
@@ -100,23 +114,39 @@ void AERNEnemyCharacter::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AA
 
 	HitActors.Add(OtherActor);
 
-	// 태그로 데미지/경직력 검색
+	// 태그로 데미지/경직력/사운드 검색
 	float DamageToApply = 10.f;
 	float StaggerPowerToApply = 10.f;
+	USoundBase* HitSoundToPlay = nullptr;
 	for (const FEnemyHitboxConfig& Config : HitboxConfigs)
 	{
 		if (OverlappedComp->ComponentHasTag(Config.Tag))
 		{
 			DamageToApply = Config.Damage;
 			StaggerPowerToApply = Config.StaggerPower;
+			HitSoundToPlay = Config.HitSound;
 			break;
 		}
 	}
 
 	FDamageEvent DamageEvent;
-	Player->TakeDamage(DamageToApply, DamageEvent, GetController(), this);
+	const float ActualDamage = Player->TakeDamage(DamageToApply, DamageEvent, GetController(), this);
 	// 적 본체 위치를 HitOrigin으로 전달 → 플레이어가 적 방향 기준 4방향 경직 재생
 	Player->TryApplyStagger(StaggerPowerToApply, GetActorLocation());
+
+	// 실제 데미지가 들어간 경우에만 히트 사운드 재생 (무적/구르기 등으로 TakeDamage가 0 반환 시 무음)
+	if (ActualDamage > 0.f && HitSoundToPlay)
+	{
+		Multicast_PlayHitSound(HitSoundToPlay, Player->GetActorLocation());
+	}
+}
+
+void AERNEnemyCharacter::Multicast_PlayHitSound_Implementation(USoundBase* Sound, FVector Location)
+{
+	if (Sound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, Sound, Location);
+	}
 }
 
 float AERNEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)

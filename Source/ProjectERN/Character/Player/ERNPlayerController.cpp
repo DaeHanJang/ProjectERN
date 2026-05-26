@@ -8,6 +8,7 @@
 #include "InputAction.h"
 #include "Blueprint/UserWidget.h"
 #include "ProjectERN.h"
+#include "ProjectERNCharacter.h"
 #include "Actors/Church.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Character/Player/ERNPlayerState.h"
@@ -19,6 +20,7 @@
 #include "UI/ERNBossHealthBarWidget.h"
 #include "Character/Enemy/ERNBossCharacter.h"
 #include "Camera/CameraShakeBase.h"
+#include "Components/PostProcessComponent.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -119,8 +121,32 @@ void AERNPlayerController::BeginPlay()
 				{
 					InteractableInventoryWidget->OnWidgetClosed.AddUniqueDynamic(this, &AERNPlayerController::InventoryClose);
 				}
-				InventoryWidget->AddToViewport();
+				InventoryWidget->AddToViewport(100);
 				RefreshInventoryWidget();
+			}
+		}
+	}
+
+	// 채팅 위젯 생성 (로컬 플레이어만)
+	if (IsLocalPlayerController() && ChatWidgetClass)
+	{
+		// 숨겨야 할 맵인지 확인 (메인 메뉴 등)
+		bool bShouldHide = false;
+		for (const FString& MapName : HideChatWidgetMapNames)
+		{
+			if (CurrentMapName.Contains(MapName))
+			{
+				bShouldHide = true;
+				break;
+			}
+		}
+
+		if (!bShouldHide)
+		{
+			ChatWidget = CreateWidget<UUserWidget>(this, ChatWidgetClass);
+			if (ChatWidget)
+			{
+				ChatWidget->AddToViewport(50);	// ZOrder: HUD 위, 메뉴 아래
 			}
 		}
 	}
@@ -513,7 +539,7 @@ void AERNPlayerController::Client_ShowBossHealthBar_Implementation(AERNBossChara
 		BossHealthBarWidget = CreateWidget<UERNBossHealthBarWidget>(this, BossHealthBarWidgetClass);
 		if (BossHealthBarWidget)
 		{
-			BossHealthBarWidget->AddToViewport(100); // 높은 ZOrder로 최상위 표시
+			BossHealthBarWidget->AddToViewport(50); // 높은 ZOrder로 최상위 표시
 		}
 	}
 
@@ -543,10 +569,131 @@ void AERNPlayerController::Client_HideBossHealthBar_Implementation()
 	}
 }
 
+//-------------------------NightRainZone 밤의비 자기장 --------------------------------//
+#pragma region NightRainZone
+//서버 : 상태 변화가 있을 때만 RPC 전송
+void AERNPlayerController::UpdateNightRainPostProcessState_ServerOnly(bool bShouldEnable)
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	if (bServerNightRainPostProcessEnabled == bShouldEnable)
+	{
+		return;
+	}
+	
+	bServerNightRainPostProcessEnabled = bShouldEnable;
+	Client_SetNightRainZonePostProcessEnabled(bShouldEnable);
+}
+
+// 클라이언트 : 자기 로컬 화면만 변경
+void AERNPlayerController::Client_SetNightRainZonePostProcessEnabled_Implementation(bool bEnabled)
+{
+	if (IsLocalPlayerController() == false)
+	{
+		return;
+	}
+	
+	if (bLocalNightRainPostProcessEnabled == bEnabled)
+	{
+		return;
+	}
+	
+	bLocalNightRainPostProcessEnabled = bEnabled;
+	SetNightRainZonePostProcessEnabled_Local(bEnabled);
+}
+
+// BlendWeight 값만 변경해서 가시성 On/Off
+void AERNPlayerController::SetNightRainZonePostProcessEnabled_Local(bool bEnabled)
+{
+	TargetNightRainPostProcessBlendWeight = bEnabled ? 1.f : 0.f;
+	
+	GetWorldTimerManager().SetTimer(NightRainPostProcessBlendTimerHandle,
+										this,
+										&AERNPlayerController::TickNightRainZonePostProcessBlend,
+										0.016f,
+										true);
+}
+
+void AERNPlayerController::TickNightRainZonePostProcessBlend()
+{
+	if (GetWorld() == nullptr)
+	{
+		return;
+	}
+	
+	CurrentNightRainPostProcessBlendWeight = FMath::FInterpTo(CurrentNightRainPostProcessBlendWeight, TargetNightRainPostProcessBlendWeight, GetWorld()->GetDeltaSeconds(), NightRainPostProcessInterpSpeed);
+	
+	SetNightRainPostProcessBlendWeight_Local(CurrentNightRainPostProcessBlendWeight);
+	
+	if (FMath::IsNearlyEqual(CurrentNightRainPostProcessBlendWeight, TargetNightRainPostProcessBlendWeight, 0.01f))
+	{
+		CurrentNightRainPostProcessBlendWeight = TargetNightRainPostProcessBlendWeight;
+		SetNightRainPostProcessBlendWeight_Local(CurrentNightRainPostProcessBlendWeight);
+		
+		GetWorldTimerManager().ClearTimer(NightRainPostProcessBlendTimerHandle);
+	}
+}
+
+UPostProcessComponent* AERNPlayerController::FindNightRainPostProcessComponent() const
+{
+	const AProjectERNCharacter* ERNCharacter = Cast<AProjectERNCharacter>(GetPawn());
+	return ERNCharacter ? ERNCharacter->GetNightRainPostProcessComponent() : nullptr;
+}
+
+void AERNPlayerController::SetNightRainPostProcessBlendWeight_Local(float BlendWeight)
+{
+	if (UPostProcessComponent* PostProcessComponent = FindNightRainPostProcessComponent())
+	{
+		PostProcessComponent->BlendWeight = BlendWeight;
+	}
+}
+#pragma endregion
+//------------------------- NightRain --------------------------------//
 void AERNPlayerController::Client_CompleteChurchInteraction_Implementation(AChurch* Church, FVector EffectLocation)
 {
 	if (Church)
 	{
 		Church->CompleteInteractionLocally(EffectLocation);
 	}
+}
+
+// ===== 채팅 시스템 =====
+
+void AERNPlayerController::Server_SendChat_Implementation(const FString& Message)
+{
+	if (Message.IsEmpty()) return;
+
+	// 길이 제한 200자
+	const FString TrimmedMessage = Message.Left(200);
+
+	// 닉네임 결정
+	FString Sender = TEXT("Player");
+	if (AERNPlayerState* PS = GetPlayerState<AERNPlayerState>())
+	{
+		if (!PS->PlayerNickname.IsEmpty())
+		{
+			Sender = PS->PlayerNickname;
+		}
+	}
+
+	// 모든 PlayerController에 Client RPC 전송
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AERNPlayerController* TargetPC = Cast<AERNPlayerController>(It->Get()))
+		{
+			TargetPC->Client_ReceiveChat(Sender, TrimmedMessage);
+		}
+	}
+}
+
+void AERNPlayerController::Client_ReceiveChat_Implementation(const FString& Sender, const FString& Message)
+{
+	// BP가 ChatWidget의 AddMessage 노드 호출 (최대 20개)
+	OnReceiveChatMessage(Sender, Message);
 }

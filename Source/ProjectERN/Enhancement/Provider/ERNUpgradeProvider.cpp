@@ -14,41 +14,46 @@ void UERNUpgradeProvider::Initialize_Implementation(UObject* Owner)
 {
     OwnerObject = Owner;
 
-    if (!UpgradePathTable)
+    // ItemManagerSubsystem 캐시 (아이템 테이블 직접 조회용)
+    if (UWorld* World = Owner ? Owner->GetWorld() : nullptr)
     {
-        UE_LOG(LogUpgrade, Error, TEXT("[UpgradeProvider] UpgradePathTable이 할당되지 않았습니다!"));
+        if (UGameInstance* GI = World->GetGameInstance())
+        {
+            CachedItemMgr = GI->GetSubsystem<UItemManagerSubsystem>();
+        }
+    }
+
+    if (!CachedItemMgr)
+    {
+        UE_LOG(LogUpgrade, Error, TEXT("[UpgradeProvider] ItemManagerSubsystem 획득 실패!"));
         return;
     }
 
-    // 테이블의 모든 Row를 순회하여 SourceItemID 기준으로 캐싱
-    TArray<FERNUpgradePathTable*> AllPaths;
-    UpgradePathTable->GetAllRows<FERNUpgradePathTable>(TEXT("UpgradeProviderCache"), AllPaths);
-
-    for (FERNUpgradePathTable* PathData : AllPaths)
-    {
-        if (!PathData || PathData->SourceItemID.IsNone()) continue;
-
-        CachedPaths.Add(PathData->SourceItemID, *PathData);
-
-        UE_LOG(LogUpgrade, Log, TEXT("[UpgradeProvider] 캐싱: %s → %s (재료: %s x%d)"),
-            *PathData->SourceItemID.ToString(),
-            *PathData->ResultItemID.ToString(),
-            *PathData->RequiredMaterialID.ToString(),
-            PathData->RequiredMaterialCount);
-    }
-
-    bIsDataCached = true;
-    UE_LOG(LogUpgrade, Log, TEXT("[UpgradeProvider] 초기화 완료. %d개의 강화 경로 캐싱됨."), CachedPaths.Num());
+    UE_LOG(LogUpgrade, Log, TEXT("[UpgradeProvider] 초기화 완료. 아이템 테이블 NextGradeItemID 기반 조회 방식 사용."));
 }
 
-bool UERNUpgradeProvider::GetUpgradePath_Implementation(FName SourceItemID, FERNUpgradePathTable& OutPath)
+bool UERNUpgradeProvider::GetUpgradeInfo_Implementation(FName SourceItemID, FName& OutResultItemID, FName& OutMaterialID)
 {
-    if (FERNUpgradePathTable* Found = CachedPaths.Find(SourceItemID))
+    if (!CachedItemMgr)
     {
-        OutPath = *Found;
-        return true;
+        UE_LOG(LogUpgrade, Warning, TEXT("[UpgradeProvider] ItemManagerSubsystem이 없습니다."));
+        return false;
     }
-    return false;
+
+    const FERNItemTable* SourceRow = CachedItemMgr->FindItemRow(SourceItemID);
+    if (!SourceRow || SourceRow->NextGradeItemID.IsNone())
+    {
+        return false;  // 강화 경로 없음 (최종 등급 또는 월드 획득)
+    }
+
+    OutResultItemID = SourceRow->NextGradeItemID;
+    OutMaterialID   = SourceRow->UpgradeMaterialID;
+
+    UE_LOG(LogUpgrade, Log, TEXT("[UpgradeProvider] 강화 경로 조회: %s → %s (재료: %s x1)"),
+        *SourceItemID.ToString(), *OutResultItemID.ToString(),
+        *OutMaterialID.ToString());
+
+    return true;
 }
 
 void UERNUpgradeProvider::ProcessUpgrade_Implementation(FERNUpgradeTransaction Transaction, ACharacter* PlayerChar)
@@ -61,18 +66,18 @@ void UERNUpgradeProvider::ProcessUpgrade_Implementation(FERNUpgradeTransaction T
         return;
     }
 
-    // 1. 강화 경로 검증
-    FERNUpgradePathTable Path;
-    if (!GetUpgradePath_Implementation(Transaction.SourceItemID, Path))
+    // 1. 아이템 테이블에서 강화 경로 직접 조회
+    FName ResultItemID, MaterialID;
+
+    if (!GetUpgradeInfo_Implementation(Transaction.SourceItemID, ResultItemID, MaterialID))
     {
         Transaction.Result = EUpgradeResult::NoUpgradePath;
         OnUpgradeComplete.Broadcast(Transaction);
         return;
     }
 
-    Transaction.ResultItemID = Path.ResultItemID;
-    Transaction.MaterialItemID = Path.RequiredMaterialID;
-    Transaction.MaterialCost = Path.RequiredMaterialCount;
+    Transaction.ResultItemID = ResultItemID;
+    Transaction.MaterialItemID = MaterialID;
 
     // 2. 인벤토리 컴포넌트 획득
     UERNInventoryComponent* InvComp = ERNChar->GetInventoryComponent();
@@ -83,55 +88,49 @@ void UERNUpgradeProvider::ProcessUpgrade_Implementation(FERNUpgradeTransaction T
         return;
     }
 
-    // 3. 재료(단석) 보유량 확인
-    // 인벤토리에서 RequiredMaterialID를 가진 슬롯 검색 및 수량 합산
+    // 3. 재료(단석) 보유 확인 (1개 이상 필요)
     const TArray<FInventoryItemEntry>& Items = InvComp->GetInventory().GetItems();
     int32 MaterialSlotIndex = INDEX_NONE;
-    int32 TotalMaterialCount = 0;
 
     for (int32 i = 0; i < Items.Num(); ++i)
     {
-        if (Items[i].GetItemID() == Path.RequiredMaterialID)
+        if (Items[i].GetItemID() == MaterialID && Items[i].GetQuantity() >= 1)
         {
-            TotalMaterialCount += Items[i].GetQuantity();
-            if (MaterialSlotIndex == INDEX_NONE)
-            {
-                MaterialSlotIndex = i;
-            }
+            MaterialSlotIndex = i;
+            break;
         }
     }
 
-    if (TotalMaterialCount < Path.RequiredMaterialCount)
+    if (MaterialSlotIndex == INDEX_NONE)
     {
         Transaction.Result = EUpgradeResult::MaterialInsufficient;
         OnUpgradeComplete.Broadcast(Transaction);
         return;
     }
 
-    // 4. 재료 차감
+    // 4. 재료 1개 차감
     FItemRuntimeState DropState;
     FInventoryItemEntry ChangedMaterialEntry;
-    InvComp->GetInventory().RemoveItem(MaterialSlotIndex, Path.RequiredMaterialCount, DropState, ChangedMaterialEntry);
+    InvComp->GetInventory().RemoveItem(MaterialSlotIndex, 1, DropState, ChangedMaterialEntry);
     InvComp->OnInventorySlotChanged.Broadcast(ChangedMaterialEntry);
 
     // 5. 무기 교체 (ChangeItem 활용)
     FItemRuntimeState NewWeaponState;
-    NewWeaponState.SetItemID(Path.ResultItemID);
+    NewWeaponState.SetItemID(ResultItemID);
     NewWeaponState.SetQuantity(1);
 
     FItemRuntimeState OldState = InvComp->GetInventory().ChangeItem(Transaction.SlotIndex, NewWeaponState);
 
     if (!OldState.IsValid())
     {
-        // 롤백: 재료 복구
+        // 롤백: 재료 1개 복구
         FItemRuntimeState RestoreMaterial;
-        RestoreMaterial.SetItemID(Path.RequiredMaterialID);
-        RestoreMaterial.SetQuantity(Path.RequiredMaterialCount);
+        RestoreMaterial.SetItemID(MaterialID);
+        RestoreMaterial.SetQuantity(1);
 
         TArray<FInventoryItemEntry> RestoredEntries;
-        UItemManagerSubsystem* ItemMgr = GetWorld()->GetGameInstance()->GetSubsystem<UItemManagerSubsystem>();
-        int32 MaxStack = ItemMgr ? ItemMgr->FindItemRow(Path.RequiredMaterialID)->MaxStackSize : 99;
-        InvComp->GetInventory().AddItem(RestoreMaterial, InvComp->GetMaxStackSize(), MaxStack, RestoredEntries);
+        int32 MaxStack = CachedItemMgr ? CachedItemMgr->FindItemRow(MaterialID)->MaxStackSize : 99;
+        InvComp->GetInventory().AddItem(RestoreMaterial, InvComp->GetMaxSlotSize(), MaxStack, RestoredEntries);
 
         Transaction.Result = EUpgradeResult::InventoryError;
         OnUpgradeComplete.Broadcast(Transaction);
@@ -149,11 +148,12 @@ void UERNUpgradeProvider::ProcessUpgrade_Implementation(FERNUpgradeTransaction T
     Transaction.Result = EUpgradeResult::Success;
     OnUpgradeComplete.Broadcast(Transaction);
 
-    UE_LOG(LogUpgrade, Log, TEXT("[UpgradeProvider] 강화 성공: %s → %s"),
-        *Transaction.SourceItemID.ToString(), *Transaction.ResultItemID.ToString());
+    UE_LOG(LogUpgrade, Log, TEXT("[UpgradeProvider] 강화 성공: %s → %s (재료 %s x1 소모)"),
+        *Transaction.SourceItemID.ToString(), *Transaction.ResultItemID.ToString(),
+        *MaterialID.ToString());
 }
 
 bool UERNUpgradeProvider::IsDataReady_Implementation()
 {
-    return bIsDataCached;
+    return CachedItemMgr != nullptr;
 }

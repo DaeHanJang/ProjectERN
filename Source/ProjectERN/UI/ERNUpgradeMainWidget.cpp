@@ -154,8 +154,9 @@ void UERNUpgradeMainWidget::OnSlotSelected(int32 SlotIndex)
     UE_LOG(LogUpgrade, Warning, TEXT("[DEBUG] OnSlotSelected - ItemID: %s, SourceGrade: %d"), 
         *Preview.SourceItemID.ToString(), static_cast<int32>(Preview.SourceGrade));
 
-    // === 등급 예외처리: Rare / Legendary는 강화 불가 ===
-    const bool bCannotUpgrade = (Preview.SourceGrade == EItemGrade::Rare || Preview.SourceGrade == EItemGrade::Legendary);
+    // === 강화 가능 여부 판정: NextGradeItemID 데이터 기반 ===
+    // NextGradeItemID가 None → 강화 불가 (최종 등급 또는 월드 획득 전용)
+    const bool bCannotUpgrade = Preview.ResultItemID.IsNone();
 
     if (bCannotUpgrade)
     {
@@ -214,8 +215,7 @@ void UERNUpgradeMainWidget::OnSlotSelected(int32 SlotIndex)
         {
             MaterialTooltipWidget->SetMaterialData(
                 Preview.MaterialDisplayName, Preview.MaterialGrade,
-                Preview.CurrentMaterialCount, Preview.RequiredMaterialCount,
-                MatIconTexture);
+                Preview.CurrentMaterialCount, MatIconTexture);
         }
 
         // 레거시 재료 텍스트 갱신
@@ -223,9 +223,8 @@ void UERNUpgradeMainWidget::OnSlotSelected(int32 SlotIndex)
             MaterialNameText->SetText(Preview.MaterialDisplayName);
         if (MaterialCountText)
             MaterialCountText->SetText(FText::Format(
-                NSLOCTEXT("Upgrade", "MatCount", "{0} / {1}"),
-                FText::AsNumber(Preview.CurrentMaterialCount),
-                FText::AsNumber(Preview.RequiredMaterialCount)));
+                NSLOCTEXT("Upgrade", "MatCountFormat", "x1 ({0})"),
+                FText::AsNumber(Preview.CurrentMaterialCount)));
     }
 }
 

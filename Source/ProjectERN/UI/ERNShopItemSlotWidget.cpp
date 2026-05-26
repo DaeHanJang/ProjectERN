@@ -5,6 +5,7 @@
 #include "Components/TextBlock.h"
 #include "Kismet/GameplayStatics.h"
 #include "GAS/ERNAttributeSet.h"
+#include "UI/ERNUIManagerSubsystem.h"
 
 void UERNShopItemSlotWidget::OnPurchaseButtonClicked()
 {
@@ -29,6 +30,15 @@ void UERNShopItemSlotWidget::OnPurchaseButtonClicked()
 	Popup->OwnerSlotWidget = this;
 	Popup->SetupPopup(ItemData);
 	Popup->AddToViewport(200); // 상점 UI(100)보다 높은 ZOrder로 표시
+
+	// UI 매니저에 팝업 등록 (기존 팝업 자동 닫힘)
+	if (ULocalPlayer* LocalPlayer = GetOwningLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			UIManager->RegisterConfirmPurchasePopup(Popup);
+		}
+	}
 
 	// 버튼 즉시 비활성화 (중복 클릭 방지)
 	SetPurchaseButtonEnabled(false);

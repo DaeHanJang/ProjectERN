@@ -21,6 +21,7 @@
 #include "Character/Player/ERNPlayerController.h"
 #include "Components/SceneComponent.h"
 #include "GameFramework/GameModeBase.h"
+#include "Subsystem/ERNSoundSubsystem.h"
 
 void UERNCutsceneSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -301,6 +302,12 @@ void UERNCutsceneSubsystem::PlayCutsceneInternal(ULevelSequence* Sequence, bool 
 	bIsPlayingCutscene = true;
 	bInputDisabledDuringCutscene = bDisablePlayerInput;
 	OnCutsceneStarted.Broadcast();
+
+	// 컷신 진입 시 BGM 페이드아웃 정지
+	if (UERNSoundSubsystem* SoundSubsystem = GetGameInstance()->GetSubsystem<UERNSoundSubsystem>())
+	{
+		SoundSubsystem->StopBGM(1.f);
+	}
 
 	// 플레이어 입력 차단
 	if (bDisablePlayerInput)

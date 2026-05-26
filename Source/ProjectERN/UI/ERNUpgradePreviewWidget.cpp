@@ -65,10 +65,10 @@ FLinearColor UERNUpgradePreviewWidget::GetGradeColor(EItemGrade Grade) const
 {
     switch (Grade)
     {
-    case EItemGrade::Common:    return FLinearColor(0.8f, 0.8f, 0.8f, 1.f);  // 흰색/회색
-    case EItemGrade::Uncommon:  return FLinearColor(0.2f, 0.5f, 1.0f, 1.f);  // 파란색
-    case EItemGrade::Rare:      return FLinearColor(0.6f, 0.2f, 0.9f, 1.f);  // 보라색
-    case EItemGrade::Legendary: return FLinearColor(1.0f, 0.85f, 0.0f, 1.f); // 황금색
+    case EItemGrade::Common:    return FLinearColor(0.65f, 0.65f, 0.65f, 1.0f);  // 회색
+    case EItemGrade::Uncommon:  return FLinearColor(0.2f, 1.0f, 1.0f, 1.0f);     // 밝은 청녹색
+    case EItemGrade::Rare:      return FLinearColor(0.2f, 0.05f, 1.0f, 1.0f);    // 진파랑-자색계열
+    case EItemGrade::Legendary: return FLinearColor(1.0f, 0.265f, 0.0f, 1.0f);   // 주황/금색
     default:                    return FLinearColor(0.5f, 0.5f, 0.5f, 1.f);
     }
 }

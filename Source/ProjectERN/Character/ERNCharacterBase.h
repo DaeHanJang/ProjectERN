@@ -92,7 +92,7 @@ public:
 
 	// 경직 시스템 — HitOrigin은 공격자/투사체/폭발 중심 등 데미지 발원 위치 (ZeroVector면 방향 계산 스킵하고 Front fallback)
 	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin = FVector::ZeroVector);
+	virtual void TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin = FVector::ZeroVector);
 
 	// 에디터에서 GE_Stagger 블루프린트 연결
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Stagger")

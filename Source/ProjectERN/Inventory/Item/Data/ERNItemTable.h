@@ -64,4 +64,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<UItemDataAssetBase> DataAsset = nullptr;
 	
+	// ===== 강화(Upgrade) 관련 필드 =====
+	
+	// 강화 시 변환될 다음 등급 아이템의 DT_ItemTable RowName
+	// None이면 해당 아이템은 강화 불가 (최종 등급 또는 월드 획득 전용)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Upgrade")
+	FName NextGradeItemID;
+	
+	// 강화에 필요한 재료 아이템의 DT_ItemTable RowName (소모 수량은 1개 고정)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Upgrade")
+	FName UpgradeMaterialID;
+	
 };

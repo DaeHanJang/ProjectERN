@@ -33,9 +33,60 @@
 #include "Actors/Intro/ERNIntroBird.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Components/PostProcessComponent.h"
 #include "Inventory/Item/ERNItemActor.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
+
+void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin)
+{
+	Super::TryApplyStagger(IncomingStaggerPower, HitOrigin);
+	
+	if (!AbilitySystemComponent || !AttributeSet)
+	{
+		return;
+	}
+
+	// 이미 사망 처리됐으면 경직/히트리액션 무시 (사망 몽타주 보존)
+	if (bIsDead)
+	{
+		return;
+	}
+	
+	// 무적이면 카메라 흔들림 무시
+	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Immunity_Damage))
+	{
+		return;
+	}
+	
+	// 최소 경직을 위한 데미지 DamageShakeThresholdSmall 이상일 때만 흔들림
+	if (IncomingStaggerPower >= DamageShakeThresholdSmall && HasAuthority())
+	{
+		// 경직도에 따른 카메라 흔들림 분류
+		TSubclassOf<UCameraShakeBase> ShakeToPlay = nullptr;
+		if (IncomingStaggerPower < DamageShakeThresholdMedium)
+		{
+			ShakeToPlay = TakeDamageShakeClass_Small;
+		}
+		else if (IncomingStaggerPower < DamageShakeThresholdBig)
+		{
+			ShakeToPlay = TakeDamageShakeClass_Medium;
+		}
+		else
+		{
+			ShakeToPlay = TakeDamageShakeClass_Big;
+		}
+
+		if (ShakeToPlay)
+		{
+			AERNPlayerController* PC = Cast<AERNPlayerController>(GetController());
+			if (PC)
+			{
+				PC->Client_PlayCameraShake(ShakeToPlay, 1.f);
+			}
+		}
+	}
+}
 
 AProjectERNCharacter::AProjectERNCharacter()
 {
@@ -96,6 +147,15 @@ AProjectERNCharacter::AProjectERNCharacter()
 
 	// Create Skill Niagara Component
 	SkillNiagaraComponent = CreateDefaultSubobject<UERNSkillNiagaraComponent>(TEXT("SkillNiagaraComponent"));
+	
+	// NightRainZone 자기장 밤의비
+	NightRainPostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("NightRainPostProcessComponent"));
+	NightRainPostProcessComponent->SetupAttachment(FollowCamera);
+	NightRainPostProcessComponent->bEnabled = true;
+	NightRainPostProcessComponent->bUnbound = true;
+	NightRainPostProcessComponent->BlendWeight = 0.f;
+	NightRainPostProcessComponent->Priority = 100.f;
+	
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
@@ -419,11 +479,18 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
-	// 인트로 매달림 중에는 이동 입력 차단
-	if (bIsHangingFromBird) return;
-
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
+
+	// 인트로 매달림 중: 좌우 입력만 새 조향에 전달
+	if (bIsHangingFromBird)
+	{
+		if (AttachedBird)
+		{
+			AttachedBird->Server_SetSteeringInput(MovementVector.X);
+		}
+		return;
+	}
 
 	// 입력 값 갱신(Sprint에 사용)
 	CachedMoveInput = MovementVector;
@@ -452,7 +519,15 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 
 void AProjectERNCharacter::MoveEnd()
 {
-	if (bIsHangingFromBird) return;
+	// 인트로 매달림 중: 키 뗐을 때 새 입력을 0으로 리셋
+	if (bIsHangingFromBird)
+	{
+		if (AttachedBird)
+		{
+			AttachedBird->Server_SetSteeringInput(0.f);
+		}
+		return;
+	}
 
 	CachedMoveInput = FVector2D::ZeroVector;
 	StopSprint();
@@ -1211,40 +1286,7 @@ float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
                                        AController* EventInstigator, AActor* DamageCauser)
 {
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-
-	if (ActualDamage > 0.f && HasAuthority())
-	{
-		// 데미지/MaxHealth 비율로 흔들림 강도 분기
-		const float MaxHP = AttributeSet ? AttributeSet->GetMaxHealth() : 0.f;
-		if (MaxHP > 0.f)
-		{
-			const float Ratio = ActualDamage / MaxHP;
-
-			TSubclassOf<UCameraShakeBase> ShakeToPlay = nullptr;
-			if (Ratio < DamageShakeThresholdSmall)
-			{
-				ShakeToPlay = TakeDamageShakeClass_Small;
-			}
-			else if (Ratio < DamageShakeThresholdMedium)
-			{
-				ShakeToPlay = TakeDamageShakeClass_Medium;
-			}
-			else
-			{
-				ShakeToPlay = TakeDamageShakeClass_Big;
-			}
-
-			if (ShakeToPlay)
-			{
-				AERNPlayerController* PC = Cast<AERNPlayerController>(GetController());
-				if (PC)
-				{
-					PC->Client_PlayCameraShake(ShakeToPlay, 1.f);
-				}
-			}
-		}
-	}
-
+	
 	return ActualDamage;
 }
 

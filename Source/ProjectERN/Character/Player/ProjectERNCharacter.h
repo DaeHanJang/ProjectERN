@@ -24,6 +24,7 @@ class UERNInputConfig;
 class UGameplayEffect;
 class UCameraShakeBase;
 class UERNSkillNiagaraComponent;
+class UPostProcessComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -244,10 +245,22 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake",
 		meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float DamageShakeThresholdMedium = 0.30f;
+	// 데미지/MaxHealth 비율 임계값 — 미만이면 없음, 10 이하면 small, 20 이하면 medium, 30 이상이면 Big
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DamageShakeThresholdSmall = 10.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DamageShakeThresholdMedium = 20.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DamageShakeThresholdBig = 30.f;
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
 	                         AActor* DamageCauser) override;
 
+	// StaggerPower에 따른 카메라 흔들림을 위한 경직 재정의
+	virtual void TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin = FVector::ZeroVector) override;
+	
 	// 디버그 무적 (HP가 1 아래로 안 떨어짐) — 콘솔 명령 GodMode로 토글
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Debug")
 	bool bGodMode = false;
@@ -283,6 +296,9 @@ public:
 
 	// 서버: 새에 부착 (인트로 매니저가 호출)
 	void AttachToIntroBird(class AERNIntroBird* Bird);
+
+	// 부착된 새 반환 (PC가 조향 RPC 호출 시 사용)
+	class AERNIntroBird* GetAttachedBird() const { return AttachedBird; }
 
 	// 서버: 새에서 해제 (Jump 입력 시 호출)
 	UFUNCTION(Server, Reliable)
@@ -411,6 +427,15 @@ private:
 
 	// *** 멀티 환경에서 방향별 구르기 적용시키기 ***
 
+	
+	// NightRainZone 자기장 밤의비
+#pragma region NightRainZone
+public:
+	UPostProcessComponent* GetNightRainPostProcessComponent() const { return NightRainPostProcessComponent; }
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NightRain|PostProcess", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UPostProcessComponent> NightRainPostProcessComponent;
+#pragma endregion
 public:
 	// 캐릭터 HeavyAttack 입력을 토글로 변경
 	bool TryEndActiveChannelingWeaponSkill();

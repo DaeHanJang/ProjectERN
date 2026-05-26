@@ -145,6 +145,7 @@ public:
 	void StartDayNightCycle(float InDuration);
 	void StopDayNightCycle();
 	
+	// 낮->밤 상태 변화
 	FOnDayNightCycleStateChanged OnDayNightCycleStateChanged;
 	
 protected:
