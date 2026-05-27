@@ -12,6 +12,9 @@ class UTextBlock;
 class UImage;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotClicked, const int32, Index);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotHovered, const int32, Index);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotUnhovered, const int32, Index);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotDoubleClicked, const int32, Index);
 
 /**
  * 
@@ -28,7 +31,7 @@ public:
 	FORCEINLINE const int32 GetSlotIndex() const { return SlotIndex; }
 	FORCEINLINE void SetSlotIndex(const int32 NewIndex) { SlotIndex = NewIndex; }
 	FORCEINLINE void SetBackgroundTint(FColor NewColor) { BackgroundTint = NewColor; }
-	FORCEINLINE void InitInventorySlotTint() const { InventorySlotImage->SetBrushTintColor(BackgroundTint); }
+	FORCEINLINE void InitInventorySlotTint() const { if (InventorySlotImage) InventorySlotImage->SetBrushTintColor(BackgroundTint); }
 	void SetInventorySlotImage(UTexture2D* NewTexture) const;
 	void SetInventorySlotTint(FColor NewColor) const;
 	
@@ -42,11 +45,23 @@ public:
 	
 protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 	
 public:
 	// Click Event
 	UPROPERTY(Transient)
 	FOnSlotClicked OnSlotClicked;
+
+	UPROPERTY(Transient)
+	FOnSlotHovered OnSlotHovered;
+	
+	UPROPERTY(Transient)
+	FOnSlotUnhovered OnSlotUnhovered;
+	
+	UPROPERTY(Transient)
+	FOnSlotDoubleClicked OnSlotDoubleClicked;
 	
 private:
 	// Slot Image

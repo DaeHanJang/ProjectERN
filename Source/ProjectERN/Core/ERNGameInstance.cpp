@@ -1,10 +1,12 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Core/ERNGameInstance.h"
+#include "Engine/Engine.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSessionSettings.h"
 #include "Online/OnlineSessionNames.h"
 #include "Interfaces/OnlineSessionInterface.h"
+#include "Kismet/GameplayStatics.h"
 #include "Shop/Provider/ERNDummyShopProvider.h"
 #include "Shop/Provider/ERNNetworkShopProvider.h"
 #include "Shop/Provider/ERNDataTableShopProvider.h"
@@ -20,23 +22,12 @@ void UERNGameInstance::Init()
 {
 	Super::Init();
 
-	// 온라인 서브시스템 가져오기
-	IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get();
-	if (OnlineSubsystem)
-	{
-		SessionInterface = OnlineSubsystem->GetSessionInterface();
+	// 현재 bUseSteam 값에 맞춰 GameNetDriver 정의 보장
+	ConfigureNetDriverForMode();
 
-		if (SessionInterface.IsValid())
-		{
-			// Delegate 바인딩
-			SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(this, &UERNGameInstance::OnCreateSessionComplete);
-			SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &UERNGameInstance::OnFindSessionsComplete);
-			SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UERNGameInstance::OnJoinSessionComplete);
-			SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &UERNGameInstance::OnDestroySessionComplete);
-		}
-	}
+	// bUseSteam에 맞는 OSS의 SessionInterface 취득 + 델리게이트 바인딩
+	RebindSessionInterface();
 
-	// 상점 시스템 초기화
 	// 상점 시스템 초기화
 	InitializeShopSystem();
 
@@ -62,14 +53,16 @@ void UERNGameInstance::HostSession(FString ServerName, int32 MaxPlayers)
 		return;
 	}
 
-	// 세션 설정
+	// 세션 설정 (bUseSteam에 따라 LAN/Steam 모드 분기)
 	FOnlineSessionSettings SessionSettings;
-	SessionSettings.bIsLANMatch = true;
+	SessionSettings.bIsLANMatch = !bUseSteam;
 	SessionSettings.NumPublicConnections = MaxPlayers;
 	SessionSettings.bShouldAdvertise = true;
-	SessionSettings.bUsesPresence = false;
+	SessionSettings.bUsesPresence = bUseSteam;            // Steam 모드에서만 Friend Presence
+	SessionSettings.bAllowInvites = bUseSteam;            // Steam Overlay 초대 허용
 	SessionSettings.bAllowJoinInProgress = true;
 	SessionSettings.bAllowJoinViaPresence = true;
+	SessionSettings.bUseLobbiesIfAvailable = bUseSteam;   // Steam Lobby 사용 (친구 초대 안정성)
 
 	// 커스텀 세션 정보 (서버 이름)
 	SessionSettings.Set(FName("SERVER_NAME"), ServerName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
@@ -85,10 +78,14 @@ void UERNGameInstance::OnCreateSessionComplete(FName SessionName, bool bWasSucce
 	{
 		UE_LOG(LogTemp, Log, TEXT("Session created successfully!"));
 
-		// 로비 레벨로 이동		
+		// 스탠드얼론 → 리슨 서버 전환은 OpenLevel + "listen" 옵션 필수
+		// ServerTravel은 기존 NetDriver가 있을 때만 ?listen이 유효함
 		if (GetWorld())
 		{
-			GetWorld()->ServerTravel("/Game/Assets/Maps/Map_Lobby?listen");
+			UGameplayStatics::OpenLevel(GetWorld(),
+				FName(TEXT("/Game/Assets/Maps/Map_Lobby")),
+				true,
+				TEXT("listen"));
 		}
 	}
 	else
@@ -108,10 +105,16 @@ void UERNGameInstance::FindSessions(FString SearchQuery)
 	// 검색어 저장
 	CurrentSearchQuery = SearchQuery;
 
-	// 세션 검색 설정
+	// 세션 검색 설정 (bUseSteam에 따라 LAN/Steam 모드 분기)
 	SessionSearch = MakeShareable(new FOnlineSessionSearch());
-	SessionSearch->bIsLanQuery = true;
+	SessionSearch->bIsLanQuery = !bUseSteam;
 	SessionSearch->MaxSearchResults = 20;
+
+	// Steam 모드: Lobby 검색 활성화 (HostSession의 bUseLobbiesIfAvailable=true와 짝)
+	if (bUseSteam)
+	{
+		SessionSearch->QuerySettings.Set(SEARCH_LOBBIES, true, EOnlineComparisonOp::Equals);
+	}
 
 	UE_LOG(LogTemp, Log, TEXT("Starting session search with query: '%s'..."), *SearchQuery);
 
@@ -196,6 +199,16 @@ void UERNGameInstance::JoinSessionByIndex(int32 SessionIndex)
 
 	UE_LOG(LogTemp, Log, TEXT("Joining session: filtered index %d -> original index %d"), SessionIndex, OriginalIndex);
 
+	// 기존 세션 잔존 시 파괴 후 OnDestroySessionComplete에서 이어서 처리
+	if (SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		UE_LOG(LogTemp, Log, TEXT("기존 세션 발견 — 파괴 후 재시도"));
+		PendingJoinIndex = SessionIndex;
+		bHasPendingJoin = true;
+		SessionInterface->DestroySession(NAME_GameSession);
+		return;
+	}
+
 	// 세션 참가
 	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
 	SessionInterface->JoinSession(*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, SessionSearch->SearchResults[OriginalIndex]);
@@ -232,11 +245,143 @@ void UERNGameInstance::LeaveSession()
 	}
 }
 
+void UERNGameInstance::ConfigureNetDriverForMode()
+{
+	if (!GEngine) return;
+
+	const FName GameNetDriverDef(TEXT("GameNetDriver"));
+
+	GEngine->NetDriverDefinitions.RemoveAll([&](const FNetDriverDefinition& Def)
+	{
+		return Def.DefName == GameNetDriverDef;
+	});
+
+	FNetDriverDefinition NewDef;
+	NewDef.DefName = GameNetDriverDef;
+	if (bUseSteam)
+	{
+		NewDef.DriverClassName = FName(TEXT("/Script/SteamSockets.SteamSocketsNetDriver"));
+		NewDef.DriverClassNameFallback = FName(TEXT("OnlineSubsystemUtils.IpNetDriver"));
+	}
+	else
+	{
+		NewDef.DriverClassName = FName(TEXT("OnlineSubsystemUtils.IpNetDriver"));
+		NewDef.DriverClassNameFallback = FName(TEXT("OnlineSubsystemUtils.IpNetDriver"));
+	}
+	GEngine->NetDriverDefinitions.Add(NewDef);
+
+	UE_LOG(LogTemp, Log, TEXT("[NetDriver] %s 모드 → %s"),
+		bUseSteam ? TEXT("Steam") : TEXT("LAN"),
+		*NewDef.DriverClassName.ToString());
+}
+
+void UERNGameInstance::SetUseSteam(bool bNewUseSteam)
+{
+	if (bUseSteam == bNewUseSteam)
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[Network] 모드 전환: %s → %s — 기존 세션 정리"),
+		bUseSteam ? TEXT("Steam") : TEXT("LAN"),
+		bNewUseSteam ? TEXT("Steam") : TEXT("LAN"));
+
+	// 기존 세션 파괴 (있으면)
+	if (SessionInterface.IsValid() && SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		SessionInterface->DestroySession(NAME_GameSession);
+	}
+
+	// 검색 결과/Pending 상태 클리어
+	SessionSearchResults.Empty();
+	SessionNames.Empty();
+	FilteredSessionIndices.Empty();
+	CurrentSearchQuery.Empty();
+	SessionSearch.Reset();
+	PendingServerName.Empty();
+	bHasPendingJoin = false;
+	PendingJoinIndex = -1;
+
+	// 플래그 전환
+	bUseSteam = bNewUseSteam;
+
+	// NetDriver 정의 재구성
+	ConfigureNetDriverForMode();
+
+	// SessionInterface도 새 OSS의 것으로 재취득 (메뉴 체크박스가 진짜로 OSS를 바꾸도록)
+	RebindSessionInterface();
+}
+
+void UERNGameInstance::RebindSessionInterface()
+{
+	// 이전 SessionInterface에 바인딩된 델리게이트 제거 (핸들 기반)
+	if (SessionInterface.IsValid())
+	{
+		if (OnCreateSessionCompleteDelegateHandle.IsValid())
+			SessionInterface->OnCreateSessionCompleteDelegates.Remove(OnCreateSessionCompleteDelegateHandle);
+		if (OnFindSessionsCompleteDelegateHandle.IsValid())
+			SessionInterface->OnFindSessionsCompleteDelegates.Remove(OnFindSessionsCompleteDelegateHandle);
+		if (OnJoinSessionCompleteDelegateHandle.IsValid())
+			SessionInterface->OnJoinSessionCompleteDelegates.Remove(OnJoinSessionCompleteDelegateHandle);
+		if (OnDestroySessionCompleteDelegateHandle.IsValid())
+			SessionInterface->OnDestroySessionCompleteDelegates.Remove(OnDestroySessionCompleteDelegateHandle);
+		if (OnSessionUserInviteAcceptedDelegateHandle.IsValid())
+			SessionInterface->OnSessionUserInviteAcceptedDelegates.Remove(OnSessionUserInviteAcceptedDelegateHandle);
+
+		OnCreateSessionCompleteDelegateHandle.Reset();
+		OnFindSessionsCompleteDelegateHandle.Reset();
+		OnJoinSessionCompleteDelegateHandle.Reset();
+		OnDestroySessionCompleteDelegateHandle.Reset();
+		OnSessionUserInviteAcceptedDelegateHandle.Reset();
+	}
+
+	// bUseSteam에 따라 OSS를 명시적으로 선택 (DefaultPlatformService 무시)
+	const FName OSSName = bUseSteam ? STEAM_SUBSYSTEM : NULL_SUBSYSTEM;
+	IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get(OSSName);
+	if (!OnlineSubsystem)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[OSS] %s 모듈 사용 불가 — SessionInterface 비활성화"), *OSSName.ToString());
+		SessionInterface = nullptr;
+		return;
+	}
+
+	SessionInterface = OnlineSubsystem->GetSessionInterface();
+	if (!SessionInterface.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[OSS] %s SessionInterface 취득 실패"), *OSSName.ToString());
+		return;
+	}
+
+	// 새 SessionInterface에 델리게이트 등록 + 핸들 저장
+	OnCreateSessionCompleteDelegateHandle =
+		SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(this, &UERNGameInstance::OnCreateSessionComplete);
+	OnFindSessionsCompleteDelegateHandle =
+		SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &UERNGameInstance::OnFindSessionsComplete);
+	OnJoinSessionCompleteDelegateHandle =
+		SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UERNGameInstance::OnJoinSessionComplete);
+	OnDestroySessionCompleteDelegateHandle =
+		SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &UERNGameInstance::OnDestroySessionComplete);
+	OnSessionUserInviteAcceptedDelegateHandle =
+		SessionInterface->OnSessionUserInviteAcceptedDelegates.AddUObject(this, &UERNGameInstance::OnSessionUserInviteAccepted);
+
+	UE_LOG(LogTemp, Log, TEXT("[OSS] %s SessionInterface 활성화"), *OSSName.ToString());
+}
+
 void UERNGameInstance::OnDestroySessionComplete(FName SessionName, bool bWasSuccessful)
 {
 	if (bWasSuccessful)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Session destroyed successfully!"));
+
+		// 세션 파괴 후 Join 재시도 (Host 재시도보다 우선)
+		if (bHasPendingJoin)
+		{
+			const int32 IndexToRetry = PendingJoinIndex;
+			bHasPendingJoin = false;
+			PendingJoinIndex = -1;
+			JoinSessionByIndex(IndexToRetry);
+			return;
+		}
 
 		// 세션 파괴 후 Host 재시도 (있으면)
 		if (!PendingServerName.IsEmpty())
@@ -245,6 +390,42 @@ void UERNGameInstance::OnDestroySessionComplete(FName SessionName, bool bWasSucc
 			PendingServerName.Empty();
 		}
 	}
+}
+
+// Steam Overlay에서 친구가 "Join Game" 클릭 시 자동 호출
+void UERNGameInstance::OnSessionUserInviteAccepted(
+	const bool bWasSuccessful,
+	const int32 ControllerId,
+	FUniqueNetIdPtr UserId,
+	const FOnlineSessionSearchResult& InviteResult)
+{
+	if (!bWasSuccessful)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Steam invite accepted but bWasSuccessful=false"));
+		return;
+	}
+
+	if (!UserId.IsValid() || !InviteResult.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Steam invite accepted but UserId or InviteResult invalid"));
+		return;
+	}
+
+	if (!SessionInterface.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SessionInterface not valid in invite accept"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Steam invite accepted - joining session..."));
+
+	// 기존 세션 있으면 정리 후 조인 (LeaveSession은 비동기라 단순화: 바로 조인)
+	if (SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		SessionInterface->DestroySession(NAME_GameSession);
+	}
+
+	SessionInterface->JoinSession(*UserId, NAME_GameSession, InviteResult);
 }
 
 void UERNGameInstance::JoinByIP(FString IPAddress)

@@ -123,8 +123,7 @@ void AERNPlayerController::BeginPlay()
 			{
 				if (UERNInteractableWidget* InteractableInventoryWidget = Cast<UERNInteractableWidget>(InventoryWidget))
 				{
-					InteractableInventoryWidget->OnWidgetClosed.AddUniqueDynamic(
-						this, &AERNPlayerController::InventoryClose);
+					InteractableInventoryWidget->OnWidgetClosed.AddUniqueDynamic(this, &AERNPlayerController::InventoryClose);
 				}
 				InventoryWidget->AddToViewport(100);
 				RefreshInventoryWidget();
@@ -160,6 +159,30 @@ void AERNPlayerController::BeginPlay()
 		}
 	}
 	
+	// 채팅 위젯 생성 (로컬 플레이어만)
+	if (IsLocalPlayerController() && ChatWidgetClass)
+	{
+		// 숨겨야 할 맵인지 확인 (메인 메뉴 등)
+		bool bShouldHide = false;
+		for (const FString& MapName : HideChatWidgetMapNames)
+		{
+			if (CurrentMapName.Contains(MapName))
+			{
+				bShouldHide = true;
+				break;
+			}
+		}
+
+		if (!bShouldHide)
+		{
+			ChatWidget = CreateWidget<UUserWidget>(this, ChatWidgetClass);
+			if (ChatWidget)
+			{
+				ChatWidget->AddToViewport(50);	// ZOrder: HUD 위, 메뉴 아래
+			}
+		}
+	}
+
 	// 닉네임 전송 (로컬 플레이어만) - 타이머로 재시도
 	if (IsLocalPlayerController())
 	{
@@ -171,10 +194,9 @@ void AERNPlayerController::BeginPlay()
 		CharacterTypeCheckStartTime = GetWorld()->GetTimeSeconds();
 
 		// 0.3초마다 반복 체크 (최대 10초 동안)
-		GetWorld()->GetTimerManager().SetTimer(CharacterTypeCheckTimerHandle, this,
-		                                       &AERNPlayerController::CheckAndFixCharacterType, 0.3f, true);
+		GetWorld()->GetTimerManager().SetTimer(CharacterTypeCheckTimerHandle, this, &AERNPlayerController::CheckAndFixCharacterType, 0.3f, true);
 	}
-
+	
 	// TODO : 검증 필요
 	// 로비 맵 진입 시 준비 상태 초기화
 	if (CurrentMapName.Contains(TEXT("Lobby")))
@@ -193,7 +215,7 @@ void AERNPlayerController::BeginPlay()
 void AERNPlayerController::AcknowledgePossession(class APawn* P)
 {
 	Super::AcknowledgePossession(P);
-
+	
 	RefreshInventoryWidget();
 }
 
@@ -203,7 +225,7 @@ void AERNPlayerController::RefreshInventoryWidget() const
 	{
 		return;
 	}
-
+	
 	if (UERNInventoryWidget* ERNInventoryWidget = Cast<UERNInventoryWidget>(InventoryWidget))
 	{
 		ERNInventoryWidget->RefreshFromCurrentCharacter();
@@ -221,10 +243,10 @@ void AERNPlayerController::TrySendNickname()
 	AERNPlayerState* PS = GetPlayerState<AERNPlayerState>();
 
 	UE_LOG(LogTemp, Warning, TEXT("[DEBUG] GI valid: %s, PS valid: %s, Nickname: %s, CharacterType: %d"),
-	       GI ? TEXT("YES") : TEXT("NO"),
-	       PS ? TEXT("YES") : TEXT("NO"),
-	       GI ? *GI->CurrentPlayerNickname : TEXT("GI is null"),
-	       GI ? static_cast<int32>(GI->GetPlayerCharacterType()) : -1);
+		GI ? TEXT("YES") : TEXT("NO"),
+		PS ? TEXT("YES") : TEXT("NO"),
+		GI ? *GI->CurrentPlayerNickname : TEXT("GI is null"),
+		GI ? static_cast<int32>(GI->GetPlayerCharacterType()) : -1);
 
 	if (GI && PS)
 	{
@@ -239,8 +261,7 @@ void AERNPlayerController::TrySendNickname()
 		if (GI->GetPlayerCharacterType() != ECharacterType::None)
 		{
 			PS->Server_SetCharacterType(GI->GetPlayerCharacterType());
-			UE_LOG(LogTemp, Log, TEXT("Requesting CharacterType restoration to server: %d"),
-			       static_cast<int32>(GI->GetPlayerCharacterType()));
+			UE_LOG(LogTemp, Log, TEXT("Requesting CharacterType restoration to server: %d"), static_cast<int32>(GI->GetPlayerCharacterType()));
 		}
 	}
 	else if (GI && !GI->CurrentPlayerNickname.IsEmpty())
@@ -252,8 +273,7 @@ void AERNPlayerController::TrySendNickname()
 			RetryCount++;
 			UE_LOG(LogTemp, Warning, TEXT("PlayerState not ready, retrying... (Attempt %d/50)"), RetryCount);
 			FTimerHandle RetryTimer;
-			GetWorld()->GetTimerManager().SetTimer(RetryTimer, this, &AERNPlayerController::TrySendNickname, 0.1f,
-			                                       false);
+			GetWorld()->GetTimerManager().SetTimer(RetryTimer, this, &AERNPlayerController::TrySendNickname, 0.1f, false);
 		}
 		else
 		{
@@ -271,8 +291,7 @@ void AERNPlayerController::SetupInputComponent()
 	if (IsLocalPlayerController())
 	{
 		// Add Input Mapping Contexts
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<
-			UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 		{
 			for (UInputMappingContext* CurrentContext : DefaultMappingContexts)
 			{
@@ -294,16 +313,14 @@ void AERNPlayerController::SetupInputComponent()
 		{
 			if (ReadyToggleAction)
 			{
-				EnhancedInputComponent->BindAction(ReadyToggleAction, ETriggerEvent::Started, this,
-				                                   &AERNPlayerController::ToggleReady);
+				EnhancedInputComponent->BindAction(ReadyToggleAction, ETriggerEvent::Started, this, &AERNPlayerController::ToggleReady);
 			}
 
 			if (InteractAction)
 			{
-				EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this,
-				                                   &AERNPlayerController::TryInteract);
+				EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &AERNPlayerController::TryInteract);
 			}
-
+			
 			if (InventoryAction)
 			{
 				EnhancedInputComponent->BindAction(InventoryAction, ETriggerEvent::Started, this,
@@ -368,14 +385,13 @@ void AERNPlayerController::CheckAndFixCharacterType()
 	ECharacterType SavedType = GI->GetPlayerCharacterType();
 
 	UE_LOG(LogTemp, Warning, TEXT("[CheckAndFixCharacterType] SavedType in GI: %d, Current PS CharacterType: %d"),
-	       static_cast<int32>(SavedType), static_cast<int32>(PS->CharacterType));
+		static_cast<int32>(SavedType), static_cast<int32>(PS->CharacterType));
 
 	// GameInstance에 저장된 타입이 있고, PlayerState와 다르면 재스폰
 	if (SavedType != ECharacterType::None && SavedType != PS->CharacterType)
 	{
-		UE_LOG(LogTemp, Warning,
-		       TEXT("[CheckAndFixCharacterType] Character type mismatch! Requesting change from %d to %d"),
-		       static_cast<int32>(PS->CharacterType), static_cast<int32>(SavedType));
+		UE_LOG(LogTemp, Warning, TEXT("[CheckAndFixCharacterType] Character type mismatch! Requesting change from %d to %d"),
+			static_cast<int32>(PS->CharacterType), static_cast<int32>(SavedType));
 
 		PS->Server_ChangeCharacterClass(SavedType);
 
@@ -386,8 +402,7 @@ void AERNPlayerController::CheckAndFixCharacterType()
 	else if (SavedType != ECharacterType::None && SavedType == PS->CharacterType)
 	{
 		// 타입이 일치하면 성공 - 타이머 정지
-		UE_LOG(LogTemp, Log, TEXT("[CheckAndFixCharacterType] Character type is correct: %d. Stopping check."),
-		       static_cast<int32>(PS->CharacterType));
+		UE_LOG(LogTemp, Log, TEXT("[CheckAndFixCharacterType] Character type is correct: %d. Stopping check."), static_cast<int32>(PS->CharacterType));
 		GetWorld()->GetTimerManager().ClearTimer(CharacterTypeCheckTimerHandle);
 	}
 	else
@@ -409,9 +424,9 @@ void AERNPlayerController::TryInteract()
 			}
 		}
 	}
-
+	
 	UE_LOG(LogTemp, Warning, TEXT("TryInteract"));
-
+	
 	if (CurrentInteractableActor.IsValid())
 	{
 		if (IInteractable* Interactable = Cast<IInteractable>(CurrentInteractableActor.Get()))
@@ -420,7 +435,7 @@ void AERNPlayerController::TryInteract()
 			{
 				return;
 			}
-
+			
 			switch (Interactable->Execute_GetInteractionExecutionPolicy(CurrentInteractableActor.Get()))
 			{
 			case EInteractionExecutionPolicy::LocalOnly:
@@ -451,10 +466,10 @@ void AERNPlayerController::InventoryOpen()
 	{
 		return;
 	}
-
+	
 	// UI 매니저를 통한 상태 관리
 	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
-
+	
 	if (InventoryWidget->GetVisibility() == ESlateVisibility::Hidden)
 	{
 		// 다른 UI가 열려있으면 인벤토리 열기 거부
@@ -462,16 +477,16 @@ void AERNPlayerController::InventoryOpen()
 		{
 			return;
 		}
-
+		
 		InventoryWidget->SetVisibility(ESlateVisibility::Visible);
-
+		
 		FInputModeGameAndUI InputMode;
 		InputMode.SetWidgetToFocus(InventoryWidget->TakeWidget());
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		InputMode.SetHideCursorDuringCapture(true);
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
-
+		
 		if (UERNInventoryWidget* ERNInventoryWidget = Cast<UERNInventoryWidget>(InventoryWidget))
 		{
 			ERNInventoryWidget->PlayOpenAnimation();
@@ -485,9 +500,9 @@ void AERNPlayerController::InventoryClose()
 	{
 		return;
 	}
-
+	
 	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
-
+	
 	if (InventoryWidget->GetVisibility() == ESlateVisibility::Visible)
 	{
 		// UI 매니저에 닫힘 알림
@@ -495,9 +510,9 @@ void AERNPlayerController::InventoryClose()
 		{
 			UIManager->CloseActiveUI();
 		}
-
+		
 		InventoryWidget->SetVisibility(ESlateVisibility::Hidden);
-
+		
 		FInputModeGameOnly InputMode;
 		SetInputMode(InputMode);
 		bShowMouseCursor = false;
@@ -602,12 +617,12 @@ void AERNPlayerController::UpdateNightRainPostProcessState_ServerOnly(bool bShou
 	{
 		return;
 	}
-
+	
 	if (bServerNightRainPostProcessEnabled == bShouldEnable)
 	{
 		return;
 	}
-
+	
 	bServerNightRainPostProcessEnabled = bShouldEnable;
 	Client_SetNightRainZonePostProcessEnabled(bShouldEnable);
 }
@@ -619,12 +634,12 @@ void AERNPlayerController::Client_SetNightRainZonePostProcessEnabled_Implementat
 	{
 		return;
 	}
-
+	
 	if (bLocalNightRainPostProcessEnabled == bEnabled)
 	{
 		return;
 	}
-
+	
 	bLocalNightRainPostProcessEnabled = bEnabled;
 	SetNightRainZonePostProcessEnabled_Local(bEnabled);
 }
@@ -633,12 +648,12 @@ void AERNPlayerController::Client_SetNightRainZonePostProcessEnabled_Implementat
 void AERNPlayerController::SetNightRainZonePostProcessEnabled_Local(bool bEnabled)
 {
 	TargetNightRainPostProcessBlendWeight = bEnabled ? 1.f : 0.f;
-
+	
 	GetWorldTimerManager().SetTimer(NightRainPostProcessBlendTimerHandle,
-	                                this,
-	                                &AERNPlayerController::TickNightRainZonePostProcessBlend,
-	                                0.016f,
-	                                true);
+										this,
+										&AERNPlayerController::TickNightRainZonePostProcessBlend,
+										0.016f,
+										true);
 }
 
 void AERNPlayerController::TickNightRainZonePostProcessBlend()
@@ -647,19 +662,16 @@ void AERNPlayerController::TickNightRainZonePostProcessBlend()
 	{
 		return;
 	}
-
-	CurrentNightRainPostProcessBlendWeight = FMath::FInterpTo(CurrentNightRainPostProcessBlendWeight,
-	                                                          TargetNightRainPostProcessBlendWeight,
-	                                                          GetWorld()->GetDeltaSeconds(),
-	                                                          NightRainPostProcessInterpSpeed);
-
+	
+	CurrentNightRainPostProcessBlendWeight = FMath::FInterpTo(CurrentNightRainPostProcessBlendWeight, TargetNightRainPostProcessBlendWeight, GetWorld()->GetDeltaSeconds(), NightRainPostProcessInterpSpeed);
+	
 	SetNightRainPostProcessBlendWeight_Local(CurrentNightRainPostProcessBlendWeight);
-
+	
 	if (FMath::IsNearlyEqual(CurrentNightRainPostProcessBlendWeight, TargetNightRainPostProcessBlendWeight, 0.01f))
 	{
 		CurrentNightRainPostProcessBlendWeight = TargetNightRainPostProcessBlendWeight;
 		SetNightRainPostProcessBlendWeight_Local(CurrentNightRainPostProcessBlendWeight);
-
+		
 		GetWorldTimerManager().ClearTimer(NightRainPostProcessBlendTimerHandle);
 	}
 }
@@ -856,3 +868,49 @@ void AERNPlayerController::DestroyOwnedMinimapPins_ServerOnly()
 	
 }
 #pragma endregion
+
+
+// ===== 채팅 시스템 =====
+
+void AERNPlayerController::Server_SendChat_Implementation(const FString& Message)
+{
+	if (Message.IsEmpty()) return;
+
+	// 길이 제한 200자
+	const FString TrimmedMessage = Message.Left(200);
+
+	// 닉네임 + 색상 결정 (PlayerId 기반 팔레트 인덱싱)
+	FString Sender = TEXT("Player");
+	FLinearColor SenderColor = FLinearColor::White;
+	if (AERNPlayerState* PS = GetPlayerState<AERNPlayerState>())
+	{
+		if (!PS->PlayerNickname.IsEmpty())
+		{
+			Sender = PS->PlayerNickname;
+		}
+
+		if (ChatColorPalette.Num() > 0)
+		{
+			const int32 Index = FMath::Abs(PS->GetPlayerId()) % ChatColorPalette.Num();
+			SenderColor = ChatColorPalette[Index];
+		}
+	}
+
+	// 모든 PlayerController에 Client RPC 전송
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (AERNPlayerController* TargetPC = Cast<AERNPlayerController>(It->Get()))
+		{
+			TargetPC->Client_ReceiveChat(Sender, TrimmedMessage, SenderColor);
+		}
+	}
+}
+
+void AERNPlayerController::Client_ReceiveChat_Implementation(const FString& Sender, const FString& Message, FLinearColor SenderColor)
+{
+	// BP가 ChatWidget의 AddMessage 노드 호출 (최대 20개)
+	OnReceiveChatMessage(Sender, Message, SenderColor);
+}

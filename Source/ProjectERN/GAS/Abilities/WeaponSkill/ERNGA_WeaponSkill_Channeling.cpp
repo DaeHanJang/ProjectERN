@@ -10,13 +10,12 @@
 #include "Combat/Weapons/ERNMeleeWeapon.h"
 #include "Components/BoxComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Character/Player/ERNSkillNiagaraComponent.h"
 #include "Engine/DamageEvents.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Character.h"
 #include "GAS/ERNAttributeSet.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
-#include "NiagaraComponent.h"
-#include "NiagaraFunctionLibrary.h"
 
 UERNGA_WeaponSkill_Channeling::UERNGA_WeaponSkill_Channeling()
 {
@@ -61,7 +60,7 @@ void UERNGA_WeaponSkill_Channeling::StartChannelingFromNotify(USkeletalMeshCompo
 	ActiveTickInterval = FMath::Max(0.05f, ChannelingData.TickInterval);
 
 	// 채널링 효과 소환
-	SpawnChannelingEffect(MeshComp);
+	StartChannelingNiagaraEffects();
 
 	// 대미지/코스트 tick은 서버에서만
 	if (!AvatarActor->HasAuthority())
@@ -88,7 +87,7 @@ void UERNGA_WeaponSkill_Channeling::StopChanneling()
 	}
 
 	// 채널링 이펙트 제거
-	StopChannelingEffect();
+	StopChannelingNiagaraEffects();
 
 	// 스킬 시작 위치 초기화
 	CachedMeshComp.Reset();
@@ -118,9 +117,9 @@ void UERNGA_WeaponSkill_Channeling::RequestEndChanneling()
 	}
 
 	// 현재 Loop를 기다리지 않고 즉시 End로 이어지게 한다.
-	// ASC->CurrentMontageJumpToSection(ChannelingData.EndSectionName);
+	ASC->CurrentMontageJumpToSection(ChannelingData.EndSectionName);
 	// 현재 Loop가 끝나면 End 섹션으로 이어지게 한다.
-	ASC->CurrentMontageSetNextSectionName(ChannelingData.LoopSectionName,ChannelingData.EndSectionName);
+	// ASC->CurrentMontageSetNextSectionName(ChannelingData.LoopSectionName,ChannelingData.EndSectionName);
 }
 
 void UERNGA_WeaponSkill_Channeling::EndAbility(const FGameplayAbilitySpecHandle Handle,
@@ -274,60 +273,41 @@ void UERNGA_WeaponSkill_Channeling::ApplyChannelDamage(USkeletalMeshComponent* M
 	}
 }
 
-void UERNGA_WeaponSkill_Channeling::SpawnChannelingEffect(USkeletalMeshComponent* MeshComp)
+void UERNGA_WeaponSkill_Channeling::StartChannelingNiagaraEffects()
 {
-	// (나이아가라 사용하지 않음 설정 or 부여된 나이아가라 효과가 없음 or 나이아가라가 유효하지 않음) 종료
-	if (!ChannelingData.bUseChannelingEffect || !ChannelingData.ChannelingEffect || ActiveChannelingEffect.IsValid())
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor || ChannelingData.ChannelingNiagaraEffects.IsEmpty())
 	{
 		return;
 	}
 
-	FTransform EffectTransform;
-	USceneComponent* AttachComponent = nullptr;
-	if (!GetChannelOriginTransform(MeshComp, EffectTransform, AttachComponent))
-	{
-		return;
-	}
-
-	if (!AttachComponent)
-	{
-		AttachComponent = MeshComp;
-	}
-
-	UNiagaraComponent* NiagaraComponent =
-		UNiagaraFunctionLibrary::SpawnSystemAttached(
-			ChannelingData.ChannelingEffect,
-			AttachComponent,
-			NAME_None,
-			EffectTransform.GetLocation(),
-			EffectTransform.GetRotation().Rotator(),
-			EAttachLocation::KeepWorldPosition,
-			true,
-			true,
-			ENCPoolMethod::None,
-			true);
+	UERNSkillNiagaraComponent* NiagaraComponent = AvatarActor->FindComponentByClass<UERNSkillNiagaraComponent>();
 
 	if (!NiagaraComponent)
 	{
 		return;
 	}
 
-	NiagaraComponent->SetWorldScale3D(ChannelingData.EffectScale);
-	ActiveChannelingEffect = NiagaraComponent;
+	NiagaraComponent->StartEffects(ChannelingData.ChannelingNiagaraEffects);
 }
 
-void UERNGA_WeaponSkill_Channeling::StopChannelingEffect()
+void UERNGA_WeaponSkill_Channeling::StopChannelingNiagaraEffects()
 {
-	UNiagaraComponent* NiagaraComponent = ActiveChannelingEffect.Get();
-	if (!NiagaraComponent)
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor || ChannelingData.ChannelingNiagaraEffects.IsEmpty())
 	{
-		ActiveChannelingEffect.Reset();
 		return;
 	}
 
-	NiagaraComponent->Deactivate();
+	UERNSkillNiagaraComponent* NiagaraComponent =
+		AvatarActor->FindComponentByClass<UERNSkillNiagaraComponent>();
 
-	ActiveChannelingEffect.Reset();
+	if (!NiagaraComponent)
+	{
+		return;
+	}
+
+	NiagaraComponent->StopEffects(ChannelingData.ChannelingNiagaraEffects);
 }
 
 bool UERNGA_WeaponSkill_Channeling::GetChannelOriginTransform(USkeletalMeshComponent* MeshComp,

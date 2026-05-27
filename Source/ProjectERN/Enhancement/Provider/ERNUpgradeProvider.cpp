@@ -5,6 +5,7 @@
 #include "Inventory/Item/Data/EquipableItemDataAsset.h"
 #include "Inventory/Data/ERNInventoryList.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Inventory/Components/ERNEquipmentComponent.h"
 
 UERNUpgradeProvider::UERNUpgradeProvider()
 {
@@ -119,9 +120,24 @@ void UERNUpgradeProvider::ProcessUpgrade_Implementation(FERNUpgradeTransaction T
     NewWeaponState.SetItemID(ResultItemID);
     NewWeaponState.SetQuantity(1);
 
-    FItemRuntimeState OldState = InvComp->GetInventory().ChangeItem(Transaction.SlotIndex, NewWeaponState);
+    bool bSwapSuccess = false;
 
-    if (!OldState.IsValid())
+    if (Transaction.SlotIndex == -2)
+    {
+        UERNEquipmentComponent* EquipComp = ERNChar->GetEquipmentComponent();
+        if (EquipComp && EquipComp->EquipableSlot.GetItemID() == Transaction.SourceItemID)
+        {
+            EquipComp->Server_EquipWeapon(ResultItemID);
+            bSwapSuccess = true;
+        }
+    }
+    else
+    {
+        FItemRuntimeState OldState = InvComp->GetInventory().ChangeItem(Transaction.SlotIndex, NewWeaponState);
+        bSwapSuccess = OldState.IsValid();
+    }
+
+    if (!bSwapSuccess)
     {
         // 롤백: 재료 1개 복구
         FItemRuntimeState RestoreMaterial;
@@ -137,11 +153,14 @@ void UERNUpgradeProvider::ProcessUpgrade_Implementation(FERNUpgradeTransaction T
         return;
     }
 
-    // 6. 교체된 슬롯 UI 갱신
-    const TArray<FInventoryItemEntry>& UpdatedItems = InvComp->GetInventory().GetItems();
-    if (UpdatedItems.IsValidIndex(Transaction.SlotIndex))
+    // 6. 교체된 슬롯 UI 갱신 (장착 슬롯은 Server_EquipWeapon에서 Broadcast함)
+    if (Transaction.SlotIndex != -2)
     {
-        InvComp->OnInventorySlotChanged.Broadcast(UpdatedItems[Transaction.SlotIndex]);
+        const TArray<FInventoryItemEntry>& UpdatedItems = InvComp->GetInventory().GetItems();
+        if (UpdatedItems.IsValidIndex(Transaction.SlotIndex))
+        {
+            InvComp->OnInventorySlotChanged.Broadcast(UpdatedItems[Transaction.SlotIndex]);
+        }
     }
 
     // 7. 성공

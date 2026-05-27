@@ -7,6 +7,8 @@
 #include "ERNInventorySlotWidget.h"
 #include "Inventory/Data/ERNInventoryList.h"
 #include "Inventory/Item/Data/ERNItemEnums.h"
+#include "ERNItemToolTipWidget.h"
+#include "Engine/TimerHandle.h"
 #include "ERNInventoryWidget.generated.h"
 
 class UERNEquipmentComponent;
@@ -30,7 +32,7 @@ public:
 	
 	// 열기 애니메이션 재생
 	void PlayOpenAnimation();
-	
+
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
@@ -55,8 +57,8 @@ private:
 	// 현재 캐릭터 컴포넌트에 이벤트 언바인딩
 	void UnbindFromCurrentComponent();
 	
-	// 인벤토리 내비게이션 처리
-	const int32 GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize) const;
+	// 인벤토리	// 네비게이션 적용될 슬롯 인덱스 반환 함수
+	const int32 GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize, const int32 CurrentIndex) const;
 	
 	// 등급에 따른 색
 	FColor ItemGradeByColor(EItemGrade Grade = EItemGrade::None);
@@ -81,6 +83,25 @@ private:
 	UFUNCTION()
 	void UpdateSlideWidget(const int32 NewQuantity);
 	
+	// 새로 추가된 호버링, 더블클릭 이벤트 핸들러
+	UFUNCTION()
+	void OnSlotHoveredCallback(const int32 Index);
+	
+	UFUNCTION()
+	void OnSlotUnhoveredCallback(const int32 Index);
+	
+	UFUNCTION()
+	void OnSlotDoubleClickedCallback(const int32 Index);
+	
+	// 시각적 상태(하이라이트, 툴팁) 통합 업데이트
+	void UpdateVisuals();
+	
+	// 패딩 사이를 지날 때 깜빡임(Flicker)을 방지하기 위한 지연 복귀 타이머 핸들
+	FTimerHandle UnhoverTimerHandle;
+	
+	UFUNCTION()
+	void ProcessUnhoverFallback();
+	
 private:
 	// 장비 슬롯
 	UPROPERTY(meta=(BindWidget))
@@ -97,6 +118,10 @@ private:
 	// 슬라이드 위젯
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UERNSlideWidget> WBP_SlideWidget;
+	
+	// 아이템 툴팁 위젯 (선택적)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UERNItemToolTipWidget> WBP_ItemToolTip;
 	
 	// 열기 애니메이션
 	UPROPERTY(meta=(BindWidgetAnim), Transient)
@@ -138,7 +163,10 @@ private:
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UERNEquipmentComponent> BoundEquipmentComponent;
 	
-	// 활성화된 슬롯 인덱스
+	// 활성화된 슬롯 인덱스 (선택, 고정)
 	int32 FocusSlotIndex = -1;
+	
+	// 임시 포커스된 슬롯 인덱스 (Hover)
+	int32 HoveredSlotIndex = -1;
 	
 };

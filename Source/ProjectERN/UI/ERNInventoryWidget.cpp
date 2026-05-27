@@ -12,6 +12,8 @@
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
+#include "TimerManager.h"
+#include "Engine/World.h"
 
 UERNInventoryWidget::UERNInventoryWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -122,6 +124,9 @@ void UERNInventoryWidget::CreateSlot(const int32 MaxSlotSize, const int32 Column
 			SlotWidgets[i]->SetSlotIndex(i);
 			// 인벤토리 슬롯 활성화 이벤트 바인딩
 			SlotWidgets[i]->OnSlotClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateFocusSlotIndex);
+			SlotWidgets[i]->OnSlotHovered.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotHoveredCallback);
+			SlotWidgets[i]->OnSlotUnhovered.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotUnhoveredCallback);
+			SlotWidgets[i]->OnSlotDoubleClicked.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotDoubleClickedCallback);
 		}
 	}
 	
@@ -129,6 +134,9 @@ void UERNInventoryWidget::CreateSlot(const int32 MaxSlotSize, const int32 Column
 	ConsumableSlotWidget->SetSlotIndex(MaxSlotSize);
 	// 소모품 슬롯 활성화 이벤트 바인딩
 	ConsumableSlotWidget->OnSlotClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateFocusSlotIndex);
+	ConsumableSlotWidget->OnSlotHovered.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotHoveredCallback);
+	ConsumableSlotWidget->OnSlotUnhovered.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotUnhoveredCallback);
+	ConsumableSlotWidget->OnSlotDoubleClicked.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotDoubleClickedCallback);
 	// 소모품 슬롯 이미지 설정
 	ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
 }
@@ -190,8 +198,9 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 		return FReply::Handled();
 	}
 	
-	// 활성화된 슬롯 인덱스가 있을 경우
-	if (FocusSlotIndex != -1)
+	// 활성화된 슬롯 인덱스가 있을 경우 (Hover가 최우선, 없으면 고정 Focus)
+	const int32 ActiveIndex = (HoveredSlotIndex != -1) ? HoveredSlotIndex : FocusSlotIndex;
+	if (ActiveIndex != -1)
 	{
 		// 키보드 Esc를 누를 경우 (=활성화 슬롯 초기화)
 		if (InKeyEvent.GetKey() == EKeys::Escape)
@@ -203,12 +212,12 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 		// 키보드 G를 누를 경우 (=아이템 버리기)
 		if (InKeyEvent.GetKey() == EKeys::G)
 		{
-			if (SlotWidgets.IsValidIndex(FocusSlotIndex))
+			if (SlotWidgets.IsValidIndex(ActiveIndex))
 			{
-				const int32 Quantity = InventoryComponent->GetItemQuantity(FocusSlotIndex);
+				const int32 Quantity = InventoryComponent->GetItemQuantity(ActiveIndex);
 				if (Quantity <= 1)
 				{
-					InventoryComponent->Server_RemoveItem(FocusSlotIndex, Quantity);
+					InventoryComponent->Server_RemoveItem(ActiveIndex, Quantity);
 				}
 				else
 				{
@@ -235,7 +244,8 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 		// 키보드 E키를 누를 경우 (=아이템 장착)
 		if (InKeyEvent.GetKey() == EKeys::E)
 		{
-			EquipmentComponent->Server_EquipItem(FocusSlotIndex);
+			EquipmentComponent->Server_EquipItem(ActiveIndex);
+			InitFocusSlotIndex(); // 장착 완료 후 포커스 자동 해제
 			
 			return FReply::Handled();
 		}
@@ -247,13 +257,14 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 FReply UERNInventoryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	// 슬롯이 아닌 곳을 클릭하면 활성화 슬롯 초기화
-	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton &&
-		InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton &&
-		!WBP_SlideWidget->IsVisible())
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton ||
+		InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
 	{
-		InitFocusSlotIndex();
-		
-		return FReply::Handled();
+		if (!WBP_SlideWidget->IsVisible())
+		{
+			InitFocusSlotIndex();
+			return FReply::Handled();
+		}
 	}
 	
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
@@ -268,10 +279,11 @@ FReply UERNInventoryWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, 
 	}
 	
 	// 활성화된 슬롯 인덱스가 있을 경우
-	if (FocusSlotIndex != -1)
+	const int32 ActiveIndex = (HoveredSlotIndex != -1) ? HoveredSlotIndex : FocusSlotIndex;
+	if (ActiveIndex != -1)
 	{
 		// 인벤토리 네비게이션 (Up, Left, Down, Right)
-		const int32 NextIndex = GetNavigationTargetSlotIndex(InKeyEvent.GetKey(), InventoryComponent->GetMaxSlotSize());
+		const int32 NextIndex = GetNavigationTargetSlotIndex(InKeyEvent.GetKey(), InventoryComponent->GetMaxSlotSize(), ActiveIndex);
 		if (NextIndex != INDEX_NONE)
 		{			
 			UpdateFocusSlotIndex(NextIndex);
@@ -283,37 +295,33 @@ FReply UERNInventoryWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, 
 	return Super::NativeOnPreviewKeyDown(InGeometry, InKeyEvent);
 }
 
-const int32 UERNInventoryWidget::GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize) const
+const int32 UERNInventoryWidget::GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize, const int32 CurrentIndex) const
 {
 	int32 NextIndex = INDEX_NONE;
 	
 	// 위
 	if (Key == EKeys::Up)
 	{
-		NextIndex = (FocusSlotIndex - ColumnSize < 0) ? 
-		FocusSlotIndex + ColumnSize * (((FocusSlotIndex - ColumnSize) * -1 + MaxSlotSize - 1) / ColumnSize - 1) : 
-		FocusSlotIndex - ColumnSize;
-		/* 
-		 * Column = FocusSlotIndex % ColumnSize;
-		 * Column + ((MaxSlotSize - 1 - Column) / ColumnSize) * ColumnSize;
-		 */
+		NextIndex = (CurrentIndex - ColumnSize < 0) ? 
+		CurrentIndex + ColumnSize * (((CurrentIndex - ColumnSize) * -1 + MaxSlotSize - 1) / ColumnSize - 1) : 
+		CurrentIndex - ColumnSize;
 	}
 	// 아래
 	else if (Key == EKeys::Down)
 	{
-		NextIndex = FocusSlotIndex + ColumnSize >= MaxSlotSize ?
-		(FocusSlotIndex + ColumnSize) % ColumnSize : 
-		FocusSlotIndex + ColumnSize;
+		NextIndex = CurrentIndex + ColumnSize >= MaxSlotSize ?
+		(CurrentIndex + ColumnSize) % ColumnSize : 
+		CurrentIndex + ColumnSize;
 	}
 	// 왼쪽
 	else if (Key == EKeys::Left)
 	{
-		NextIndex = (FocusSlotIndex - 1 < 0) ? MaxSlotSize - 1 : FocusSlotIndex - 1;
+		NextIndex = (CurrentIndex - 1 < 0) ? MaxSlotSize - 1 : CurrentIndex - 1;
 	}
 	// 오른쪽
 	else if (Key == EKeys::Right)
 	{
-		NextIndex = (FocusSlotIndex + 1) % MaxSlotSize;
+		NextIndex = (CurrentIndex + 1) % MaxSlotSize;
 	}
 	
 	return NextIndex;
@@ -505,34 +513,151 @@ void UERNInventoryWidget::UpdateFocusSlotIndex(const int32 NewIndex)
 		return;
 	}
 	
-	// 활성화된 슬롯이 있을 경우
-	if (FocusSlotIndex == SlotWidgets.Num())
+	// 활성화 슬롯 인덱스 갱신 (고정 상태 업데이트)
+	FocusSlotIndex = NewIndex;
+	UpdateVisuals();
+}
+
+void UERNInventoryWidget::UpdateVisuals()
+{
+	// 1. 모든 슬롯 비활성화 UI로 초기화
+	for (int32 i = 0; i < SlotWidgets.Num(); ++i)
+	{
+		if (SlotWidgets[i])
+		{
+			SlotWidgets[i]->SetInventorySlotImage(BasicSlotImage.Get());
+			SlotWidgets[i]->InitInventorySlotTint();
+		}
+	}
+	if (ConsumableSlotWidget)
 	{
 		ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
 		ConsumableSlotWidget->InitInventorySlotTint();
 	}
+	
+	// 2. 표시할(하이라이트 및 툴팁) 단일 인덱스 결정 (Hover가 최우선)
+	int32 DisplayIndex = -1;
+	if (HoveredSlotIndex != -1)
+	{
+		DisplayIndex = HoveredSlotIndex;
+	}
 	else if (FocusSlotIndex != -1)
 	{
-		// 비활성화 UI로 변경
-		SlotWidgets[FocusSlotIndex]->SetInventorySlotImage(BasicSlotImage.Get());
-		SlotWidgets[FocusSlotIndex]->InitInventorySlotTint();
+		DisplayIndex = FocusSlotIndex;
 	}
 	
-	// 슬롯 초기화(-1)가 아니라면
-	if (NewIndex == SlotWidgets.Num())
+	// 3. 결정된 슬롯 1개만 하이라이트 적용
+	if (DisplayIndex != -1)
 	{
-		ConsumableSlotWidget->SetInventorySlotImage(FocusConsumableSlotImage.Get());
-		ConsumableSlotWidget->SetInventorySlotTint(FColor::White);
-	}
-	else if (NewIndex != -1)
-	{
-		// 활성화 UI로 변경
-		SlotWidgets[NewIndex]->SetInventorySlotImage(FocusSlotImage.Get());
-		SlotWidgets[NewIndex]->SetInventorySlotTint(FColor::White);
+		if (DisplayIndex == SlotWidgets.Num())
+		{
+			ConsumableSlotWidget->SetInventorySlotImage(FocusConsumableSlotImage.Get());
+			ConsumableSlotWidget->SetInventorySlotTint(FColor::White);
+		}
+		else if (SlotWidgets.IsValidIndex(DisplayIndex))
+		{
+			SlotWidgets[DisplayIndex]->SetInventorySlotImage(FocusSlotImage.Get());
+			SlotWidgets[DisplayIndex]->SetInventorySlotTint(FColor::White);
+		}
 	}
 	
-	// 활성화 슬롯 인덱스 갱신
-	FocusSlotIndex = NewIndex;
+	// 4. 툴팁 갱신 (DisplayIndex 기준)
+	if (WBP_ItemToolTip)
+	{
+		if (DisplayIndex == -1)
+		{
+			WBP_ItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		else
+		{
+			FName ItemID = NAME_None;
+			if (DisplayIndex == SlotWidgets.Num()) // 소모품 슬롯
+			{
+				if (UERNEquipmentComponent* EquipComp = GetEquipmentComponent())
+				{
+					ItemID = EquipComp->ConsumableSlot.GetItemID();
+				}
+			}
+			else if (SlotWidgets.IsValidIndex(DisplayIndex)) // 일반 인벤토리 슬롯
+			{
+				if (UERNInventoryComponent* InvComp = GetInventoryComponent())
+				{
+					if (InvComp->GetInventory().GetItems().IsValidIndex(DisplayIndex))
+					{
+						ItemID = InvComp->GetInventory().GetItems()[DisplayIndex].GetItemID();
+					}
+				}
+			}
+			
+			if (!ItemID.IsNone() && ItemID != NAME_None)
+			{
+				WBP_ItemToolTip->UpdateTooltip(ItemID, 0); // 가격 0으로 표시
+				WBP_ItemToolTip->SetVisibility(ESlateVisibility::HitTestInvisible);
+			}
+			else
+			{
+				WBP_ItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
+	}
+}
+
+void UERNInventoryWidget::OnSlotHoveredCallback(const int32 Index)
+{
+	if (WBP_SlideWidget->IsVisible()) return;
+	
+	// 진행 중인 Unhover 지연 타이머가 있다면 취소 (깜빡임 방지)
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(UnhoverTimerHandle);
+	}
+	
+	HoveredSlotIndex = Index;
+	UpdateVisuals();
+}
+
+void UERNInventoryWidget::OnSlotUnhoveredCallback(const int32 Index)
+{
+	if (HoveredSlotIndex == Index)
+	{
+		HoveredSlotIndex = -1;
+		
+		// 슬롯 사이의 패딩(빈 공간)을 지날 때 툴팁과 하이라이트가 고정 슬롯으로 
+		// 순간적으로 튀는 깜빡임(Flicker)을 방지하기 위해 0.05초 지연 복귀
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().SetTimer(
+				UnhoverTimerHandle, 
+				this, 
+				&UERNInventoryWidget::ProcessUnhoverFallback, 
+				0.05f, 
+				false
+			);
+		}
+		else
+		{
+			UpdateVisuals();
+		}
+	}
+}
+
+void UERNInventoryWidget::ProcessUnhoverFallback()
+{
+	// 0.05초가 지났는데도 여전히 Hover된 슬롯이 없다면 고정 슬롯으로 복귀 처리
+	if (HoveredSlotIndex == -1)
+	{
+		UpdateVisuals();
+	}
+}
+
+void UERNInventoryWidget::OnSlotDoubleClickedCallback(const int32 Index)
+{
+	// 장착 시도 (E키 누른 것과 동일)
+	if (UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent())
+	{
+		EquipmentComponent->Server_EquipItem(Index);
+		InitFocusSlotIndex(); // 장착 완료 후 포커스 자동 해제
+	}
 }
 
 void UERNInventoryWidget::UpdateSlideWidget(const int32 NewQuantity)
@@ -587,6 +712,7 @@ UERNEquipmentComponent* UERNInventoryWidget::GetEquipmentComponent() const
 
 void UERNInventoryWidget::InitFocusSlotIndex()
 {
+	HoveredSlotIndex = -1;
 	UpdateFocusSlotIndex(-1);
 }
 

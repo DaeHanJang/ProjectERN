@@ -25,6 +25,7 @@ public class ProjectERN : ModuleRules
 			"GameplayTasks",
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
+			"OnlineSubsystemSteam",
 			"Niagara",
 			"PhysicsCore",
 			"MotionWarping",

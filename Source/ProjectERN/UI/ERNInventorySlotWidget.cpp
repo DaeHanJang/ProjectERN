@@ -25,9 +25,32 @@ FReply UERNInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeome
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
+FReply UERNInventorySlotWidget::NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		OnSlotDoubleClicked.Broadcast(SlotIndex);
+		return FReply::Handled();
+	}
+	
+	return Super::NativeOnMouseButtonDoubleClick(InGeometry, InMouseEvent);
+}
+
+void UERNInventorySlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
+	OnSlotHovered.Broadcast(SlotIndex);
+}
+
+void UERNInventorySlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseLeave(InMouseEvent);
+	OnSlotUnhovered.Broadcast(SlotIndex);
+}
+
 void UERNInventorySlotWidget::SetInventorySlotImage(UTexture2D* NewTexture) const
 {
-	if (NewTexture)
+	if (InventorySlotImage && NewTexture)
 	{
 		InventorySlotImage->SetBrushFromTexture(NewTexture);
 	}
@@ -35,35 +58,60 @@ void UERNInventorySlotWidget::SetInventorySlotImage(UTexture2D* NewTexture) cons
 
 void UERNInventorySlotWidget::SetInventorySlotTint(FColor NewColor) const
 {
-	InventorySlotImage->SetBrushTintColor(NewColor);
+	if (InventorySlotImage)
+	{
+		InventorySlotImage->SetBrushTintColor(NewColor);
+	}
 }
 
 void UERNInventorySlotWidget::ClearItem()
 {
 	BackgroundTint = FColor::White;
-	InventorySlotImage->SetBrushTintColor(FColor::White);
-	ItemImage->SetBrushFromTexture(nullptr);
-	ItemQuantityTextBlock->SetText(FText::GetEmpty());
 	
-	ItemImage->SetVisibility(ESlateVisibility::Hidden);
-	ItemQuantityTextBlock->SetVisibility(ESlateVisibility::Hidden);
+	if (InventorySlotImage)
+	{
+		InventorySlotImage->SetBrushTintColor(BackgroundTint);
+	}
+	
+	if (ItemImage)
+	{
+		ItemImage->SetBrushFromTexture(nullptr);
+		ItemImage->SetVisibility(ESlateVisibility::Hidden);
+	}
+	
+	if (ItemQuantityTextBlock)
+	{
+		ItemQuantityTextBlock->SetText(FText::GetEmpty());
+		ItemQuantityTextBlock->SetVisibility(ESlateVisibility::Hidden);
+	}
 }
 
 void UERNInventorySlotWidget::SetItem(UTexture2D* Icon, const int32 QuantityText, FColor Color)
 {
-	ItemImage->SetBrushFromTexture(Icon);
 	BackgroundTint = Color;
-	InventorySlotImage->SetBrushTintColor(Color);
 	
-	if (QuantityText == 1)
+	if (InventorySlotImage)
 	{
-		ItemQuantityTextBlock->SetText(FText::GetEmpty());
+		InventorySlotImage->SetBrushTintColor(BackgroundTint);
 	}
-	else
-	{
-		ItemQuantityTextBlock->SetText(FText::AsNumber(QuantityText));
-	}	
 	
-	ItemImage->SetVisibility(ESlateVisibility::Visible);
-	ItemQuantityTextBlock->SetVisibility(ESlateVisibility::Visible);
+	if (ItemImage)
+	{
+		ItemImage->SetBrushFromTexture(Icon);
+		ItemImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
+	
+	if (ItemQuantityTextBlock)
+	{
+		if (QuantityText <= 1)
+		{
+			ItemQuantityTextBlock->SetText(FText::GetEmpty());
+		}
+		else
+		{
+			ItemQuantityTextBlock->SetText(FText::AsNumber(QuantityText));
+		}
+		
+		ItemQuantityTextBlock->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
 }
