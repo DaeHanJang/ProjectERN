@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "ERNPlayerController.generated.h"
 
+class AERNMinimapPinPoint;
 class AChurch;
 class IInteractable;
 class UInputMappingContext;
@@ -265,5 +266,51 @@ private:
 	float NightRainPostProcessInterpSpeed = 8.f;
 	
 	FTimerHandle NightRainPostProcessBlendTimerHandle;
+#pragma endregion
+	
+#pragma region Minimap
+protected:
+	// 미니맵 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> MinimapWidgetClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Minimap")
+	TSubclassOf<AERNMinimapPinPoint> MinimapPinClass;
+	
+	// 미니맵 위젯을 숨길 맵 이름 목록 (메인 전투 맵 제외 모든곳)
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TArray<FString> HideMinimapWidgetMapNames;
+	
+	//미니맵 위젯
+	UPROPERTY(Transient)
+	UUserWidget* MinimapWidget;
+	
+	/** Minimap input action */
+	UPROPERTY(EditAnywhere, Category="Input|Actions")
+	UInputAction* MinimapAction;
+	
+	// 미니맵 열기 <-> 닫기 관리
+	UFUNCTION(BlueprintCallable, Category = "Minimap")
+	void ToggleMinimap();
+
+	// 미니맵 열기
+	UFUNCTION(BlueprintCallable, Category = "Minimap")
+	void MinimapOpen();
+	
+	// 미니맵 닫기
+	UFUNCTION(BlueprintCallable, Category = "Minimap")
+	void MinimapClose();
+	
+public:
+	// 기존 위치 핀 : 삭제, 새로운 위치 핀 : 삭제 + 새로 생성
+	UFUNCTION(Server, Reliable)
+	void Server_RequestCreateMinimapPin(FVector WorldLocation);
+	
+	UFUNCTION(Server, Reliable)
+	void Server_RequestRemoveMinimapPin(AERNMinimapPinPoint* PinActor);
+	
+private:
+	void DestroyOwnedMinimapPins_ServerOnly();
+	
 #pragma endregion
 };

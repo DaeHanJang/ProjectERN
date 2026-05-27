@@ -12,11 +12,12 @@
 UENUM(BlueprintType)
 enum class EERNUIType : uint8
 {
-	None      UMETA(Hidden),
-	Shop      UMETA(DisplayName = "Shop"),
-	Inventory UMETA(DisplayName = "Inventory"),
-	LevelUp   UMETA(DisplayName = "LevelUp"),
-	Upgrade   UMETA(DisplayName = "Upgrade"),
+	None		UMETA(Hidden),
+	Shop		UMETA(DisplayName = "Shop"),
+	Inventory	UMETA(DisplayName = "Inventory"),
+	LevelUp		UMETA(DisplayName = "LevelUp"),
+	Upgrade		UMETA(DisplayName = "Upgrade"),
+	Minimap		UMETA(DisplayName = "Minimap"),
 };
 
 /**
