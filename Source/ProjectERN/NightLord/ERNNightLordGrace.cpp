@@ -214,7 +214,10 @@ void AERNNightLordGrace::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedCom
 	// 플레이어 캐릭터 검증 후 스테이터스 회복 
 	if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor)) 
 	{
-		RestoreAttributes(PlayerCharacter);
+		if (OtherComp == PlayerCharacter->GetRootComponent())
+		{
+			RestoreAttributes(PlayerCharacter);
+		}
 	}
 }
 

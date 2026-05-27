@@ -26,12 +26,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EConsumableType ConsumableType = EConsumableType::None;
 	
+	// 사용 타입
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(EditCondition="ConsumableType == EConsumableType::Usable"))
+	EUsableType UsableType = EUsableType::None;
+	
 	// 사용 소모품 효과
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(EditCondition="ConsumableType == EConsumableType::Usable"))
 	TSoftClassPtr<UGameplayAbility> ConsumableAbility = nullptr;
-			
+	
 	// 소모품 클래스
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(EditCondition="ConsumableType == EConsumableType::Usable"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(EditCondition="ConsumableType == EConsumableType::Usable && UsableType == EUsableType::Throwable"))
 	TSoftClassPtr<AERNConsumableBase> ConsumableClass = nullptr;
 	
 };

@@ -4,12 +4,23 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "ERNConsumableBase.generated.h"
 
+class AERNEnemyCharacter;
+class AProjectERNCharacter;
+class UGameplayEffect;
+class UProjectileMovementComponent;
 class UConsumableItemDataAsset;
-class UGameplayAbility;
 class USphereComponent;
+
+UENUM(BlueprintType)
+enum class EApplyType : uint8
+{
+	None    UMETA(Hidden),
+	Player  UMETA(DisplayName="Player"),
+	Monster UMETA(DisplayName="Monster"),
+	All     UMETA(DisplayName="All")
+};
 
 UCLASS()
 class PROJECTERN_API AERNConsumableBase : public AActor
@@ -20,12 +31,22 @@ public:
 	// Sets default values for this actor's properties
 	AERNConsumableBase();
 	
-	// Getter/Setter
-	FORCEINLINE const FItemRuntimeState& GetRuntimeState() const { return RuntimeState; }
-	FORCEINLINE void SetRuntimeState(const FItemRuntimeState& NewRuntimeState) { RuntimeState = NewRuntimeState;}
+	void Launch(const FVector& Direction);
 	
-	// Initialization
-	void Init(const FItemRuntimeState& InRuntimeState, const UConsumableItemDataAsset* DA);
+protected:
+	virtual void BeginPlay() override;
+	
+	UFUNCTION(BlueprintCallable, Category="Hit")
+	void OnCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	
+	UFUNCTION(BlueprintCallable, Category="Hit")
+	virtual void ApplyEffect();
+	
+	UFUNCTION(BlueprintCallable, Category="Hit")
+	virtual void ApplyEffectPlayer(AProjectERNCharacter* PlayerCharacter);
+	
+	UFUNCTION(BlueprintCallable, Category="Hit")
+	virtual void ApplyEffectMonster(AERNEnemyCharacter* EnemyCharacter);
 	
 protected:
 	// Collision
@@ -36,12 +57,22 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Mesh", meta=(AllowPrivateAccess="ture"))
 	TObjectPtr<UStaticMeshComponent> Mesh;
 	
-	// GA
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GameplayAbility", meta=(AllowPrivateAccess="true"))
-	TSubclassOf<UGameplayAbility> GA = nullptr;
+	// MovementComponent
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Mesh", meta=(AllowPrivateAccess="ture"))
+	TObjectPtr<UProjectileMovementComponent> MovementComponent;
 	
-	// Runtime State
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="RuntimeState", meta=(AllowPrivateAccess="true"))
-	FItemRuntimeState RuntimeState;
+	// GE
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GameplayAbility", meta=(AllowPrivateAccess="true"))
+	TSubclassOf<UGameplayEffect> GE = nullptr;
+	
+	// 효과 적용 대상
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GameplayAbility", meta=(AllowPrivateAccess="true"))
+	EApplyType ApplyType = EApplyType::None;
+	
+	// 스윕 범위
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Consumable", meta=(AllowPrivateAccess="true"))
+	float SweepRadius = 0.0f;
+	
+	bool bHit = false;
 	
 };

@@ -461,6 +461,14 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started, 
 		this, 
 		&AProjectERNCharacter::DrinkFlask);
+	
+	// Consumable
+	InputComp->BindNativeInputAction(
+		InputConfig, 
+		TAG_Input_Consumable, 
+		ETriggerEvent::Started, 
+		this, 
+		&AProjectERNCharacter::UseConsumable);
 
 	InputComp->BindNativeInputAction(
 		InputConfig,
@@ -1005,20 +1013,40 @@ void AProjectERNCharacter::ToggleSprint()
 	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Sprint));
 }
 
-
 void AProjectERNCharacter::DrinkFlask()
 {
 	if (bIsHangingFromBird)
 	{
 		return;
 	}
-
-	if (!AbilitySystemComponent)
+	
+	if (AttributeSet->GetFlaskQuantity() < 1)
 	{
 		return;
 	}
+	
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Flask));
+	}
+}
 
-	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Flask));
+void AProjectERNCharacter::UseConsumable()
+{
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+	
+	if (EquipmentComponent->GetCurrentConsumableQuantity() < 1)
+	{
+		return;
+	}
+	
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Consumable));
+	}
 }
 
 void AProjectERNCharacter::NormalSkill()

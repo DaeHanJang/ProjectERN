@@ -28,24 +28,29 @@ public:
 	UERNEquipmentComponent();
 
 	FORCEINLINE const int32 GetCurrentConsumableQuantity() const { return CurrentConsumable.GetQuantity(); }
+	FORCEINLINE const FName GetCurrentConsumableItemID() const { return CurrentConsumable.GetItemID(); }
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// 초기 무기 장착
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Equipment")
 	void Server_EquipWeapon(FName ItemID);
 
 	// 초기 무기 제거
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Equipment")
 	void Server_UnequipWeapon();
 	
 	// 아이템 장착
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Equipment")
 	void Server_EquipItem(const int32 SlotIndex);
 	
 	// 아이템 버리기 (소모품 전용)
-	UFUNCTION(Server,Reliable, BlueprintCallable, Category = "Equipment")
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Equipment")
 	void Server_UnequipItem(const int32 Quantity);
+	
+	// 장착한 소모품 개수 감소
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")
+	void Server_UseCurrentConsumableQuantity();	
 	
 private:
 	UItemManagerSubsystem* GetItemManagerSubsystem() const;

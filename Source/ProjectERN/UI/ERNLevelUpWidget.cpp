@@ -2,12 +2,10 @@
 
 #include "UI/ERNLevelUpWidget.h"
 
-#include "NiagaraFunctionLibrary.h"
 #include "Character/Player/ERNPlayerStatusTable.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Components/TextBlock.h"
 #include "GAS/ERNAttributeSet.h"
-#include "Kismet/GameplayStatics.h"
 
 UERNLevelUpWidget::UERNLevelUpWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -63,16 +61,10 @@ FReply UERNLevelUpWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKe
 void UERNLevelUpWidget::OnLevelChanged(const FOnAttributeChangeData& Data)
 {
 	RefreshTextByCurrentLevel();
-	if (GetWorld())
+
+	if (AERNCharacterBase* PlayerCharacter = Cast<AERNCharacterBase>(GetOwningPlayerPawn()))
 	{
-		if (Effect)
-		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), Effect, GetOwningPlayerPawn()->GetActorLocation());
-		}
-		if (Sound)
-		{
-			UGameplayStatics::SpawnSoundAtLocation(GetWorld(), Sound, GetOwningPlayerPawn()->GetActorLocation());
-		}
+		PlayerCharacter->Server_RequestEffectAndSound(Effect, PlayerCharacter->GetActorLocation(), Sound, PlayerCharacter->GetActorLocation());
 	}
 }
 
