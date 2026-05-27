@@ -101,6 +101,8 @@ void AERNEnemyCharacter::BindHitboxOverlaps()
 	{
 		// 히트박스 초기 상태를 NoCollision으로 설정
 		Box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		// Projectile 채널은 무시 - 히트박스 활성화 중에도 투사체가 막히지 않도록
+		Box->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Ignore);
 		Box->OnComponentBeginOverlap.AddDynamic(this, &AERNEnemyCharacter::OnHitboxOverlap);
 	}
 }

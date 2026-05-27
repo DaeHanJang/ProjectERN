@@ -34,6 +34,23 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "AI")
 	bool bIsReturning = false;
 
+	// 피격 시 주변 동료 몬스터에게 어그로 전파 활성화
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert")
+	bool bAlertNearbyMobs = true;
+
+	// 어그로 전파 반경 (cm)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert",
+		meta = (EditCondition = "bAlertNearbyMobs", ClampMin = "0.0"))
+	float AlertRadius = 1500.0f;
+
+	// 같은 클래스의 몹만 깨우기 (false면 모든 일반 몹)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert",
+		meta = (EditCondition = "bAlertNearbyMobs"))
+	bool bAlertOnlySameType = false;
+
 protected:
 	virtual void BeginPlay() override;
+
+	// 반경 내 다른 일반 몹들의 어그로를 Attacker로 잡아줌
+	void AlertNearbyMobs(AActor* Attacker);
 };

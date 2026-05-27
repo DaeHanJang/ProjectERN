@@ -62,6 +62,9 @@ protected:
 	// 폭발 범위 데미지 적용
 	void ApplyExplosionDamage(const FVector& ExplosionCenter);
 
+	// 플레이어 owner 기준 직격/폭발 데미지 재계산 (서버, BeginPlay)
+	void RecalculateDamageFromOwner();
+
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -114,9 +117,19 @@ public:
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayImpactEffect(FVector Location, FRotator Rotation);
 
-	// 데미지 (무기의 AttackDamage가 여기로 전달됨)
+	// 데미지 (플레이어 owner인 경우 BeginPlay에서 AttackPowerScale/WeaponDamageScale로 덮어씀)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile")
 	float Damage = 20.0f;
+
+	// 플레이어 공격력 계수 - 직격 데미지 = AttackPower * AttackPowerScale + WeaponDamage * WeaponDamageScale
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Damage",
+		meta = (ClampMin = "0.0"))
+	float AttackPowerScale = 1.0f;
+
+	// 무기 공격력 계수 - 직격 데미지 = AttackPower * AttackPowerScale + WeaponDamage * WeaponDamageScale
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Damage",
+		meta = (ClampMin = "0.0"))
+	float WeaponDamageScale = 1.0f;
 
 	// 경직력 (BP_투사체마다 다르게 설정)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile")
@@ -192,10 +205,20 @@ public:
 		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
 	float ExplosionRadius = 300.f;
 
-	// 폭발 데미지
+	// 폭발 데미지 (플레이어 owner인 경우 BeginPlay에서 Explosion*Scale로 덮어씀)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
 		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
 	float ExplosionDamage = 50.f;
+
+	// 폭발 데미지용 플레이어 공격력 계수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
+	float ExplosionAttackPowerScale = 1.0f;
+
+	// 폭발 데미지용 무기 공격력 계수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
+	float ExplosionWeaponDamageScale = 1.0f;
 
 	// 폭발 경직력
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
