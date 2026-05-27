@@ -25,6 +25,7 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Attacking)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Blocking)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Rolling)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Jumping)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_OutOfCombat)		// 비전투 상태 (스태미나 무한)
 
 // 어빌리티
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Jump)		// 점프

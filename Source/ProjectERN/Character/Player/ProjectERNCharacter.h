@@ -25,6 +25,7 @@ class UGameplayEffect;
 class UCameraShakeBase;
 class UERNSkillNiagaraComponent;
 class UPostProcessComponent;
+class AERNEnemyCharacter;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -444,4 +445,28 @@ private:
 	void Multicast_PlayWeaponSkillInstantNiagaraEffects(const TArray<FERNWeaponSkillInstantNiagaraSpawnData>& Effects);
 
 	void SpawnWeaponSkillInstantNiagaraEffect_Local(FERNWeaponSkillInstantNiagaraSpawnData EffectData);
+
+	// ===== 비전투 무한 스태미나 =====
+public:
+	// 비전투 진입 그레이스 (감지 해제 후 이 시간 뒤 OutOfCombat 부여)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ERN|Combat")
+	float OutOfCombatGraceTime = 5.0f;
+
+	// 적/AIController가 호출 - 시야 감지 시작 (서버)
+	void NotifyDetectedBy(AERNEnemyCharacter* Enemy);
+
+	// 적/AIController가 호출 - 시야 감지 상실 또는 적 사망/소멸 (서버)
+	void NotifyLostBy(AERNEnemyCharacter* Enemy);
+
+protected:
+	// 나를 시야로 감지 중인 적 목록 (서버 전용)
+	TSet<TWeakObjectPtr<AERNEnemyCharacter>> DetectingEnemies;
+
+	FTimerHandle OutOfCombatTimerHandle;
+
+	// 그레이스 타이머 만료 시 호출 - OutOfCombat 태그 부여
+	void EnterOutOfCombat();
+
+	// OutOfCombat 태그 즉시 제거 + 타이머 취소
+	void ExitOutOfCombat();
 };

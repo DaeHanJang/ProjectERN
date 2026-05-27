@@ -6,6 +6,8 @@
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISense_Sight.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Character/Enemy/ERNEnemyCharacter.h"
+#include "Character/Enemy/ERNMobCharacter.h"
 
 AERNMobAIController::AERNMobAIController()
 {
@@ -45,6 +47,14 @@ void AERNMobAIController::BeginPlay()
 	}
 
 	SetupPerception();
+
+	// Leash 체크 타이머 시작 (loop)
+	GetWorldTimerManager().SetTimer(
+		LeashCheckTimerHandle,
+		this,
+		&AERNMobAIController::CheckLeashDistance,
+		LeashCheckInterval,
+		true);
 }
 
 void AERNMobAIController::OnPossess(APawn* InPawn)
@@ -79,9 +89,17 @@ void AERNMobAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 	AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Actor);
 	if (Player)
 	{
+		AERNEnemyCharacter* SelfEnemy = Cast<AERNEnemyCharacter>(GetPawn());
+
 		if (Stimulus.WasSuccessfullySensed())
 		{
 			SetTarget(Player);
+
+			// 비전투 해제 알림
+			if (SelfEnemy)
+			{
+				Player->NotifyDetectedBy(SelfEnemy);
+			}
 		}
 		else
 		{
@@ -91,6 +109,12 @@ void AERNMobAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 				Blackboard->ClearValue(TEXT("TargetActor"));
 				SetCombatVision(false);
 				UE_LOG(LogTemp, Log, TEXT("[%s] Player lost: %s"), *GetName(), *Player->GetName());
+			}
+
+			// 비전투 진입 그레이스 타이머 트리거
+			if (SelfEnemy)
+			{
+				Player->NotifyLostBy(SelfEnemy);
 			}
 		}
 	}
@@ -164,5 +188,54 @@ void AERNMobAIController::SetCombatVision(bool bInCombat)
 
 		UE_LOG(LogTemp, Log, TEXT("[%s] Vision changed to %.1f degrees"),
 			*GetName(), SightConfig->PeripheralVisionAngleDegrees);
+	}
+}
+
+void AERNMobAIController::CheckLeashDistance()
+{
+	if (!Blackboard)
+	{
+		return;
+	}
+
+	AERNMobCharacter* Mob = Cast<AERNMobCharacter>(GetPawn());
+	if (!Mob || Mob->IsDead())
+	{
+		return;
+	}
+
+	// 타겟이 없으면 체크 불필요
+	AActor* CurrentTarget = Cast<AActor>(Blackboard->GetValueAsObject(TEXT("TargetActor")));
+	if (!CurrentTarget)
+	{
+		return;
+	}
+
+	// 스폰 지점에서 자기 위치 거리 측정
+	const float DistFromSpawn = FVector::Dist(
+		Mob->GetActorLocation(),
+		Mob->SpawnLocation);
+
+	// LeashDistance 초과 시 타겟 해제 + 귀환 모드
+	if (DistFromSpawn > Mob->LeashDistance)
+	{
+		// 블랙보드 타겟 클리어 → BT가 추격 멈춤
+		Blackboard->ClearValue(TEXT("TargetActor"));
+
+		// 시야각 평상시(90도)로 복귀
+		SetCombatVision(false);
+
+		// 플레이어에게 감지 상실 통지 → DetectingEnemies에서 제거 → 그레이스 타이머 시작
+		if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(CurrentTarget))
+		{
+			Player->NotifyLostBy(Mob);
+		}
+
+		// 귀환 모드 ON (BT의 귀환 로직 트리거)
+		Mob->bIsReturning = true;
+
+		UE_LOG(LogTemp, Log,
+			TEXT("[%s] Leash exceeded (%.0f > %.0f) - releasing target & returning"),
+			*GetName(), DistFromSpawn, Mob->LeashDistance);
 	}
 }

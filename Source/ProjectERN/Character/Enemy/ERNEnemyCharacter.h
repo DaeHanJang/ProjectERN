@@ -100,12 +100,42 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "UI")
 	float HealthBarHideDelay = 15.0f;
 
+	// 체력바 거리 기반 스케일링 - 이 거리에서 Scale 1.0
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|HealthBar")
+	float HealthBarReferenceDistance = 2000.0f;
+
+	// 멀어져도 이 값 이하로 안 작아짐
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|HealthBar", meta = (ClampMin = "0.01"))
+	float HealthBarMinScale = 0.4f;
+
+	// 가까워도 이 값 이상으로 안 커짐
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|HealthBar", meta = (ClampMin = "0.01"))
+	float HealthBarMaxScale = 1.0f;
+
+	// 이 거리 초과 시 체력바 숨김 (0 이하면 거리 제한 없음)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|HealthBar")
+	float HealthBarMaxDisplayDistance = 4000.0f;
+
+	// 체력바 스케일 갱신 주기 (초)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|HealthBar", meta = (ClampMin = "0.01"))
+	float HealthBarScaleUpdateInterval = 0.1f;
+
 	// 사망 몽타주 종료 전 메시 숨김 시점 마진 (T-pose 방지용, 적마다 조정 가능)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat", meta = (ClampMin = "0.0"))
 	float DeathCleanupLeadTime = 0.1f;
 
 private:
 	FTimerHandle HealthBarHideTimerHandle;
+	FTimerHandle HealthBarScaleTimerHandle;
+
+	// 체력바 표시 의도 - Show/Hide 호출로 토글, 거리 기반 숨김과 분리
+	bool bHealthBarIntendedVisible = false;
+
+	// Screen-space DrawSize는 픽셀 단위라 RelativeScale로 안 바뀜 - 초기값 캐싱 후 곱해서 적용
+	FVector2D InitialHealthBarDrawSize = FVector2D(150.f, 20.f);
+
+	// 카메라 거리에 따라 체력바 스케일 갱신 (로컬 - 각 클라이언트에서 실행)
+	void UpdateHealthBarScale();
 
 public:
 	// 드롭 테이블

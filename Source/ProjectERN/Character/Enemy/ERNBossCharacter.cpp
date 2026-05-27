@@ -76,6 +76,12 @@ float AERNBossCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 			if (AttackerPawn)
 			{
 				BossAIC->AddAggro(AttackerPawn, ActualDamage);
+
+				// 시야 밖 원거리 피격도 비전투 해제되도록 명시 알림
+				if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(AttackerPawn))
+				{
+					Player->NotifyDetectedBy(this);
+				}
 			}
 		}
 
