@@ -235,7 +235,6 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 		{
 			return;
 		}
-			
 		
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = GetOwner();

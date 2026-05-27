@@ -45,7 +45,7 @@ enum class EWeaponType : uint8
 	None    UMETA(Hidden),
 	Sword   UMETA(DisplayName="Sword"),
 	Staff   UMETA(DisplayName="Staff"),
-	Polearm UMETA(DisplayName="Rapier"), 
+	Polearm UMETA(DisplayName="Polearm"), 
 	All     UMETA(DisplayName="All")
 };
 
