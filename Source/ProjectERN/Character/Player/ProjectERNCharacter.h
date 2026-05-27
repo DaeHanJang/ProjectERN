@@ -144,6 +144,9 @@ protected:
 
 	/** Called for flask on input */
 	void DrinkFlask();
+	
+	/** Called for Consumable on input */
+	void UseConsumable();
 
 	/** Called for NormalSkill on input */
 	void NormalSkill();

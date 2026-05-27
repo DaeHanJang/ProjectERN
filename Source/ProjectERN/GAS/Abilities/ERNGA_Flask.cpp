@@ -30,7 +30,7 @@ void UERNGA_Flask::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 		return;
 	}
 	
-	const AERNCharacterBase* PlayerCharacter = Cast<AERNCharacterBase>(ActorInfo->AvatarActor);
+	AERNCharacterBase* PlayerCharacter = Cast<AERNCharacterBase>(ActorInfo->AvatarActor);
 	if (!PlayerCharacter)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -62,16 +62,7 @@ void UERNGA_Flask::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 		Task->ReadyForActivation();
 	}
 	
-	// VFX
-	if (Effect)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), Effect, PlayerCharacter->GetActorLocation() + FVector(0.0f, 0.0f, -50.0f));
-	}
-	// SFX
-	if (Sound)
-	{
-		UGameplayStatics::SpawnSoundAtLocation(GetWorld(), Sound, PlayerCharacter->GetActorLocation());
-	}
+	PlayerCharacter->Multicast_PlayEffectAndSound(Effect, PlayerCharacter->GetActorLocation() + FVector(0.0f, 0.0f, -50.0f), Sound, PlayerCharacter->GetActorLocation());
 	
 	if (!DrinkMontage)
 	{

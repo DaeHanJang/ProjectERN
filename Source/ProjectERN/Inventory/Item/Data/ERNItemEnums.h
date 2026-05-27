@@ -57,3 +57,11 @@ enum class EConsumableType : uint8
 	Usable   UMETA(DisplayName="Usable"),
 	Unusable UMETA(DisplayName="Unusable")
 };
+
+UENUM(BlueprintType)
+enum class EUsableType : uint8
+{
+	None      UMETA(Hidden), 
+	Drinkable UMETA(DisplayName="Drinkable"), 
+	Throwable UMETA(DisplayName="Throwable")
+};

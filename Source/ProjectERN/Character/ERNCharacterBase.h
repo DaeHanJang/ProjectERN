@@ -8,6 +8,7 @@
 #include "GameplayAbilitySpecHandle.h"
 #include "ERNCharacterBase.generated.h"
 
+class UNiagaraSystem;
 class UAbilitySystemComponent;
 class UERNAttributeSet;
 class UGameplayAbility;
@@ -126,6 +127,14 @@ public:
 	// 히트리액션 몽타주 재생 (모든 클라이언트에 동기화) — 재생할 몽타주를 인자로 전달
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayHitReaction(UAnimMontage* Montage);
+	
+	// VFX, SFX 재생 요청
+	UFUNCTION(Server, Reliable)
+	void Server_RequestEffectAndSound(UNiagaraSystem* Effect, FVector EffectLocation, USoundBase* Sound, FVector SoundLocation);
+	
+	// VFX, SFX 재생
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlayEffectAndSound(UNiagaraSystem* Effect, FVector EffectLocation, USoundBase* Sound, FVector SoundLocation);
 
 protected:
 	// 공격자(HitOrigin) → 내 캐릭터 기준 4방향 판별 (Z 무시, 수평면)
