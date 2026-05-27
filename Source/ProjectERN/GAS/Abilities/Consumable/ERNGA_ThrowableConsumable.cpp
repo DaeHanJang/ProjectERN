@@ -31,11 +31,26 @@ void UERNGA_ThrowableConsumable::ActivateAbility(const FGameplayAbilitySpecHandl
 		return;
 	}
 	
+	AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(ActorInfo->AvatarActor);
+	if (!PlayerCharacter)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
+	if (PlayerCharacter->GetEquipmentComponent()->GetCurrentConsumableQuantity() < 1)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
+	// Wait Spawn Event
 	UAbilityTask_WaitGameplayEvent* WaitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, FGameplayTag::RequestGameplayTag(TEXT("Event.Consumable.Throw")));
 	WaitEventTask->EventReceived.AddDynamic(this, &UERNGA_ThrowableConsumable::OnThrowNotifyReceived);
 	
 	WaitEventTask->ReadyForActivation();
 	
+	// Animation
 	if (ThrowMontage)
 	{
 		UAbilityTask_PlayMontageAndWait* AnimTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, ThrowMontage);
@@ -89,7 +104,14 @@ void UERNGA_ThrowableConsumable::OnThrowNotifyReceived(FGameplayEventData Payloa
 	}
 	
 	const FVector SpawnLocation = PlayerCharacter->GetActorLocation() + PlayerCharacter->GetActorForwardVector() * ThrowForwardDistance;
+	const FVector ThrowDirection = PlayerCharacter->GetActorForwardVector();
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = PlayerCharacter;
-	GetWorld()->SpawnActor<AERNConsumableBase>(DA->ConsumableClass.Get(), SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+	SpawnParams.Instigator = PlayerCharacter;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	if (AERNConsumableBase* Consumable = GetWorld()->SpawnActor<AERNConsumableBase>(DA->ConsumableClass.Get(), SpawnLocation, ThrowDirection.Rotation(), SpawnParams))
+	{
+		PlayerCharacter->GetEquipmentComponent()->Server_UseCurrentConsumableQuantity();
+		Consumable->Launch(ThrowDirection);
+	}
 }

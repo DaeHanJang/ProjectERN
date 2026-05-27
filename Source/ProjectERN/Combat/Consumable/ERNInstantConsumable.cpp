@@ -19,6 +19,8 @@ void AERNInstantConsumable::ApplyEffect()
 	
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(SweepRadius);
+	
+	DrawDebugSphere(GetWorld(), GetActorLocation(), SweepRadius, 16, FColor::Green, false, 2.0f);
 
 	if (GetWorld()->OverlapMultiByChannel(OverlapResults, GetActorLocation(), FQuat::Identity, ECollisionChannel::ECC_Pawn, Sphere))
 	{
@@ -50,7 +52,7 @@ void AERNInstantConsumable::ApplyEffect()
 				{
 					ApplyEffectPlayer(PlayerCharacter);
 				}
-				else if (AERNEnemyCharacter* EnemyCharacter = Cast<AERNEnemyCharacter>(OverlapActor))
+				if (AERNEnemyCharacter* EnemyCharacter = Cast<AERNEnemyCharacter>(OverlapActor))
 				{
 					ApplyEffectMonster(EnemyCharacter);
 				}
@@ -58,14 +60,10 @@ void AERNInstantConsumable::ApplyEffect()
 		}
 	}
 	
-	if (Effect)
+	Multicast_PlayEffectAndSound();
+	if (!bHitMonsterDuration)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), Effect, GetActorLocation());
-	}
-	
-	if (Sound)
-	{
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), Sound, GetActorLocation());
+		SetLifeSpan(0.1f);
 	}
 }
 
@@ -102,6 +100,8 @@ void AERNInstantConsumable::ApplyEffectMonster(AERNEnemyCharacter* EnemyCharacte
 	}
 	else if (MonsterEffectType == EMonsterEffectType::Duration)
 	{
+		bHitMonsterDuration = true;
+		SetActorHiddenInGame(true);
 		MonsterApplyTimerDelegates.Add(FTimerDelegate());
 		MonsterApplyTimers.Add(FTimerHandle());
 		const int32 TimerIndex = CurrentTimers.Add(0.0f);
@@ -117,8 +117,25 @@ void AERNInstantConsumable::UpdateApplyDamageToMonster(AERNEnemyCharacter* Enemy
 	if (CurrentTimers[Index] >= MonsterApplyTime)
 	{
 		GetWorldTimerManager().ClearTimer(MonsterApplyTimers[Index]);
+		if (Index == MonsterApplyTimers.Num() - 1)
+		{
+			Destroy();
+		}
 		return;
 	}
 	
 	CurrentTimers[Index] += MonsterRate;
+}
+
+void AERNInstantConsumable::Multicast_PlayEffectAndSound_Implementation()
+{
+	if (Effect)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), Effect, GetActorLocation());
+	}
+	
+	if (Sound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), Sound, GetActorLocation());
+	}
 }

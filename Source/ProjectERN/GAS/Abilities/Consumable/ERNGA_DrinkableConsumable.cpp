@@ -62,8 +62,9 @@ void UERNGA_DrinkableConsumable::ActivateAbility(const FGameplayAbilitySpecHandl
 		Task->ReadyForActivation();
 	}
 	
+	// VFX, SFX
 	PlayerCharacter->Multicast_PlayEffectAndSound(Effect, PlayerCharacter->GetActorLocation() + FVector(0.0f, 0.0f, -50.0f), Sound, PlayerCharacter->GetActorLocation());
-		
+	
 	if (!DrinkMontage)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);

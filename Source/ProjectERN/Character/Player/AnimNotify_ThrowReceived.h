@@ -19,7 +19,7 @@ public:
 	virtual void Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 	
 private:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Tag", meta=(AllowPrivateAccess="true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tag", meta=(AllowPrivateAccess="true"))
 	FGameplayTag EventTag;
 	
 };

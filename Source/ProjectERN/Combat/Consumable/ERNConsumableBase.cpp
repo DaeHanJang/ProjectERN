@@ -17,6 +17,7 @@ AERNConsumableBase::AERNConsumableBase()
 	SetRootComponent(Collision);
 	Collision->SetCollisionProfileName(TEXT("BlockAllDynamic"));
 	Collision->SetNotifyRigidBodyCollision(true);
+	Collision->IgnoreActorWhenMoving(GetOwner(), true);
 	
 	// Mesh
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
@@ -25,6 +26,13 @@ AERNConsumableBase::AERNConsumableBase()
 	
 	// MovementComponent
 	MovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("MovementComponent"));
+	MovementComponent->SetUpdatedComponent(GetRootComponent());
+	MovementComponent->InitialSpeed = 1200.0f;
+	MovementComponent->MaxSpeed = 1200.0f;
+	MovementComponent->ProjectileGravityScale = 0.2f;
+	MovementComponent->bRotationFollowsVelocity = true;
+	
+	InitialLifeSpan = 5.0f;
 }
 
 void AERNConsumableBase::BeginPlay()
@@ -32,6 +40,22 @@ void AERNConsumableBase::BeginPlay()
 	Super::BeginPlay();
 	
 	Collision->OnComponentHit.AddDynamic(this, &AERNConsumableBase::OnCollisionHit);
+}
+
+void AERNConsumableBase::Launch(const FVector& Direction)
+{
+	if (!MovementComponent || Direction.IsNearlyZero())
+	{
+		return;
+	}
+		
+	const FVector LaunchDirection = Direction.GetSafeNormal();
+	MovementComponent->Velocity = LaunchDirection * MovementComponent->InitialSpeed;
+	
+	if (MovementComponent->bRotationFollowsVelocity)
+	{
+		SetActorRotation(LaunchDirection.Rotation());
+	}
 }
 
 void AERNConsumableBase::OnCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
@@ -42,9 +66,30 @@ void AERNConsumableBase::OnCollisionHit(UPrimitiveComponent* HitComponent, AActo
 		return;
 	}
 	
+	if (!OtherActor || OtherActor == this || OtherActor == GetOwner() || OtherActor == GetInstigator())
+	{
+		return;
+	}
+	
+	if (bHit)
+	{
+		return;
+	}
+	
+	bHit = true;
 	ApplyEffect();
+	
+	UE_LOG(LogTemp, Warning, TEXT("Hit: %s"), *GetNameSafe(OtherActor));
 }
 
 void AERNConsumableBase::ApplyEffect()
+{
+}
+
+void AERNConsumableBase::ApplyEffectPlayer(AProjectERNCharacter* PlayerCharacter)
+{
+}
+
+void AERNConsumableBase::ApplyEffectMonster(AERNEnemyCharacter* EnemyCharacter)
 {
 }

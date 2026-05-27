@@ -24,13 +24,12 @@ protected:
 	void OnThrowNotifyReceived(FGameplayEventData Payload);
 	
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Consumable|Projectile", meta=(AllowPrivateAccess="true"))
-	TObjectPtr<AActor> Projectile;
-	
+	// Animation
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Consumable|Animation", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UAnimMontage> ThrowMontage;
 	
+	// Projectile spawn offset from the player
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Consumable|Throw", meta=(AllowPrivateAccess="true"))
-	float ThrowForwardDistance = 50.0f;
+	float ThrowForwardDistance = 100.0f;
 	
 };

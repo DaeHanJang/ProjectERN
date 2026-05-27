@@ -6,6 +6,8 @@
 #include "GameFramework/Actor.h"
 #include "ERNConsumableBase.generated.h"
 
+class AERNEnemyCharacter;
+class AProjectERNCharacter;
 class UGameplayEffect;
 class UProjectileMovementComponent;
 class UConsumableItemDataAsset;
@@ -29,6 +31,8 @@ public:
 	// Sets default values for this actor's properties
 	AERNConsumableBase();
 	
+	void Launch(const FVector& Direction);
+	
 protected:
 	virtual void BeginPlay() override;
 	
@@ -37,6 +41,12 @@ protected:
 	
 	UFUNCTION(BlueprintCallable, Category="Hit")
 	virtual void ApplyEffect();
+	
+	UFUNCTION(BlueprintCallable, Category="Hit")
+	virtual void ApplyEffectPlayer(AProjectERNCharacter* PlayerCharacter);
+	
+	UFUNCTION(BlueprintCallable, Category="Hit")
+	virtual void ApplyEffectMonster(AERNEnemyCharacter* EnemyCharacter);
 	
 protected:
 	// Collision
@@ -55,8 +65,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GameplayAbility", meta=(AllowPrivateAccess="true"))
 	TSubclassOf<UGameplayEffect> GE = nullptr;
 	
-	// ApplyType 
+	// 효과 적용 대상
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="GameplayAbility", meta=(AllowPrivateAccess="true"))
 	EApplyType ApplyType = EApplyType::None;
+	
+	// 스윕 범위
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Consumable", meta=(AllowPrivateAccess="true"))
+	float SweepRadius = 0.0f;
+	
+	bool bHit = false;
 	
 };
