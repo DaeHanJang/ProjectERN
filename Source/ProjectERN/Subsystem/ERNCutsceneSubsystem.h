@@ -112,6 +112,10 @@ protected:
 private:
 	// ===== 로딩 화면 =====
 
+	// 로딩 위젯 생성 + 뷰포트 부착 (이미 부착되어 있으면 no-op)
+	// — 클라이언트 ServerTravel 도중 슬레이트가 무효화되는 케이스 대응용 재부착에도 사용
+	void EnsureLoadingWidgetInViewport();
+
 	// 로딩 중 여부
 	bool bIsLoading = false;
 

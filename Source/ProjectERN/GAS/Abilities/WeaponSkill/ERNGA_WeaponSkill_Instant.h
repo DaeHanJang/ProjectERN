@@ -168,7 +168,7 @@ public:
 	// Notify 투사체 발사
 	void FireProjectileFromNotify(USkeletalMeshComponent* MeshComp);
 	
-	// Explode 적용
+	// Notify로 Explode 적용
 	void ExplodeFromNotify(USkeletalMeshComponent* MeshComp);
 
 protected:
@@ -183,6 +183,10 @@ protected:
 	// 폭발 데이터
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="WeaponSkill|Explosion")
 	FERNWeaponSkillExplosionData ExplosionData;
+
+	// Instant 무기스킬에서 Notify 타이밍별로 출력할 일회성 Niagara 목록
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="WeaponSkill|Instant|Niagara")
+	TArray<FERNWeaponSkillInstantNiagaraEffect> InstantNiagaraEffects;
 
 private:
 	// MeshComp별로 이번 AreaDamage 구간에서 이미 피격된 Actor 목록을 저장한다. (중복 타격 방지)
@@ -207,6 +211,14 @@ private:
 	
 	// 폭발 위치 적용
 	bool GetExplosionTransform(USkeletalMeshComponent* MeshComp, FTransform& OutTransform) const;
+	
+	// 나이아가라 이펙트 재생
+	void PlayInstantNiagaraEffects(EERNWeaponSkillInstantEffectTrigger Trigger, USkeletalMeshComponent* MeshComp) const;
+	
+	// 나이아가라 스폰 위치 적용
+	bool GetInstantNiagaraEffectTransform(USkeletalMeshComponent* MeshComp,
+	                                      const FERNWeaponSkillInstantNiagaraEffect& EffectData,
+	                                      FTransform& OutTransform) const;
 	// 폭발 대미지 계산
 	float CalculateExplosionDamage(AActor* OwnerActor) const;
 	// 폭발 대미지 적용

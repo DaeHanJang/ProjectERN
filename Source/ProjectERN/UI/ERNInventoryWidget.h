@@ -32,7 +32,7 @@ public:
 	
 	// 열기 애니메이션 재생
 	void PlayOpenAnimation();
-	
+
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
@@ -57,8 +57,8 @@ private:
 	// 현재 캐릭터 컴포넌트에 이벤트 언바인딩
 	void UnbindFromCurrentComponent();
 	
-	// 인벤토리 내비게이션 처리
-	const int32 GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize) const;
+	// 인벤토리	// 네비게이션 적용될 슬롯 인덱스 반환 함수
+	const int32 GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize, const int32 CurrentIndex) const;
 	
 	// 등급에 따른 색
 	FColor ItemGradeByColor(EItemGrade Grade = EItemGrade::None);

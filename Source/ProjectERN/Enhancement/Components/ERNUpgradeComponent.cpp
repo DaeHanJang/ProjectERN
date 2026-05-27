@@ -10,6 +10,7 @@
 
 // Phase 4 구현 완료: UERNGameInstance 포함 경로 추가
 #include "Core/ERNGameInstance.h"
+#include "Inventory/Components/ERNEquipmentComponent.h"
 
 UERNUpgradeComponent::UERNUpgradeComponent()
 {
@@ -76,10 +77,20 @@ FERNUpgradePreview UERNUpgradeComponent::GetUpgradePreview(int32 SlotIndex)
     if (!ItemMgr) return Preview;
 
     // 선택한 슬롯의 아이템 ID 획득
-    const TArray<FInventoryItemEntry>& Items = InvComp->GetInventory().GetItems();
-    if (!Items.IsValidIndex(SlotIndex) || !Items[SlotIndex].IsValid()) return Preview;
+    FName SourceID;
+    if (SlotIndex == -2)
+    {
+        UERNEquipmentComponent* EquipComp = OwnerChar->FindComponentByClass<UERNEquipmentComponent>();
+        if (!EquipComp || !EquipComp->EquipableSlot.IsValid()) return Preview;
+        SourceID = EquipComp->EquipableSlot.GetItemID();
+    }
+    else
+    {
+        const TArray<FInventoryItemEntry>& Items = InvComp->GetInventory().GetItems();
+        if (!Items.IsValidIndex(SlotIndex) || !Items[SlotIndex].IsValid()) return Preview;
+        SourceID = Items[SlotIndex].GetItemID();
+    }
 
-    FName SourceID = Items[SlotIndex].GetItemID();
     Preview.SourceItemID = SourceID;
 
     // 소스 아이템 데이터 조회
@@ -143,7 +154,8 @@ FERNUpgradePreview UERNUpgradeComponent::GetUpgradePreview(int32 SlotIndex)
 
         // 현재 재료 보유량 합산
         Preview.CurrentMaterialCount = 0;
-        for (const FInventoryItemEntry& Entry : Items)
+        const TArray<FInventoryItemEntry>& CurrentItems = InvComp->GetInventory().GetItems();
+        for (const FInventoryItemEntry& Entry : CurrentItems)
         {
             if (Entry.GetItemID() == SourceRow->UpgradeMaterialID)
             {
@@ -187,16 +199,27 @@ void UERNUpgradeComponent::Server_RequestUpgrade_Implementation(int32 SlotIndex,
 
     if (DataProvider)
     {
-        // 슬롯에서 아이템 ID 획득
-        UERNInventoryComponent* InvComp = PlayerChar->FindComponentByClass<UERNInventoryComponent>();
-        if (!InvComp) return;
+        FName SourceID;
+        if (SlotIndex == -2)
+        {
+            UERNEquipmentComponent* EquipComp = PlayerChar->FindComponentByClass<UERNEquipmentComponent>();
+            if (!EquipComp || !EquipComp->EquipableSlot.IsValid()) return;
+            SourceID = EquipComp->EquipableSlot.GetItemID();
+        }
+        else
+        {
+            // 슬롯에서 아이템 ID 획득
+            UERNInventoryComponent* InvComp = PlayerChar->FindComponentByClass<UERNInventoryComponent>();
+            if (!InvComp) return;
 
-        const TArray<FInventoryItemEntry>& Items = InvComp->GetInventory().GetItems();
-        if (!Items.IsValidIndex(SlotIndex) || !Items[SlotIndex].IsValid()) return;
+            const TArray<FInventoryItemEntry>& Items = InvComp->GetInventory().GetItems();
+            if (!Items.IsValidIndex(SlotIndex) || !Items[SlotIndex].IsValid()) return;
+            SourceID = Items[SlotIndex].GetItemID();
+        }
 
         FERNUpgradeTransaction Tx;
         Tx.SlotIndex = SlotIndex;
-        Tx.SourceItemID = Items[SlotIndex].GetItemID();
+        Tx.SourceItemID = SourceID;
         Tx.RequestingPlayer = PlayerChar;
         Tx.Timestamp = GetWorld()->GetTimeSeconds();
 

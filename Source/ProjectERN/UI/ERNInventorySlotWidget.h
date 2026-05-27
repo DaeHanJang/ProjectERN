@@ -31,7 +31,7 @@ public:
 	FORCEINLINE const int32 GetSlotIndex() const { return SlotIndex; }
 	FORCEINLINE void SetSlotIndex(const int32 NewIndex) { SlotIndex = NewIndex; }
 	FORCEINLINE void SetBackgroundTint(FColor NewColor) { BackgroundTint = NewColor; }
-	FORCEINLINE void InitInventorySlotTint() const { InventorySlotImage->SetBrushTintColor(BackgroundTint); }
+	FORCEINLINE void InitInventorySlotTint() const { if (InventorySlotImage) InventorySlotImage->SetBrushTintColor(BackgroundTint); }
 	void SetInventorySlotImage(UTexture2D* NewTexture) const;
 	void SetInventorySlotTint(FColor NewColor) const;
 	

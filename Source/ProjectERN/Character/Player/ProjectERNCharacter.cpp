@@ -13,6 +13,9 @@
 #include "AbilitySystemComponent.h"
 #include "ERNPlayerController.h"
 #include "ERNPlayerStatusTable.h"
+#include "ERNSkillNiagaraComponent.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Components/SphereComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
@@ -141,6 +144,9 @@ AProjectERNCharacter::AProjectERNCharacter()
 	InteractionDetector->SetCollisionProfileName(TEXT("OverlapAll"));
 	InteractionDetector->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Ignore);
 	InteractionDetector->SetGenerateOverlapEvents(true);
+
+	// Create Skill Niagara Component
+	SkillNiagaraComponent = CreateDefaultSubobject<UERNSkillNiagaraComponent>(TEXT("SkillNiagaraComponent"));
 	
 	// NightRainZone 자기장 밤의비
 	NightRainPostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("NightRainPostProcessComponent"));
@@ -157,6 +163,10 @@ AProjectERNCharacter::AProjectERNCharacter()
 
 	// 기본값 설정
 	CharacterType = ECharacterType::Warrior;
+	
+	// 캐릭터 겹쳤을 때 카메라 조정 방지
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 }
 
 void AProjectERNCharacter::BeginPlay()
@@ -191,22 +201,24 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 	}
 
 	// GAS 초기화는 부모 클래스에서 처리
-	
+
 	// InteractionDetector 감지 시작
 	if (!GetWorldTimerManager().IsTimerActive(DetectionTimerHandle))
 	{
-		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector, 0.2f, true, 0.0f);
+		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector,
+		                                0.2f, true, 0.0f);
 	}
 }
 
 void AProjectERNCharacter::OnRep_Controller()
 {
 	Super::OnRep_Controller();
-	
+
 	// InteractionDetector 감지 시작
 	if (!GetWorldTimerManager().IsTimerActive(DetectionTimerHandle))
 	{
-		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector, 0.2f, true, 0.0f);
+		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector,
+		                                0.2f, true, 0.0f);
 	}
 }
 
@@ -217,20 +229,20 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 	{
 		return;
 	}
-	
+
 	AERNPlayerController* ERNController = Cast<AERNPlayerController>(GetController());
 	if (!ERNController)
 	{
 		return;
 	}
-	
+
 	// 상호작용 감지 콜리전과 겹쳐진 액터 수집
 	TArray<AActor*> OverlappingActors;
 	InteractionDetector->GetOverlappingActors(OverlappingActors);
-		
+
 	float ClosestDistSq = MAX_FLT;
 	AActor* ClosestActor = nullptr;
-	
+
 	// 감지된 액터를 순회하면서 상호작용 가능 액터인 경우 가장 가까운 액터를 선정
 	for (AActor* Actor : OverlappingActors)
 	{
@@ -238,7 +250,7 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		{
 			continue;
 		}
-		
+
 		if (const AERNItemActor* ItemActor = Cast<AERNItemActor>(Actor))
 		{
 			if (!ItemActor->CanBeInteractedBy(ERNController))
@@ -246,16 +258,16 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 				continue;
 			}
 		}
-		
+
 		const float DistSq = this->GetSquaredDistanceTo(Actor);
-		
+
 		if (ClosestDistSq > DistSq)
 		{
 			ClosestDistSq = DistSq;
 			ClosestActor = Actor;
 		}
 	}
-	
+
 	AActor* CurrentInteractable = ERNController->GetCurrentInteractable();
 	// 대상이 바뀐 경우 기존 대상 종료
 	if (CurrentInteractable != ClosestActor)
@@ -264,7 +276,7 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		{
 			IInteractable::Execute_EndInteract(CurrentInteractable, ERNController);
 		}
-		
+
 		ERNController->ClearCurrentInteractable();
 
 		// 현재 상효작용 가능 액터가 존재할 경우 대상이 바뀐 경우 새로 선정
@@ -441,7 +453,7 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::ToggleSprint);
-	
+
 	// Flask
 	InputComp->BindNativeInputAction(
 		InputConfig, 
@@ -457,6 +469,20 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started, 
 		this, 
 		&AProjectERNCharacter::UseConsumable);
+
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_NormalSkill,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::NormalSkill);
+	
+	InputComp->BindNativeInputAction(
+		InputConfig,
+		TAG_Input_UltimateSkill,
+		ETriggerEvent::Started,
+		this,
+		&AProjectERNCharacter::UltimateSkill);
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
@@ -485,7 +511,7 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 	const bool bIsLanding =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Landing);
-	
+
 	const bool bIsGetHit =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Stagger);
@@ -540,7 +566,7 @@ void AProjectERNCharacter::Roll()
 	{
 		// 구르기 방향 결정
 		PendingRollDirection = RollDirection;
-		
+
 		// 구르기 태그를 가진 어빌리티 실행 시도
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Roll));
 	}
@@ -677,8 +703,8 @@ void AProjectERNCharacter::Server_SetGodMode_Implementation(bool bEnable)
 {
 	bGodMode = bEnable;
 	UE_LOG(LogTemp, Warning, TEXT("[GodMode] %s for %s"),
-		bEnable ? TEXT("ON") : TEXT("OFF"),
-		*GetName());
+	       bEnable ? TEXT("ON") : TEXT("OFF"),
+	       *GetName());
 }
 
 // ===== 인트로: 새 매달림 =====
@@ -705,7 +731,8 @@ void AProjectERNCharacter::AttachToIntroBird(AERNIntroBird* Bird)
 		Move->SetMovementMode(MOVE_None);
 	}
 
-	// 새에 등록
+	// 새에 등록 + 소유권 설정 (Server RPC가 클라에서 서버로 전송되려면 Owner 필요)
+	Bird->SetOwner(GetController());
 	Bird->SetAttachedPlayer(this);
 
 	// 상태 켜기 (리플리케이트 → OnRep에서 클라가 몽타주 보조 재생)
@@ -843,25 +870,29 @@ void AProjectERNCharacter::UpdateMovementSpeed()
 		return;
 	}
 
-	const bool bIsSprinting = AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(
-		TAG_State_Movement_Sprinting);
+	// 태그 부여 여부 확인 (대시 스킬)
+	const bool bIsDashSkill = AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_DashSkill);
 
+	// 태그 부여 여부 확인 (전력질주)
+	const bool bIsSprinting = AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Sprinting);
+
+	// 태그 부여 여부 확인 (공격 중)
+	const bool bIsAttacking = AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking);
+
+
+	// 상황 별 속도 설정
 	float NewSpeed = DefaultSpeed;
+	if (bIsDashSkill) { NewSpeed = DashSkillSpeed; } // 대시 스킬
+	else if (bIsSprinting) { NewSpeed = SprintSpeed; } // 전력질주
+	else if (bIsLockOn) { NewSpeed = TargetingSpeed; } // 락온 상태
 
-	if (bIsSprinting)
-	{
-		NewSpeed = SprintSpeed;
-	}
-	else if (bIsLockOn)
-	{
-		NewSpeed = TargetingSpeed;
-	}
+	// 공격 중 속도는 별도로 적용
+	if (bIsAttacking) { NewSpeed = AttackingSpeed; }
 
-	if (AbilitySystemComponent && (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Attacking)))
-	{
-		NewSpeed = AttackingSpeed;
-	}
-
+	// 속도 적용
 	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
 }
 
@@ -934,7 +965,7 @@ void AProjectERNCharacter::HeavyAttack()
 	{
 		return;
 	}
-	
+
 	// True라면
 	if (TryEndActiveChannelingWeaponSkill())
 	{
@@ -1016,6 +1047,36 @@ void AProjectERNCharacter::UseConsumable()
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Consumable));
 	}
+}
+
+void AProjectERNCharacter::NormalSkill()
+{
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Skill_Normal));
+}
+
+void AProjectERNCharacter::UltimateSkill()
+{
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Skill_Ultimate));
 }
 
 void AProjectERNCharacter::StopSprint()
@@ -1250,7 +1311,8 @@ void AProjectERNCharacter::Server_RequestRoll_Implementation(FVector_NetQuantize
 	}
 }
 
-float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
+                                       AController* EventInstigator, AActor* DamageCauser)
 {
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 	
@@ -1263,24 +1325,26 @@ void AProjectERNCharacter::Server_LevelUp_Implementation()
 	{
 		return;
 	}
-	
+
 	const FName CurrentLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel())));
 	const FName NextLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel()) + 1));;
-	
-	const FERNPlayerStatusTable* CurrentRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(CurrentLevel, TEXT("CurrentLevelRow"));
-	const FERNPlayerStatusTable* NewRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(NextLevel, TEXT("TextLevelContext"));
+
+	const FERNPlayerStatusTable* CurrentRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(
+		CurrentLevel, TEXT("CurrentLevelRow"));
+	const FERNPlayerStatusTable* NewRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(
+		NextLevel, TEXT("TextLevelContext"));
 	if (!NewRow)
 	{
 		return;
 	}
-	
+
 	if (AttributeSet->GetGold() < CurrentRow->Cost)
 	{
 		return;
 	}
-	
+
 	AttributeSet->SetGold(AttributeSet->GetGold() - NewRow->Cost);
-	
+
 	AttributeSet->SetLevel(static_cast<int32>(AttributeSet->GetLevel()) + 1);
 	AttributeSet->SetMaxHealth(NewRow->MaxHealth);
 	AttributeSet->SetHealth(NewRow->MaxHealth);
@@ -1293,7 +1357,7 @@ void AProjectERNCharacter::Server_LevelUp_Implementation()
 	AttributeSet->SetAttackPower(NewRow->AttackPower);
 	AttributeSet->SetDefense(NewRow->Defense);
 	AttributeSet->SetStaggerResistance(NewRow->StaggerResistance);
-	
+
 	UE_LOG(LogTemp, Warning, TEXT("%s Level : %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetLevel()));
 }
 
@@ -1309,4 +1373,61 @@ void AProjectERNCharacter::InteractionChurch_Implementation() const
 	AttributeSet->SetFlaskQuantity(NewFlaskQuantity);
 	
 	UE_LOG(LogTemp, Warning, TEXT("%s, MaxFlaskQuantity: %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()));
+}
+
+void AProjectERNCharacter::Multicast_PlayWeaponSkillInstantNiagaraEffects_Implementation(
+	const TArray<FERNWeaponSkillInstantNiagaraSpawnData>& Effects)
+{
+	if (GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+
+	for (const FERNWeaponSkillInstantNiagaraSpawnData& EffectData : Effects)
+	{
+		// 이펙트가 없다면 Continue (발동하지 않음)
+		if (!EffectData.NiagaraSystem)
+		{
+			continue;
+		}
+
+		// 시간차 적용되지 않았다면
+		if (EffectData.StartDelay <= 0.f)
+		{
+			// 즉시 발동
+			SpawnWeaponSkillInstantNiagaraEffect_Local(EffectData);
+			continue;
+		}
+
+		// 시간차 적용되었다면 타이머로 딜레이적용
+		FTimerHandle TimerHandle;
+		GetWorldTimerManager().SetTimer(
+			TimerHandle,
+			FTimerDelegate::CreateUObject(
+				this,
+				&AProjectERNCharacter::SpawnWeaponSkillInstantNiagaraEffect_Local,
+				EffectData),
+			EffectData.StartDelay,
+			false);
+	}
+}
+
+void AProjectERNCharacter::SpawnWeaponSkillInstantNiagaraEffect_Local(FERNWeaponSkillInstantNiagaraSpawnData EffectData)
+{
+	// 나이아가라 적용되지 않았다면 return
+	if (!EffectData.NiagaraSystem || !GetWorld())
+	{
+		return;
+	}
+
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(),
+		EffectData.NiagaraSystem,
+		EffectData.Location,
+		EffectData.Rotation,
+		EffectData.Scale,
+		true,
+		true,
+		ENCPoolMethod::None,
+		true);
 }

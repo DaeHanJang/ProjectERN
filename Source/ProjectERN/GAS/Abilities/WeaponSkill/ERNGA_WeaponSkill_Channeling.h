@@ -3,12 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GAS/Abilities/CharacterSkill/ERNSkillNiagaraTypes.h"
 #include "GAS/Abilities/ERNGA_WeaponSkill.h"
 #include "GAS/Abilities/WeaponSkill/ERNWeaponSkillTypes.h"
 #include "ERNGA_WeaponSkill_Channeling.generated.h"
-
-class UNiagaraComponent;
-class UNiagaraSystem;
 
 USTRUCT(BlueprintType)
 struct FERNWeaponSkillChannelOriginData
@@ -76,15 +74,7 @@ struct FERNWeaponSkillChannelingData
 	
 	// 나이아가라 효과 사용 여부
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Effect")
-	bool bUseChannelingEffect = true;
-
-	// 나이아가라 효과
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Effect", meta=(EditCondition="bUseChannelingEffect", EditConditionHides))
-	UNiagaraSystem* ChannelingEffect = nullptr;
-
-	// 효과 크기
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Effect", meta=(EditCondition="bUseChannelingEffect", EditConditionHides))
-	FVector EffectScale = FVector::OneVector;
+	TArray<FERNSkillAttachedNiagaraEffect> ChannelingNiagaraEffects;
 	
 	// 디버그용 드로우 활성화 여부
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Debug")
@@ -130,9 +120,6 @@ private:
 	// 이후 틱마다 이 Mesh 기준으로 발사 위치와 방향을 계산
 	TWeakObjectPtr<USkeletalMeshComponent> CachedMeshComp;
 	
-	// 나이아가라 이펙트
-	TWeakObjectPtr<UNiagaraComponent> ActiveChannelingEffect;
-	
 	// 실제 타이머에 사용 중인 틱 간격
 	float ActiveTickInterval = 0.f;
 	
@@ -149,10 +136,10 @@ private:
 	void ApplyChannelDamage(USkeletalMeshComponent* MeshComp);
 	
 	// 채널링 시작 시 지속 이펙트 소환
-	void SpawnChannelingEffect(USkeletalMeshComponent* MeshComp);
+	void StartChannelingNiagaraEffects();
 	
 	// 채널링 종료 시 지속 이펙트 제거
-	void StopChannelingEffect();
+	void StopChannelingNiagaraEffects();
 	
 	// OriginData 설정에 따라 채널링의 위치, 회전, 부착 컴포넌트를 계산
 	bool GetChannelOriginTransform(

@@ -198,8 +198,9 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 		return FReply::Handled();
 	}
 	
-	// 활성화된 슬롯 인덱스가 있을 경우
-	if (FocusSlotIndex != -1)
+	// 활성화된 슬롯 인덱스가 있을 경우 (Hover가 최우선, 없으면 고정 Focus)
+	const int32 ActiveIndex = (HoveredSlotIndex != -1) ? HoveredSlotIndex : FocusSlotIndex;
+	if (ActiveIndex != -1)
 	{
 		// 키보드 Esc를 누를 경우 (=활성화 슬롯 초기화)
 		if (InKeyEvent.GetKey() == EKeys::Escape)
@@ -211,12 +212,12 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 		// 키보드 G를 누를 경우 (=아이템 버리기)
 		if (InKeyEvent.GetKey() == EKeys::G)
 		{
-			if (SlotWidgets.IsValidIndex(FocusSlotIndex))
+			if (SlotWidgets.IsValidIndex(ActiveIndex))
 			{
-				const int32 Quantity = InventoryComponent->GetItemQuantity(FocusSlotIndex);
+				const int32 Quantity = InventoryComponent->GetItemQuantity(ActiveIndex);
 				if (Quantity <= 1)
 				{
-					InventoryComponent->Server_RemoveItem(FocusSlotIndex, Quantity);
+					InventoryComponent->Server_RemoveItem(ActiveIndex, Quantity);
 				}
 				else
 				{
@@ -243,7 +244,8 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 		// 키보드 E키를 누를 경우 (=아이템 장착)
 		if (InKeyEvent.GetKey() == EKeys::E)
 		{
-			EquipmentComponent->Server_EquipItem(FocusSlotIndex);
+			EquipmentComponent->Server_EquipItem(ActiveIndex);
+			InitFocusSlotIndex(); // 장착 완료 후 포커스 자동 해제
 			
 			return FReply::Handled();
 		}
@@ -277,10 +279,11 @@ FReply UERNInventoryWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, 
 	}
 	
 	// 활성화된 슬롯 인덱스가 있을 경우
-	if (FocusSlotIndex != -1)
+	const int32 ActiveIndex = (HoveredSlotIndex != -1) ? HoveredSlotIndex : FocusSlotIndex;
+	if (ActiveIndex != -1)
 	{
 		// 인벤토리 네비게이션 (Up, Left, Down, Right)
-		const int32 NextIndex = GetNavigationTargetSlotIndex(InKeyEvent.GetKey(), InventoryComponent->GetMaxSlotSize());
+		const int32 NextIndex = GetNavigationTargetSlotIndex(InKeyEvent.GetKey(), InventoryComponent->GetMaxSlotSize(), ActiveIndex);
 		if (NextIndex != INDEX_NONE)
 		{			
 			UpdateFocusSlotIndex(NextIndex);
@@ -292,37 +295,33 @@ FReply UERNInventoryWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, 
 	return Super::NativeOnPreviewKeyDown(InGeometry, InKeyEvent);
 }
 
-const int32 UERNInventoryWidget::GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize) const
+const int32 UERNInventoryWidget::GetNavigationTargetSlotIndex(const FKey& Key, const int32 MaxSlotSize, const int32 CurrentIndex) const
 {
 	int32 NextIndex = INDEX_NONE;
 	
 	// 위
 	if (Key == EKeys::Up)
 	{
-		NextIndex = (FocusSlotIndex - ColumnSize < 0) ? 
-		FocusSlotIndex + ColumnSize * (((FocusSlotIndex - ColumnSize) * -1 + MaxSlotSize - 1) / ColumnSize - 1) : 
-		FocusSlotIndex - ColumnSize;
-		/* 
-		 * Column = FocusSlotIndex % ColumnSize;
-		 * Column + ((MaxSlotSize - 1 - Column) / ColumnSize) * ColumnSize;
-		 */
+		NextIndex = (CurrentIndex - ColumnSize < 0) ? 
+		CurrentIndex + ColumnSize * (((CurrentIndex - ColumnSize) * -1 + MaxSlotSize - 1) / ColumnSize - 1) : 
+		CurrentIndex - ColumnSize;
 	}
 	// 아래
 	else if (Key == EKeys::Down)
 	{
-		NextIndex = FocusSlotIndex + ColumnSize >= MaxSlotSize ?
-		(FocusSlotIndex + ColumnSize) % ColumnSize : 
-		FocusSlotIndex + ColumnSize;
+		NextIndex = CurrentIndex + ColumnSize >= MaxSlotSize ?
+		(CurrentIndex + ColumnSize) % ColumnSize : 
+		CurrentIndex + ColumnSize;
 	}
 	// 왼쪽
 	else if (Key == EKeys::Left)
 	{
-		NextIndex = (FocusSlotIndex - 1 < 0) ? MaxSlotSize - 1 : FocusSlotIndex - 1;
+		NextIndex = (CurrentIndex - 1 < 0) ? MaxSlotSize - 1 : CurrentIndex - 1;
 	}
 	// 오른쪽
 	else if (Key == EKeys::Right)
 	{
-		NextIndex = (FocusSlotIndex + 1) % MaxSlotSize;
+		NextIndex = (CurrentIndex + 1) % MaxSlotSize;
 	}
 	
 	return NextIndex;
@@ -653,13 +652,11 @@ void UERNInventoryWidget::ProcessUnhoverFallback()
 
 void UERNInventoryWidget::OnSlotDoubleClickedCallback(const int32 Index)
 {
-	// 1. 포커스 고정
-	UpdateFocusSlotIndex(Index);
-	
-	// 2. 장착 시도 (E키 누른 것과 동일)
+	// 장착 시도 (E키 누른 것과 동일)
 	if (UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent())
 	{
 		EquipmentComponent->Server_EquipItem(Index);
+		InitFocusSlotIndex(); // 장착 완료 후 포커스 자동 해제
 	}
 }
 

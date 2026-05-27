@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Character/ERNCharacterBase.h"
+#include "GAS/Abilities/CharacterSkill/ERNGA_SkillBase.h"
 #include "Logging/LogMacros.h"
+#include "GAS/Abilities/WeaponSkill/ERNWeaponSkillTypes.h"
 #include "ProjectERNCharacter.generated.h"
 
 class UERNLevelUpWidget;
@@ -21,6 +23,7 @@ class UERNUpgradeComponent;
 class UERNInputConfig;
 class UGameplayEffect;
 class UCameraShakeBase;
+class UERNSkillNiagaraComponent;
 class UPostProcessComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -33,6 +36,8 @@ UCLASS(abstract)
 class AProjectERNCharacter : public AERNCharacterBase
 {
 	GENERATED_BODY()
+
+	friend class UERNGA_WeaponSkill_Instant;
 
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
@@ -57,22 +62,26 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** Upgrade Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UERNUpgradeComponent* UpgradeComponent;
-	
+
 	/** Interaction Detection Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USphereComponent* InteractionDetector;
 	
 	// InteractionDetector TimerHandle
 	FTimerHandle DetectionTimerHandle;
+	
+	/** Skill Niagara Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+	UERNSkillNiagaraComponent* SkillNiagaraComponent;
 
 protected:
 	// InteractionDetector Update
 	void UpdateInteractionDetector();
-	
+
 	// Status Curve Table
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Character")
 	TObjectPtr<UDataTable> StatusCurveTable;
-	
+
 	/** Character Type - 블루프린트에서 설정 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Character")
 	ECharacterType CharacterType;
@@ -80,10 +89,10 @@ protected:
 	/** Called when character is possessed by a controller */
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_Controller() override;
-	
+
 	// 회전 보간을 위해 사용
 	virtual void Tick(float DeltaSeconds) override;
-	
+
 	// 태그 기반 입력을 위한 InputConfig 부여
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Input")
 	TObjectPtr<UERNInputConfig> InputConfig;
@@ -91,28 +100,27 @@ protected:
 public:
 	/** Constructor */
 	AProjectERNCharacter();
-	
+
 	FORCEINLINE UDataTable* GetStatusCurveTable() const { return StatusCurveTable; }
-	
+
 	// Level Up
 	UFUNCTION(Server, Reliable)
 	void Server_LevelUp();
-	
+
 	// 교회 상호작용
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Attributes")
 	void InteractionChurch() const;
 
 protected:
-
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
 
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	
+
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
-	
+
 	/** Called for movement input end*/
 	void MoveEnd();
 
@@ -121,24 +129,30 @@ protected:
 
 	/** Called for roll input */
 	void Roll();
-	
+
 	/** Called for light attack input */
 	void LightAttack();
 
 	/** Called for heavy attack input */
 	void HeavyAttack();
-	
+
 	/** Called for lock on input */
 	void LockOn();
-	
+
 	/** Called for sprint on input */
 	void ToggleSprint();
-	
+
 	/** Called for flask on input */
 	void DrinkFlask();
 	
 	/** Called for Consumable on input */
 	void UseConsumable();
+
+	/** Called for NormalSkill on input */
+	void NormalSkill();
+
+	/** Called for UltimateSkill on input */
+	void UltimateSkill();
 
 public:
 	/** Handles move inputs from either controls or UI interfaces */
@@ -156,7 +170,7 @@ public:
 	/** Handles jump pressed inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category="ERN|Input")
 	virtual void DoJumpEnd();
-	
+
 	UFUNCTION(BlueprintCallable, Category="ERN|Action")
 	void ExecuteJumpLaunch();
 
@@ -178,39 +192,39 @@ public:
 
 	/** Returns UpgradeComponent **/
 	FORCEINLINE class UERNUpgradeComponent* GetUpgradeComponent() const { return UpgradeComponent; }
-	
+
 	// ************** 임시 락온 기능 구현 **************
 public:
 	UFUNCTION(BlueprintCallable, Category="ERN|LockOn")
 	void ToggleTemporaryLockOn();
 
 	bool IsLockOn() const { return bIsLockOn; }
-	
+
 	UFUNCTION(Server, Reliable)
 	void Server_SetLockOn(bool bNewLockOn, FRotator TargetRotation);
-	
+
 	void ApplyLockOnState(bool bNewLockOn, const FRotator& TargetRotation);
-	
+
 protected:
 	float DesiredLockOnYaw = 0.f;
-	
+
 	// Server에서 Yaw방향 갱신
 	// Unreliable을 사용하는 이유는 LockOn yaw는 매번 최신값만 중요하고, 오래된 패킷이 늦게 도착해도 의미가 적기 때문이에요.
 	UFUNCTION(Server, Unreliable)
 	void Server_UpdateLockOnYaw(float NewYaw);
-	
+
 	UPROPERTY(ReplicatedUsing=OnRep_IsLockOn, BlueprintReadOnly, Category="ERN|LockOn")
 	bool bIsLockOn = false;
-	
+
 	UFUNCTION()
 	void OnRep_IsLockOn();
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn")
 	bool bUseCameraYawOnLockOn = true;
-	
+
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	// ************** 임시 락온 기능 구현 **************
-	
+
 public:
 	// 공격 중 움직일 수 있게 하기 위함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
@@ -225,7 +239,7 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake")
 	TSubclassOf<UCameraShakeBase> TakeDamageShakeClass_Big;
-
+	
 	// 데미지/MaxHealth 비율 임계값 — 미만이면 없음, 10 이하면 small, 20 이하면 medium, 30 이상이면 Big
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float DamageShakeThresholdSmall = 10.f;
@@ -236,7 +250,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float DamageShakeThresholdBig = 30.f;
 
-	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
+	                         AActor* DamageCauser) override;
 
 	// StaggerPower에 따른 카메라 흔들림을 위한 경직 재정의
 	virtual void TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin = FVector::ZeroVector) override;
@@ -309,52 +324,55 @@ public:
 protected:
 	// 상태 별 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
-	float DefaultSpeed = 600;	// 기본 속도
-	
+	float DefaultSpeed = 600; // 기본 속도
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
-	float TargetingSpeed = 300;	// 타겟팅 중 속도
-	
+	float TargetingSpeed = 300; // 타겟팅 중 속도
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
-	float TargetingRunSpeed = 500;	// 타겟팅 중 달리기 속도
-	
+	float TargetingRunSpeed = 500; // 타겟팅 중 달리기 속도
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
-	float AttackingSpeed = 200;	// 공격 중 속도
-	
+	float AttackingSpeed = 200; // 공격 중 속도
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
-	float SprintSpeed = 1000;	// 전력질주 속도
-	
+	float SprintSpeed = 1000; // 전력질주 속도
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
+	float DashSkillSpeed = 1500; // 대시 스킬용 속도 (전사 일반 스킬)
+
 	// 회전 보간 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Movement")
 	float RotationInterpSpeed = 10.f;
-	
+
 	// 현재 회전 보간 목표
 	FRotator DesiredActorRotation = FRotator::ZeroRotator;
 
 	// 콤보/공격처럼 한 번만 회전시키고 끝낼 때 사용
 	bool bHasPendingActorRotation = false;
-	
+
 public:
 	// 움직임 속도 변화 함수
 	UFUNCTION(BlueprintCallable, Category="ERN|Movement")
 	void UpdateMovementSpeed();
-	
+
 	// 캐릭터 회전 변화 함수
 	UFUNCTION(BlueprintCallable, Category="ERN|Movement")
 	void UpdateRotationMode();
-	
+
 	// 공격의 1회용 회전 적용
 	void SetPendingAttackRotation(const FRotator& TargetRotation);
-	
+
 protected:
 	// Sprint 관련 변수/함수
 	FVector2D CachedMoveInput = FVector2D::ZeroVector;
-	
+
 	// Sprint 멈추기 함수
 	void StopSprint();
-	
+
 	// 움직임 입력 여부 확인(Sprint 비활성 확인용)
 	bool HasMoveInput() const;
-	
+
 	// LockOn 목표 회전 계산
 	FRotator GetLockOnDesiredRotation() const;
 
@@ -363,34 +381,34 @@ protected:
 
 	// 실제 회전 보간 실행
 	void InterpActorRotation(float DeltaSeconds);
-	
+
 	// 서버에서의 공격 회전을 적용
 	UFUNCTION(Server, Reliable)
 	void Server_SetPendingAttackRotation(FRotator TargetRotation);
-	
+
 	// 클라이언트가 누른 추가 공격 입력을 서버의 Ability 인스턴스에도 전달하기 위함
 	UFUNCTION(Server, Reliable)
 	void Server_CacheLightAttackComboInput(FRotator TargetRotation);
 
 	bool CacheActiveLightAttackComboInput(const FRotator& TargetRotation);
-	
+
 protected:
 	// 스태미나 재생 GE
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|GE")
 	TSubclassOf<UGameplayEffect> StaminaRegenEffectClass;
-	
+
 	// 마나 재생 GE
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|GE")
 	TSubclassOf<UGameplayEffect> ManaRegenEffectClass;
-	
+
 	// 재생효과 적용
 	void ApplyPlayerRegenEffects();
-	
+
 	// *** 멀티 환경에서 방향별 구르기 적용시키기 ***
 private:
 	// 구르기 입력 방향 저장 변수
 	FVector PendingRollDirection = FVector::ForwardVector;
-	
+
 	// 회피 입력 순간 방향 계산
 	FVector GetRollWorldDirection() const;
 
@@ -401,8 +419,9 @@ private:
 	// 서버에서 실행
 	UFUNCTION(Server, Reliable)
 	void Server_RequestRoll(FVector_NetQuantizeNormal RollDirection);
-	
+
 	// *** 멀티 환경에서 방향별 구르기 적용시키기 ***
+
 	
 	// NightRainZone 자기장 밤의비
 #pragma region NightRainZone
@@ -415,7 +434,14 @@ private:
 public:
 	// 캐릭터 HeavyAttack 입력을 토글로 변경
 	bool TryEndActiveChannelingWeaponSkill();
-	
+
 	UFUNCTION(Server, Reliable)
 	void Server_RequestEndActiveChannelingWeaponSkill();
+
+private:
+	// 무기 스킬 이펙트 Multicast (Unreliable로 가볍게)
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlayWeaponSkillInstantNiagaraEffects(const TArray<FERNWeaponSkillInstantNiagaraSpawnData>& Effects);
+
+	void SpawnWeaponSkillInstantNiagaraEffect_Local(FERNWeaponSkillInstantNiagaraSpawnData EffectData);
 };
