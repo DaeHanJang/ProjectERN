@@ -7,6 +7,7 @@
 
 class UERNConfirmPurchaseWidget;
 class UTextBlock;
+class UImage;
 
 // 슬롯 호버 관련 델리게이트 선언
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotHoveredSignature, const FERNShopItemData&, SlotData);
@@ -59,6 +60,10 @@ protected:
 	// 재고 표시 텍스트 블록 (블루프린트 위젯 이름을 StockText로 맞춰야 연동됨)
 	UPROPERTY(meta = (BindWidgetOptional))
 	UTextBlock* StockText;
+
+	// 호버 시 나타날 금테 이미지 등
+	UPROPERTY(meta = (BindWidgetOptional))
+	UImage* HoverImage;
 
 	// 마우스가 슬롯에 들어왔을 때 오버라이드
 	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;

@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "GAS/ERNAttributeSet.h"
 #include "UI/ERNUIManagerSubsystem.h"
+#include "Components/Image.h"
 
 void UERNShopItemSlotWidget::OnPurchaseButtonClicked()
 {
@@ -47,6 +48,11 @@ void UERNShopItemSlotWidget::OnPurchaseButtonClicked()
 void UERNShopItemSlotWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	if (HoverImage)
+	{
+		HoverImage->SetVisibility(ESlateVisibility::Hidden);
+	}
 
 	// 위젯이 생성될 때 텍스트 UI 갱신
 	RefreshSlotUI();
@@ -106,6 +112,11 @@ void UERNShopItemSlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, con
 {
 	Super::NativeOnMouseEnter(InGeometry, InMouseEvent);
 
+	if (HoverImage)
+	{
+		HoverImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
+
 	// 호버 이벤트 발생 시, 현재 슬롯이 가지고 있는 아이템 데이터 브로드캐스트
 	if (OnSlotHovered.IsBound())
 	{
@@ -116,6 +127,11 @@ void UERNShopItemSlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, con
 void UERNShopItemSlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 {
 	Super::NativeOnMouseLeave(InMouseEvent);
+
+	if (HoverImage)
+	{
+		HoverImage->SetVisibility(ESlateVisibility::Hidden);
+	}
 
 	// 언호버 이벤트 알림
 	if (OnSlotUnhovered.IsBound())
