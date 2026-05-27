@@ -18,6 +18,10 @@
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Camera/CameraShakeBase.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Inventory/Components/ERNEquipmentComponent.h"
+#include "Combat/Weapons/ERNWeaponBase.h"
+#include "GAS/ERNAttributeSet.h"
+#include "AbilitySystemComponent.h"
 
 AERNProjectileBase::AERNProjectileBase()
 {
@@ -109,6 +113,9 @@ void AERNProjectileBase::BeginPlay()
 	}
 
 	if (!HasAuthority()) return;
+
+	// 플레이어 소유 투사체면 owner의 공격력/무기 공격력으로 데미지 덮어쓰기
+	RecalculateDamageFromOwner();
 
 	if (bHomingEnabled)
 	{
@@ -349,6 +356,39 @@ AActor* AERNProjectileBase::GetEnemyBlackboardTarget() const
 	if (!BB) return nullptr;
 
 	return Cast<AActor>(BB->GetValueAsObject(TEXT("TargetActor")));
+}
+
+// 플레이어 owner 기준 직격/폭발 데미지 재계산
+void AERNProjectileBase::RecalculateDamageFromOwner()
+{
+	AProjectERNCharacter* PlayerOwner = Cast<AProjectERNCharacter>(GetOwner());
+	if (!PlayerOwner)
+	{
+		// 적/논플레이어 투사체는 BP에 설정된 Damage 그대로 사용
+		return;
+	}
+
+	float CharacterAP = 0.f;
+	if (UAbilitySystemComponent* ASC = PlayerOwner->GetAbilitySystemComponent())
+	{
+		CharacterAP = ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerAttribute());
+	}
+
+	float WeaponDmg = 0.f;
+	if (UERNEquipmentComponent* Equip = PlayerOwner->GetEquipmentComponent())
+	{
+		if (AERNWeaponBase* Weapon = Equip->CurrentWeapon)
+		{
+			WeaponDmg = Weapon->LightAttackDamage;
+		}
+	}
+
+	Damage = CharacterAP * AttackPowerScale + WeaponDmg * WeaponDamageScale;
+
+	if (bExplode)
+	{
+		ExplosionDamage = CharacterAP * ExplosionAttackPowerScale + WeaponDmg * ExplosionWeaponDamageScale;
+	}
 }
 
 // 폭발 범위 데미지 적용

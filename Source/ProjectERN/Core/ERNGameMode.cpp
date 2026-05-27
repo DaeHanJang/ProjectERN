@@ -136,3 +136,20 @@ void AERNGameMode::ReleasePlayerNumber(int32 PlayerNumber)
 		UsedPlayerNumbers.Remove(PlayerNumber);
 	}
 }
+
+void AERNGameMode::PreLogin(const FString& Options, const FString& Address,
+	const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
+
+	// LAN/Steam 토글 시 엔진 기본 OSS와 클라 UniqueId 타입이 미스매치되면
+	// 엔진 기본 PreLogin이 "incompatible_unique_net_id"로 거부함.
+	// 사적 LAN/친선 Steam 환경이므로 이 검증만 핀포인트로 무시.
+	// 정원 초과 등 다른 거부 사유는 그대로 작동.
+	if (ErrorMessage == TEXT("incompatible_unique_net_id"))
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("[ERNGameMode] OSS UniqueId 타입 미스매치 무시 - LAN/Steam 토글 대응"));
+		ErrorMessage.Empty();
+	}
+}

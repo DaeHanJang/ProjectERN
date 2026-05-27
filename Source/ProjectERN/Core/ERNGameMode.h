@@ -32,4 +32,8 @@ private:
 private:
 	UPROPERTY()
 	TSet<int32> UsedPlayerNumbers;
+
+	// OSS 미스매치(incompatible_unique_net_id) 거부만 핀포인트로 무시 - LAN/Steam 토글 양쪽 대응
+	virtual void PreLogin(const FString& Options, const FString& Address,
+		const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 };

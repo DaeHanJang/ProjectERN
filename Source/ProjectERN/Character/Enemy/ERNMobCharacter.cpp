@@ -3,6 +3,7 @@
 #include "Character/Enemy/ERNMobCharacter.h"
 #include "Character/Enemy/AI/ERNMobAIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 AERNMobCharacter::AERNMobCharacter()
 {
@@ -33,17 +34,29 @@ float AERNMobCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 				AActor* CurrentTarget = Cast<AActor>(BB->GetValueAsObject(TEXT("TargetActor")));
 				if (!CurrentTarget)
 				{
-					// DamageCauser의 Owner(플레이어)를 타겟으로 설정
-					AActor* Attacker = DamageCauser ? DamageCauser->GetOwner() : nullptr;
-					if (!Attacker)
+					// 어그로 대상은 항상 Pawn으로 잡아야 BT의 MoveTo/공격이 정상 동작
+					// 플레이어 본인, 무기, 투사체 한번에 처리
+					AActor* Attacker = nullptr;
+					if (EventInstigator)
+					{
+						Attacker = EventInstigator->GetPawn();
+					}
+					if (!Attacker && Cast<APawn>(DamageCauser))
 					{
 						Attacker = DamageCauser;
+					}
+					if (!Attacker && DamageCauser)
+					{
+						Attacker = DamageCauser->GetOwner();
 					}
 
 					if (Attacker)
 					{
 						AIC->SetTarget(Attacker);  // SetTarget으로 시야각도 변경
 						bIsReturning = false;
+
+						// 주변 동료 몹들도 같은 공격자에게 어그로 전파
+						AlertNearbyMobs(Attacker);
 					}
 				}
 			}
@@ -51,4 +64,60 @@ float AERNMobCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 	}
 
 	return ActualDamage;
+}
+
+void AERNMobCharacter::AlertNearbyMobs(AActor* Attacker)
+{
+	if (!bAlertNearbyMobs || !Attacker || !HasAuthority())
+	{
+		return;
+	}
+
+	TArray<AActor*> IgnoreActors;
+	IgnoreActors.Add(this);
+
+	UClass* FilterClass = bAlertOnlySameType ? GetClass() : AERNMobCharacter::StaticClass();
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+
+	TArray<AActor*> Found;
+	UKismetSystemLibrary::SphereOverlapActors(
+		this,
+		GetActorLocation(),
+		AlertRadius,
+		ObjectTypes,
+		FilterClass,
+		IgnoreActors,
+		Found);
+
+	for (AActor* HitActor : Found)
+	{
+		AERNMobCharacter* Mob = Cast<AERNMobCharacter>(HitActor);
+		if (!Mob || Mob->IsDead())
+		{
+			continue;
+		}
+
+		AERNMobAIController* AIC = Cast<AERNMobAIController>(Mob->GetController());
+		if (!AIC)
+		{
+			continue;
+		}
+
+		UBlackboardComponent* BB = AIC->GetBlackboardComp();
+		if (!BB)
+		{
+			continue;
+		}
+
+		// 이미 타겟 잡고 있는 몹은 기존 어그로 유지
+		if (BB->GetValueAsObject(TEXT("TargetActor")))
+		{
+			continue;
+		}
+
+		AIC->SetTarget(Attacker);
+		Mob->bIsReturning = false;
+	}
 }
