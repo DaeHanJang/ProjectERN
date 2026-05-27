@@ -12,7 +12,8 @@ AERNMinimapPinPoint::AERNMinimapPinPoint()
 	IconType = EERNMinimapIconType::PlayerPin1;
 	bVisibleOnMinimap = true;
 	IconScale = 1.0f;
-	bIsSpatiallyLoaded = false;
+	//패키징 빌드에서 설정할 수 없어서 BP에서 직접 수정함
+	//bIsSpatiallyLoaded = false;
 }
 
 void AERNMinimapPinPoint::InitializePin( EERNMinimapIconType InIconType, APlayerState* InOwnerPlayerState)
