@@ -22,6 +22,8 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Attacking, "State.Combat.Attacking")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Blocking, "State.Combat.Blocking")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Rolling, "State.Combat.Rolling")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Jumping, "State.Combat.Jumping")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_UsingSkill_Normal, "State.Combat.UsingSkill.Normal")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_UsingSkill_Ultimate, "State.Combat.UsingSkill.Ultimate")
 
 // 어빌리티
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Jump, "Ability.Movement.Jump")
@@ -69,3 +71,5 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Cooldown_Skill_Ultimate, "Cooldown.Skill.Ultimate")
 // GameplayCue 태그
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Cast_Buff_AttackPower, "GameplayCue.Cast.Buff.AttackPower")
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Buff_Shield_Aura, "GameplayCue.Buff.Shield.Aura")
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_CrimsonJudgment_Cast,"GameplayCue.Ultimate.CrimsonJudgment.Cast")
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_CrimsonJudgment_Explosion,"GameplayCue.Ultimate.CrimsonJudgment.Explosion")

@@ -25,6 +25,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Attacking)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Blocking)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Rolling)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_Jumping)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_UsingSkill_Normal)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Combat_UsingSkill_Ultimate)
 
 // 어빌리티
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Movement_Jump)		// 점프
@@ -73,3 +75,5 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Cooldown_Skill_Ultimate)		// Ultimate 스킬 
 // GameplayCue 태그
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GameplayCue_Cast_Buff_AttackPower)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GameplayCue_Buff_Shield_Aura)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GameplayCue_Ultimate_CrimsonJudgment_Cast)	// 전사 궁극기 사용 시 GC
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GameplayCue_Ultimate_CrimsonJudgment_Explosion)	// 전사 궁극기 폭발 GC
