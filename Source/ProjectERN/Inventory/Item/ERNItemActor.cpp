@@ -90,7 +90,7 @@ void AERNItemActor::Interact_Implementation(APlayerController* PlayerController)
 	{
 		return;
 	}
-	const AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(PlayerController->GetCharacter());
+	AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(PlayerController->GetCharacter());
 	if (!Player)
 	{
 		return;
@@ -104,7 +104,7 @@ void AERNItemActor::Interact_Implementation(APlayerController* PlayerController)
 	
 	if (PickupSound)
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, PickupSound, GetActorLocation());
+		Player->Multicast_PlayEffectAndSound(nullptr, FVector::ZeroVector, PickupSound, GetActorLocation());
 	}
 }
 

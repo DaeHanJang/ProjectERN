@@ -1,11 +1,14 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Character/Player/ERNPlayerController.h"
+
+#include "EngineUtils.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "Engine/LocalPlayer.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
+#include "OnlineSubsystemUtils.h"
 #include "Blueprint/UserWidget.h"
 #include "ProjectERN.h"
 #include "ProjectERNCharacter.h"
@@ -21,6 +24,8 @@
 #include "Character/Enemy/ERNBossCharacter.h"
 #include "Camera/CameraShakeBase.h"
 #include "Components/PostProcessComponent.h"
+#include "UI/World/ERNMinimapWidget.h"
+#include "World/ERNMinimapPinPoint.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -36,11 +41,10 @@ void AERNPlayerController::BeginPlay()
 		{
 			// add the controls to the player screen
 			MobileControlsWidget->AddToPlayerScreen(0);
-
-		} else {
-
+		}
+		else
+		{
 			UE_LOG(LogProjectERN, Error, TEXT("Could not spawn mobile controls widget."));
-
 		}
 	}
 
@@ -96,7 +100,7 @@ void AERNPlayerController::BeginPlay()
 			}
 		}
 	}
-	
+
 	// 인벤토리 위젯 생성 (로컬 플레이어만)
 	if (IsLocalPlayerController() && InventoryWidgetClass)
 	{
@@ -127,6 +131,34 @@ void AERNPlayerController::BeginPlay()
 		}
 	}
 
+	// 미니맵 위젯 생성 (로컬 플레이어만)
+	if (IsLocalPlayerController() && MinimapWidgetClass)
+	{
+		bool bShouldHide = false;
+		for (const FString& MapName : HideMinimapWidgetMapNames)
+		{
+			if (CurrentMapName.Contains(MapName))
+			{
+				bShouldHide = true;
+				break;
+			}
+		}
+
+		if (!bShouldHide)
+		{
+			MinimapWidget = CreateWidget<UUserWidget>(this, MinimapWidgetClass);
+			if (MinimapWidget)
+			{
+				if (UERNInteractableWidget* InteractableMinimapWidget = Cast<UERNInteractableWidget>(MinimapWidget))
+				{
+					InteractableMinimapWidget->OnWidgetClosed.AddUniqueDynamic(
+						this, &AERNPlayerController::MinimapClose);
+				}
+				MinimapWidget->AddToViewport(1000);
+			}
+		}
+	}
+	
 	// 채팅 위젯 생성 (로컬 플레이어만)
 	if (IsLocalPlayerController() && ChatWidgetClass)
 	{
@@ -291,7 +323,14 @@ void AERNPlayerController::SetupInputComponent()
 			
 			if (InventoryAction)
 			{
-				EnhancedInputComponent->BindAction(InventoryAction, ETriggerEvent::Started, this, &AERNPlayerController::InventoryOpen);
+				EnhancedInputComponent->BindAction(InventoryAction, ETriggerEvent::Started, this,
+				                                   &AERNPlayerController::InventoryOpen);
+			}
+			
+			if (MinimapAction)
+			{
+				EnhancedInputComponent->BindAction(MinimapAction, ETriggerEvent::Started, this,
+													&AERNPlayerController::ToggleMinimap);
 			}
 		}
 	}
@@ -339,7 +378,7 @@ void AERNPlayerController::CheckAndFixCharacterType()
 	if (!GI || !PS)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[CheckAndFixCharacterType] GI or PS is null. GI: %s, PS: %s. Retrying..."),
-			GI ? TEXT("Valid") : TEXT("NULL"), PS ? TEXT("Valid") : TEXT("NULL"));
+		       GI ? TEXT("Valid") : TEXT("NULL"), PS ? TEXT("Valid") : TEXT("NULL"));
 		return; // 타이머가 계속 돌면서 재시도
 	}
 
@@ -651,7 +690,7 @@ void AERNPlayerController::SetNightRainPostProcessBlendWeight_Local(float BlendW
 	}
 }
 #pragma endregion
-//------------------------- NightRain --------------------------------//
+
 void AERNPlayerController::Client_CompleteChurchInteraction_Implementation(AChurch* Church, FVector EffectLocation)
 {
 	if (Church)
@@ -659,6 +698,177 @@ void AERNPlayerController::Client_CompleteChurchInteraction_Implementation(AChur
 		Church->CompleteInteractionLocally(EffectLocation);
 	}
 }
+
+//------------------------Minimap 미니맵 --------------------------------//
+#pragma region Minimap
+void AERNPlayerController::ToggleMinimap()
+{
+	if (MinimapWidget == nullptr)
+	{
+		return;
+	}
+	
+	if (MinimapWidget->GetVisibility() == ESlateVisibility::Visible)
+	{
+		MinimapClose();
+		return;
+	}
+	
+	MinimapOpen();
+}
+
+void AERNPlayerController::MinimapOpen()
+{
+	if (MinimapWidget == nullptr)
+	{
+		return;
+	}
+
+	// UI 매니저를 통한 상태 관리
+	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
+
+	if (MinimapWidget->GetVisibility() == ESlateVisibility::Collapsed)
+	{
+		// 다른 UI가 열려있다면 모두 닫고 미니맵 활성화
+		if (UIManager && !UIManager->RequestOpenUI(EERNUIType::Minimap))
+		{
+			return;
+		}
+		
+		MinimapWidget->SetVisibility(ESlateVisibility::Visible);
+
+		FInputModeGameAndUI InputMode;
+		InputMode.SetWidgetToFocus(MinimapWidget->TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(true);
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
+
+		if (UERNMinimapWidget* ERNMinimapWidget = Cast<UERNMinimapWidget>(MinimapWidget))
+		{
+			ERNMinimapWidget->RefreshStaticMarkers();
+			ERNMinimapWidget->StartDynamicMinimapRefresh();
+			ERNMinimapWidget->PlayOpenAnimation();
+		}
+	}
+}
+
+void AERNPlayerController::MinimapClose()
+{
+	if (MinimapWidget == nullptr)
+	{
+		return;
+	}
+
+	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
+
+	if (MinimapWidget->GetVisibility() == ESlateVisibility::Visible)
+	{
+		// UI 매니저에 닫힘 알림
+		if (UIManager)
+		{
+			UIManager->CloseActiveUI();
+		}
+
+		// 플레이어 마커 타이머 정리
+		if (UERNMinimapWidget* ERNMinimapWidget = Cast<UERNMinimapWidget>(MinimapWidget))
+		{
+			ERNMinimapWidget->StopDynamicMinimapRefresh();
+		}
+		
+		MinimapWidget->SetVisibility(ESlateVisibility::Collapsed);
+
+		FInputModeGameOnly InputMode;
+		SetInputMode(InputMode);
+		bShowMouseCursor = false;
+	}
+}
+
+void AERNPlayerController::Server_RequestCreateMinimapPin_Implementation(FVector WorldLocation)
+{
+	if (MinimapPinClass == nullptr)
+	{
+		return;
+	}
+	
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+	
+	AERNPlayerState* ERNPlayerState = GetPlayerState<AERNPlayerState>();
+	if (ERNPlayerState == nullptr)
+	{
+		return;
+	}
+	
+	// 기존 핀 삭제
+	DestroyOwnedMinimapPins_ServerOnly();
+	
+	// 이후 새로 생성
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = GetPawn();
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AERNMinimapPinPoint* NewPin = World->SpawnActor<AERNMinimapPinPoint>(
+		MinimapPinClass,
+		WorldLocation,
+		FRotator::ZeroRotator,
+		SpawnParams);
+
+	if (NewPin == nullptr)
+	{
+		return;
+	}
+
+	NewPin->InitializePin(ERNPlayerState->GetMinimapPinIconType(), ERNPlayerState);
+}
+
+void AERNPlayerController::Server_RequestRemoveMinimapPin_Implementation(AERNMinimapPinPoint* PinActor)
+{
+	if (IsValid(PinActor) == false)
+	{
+		return;
+	}
+	
+	// 본인 핀만 제거
+	if (PinActor->GetOwnerPlayerState() != PlayerState)
+	{
+		return;
+	}
+	
+	PinActor->Destroy();
+}
+
+void AERNPlayerController::DestroyOwnedMinimapPins_ServerOnly()
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || PlayerState == nullptr)
+	{
+		return;
+	}
+	
+	// 본인의 모든 핀 청소
+	for(TActorIterator<AERNMinimapPinPoint> It(World); It; ++It)
+	{
+		AERNMinimapPinPoint* Pin = *It;
+		
+		if (IsValid(Pin) == false)
+		{
+			continue;
+		}
+		
+		if (Pin->GetOwnerPlayerState() == PlayerState)
+		{
+			Pin->Destroy();
+		}
+	}
+	
+}
+#pragma endregion
+
 
 // ===== 채팅 시스템 =====
 

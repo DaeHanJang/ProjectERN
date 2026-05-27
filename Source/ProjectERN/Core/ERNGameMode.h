@@ -15,10 +15,25 @@ class AERNGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 public:
-
 	/** Constructor */
 	AERNGameMode();
 
 	// 플레이어의 CharacterType에 따라 적절한 Pawn 클래스 반환
 	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
+	
+	// 로그인, 로그아웃에 따른 플레이어 번호 부여
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual void Logout(AController* ExitingController) override;
+	
+private:
+	int32 AssignPlayerNumber();
+	void ReleasePlayerNumber(int32 PlayerNumber);
+	
+private:
+	UPROPERTY()
+	TSet<int32> UsedPlayerNumbers;
+
+	// OSS 미스매치(incompatible_unique_net_id) 거부만 핀포인트로 무시 - LAN/Steam 토글 양쪽 대응
+	virtual void PreLogin(const FString& Options, const FString& Address,
+		const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 };

@@ -20,6 +20,8 @@
 #include "BrainComponent.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Inventory/Item/ERNItemActor.h"
+#include "Perception/AIPerceptionComponent.h"
+#include "Perception/AISense_Sight.h"
 
 AERNEnemyCharacter::AERNEnemyCharacter()
 {
@@ -90,6 +92,20 @@ void AERNEnemyCharacter::BeginPlay()
 	{
 		BindHitboxOverlaps();
 	}
+
+	// 초기 DrawSize 캐싱 (거리 스케일링의 기준)
+	if (HealthBarWidget)
+	{
+		InitialHealthBarDrawSize = HealthBarWidget->GetDrawSize();
+	}
+
+	// 체력바 거리 기반 스케일링 타이머 (로컬 - 모든 머신에서 실행)
+	GetWorldTimerManager().SetTimer(
+		HealthBarScaleTimerHandle,
+		this,
+		&AERNEnemyCharacter::UpdateHealthBarScale,
+		HealthBarScaleUpdateInterval,
+		true);
 }
 
 void AERNEnemyCharacter::BindHitboxOverlaps()
@@ -101,6 +117,8 @@ void AERNEnemyCharacter::BindHitboxOverlaps()
 	{
 		// 히트박스 초기 상태를 NoCollision으로 설정
 		Box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		// Projectile 채널은 무시 - 히트박스 활성화 중에도 투사체가 막히지 않도록
+		Box->SetCollisionResponseToChannel(ECC_GameTraceChannel1, ECR_Ignore);
 		Box->OnComponentBeginOverlap.AddDynamic(this, &AERNEnemyCharacter::OnHitboxOverlap);
 	}
 }
@@ -177,7 +195,11 @@ void AERNEnemyCharacter::Multicast_ShowHealthBar_Implementation()
 {
 	if (!HealthBarWidget) return;
 
-	HealthBarWidget->SetVisibility(true);
+	bHealthBarIntendedVisible = true;
+
+	// 거리에 맞는 크기를 먼저 계산/적용 → 원래 크기로 잠깐 나왔다 줄어드는 팝핑 방지
+	// (UpdateHealthBarScale가 SetDrawSize + SetVisibility(true)까지 처리)
+	UpdateHealthBarScale();
 
 	// 기존 타이머 초기화 후 재시작
 	GetWorld()->GetTimerManager().SetTimer(
@@ -193,7 +215,41 @@ void AERNEnemyCharacter::Multicast_HideHealthBar_Implementation()
 {
 	if (!HealthBarWidget) return;
 
+	bHealthBarIntendedVisible = false;
 	HealthBarWidget->SetVisibility(false);
+}
+
+void AERNEnemyCharacter::UpdateHealthBarScale()
+{
+	if (!HealthBarWidget || !bHealthBarIntendedVisible)
+	{
+		return;
+	}
+
+	APlayerCameraManager* CamMgr = UGameplayStatics::GetPlayerCameraManager(this, 0);
+	if (!CamMgr)
+	{
+		return;
+	}
+
+	const float Dist = FVector::Dist(CamMgr->GetCameraLocation(), GetActorLocation());
+
+	// 최대 표시 거리 초과 시 숨김 (의도 플래그는 유지 → 재진입 시 다시 보이게)
+	if (HealthBarMaxDisplayDistance > 0.f && Dist > HealthBarMaxDisplayDistance)
+	{
+		HealthBarWidget->SetVisibility(false);
+		return;
+	}
+
+	// 거리 안에 들어오면 다시 표시
+	HealthBarWidget->SetVisibility(true);
+
+	// 거리에 반비례한 스케일 (멀수록 작게) + Min/Max 클램프
+	const float RawScale = (Dist > 0.f) ? (HealthBarReferenceDistance / Dist) : HealthBarMaxScale;
+	const float Scale = FMath::Clamp(RawScale, HealthBarMinScale, HealthBarMaxScale);
+
+	// Screen-space는 DrawSize(픽셀)로 직접 크기 조정
+	HealthBarWidget->SetDrawSize(InitialHealthBarDrawSize * Scale);
 }
 
 void AERNEnemyCharacter::Multicast_PlayAttackMontage_Implementation(UAnimMontage* Montage)
@@ -217,6 +273,20 @@ void AERNEnemyCharacter::OnDeath()
 			if (UBrainComponent* Brain = AIC->GetBrainComponent())
 			{
 				Brain->StopLogic(TEXT("Death"));
+			}
+
+			// 자기가 시야로 감지 중이던 플레이어들에게 감지 상실 통지 (비전투 그레이스 타이머 트리거)
+			if (UAIPerceptionComponent* PerceptionComp = AIC->GetPerceptionComponent())
+			{
+				TArray<AActor*> Perceived;
+				PerceptionComp->GetCurrentlyPerceivedActors(UAISense_Sight::StaticClass(), Perceived);
+				for (AActor* A : Perceived)
+				{
+					if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(A))
+					{
+						Player->NotifyLostBy(this);
+					}
+				}
 			}
 		}
 	}

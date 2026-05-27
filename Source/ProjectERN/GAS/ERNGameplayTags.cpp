@@ -16,6 +16,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Input_Flask, "Input.Flask")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_UseConsumable, "Input.UseConsumable")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_NormalSkill, "Input.NormalSkill")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Input_UltimateSkill, "Input.UltimateSkill")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Input_Consumable, "Input.Consumable")
 
 // 전투 상태
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Attacking, "State.Combat.Attacking")
@@ -24,14 +25,15 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Rolling, "State.Combat.Rolling")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Jumping, "State.Combat.Jumping")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_UsingSkill_Normal, "State.Combat.UsingSkill.Normal")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_UsingSkill_Ultimate, "State.Combat.UsingSkill.Ultimate")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_OutOfCombat, "State.OutOfCombat")
 
 // 어빌리티
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Jump, "Ability.Movement.Jump")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_WallJump, "Ability.Movement.WallJump")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Roll, "Ability.Movement.Roll")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Sprint, "Ability.Movement.Sprint")
-UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_UseConsumable, "Ability.Movement.UseConsumable")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Flask, "Ability.Movement.Flask")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Movement_Consumable, "Ability.Movement.Consumable")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Attack_Light, "Ability.Attack.Light")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Attack_Heavy, "Ability.Attack.Heavy")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_Skill_Normal, "Ability.Skill.Normal")
@@ -48,6 +50,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Landing, "State.Movement.Landing")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Sprinting, "State.Movement.Sprinting")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_WallJumpUsed, "State.Movement.WallJumpUsed")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Flask, "State.Movement.Flask")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Consumable, "State.Movement.Consumable")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_DashSkill, "State.Movement.DashSkill")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Immunity_Damage, "State.Immunity.Damage")
 
@@ -73,3 +76,6 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Cast_Buff_AttackPower, "GameplayCue.Cast.
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Buff_Shield_Aura, "GameplayCue.Buff.Shield.Aura")
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_CrimsonJudgment_Cast,"GameplayCue.Ultimate.CrimsonJudgment.Cast")
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_CrimsonJudgment_Explosion,"GameplayCue.Ultimate.CrimsonJudgment.Explosion")
+
+// 이벤트
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Consumable_Throw, "Event.Consumable.Throw")

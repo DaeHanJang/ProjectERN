@@ -83,6 +83,8 @@ void AERNBossAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 	AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Actor);
 	if (Player)
 	{
+		AERNBossCharacter* Boss = Cast<AERNBossCharacter>(GetPawn());
+
 		if (Stimulus.WasSuccessfullySensed())
 		{
 			// 시야 진입: 어그로 추가 + 추적 리스트 등록
@@ -97,16 +99,25 @@ void AERNBossAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 			}
 
 			// 보스 체력바 표시 + BGM 재생 (첫 감지 시)
-			if (AERNBossCharacter* Boss = Cast<AERNBossCharacter>(GetPawn()))
+			if (Boss)
 			{
 				Boss->ShowHealthBarToAllPlayers();
 				Boss->Multicast_PlayBossBGM();
+
+				// 비전투 해제 알림
+				Player->NotifyDetectedBy(Boss);
 			}
 		}
 		else
 		{
 			// 시야 이탈: 추적 리스트에서 제거
 			PerceivedPlayers.Remove(Player);
+
+			// 비전투 진입 그레이스 타이머 트리거
+			if (Boss)
+			{
+				Player->NotifyLostBy(Boss);
+			}
 		}
 	}
 }

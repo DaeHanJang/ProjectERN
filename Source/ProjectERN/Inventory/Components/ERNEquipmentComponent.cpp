@@ -4,6 +4,8 @@
 
 #include "ERNInventoryComponent.h"
 #include "Abilities/GameplayAbility.h"
+#include "Character/Player/ERNPlayerController.h"
+#include "Character/Player/ERNPlayerState.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Combat/Consumable/ERNConsumableBase.h"
 #include "Combat/Weapons/ERNWeaponBase.h"
@@ -211,6 +213,29 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 			return;
 		}
 		
+		AERNPlayerController* PC = Cast<AERNPlayerController>(Character->GetController());
+		if (!PC)
+		{
+			return;
+		}
+		AERNPlayerState* PS = PC->GetPlayerState<AERNPlayerState>();
+		if (!PS)
+		{
+			return;
+		}
+		if (PS->CharacterType == ECharacterType::Warrior && DA->WeaponType != EWeaponType::Sword)
+		{
+			return;
+		}
+		if (PS->CharacterType == ECharacterType::Mage && DA->WeaponType != EWeaponType::Staff)
+		{
+			return;
+		}
+		if (PS->CharacterType == ECharacterType::Support && DA->WeaponType != EWeaponType::Polearm)
+		{
+			return;
+		}
+		
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = GetOwner();
 		// 장착할 아이템 스폰
@@ -271,7 +296,7 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 		{		
 			// 장착할 아이템의 데이터 애셋 로드
 			const UConsumableItemDataAsset* DA = Cast<UConsumableItemDataAsset>(ItemManager->LoadItemDataAssetSync(ItemEntry.GetItemID(), EItemAssetLoadFlags::Gameplay));
-			if (!DA)
+			if (!DA || DA->ConsumableType != EConsumableType::Usable)
 			{
 				return;
 			}
@@ -378,4 +403,21 @@ void UERNEquipmentComponent::Server_UnequipItem_Implementation(const int32 Quant
 	
 	UE_LOG(LogTemp, Warning, TEXT("DropConsumable: %s, Quantity: %d"), *DropItemRuntimeState.GetItemID().ToString(), DropItemRuntimeState.GetQuantity());
 	UE_LOG(LogTemp, Warning, TEXT("CurrentConsumable: %s, Quantity: %d"), *CurrentConsumable.GetItemID().ToString(), CurrentConsumable.GetQuantity());
+}
+
+void UERNEquipmentComponent::Server_UseCurrentConsumableQuantity_Implementation()
+{
+	CurrentConsumable.AddQuantity(-1);
+	
+	if (CurrentConsumable.GetQuantity() <= 0)
+	{
+		CurrentConsumable.Init();
+		ConsumableSlot.Init();
+	}
+	else
+	{
+		ConsumableSlot.SetItemRuntimeState(CurrentConsumable);
+	}
+
+	OnConsumableSlotChanged.Broadcast(ConsumableSlot);
 }

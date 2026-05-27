@@ -17,6 +17,7 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Character/Player/ERNPlayerState.h"
+#include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
@@ -172,6 +173,12 @@ AProjectERNCharacter::AProjectERNCharacter()
 void AProjectERNCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 스폰 직후 즉시 OutOfCombat - 적이 감지하면 NotifyDetectedBy로 해제됨
+	if (HasAuthority())
+	{
+		EnterOutOfCombat();
+	}
 }
 
 void AProjectERNCharacter::PossessedBy(AController* NewController)
@@ -461,6 +468,14 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started, 
 		this, 
 		&AProjectERNCharacter::DrinkFlask);
+	
+	// Consumable
+	InputComp->BindNativeInputAction(
+		InputConfig, 
+		TAG_Input_Consumable, 
+		ETriggerEvent::Started, 
+		this, 
+		&AProjectERNCharacter::UseConsumable);
 
 	InputComp->BindNativeInputAction(
 		InputConfig,
@@ -1005,20 +1020,40 @@ void AProjectERNCharacter::ToggleSprint()
 	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Sprint));
 }
 
-
 void AProjectERNCharacter::DrinkFlask()
 {
 	if (bIsHangingFromBird)
 	{
 		return;
 	}
-
-	if (!AbilitySystemComponent)
+	
+	if (AttributeSet->GetFlaskQuantity() < 1)
 	{
 		return;
 	}
+	
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Flask));
+	}
+}
 
-	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Flask));
+void AProjectERNCharacter::UseConsumable()
+{
+	if (bIsHangingFromBird)
+	{
+		return;
+	}
+	
+	if (EquipmentComponent->GetCurrentConsumableQuantity() < 1)
+	{
+		return;
+	}
+	
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Consumable));
+	}
 }
 
 void AProjectERNCharacter::NormalSkill()
@@ -1402,4 +1437,88 @@ void AProjectERNCharacter::SpawnWeaponSkillInstantNiagaraEffect_Local(FERNWeapon
 		true,
 		ENCPoolMethod::None,
 		true);
+}
+
+// ===== 비전투 무한 스태미나 =====
+
+void AProjectERNCharacter::NotifyDetectedBy(AERNEnemyCharacter* Enemy)
+{
+	if (!HasAuthority() || !Enemy)
+	{
+		return;
+	}
+
+	DetectingEnemies.Add(Enemy);
+	ExitOutOfCombat();
+}
+
+void AProjectERNCharacter::NotifyLostBy(AERNEnemyCharacter* Enemy)
+{
+	if (!HasAuthority() || !Enemy)
+	{
+		return;
+	}
+
+	DetectingEnemies.Remove(Enemy);
+
+	// 만료된 weak ptr 정리
+	for (auto It = DetectingEnemies.CreateIterator(); It; ++It)
+	{
+		if (!It->IsValid())
+		{
+			It.RemoveCurrent();
+		}
+	}
+
+	if (DetectingEnemies.Num() == 0)
+	{
+		GetWorldTimerManager().SetTimer(
+			OutOfCombatTimerHandle, this,
+			&AProjectERNCharacter::EnterOutOfCombat,
+			OutOfCombatGraceTime, false);
+	}
+}
+
+void AProjectERNCharacter::EnterOutOfCombat()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return;
+	}
+
+	if (!ASC->HasMatchingGameplayTag(TAG_State_OutOfCombat))
+	{
+		ASC->AddLooseGameplayTag(TAG_State_OutOfCombat);
+	}
+
+	// 진입 시 스태미나 즉시 풀 채움 - 회복 GE 설정과 무관하게 무한 보장
+	if (UERNAttributeSet* AS = const_cast<UERNAttributeSet*>(
+		Cast<UERNAttributeSet>(ASC->GetAttributeSet(UERNAttributeSet::StaticClass()))))
+	{
+		AS->SetStamina(AS->GetMaxStamina());
+	}
+}
+
+void AProjectERNCharacter::ExitOutOfCombat()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(OutOfCombatTimerHandle);
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		if (ASC->HasMatchingGameplayTag(TAG_State_OutOfCombat))
+		{
+			ASC->RemoveLooseGameplayTag(TAG_State_OutOfCombat);
+		}
+	}
 }

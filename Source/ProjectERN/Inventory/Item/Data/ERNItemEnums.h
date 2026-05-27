@@ -45,7 +45,7 @@ enum class EWeaponType : uint8
 	None    UMETA(Hidden),
 	Sword   UMETA(DisplayName="Sword"),
 	Staff   UMETA(DisplayName="Staff"),
-	Polearm UMETA(DisplayName="Rapier"), 
+	Polearm UMETA(DisplayName="Polearm"), 
 	All     UMETA(DisplayName="All")
 };
 
@@ -56,4 +56,12 @@ enum class EConsumableType : uint8
 	None     UMETA(Hidden),
 	Usable   UMETA(DisplayName="Usable"),
 	Unusable UMETA(DisplayName="Unusable")
+};
+
+UENUM(BlueprintType)
+enum class EUsableType : uint8
+{
+	None      UMETA(Hidden), 
+	Drinkable UMETA(DisplayName="Drinkable"), 
+	Throwable UMETA(DisplayName="Throwable")
 };

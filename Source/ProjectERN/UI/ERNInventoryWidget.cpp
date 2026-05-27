@@ -139,6 +139,16 @@ void UERNInventoryWidget::CreateSlot(const int32 MaxSlotSize, const int32 Column
 	ConsumableSlotWidget->OnSlotDoubleClicked.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotDoubleClickedCallback);
 	// 소모품 슬롯 이미지 설정
 	ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
+	
+	// 장비 슬롯 인덱스 설정 (소모품 슬롯 다음 인덱스)
+	EquipableSlotWidget->SetSlotIndex(MaxSlotSize + 1);
+	// 장비 슬롯 활성화 이벤트 바인딩
+	EquipableSlotWidget->OnSlotClicked.AddUniqueDynamic(this, &UERNInventoryWidget::UpdateFocusSlotIndex);
+	EquipableSlotWidget->OnSlotHovered.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotHoveredCallback);
+	EquipableSlotWidget->OnSlotUnhovered.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotUnhoveredCallback);
+	EquipableSlotWidget->OnSlotDoubleClicked.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotDoubleClickedCallback);
+	// 장비 슬롯 이미지 설정 (장비 전용 이미지가 없으므로 기본 슬롯 이미지 사용)
+	EquipableSlotWidget->SetInventorySlotImage(BasicSlotImage.Get());
 }
 
 void UERNInventoryWidget::NativeDestruct()
@@ -225,7 +235,7 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 					WBP_SlideWidget->SetVisibility(ESlateVisibility::Visible);
 				}
 			}
-			else
+			else if (ActiveIndex == InventoryComponent->GetMaxSlotSize()) // 소모품 슬롯
 			{
 				const int32 Quantity = EquipmentComponent->GetCurrentConsumableQuantity();
 				if (Quantity <= 1)
@@ -238,14 +248,29 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 					WBP_SlideWidget->SetVisibility(ESlateVisibility::Visible);
 				}
 			}
+			else if (ActiveIndex == InventoryComponent->GetMaxSlotSize() + 1) // 장비 슬롯
+			{
+				// TODO: 백엔드 지원 시 주석 해제 및 구현
+				// EquipmentComponent->Server_DropWeapon();
+				UE_LOG(LogTemp, Warning, TEXT("Drop Weapon from Equipable Slot - Needs Backend Support"));
+			}
 			
 			return FReply::Handled();
 		}
 		// 키보드 E키를 누를 경우 (=아이템 장착)
 		if (InKeyEvent.GetKey() == EKeys::E)
 		{
-			EquipmentComponent->Server_EquipItem(ActiveIndex);
-			InitFocusSlotIndex(); // 장착 완료 후 포커스 자동 해제
+			if (SlotWidgets.IsValidIndex(ActiveIndex))
+			{
+				EquipmentComponent->Server_EquipItem(ActiveIndex);
+				InitFocusSlotIndex(); // 장착 완료 후 포커스 자동 해제
+			}
+			else if (ActiveIndex == InventoryComponent->GetMaxSlotSize() + 1) // 장비 슬롯 (장착 해제)
+			{
+				// TODO: 백엔드 지원 시 주석 해제 및 구현
+				// EquipmentComponent->Server_UnequipWeaponToInventory();
+				UE_LOG(LogTemp, Warning, TEXT("Unequip Weapon to Inventory - Needs Backend Support"));
+			}
 			
 			return FReply::Handled();
 		}
@@ -531,8 +556,27 @@ void UERNInventoryWidget::UpdateVisuals()
 	}
 	if (ConsumableSlotWidget)
 	{
-		ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
+		if (UERNEquipmentComponent* EquipmentComp = GetEquipmentComponent())
+		{
+			if (EquipmentComp->ConsumableSlot.GetQuantity() > 0)
+			{
+				ConsumableSlotWidget->SetInventorySlotImage(BasicSlotImage.Get());
+			}
+			else
+			{
+				ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
+			}
+		}
+		else
+		{
+			ConsumableSlotWidget->SetInventorySlotImage(BasicConsumableSlotImage.Get());
+		}
 		ConsumableSlotWidget->InitInventorySlotTint();
+	}
+	if (EquipableSlotWidget)
+	{
+		EquipableSlotWidget->SetInventorySlotImage(BasicSlotImage.Get());
+		EquipableSlotWidget->InitInventorySlotTint();
 	}
 	
 	// 2. 표시할(하이라이트 및 툴팁) 단일 인덱스 결정 (Hover가 최우선)
@@ -549,12 +593,31 @@ void UERNInventoryWidget::UpdateVisuals()
 	// 3. 결정된 슬롯 1개만 하이라이트 적용
 	if (DisplayIndex != -1)
 	{
-		if (DisplayIndex == SlotWidgets.Num())
+		if (DisplayIndex == SlotWidgets.Num() + 1) // 장비 슬롯
 		{
-			ConsumableSlotWidget->SetInventorySlotImage(FocusConsumableSlotImage.Get());
+			EquipableSlotWidget->SetInventorySlotImage(FocusSlotImage.Get());
+			EquipableSlotWidget->SetInventorySlotTint(FColor::White);
+		}
+		else if (DisplayIndex == SlotWidgets.Num()) // 소모품 슬롯
+		{
+			if (UERNEquipmentComponent* EquipmentComp = GetEquipmentComponent())
+			{
+				if (EquipmentComp->ConsumableSlot.GetQuantity() > 0)
+				{
+					ConsumableSlotWidget->SetInventorySlotImage(FocusSlotImage.Get());
+				}
+				else
+				{
+					ConsumableSlotWidget->SetInventorySlotImage(FocusConsumableSlotImage.Get());
+				}
+			}
+			else
+			{
+				ConsumableSlotWidget->SetInventorySlotImage(FocusConsumableSlotImage.Get());
+			}
 			ConsumableSlotWidget->SetInventorySlotTint(FColor::White);
 		}
-		else if (SlotWidgets.IsValidIndex(DisplayIndex))
+		else if (SlotWidgets.IsValidIndex(DisplayIndex)) // 일반 인벤토리 슬롯
 		{
 			SlotWidgets[DisplayIndex]->SetInventorySlotImage(FocusSlotImage.Get());
 			SlotWidgets[DisplayIndex]->SetInventorySlotTint(FColor::White);
@@ -571,7 +634,14 @@ void UERNInventoryWidget::UpdateVisuals()
 		else
 		{
 			FName ItemID = NAME_None;
-			if (DisplayIndex == SlotWidgets.Num()) // 소모품 슬롯
+			if (DisplayIndex == SlotWidgets.Num() + 1) // 장비 슬롯
+			{
+				if (UERNEquipmentComponent* EquipComp = GetEquipmentComponent())
+				{
+					ItemID = EquipComp->EquipableSlot.GetItemID();
+				}
+			}
+			else if (DisplayIndex == SlotWidgets.Num()) // 소모품 슬롯
 			{
 				if (UERNEquipmentComponent* EquipComp = GetEquipmentComponent())
 				{
@@ -652,11 +722,19 @@ void UERNInventoryWidget::ProcessUnhoverFallback()
 
 void UERNInventoryWidget::OnSlotDoubleClickedCallback(const int32 Index)
 {
-	// 장착 시도 (E키 누른 것과 동일)
 	if (UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent())
 	{
-		EquipmentComponent->Server_EquipItem(Index);
-		InitFocusSlotIndex(); // 장착 완료 후 포커스 자동 해제
+		if (SlotWidgets.IsValidIndex(Index)) // 인벤토리 -> 장착
+		{
+			EquipmentComponent->Server_EquipItem(Index);
+			InitFocusSlotIndex(); // 장착 완료 후 포커스 자동 해제
+		}
+		else if (Index == SlotWidgets.Num() + 1) // 장비 슬롯 -> 해제
+		{
+			// TODO: 백엔드 지원 시 주석 해제 및 구현
+			// EquipmentComponent->Server_UnequipWeaponToInventory();
+			UE_LOG(LogTemp, Warning, TEXT("Unequip Weapon to Inventory on Double Click - Needs Backend Support"));
+		}
 	}
 }
 
@@ -671,11 +749,11 @@ void UERNInventoryWidget::UpdateSlideWidget(const int32 NewQuantity)
 			InventoryComponent->Server_RemoveItem(FocusSlotIndex, NewQuantity);
 		}
 	}
-	else
+	else if (FocusSlotIndex == SlotWidgets.Num()) // 소모품 슬롯
 	{
 		if (UERNEquipmentComponent* EquipmentComponent = GetEquipmentComponent())
 		{
-			// 장비 컴포넌트에 아이템 제거 요청
+			// 장비 컴포넌트에 아이템 제거 요청 (소모품)
 			EquipmentComponent->Server_UnequipItem(NewQuantity);
 		}
 	}
