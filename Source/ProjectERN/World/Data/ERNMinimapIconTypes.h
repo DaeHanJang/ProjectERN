@@ -6,13 +6,14 @@
 UENUM(BlueprintType)
 enum class EERNMinimapIconType : uint8
 {
-	Building	UMETA(DisplayName = "Building"),
-	JumpPad		UMETA(DisplayName = "JumpPad"),
-	SpiritBird	UMETA(DisplayName = "SpiritBird"),
-	Shop		UMETA(DisplayName = "Shop"),
-	Church		UMETA(DisplayName = "Church"),
-	Castle		UMETA(DisplayName = "Castle"),
-	Player		UMETA(DisplayName = "Player"),
+	Building		UMETA(DisplayName = "Building"),
+	JumpPad			UMETA(DisplayName = "JumpPad"),
+	SpiritBird		UMETA(DisplayName = "SpiritBird"),
+	Shop			UMETA(DisplayName = "Shop"),
+	Church			UMETA(DisplayName = "Church"),
+	Castle			UMETA(DisplayName = "Castle"),
+	Player			UMETA(DisplayName = "Player"),
+	NightLordGrace	UMETA(DisplayName = "NightLordGrace"),
 	
 	PlayerPin1	UMETA(DisplayName = "PlayerPin1"),	
 	PlayerPin2	UMETA(DisplayName = "PlayerPin2"),	
