@@ -4,6 +4,7 @@
 #include "Character/Enemy/AI/ERNMobAIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Character/Player/ProjectERNCharacter.h"
 
 AERNMobCharacter::AERNMobCharacter()
 {
@@ -54,6 +55,12 @@ float AERNMobCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 					{
 						AIC->SetTarget(Attacker);  // SetTarget으로 시야각도 변경
 						bIsReturning = false;
+
+						// 시야 밖 원거리 피격도 비전투 해제되도록 명시 알림
+						if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Attacker))
+						{
+							Player->NotifyDetectedBy(this);
+						}
 
 						// 주변 동료 몹들도 같은 공격자에게 어그로 전파
 						AlertNearbyMobs(Attacker);
@@ -119,5 +126,11 @@ void AERNMobCharacter::AlertNearbyMobs(AActor* Attacker)
 
 		AIC->SetTarget(Attacker);
 		Mob->bIsReturning = false;
+
+		// 전파받은 몹도 플레이어에게 감지 알림
+		if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Attacker))
+		{
+			Player->NotifyDetectedBy(Mob);
+		}
 	}
 }

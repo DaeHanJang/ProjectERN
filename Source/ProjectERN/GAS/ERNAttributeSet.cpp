@@ -5,6 +5,7 @@
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "GAS/ERNGameplayTags.h"
 
 UERNAttributeSet::UERNAttributeSet()
 {
@@ -68,12 +69,41 @@ void UERNAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, f
 	}
 	else if (Attribute == GetStaminaAttribute())
 	{
+		// OutOfCombat 시 감소 차단 (재생/회복은 통과)
+		if (NewValue < GetStamina())
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				if (ASC->HasMatchingGameplayTag(TAG_State_OutOfCombat))
+				{
+					NewValue = GetStamina();
+					return;
+				}
+			}
+		}
 		NewValue = FMath::Clamp(NewValue, 0.f, GetMaxStamina());
 	}
 	else if (Attribute == GetShieldAttribute())
 	{
 		// No Max for Shield
 		NewValue = FMath::Max(0.f, NewValue);
+	}
+}
+
+void UERNAttributeSet::PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const
+{
+	Super::PreAttributeBaseChange(Attribute, NewValue);
+
+	// 인스턴트 GE로 Stamina Base 감소 시 OutOfCombat이면 차단
+	if (Attribute == GetStaminaAttribute() && NewValue < GetStamina())
+	{
+		if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+		{
+			if (ASC->HasMatchingGameplayTag(TAG_State_OutOfCombat))
+			{
+				NewValue = GetStamina();
+			}
+		}
 	}
 }
 

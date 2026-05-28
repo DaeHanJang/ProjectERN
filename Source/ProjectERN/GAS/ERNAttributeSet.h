@@ -26,7 +26,10 @@ public:
 	// Attribute의 Value가 변경되기 직전 호출되는 함수
 	// 스태미나/마나 Max를 넘지 않게 Clamp를 걸기 위함
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
-	
+
+	// 인스턴트 GE로 Base Value가 변경되기 직전 - OutOfCombat 시 Stamina 감소 차단
+	virtual void PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const override;
+
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 	
 	// Health

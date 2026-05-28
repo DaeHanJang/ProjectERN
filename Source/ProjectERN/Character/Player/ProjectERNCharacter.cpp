@@ -17,6 +17,7 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Character/Player/ERNPlayerState.h"
+#include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
@@ -172,6 +173,12 @@ AProjectERNCharacter::AProjectERNCharacter()
 void AProjectERNCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 스폰 직후 즉시 OutOfCombat - 적이 감지하면 NotifyDetectedBy로 해제됨
+	if (HasAuthority())
+	{
+		EnterOutOfCombat();
+	}
 }
 
 void AProjectERNCharacter::PossessedBy(AController* NewController)
@@ -291,6 +298,82 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 void AProjectERNCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+	// 새 매달림 카메라 보간 (소유 클라만 — FOV/ArmLength FInterpTo + 95% 도달 시 스냅)
+	if (bIsCameraTransitioning && IsLocallyControlled() && FollowCamera && CameraBoom)
+	{
+		const float NewArm = FMath::FInterpTo(CameraBoom->TargetArmLength,
+			CameraTransitionTargetArmLength, DeltaSeconds, CameraInterpSpeed * 20);
+		const float NewFOV = FMath::FInterpTo(FollowCamera->FieldOfView,
+			CameraTransitionTargetFOV, DeltaSeconds, CameraInterpSpeed * 20);
+
+		CameraBoom->TargetArmLength = NewArm;
+		FollowCamera->SetFieldOfView(NewFOV);
+
+		const float ArmRange = CameraTransitionTargetArmLength - CameraTransitionStartArmLength;
+		const float FOVRange = CameraTransitionTargetFOV - CameraTransitionStartFOV;
+		const float ArmProgress = FMath::IsNearlyZero(ArmRange) ? 1.f
+			: (NewArm - CameraTransitionStartArmLength) / ArmRange;
+		const float FOVProgress = FMath::IsNearlyZero(FOVRange) ? 1.f
+			: (NewFOV - CameraTransitionStartFOV) / FOVRange;
+		float Progress = FMath::Min(ArmProgress, FOVProgress);
+
+		// 컨트롤 회전 보간 (부착 시에만 활성 — release 시엔 자유 회전 유지)
+		if (bIsControlRotationTransitioning)
+		{
+			if (AController* Ctrl = GetController())
+			{
+				const FRotator CurRot = Ctrl->GetControlRotation();
+				const FRotator NewRot = FMath::RInterpTo(CurRot,
+					CameraTransitionTargetControlRotation, DeltaSeconds, CameraInterpSpeed * 20);
+				Ctrl->SetControlRotation(NewRot);
+
+				const float StartAngle = CameraTransitionStartControlRotation.Quaternion()
+					.AngularDistance(CameraTransitionTargetControlRotation.Quaternion());
+				const float CurAngle = NewRot.Quaternion()
+					.AngularDistance(CameraTransitionTargetControlRotation.Quaternion());
+				const float RotProgress = (StartAngle > KINDA_SMALL_NUMBER)
+					? 1.f - (CurAngle / StartAngle) : 1.f;
+				Progress = FMath::Min(Progress, RotProgress);
+			}
+		}
+
+		if (Progress >= CameraSnapThreshold)
+		{
+			CameraBoom->TargetArmLength = CameraTransitionTargetArmLength;
+			FollowCamera->SetFieldOfView(CameraTransitionTargetFOV);
+
+			if (bIsControlRotationTransitioning)
+			{
+				if (AController* Ctrl = GetController())
+				{
+					Ctrl->SetControlRotation(CameraTransitionTargetControlRotation);
+				}
+				bIsControlRotationTransitioning = false;
+			}
+
+			bIsCameraTransitioning = false;
+		}
+	}
+
+	// 매달림 전체 구간 카메라 lag 활성 (소유 클라 한정, 상태 전환 시에만 SpringArm 세팅)
+	// Ascend → Flight 전환 시 lag가 꺼져 카메라가 스냅되는 문제 방지
+	{
+		const bool bShouldUseAscentLag = IsLocallyControlled()
+			&& bIsHangingFromBird
+			&& AttachedBird;
+
+		if (bShouldUseAscentLag != bAscentCameraLagActive && CameraBoom)
+		{
+			CameraBoom->bEnableCameraLag = bShouldUseAscentLag;
+			if (bShouldUseAscentLag)
+			{
+				CameraBoom->CameraLagSpeed = AscentCameraLagSpeed;
+				CameraBoom->CameraLagMaxDistance = AscentCameraLagMaxDistance;
+			}
+			bAscentCameraLagActive = bShouldUseAscentLag;
+		}
+	}
 
 	// 매달림 중: 매 frame 새의 HangPoint World로 위치 강제 + 새 진행 방향으로 회전 동기화 (모든 머신)
 	// → attach 없이 deterministic 추적 → RepMovement/BasedMovement/NetSmoothing 경로 우회
@@ -809,28 +892,62 @@ void AProjectERNCharacter::Multicast_StopHangingMontage_Implementation()
 	}
 }
 
-void AProjectERNCharacter::Client_OnAttachedToBird_Implementation(FRotator FacingRotation)
+void AProjectERNCharacter::Client_PrewarmHangingCamera_Implementation()
 {
-	// 시점을 새의 비행 방향으로 회전
-	if (AController* Ctrl = GetController())
+	if (!FollowCamera || !CameraBoom)
 	{
-		Ctrl->SetControlRotation(FacingRotation);
+		return;
 	}
 
-	// 기본 FOV 캐싱 후 매달림 FOV 적용
-	if (FollowCamera)
+	// 현재(기본) 값을 캐싱 후 매달림 값으로 보간 시작
+	CachedDefaultFOV = FollowCamera->FieldOfView;
+	CachedDefaultArmLength = CameraBoom->TargetArmLength;
+
+	CameraTransitionStartFOV = CachedDefaultFOV;
+	CameraTransitionStartArmLength = CachedDefaultArmLength;
+	CameraTransitionTargetFOV = HangingFOV;
+	CameraTransitionTargetArmLength = HangingArmLength;
+	bIsCameraTransitioning = true;
+
+	bHangingCameraPrewarmed = true;
+}
+
+void AProjectERNCharacter::Client_OnAttachedToBird_Implementation(FRotator FacingRotation)
+{
+	// 컨트롤 회전 보간 시작 (Tick에서 RInterpTo) — 즉시 스냅 대신 부드럽게
+	if (AController* Ctrl = GetController())
+	{
+		CameraTransitionStartControlRotation = Ctrl->GetControlRotation();
+		CameraTransitionTargetControlRotation = FacingRotation;
+		bIsControlRotationTransitioning = true;
+	}
+
+	// FOV/암 길이는 Prewarm에서 이미 시작했으면 건너뜀 (캐싱된 기본값 보존)
+	if (!bHangingCameraPrewarmed && FollowCamera && CameraBoom)
 	{
 		CachedDefaultFOV = FollowCamera->FieldOfView;
-		FollowCamera->SetFieldOfView(HangingFOV);
+		CachedDefaultArmLength = CameraBoom->TargetArmLength;
+
+		CameraTransitionStartFOV = CachedDefaultFOV;
+		CameraTransitionStartArmLength = CachedDefaultArmLength;
+		CameraTransitionTargetFOV = HangingFOV;
+		CameraTransitionTargetArmLength = HangingArmLength;
+		bIsCameraTransitioning = true;
 	}
 }
 
 void AProjectERNCharacter::Client_OnReleasedFromBird_Implementation()
 {
-	// 기본 FOV 복원
-	if (FollowCamera && CachedDefaultFOV > 0.f)
+	bHangingCameraPrewarmed = false;
+
+	// 캐싱된 기본 값으로 보간 복원
+	if (FollowCamera && CameraBoom && CachedDefaultFOV > 0.f)
 	{
-		FollowCamera->SetFieldOfView(CachedDefaultFOV);
+		CameraTransitionStartFOV = FollowCamera->FieldOfView;
+		CameraTransitionStartArmLength = CameraBoom->TargetArmLength;
+		CameraTransitionTargetFOV = CachedDefaultFOV;
+		CameraTransitionTargetArmLength = CachedDefaultArmLength;
+		bIsCameraTransitioning = true;
 	}
 }
 
@@ -1430,4 +1547,88 @@ void AProjectERNCharacter::SpawnWeaponSkillInstantNiagaraEffect_Local(FERNWeapon
 		true,
 		ENCPoolMethod::None,
 		true);
+}
+
+// ===== 비전투 무한 스태미나 =====
+
+void AProjectERNCharacter::NotifyDetectedBy(AERNEnemyCharacter* Enemy)
+{
+	if (!HasAuthority() || !Enemy)
+	{
+		return;
+	}
+
+	DetectingEnemies.Add(Enemy);
+	ExitOutOfCombat();
+}
+
+void AProjectERNCharacter::NotifyLostBy(AERNEnemyCharacter* Enemy)
+{
+	if (!HasAuthority() || !Enemy)
+	{
+		return;
+	}
+
+	DetectingEnemies.Remove(Enemy);
+
+	// 만료된 weak ptr 정리
+	for (auto It = DetectingEnemies.CreateIterator(); It; ++It)
+	{
+		if (!It->IsValid())
+		{
+			It.RemoveCurrent();
+		}
+	}
+
+	if (DetectingEnemies.Num() == 0)
+	{
+		GetWorldTimerManager().SetTimer(
+			OutOfCombatTimerHandle, this,
+			&AProjectERNCharacter::EnterOutOfCombat,
+			OutOfCombatGraceTime, false);
+	}
+}
+
+void AProjectERNCharacter::EnterOutOfCombat()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return;
+	}
+
+	if (!ASC->HasMatchingGameplayTag(TAG_State_OutOfCombat))
+	{
+		ASC->AddLooseGameplayTag(TAG_State_OutOfCombat);
+	}
+
+	// 진입 시 스태미나 즉시 풀 채움 - 회복 GE 설정과 무관하게 무한 보장
+	if (UERNAttributeSet* AS = const_cast<UERNAttributeSet*>(
+		Cast<UERNAttributeSet>(ASC->GetAttributeSet(UERNAttributeSet::StaticClass()))))
+	{
+		AS->SetStamina(AS->GetMaxStamina());
+	}
+}
+
+void AProjectERNCharacter::ExitOutOfCombat()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(OutOfCombatTimerHandle);
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		if (ASC->HasMatchingGameplayTag(TAG_State_OutOfCombat))
+		{
+			ASC->RemoveLooseGameplayTag(TAG_State_OutOfCombat);
+		}
+	}
 }

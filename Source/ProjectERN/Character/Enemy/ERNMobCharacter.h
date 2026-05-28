@@ -28,7 +28,7 @@ public:
 
 	// 귀환 거리 (이 거리 이상 떨어지면 귀환)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
-	float LeashDistance = 2000.0f;
+	float LeashDistance = 4000.0f;
 
 	// 귀환 중인지 여부
 	UPROPERTY(BlueprintReadOnly, Category = "AI")

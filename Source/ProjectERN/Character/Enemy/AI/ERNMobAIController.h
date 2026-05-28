@@ -59,6 +59,15 @@ protected:
 	// 현재 전투 모드 여부
 	bool bIsInCombatMode = false;
 
+	// Leash 체크 주기 (초) - SpawnLocation에서 LeashDistance 초과 시 타겟 해제
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Leash")
+	float LeashCheckInterval = 0.5f;
+
+	FTimerHandle LeashCheckTimerHandle;
+
+	// 주기적으로 스폰 지점 거리 체크 - LeashDistance 초과 시 타겟 해제 + 귀환
+	void CheckLeashDistance();
+
 public:
 	// Blackboard Component 접근자
 	FORCEINLINE UBlackboardComponent* GetBlackboardComp() const { return Blackboard; }
