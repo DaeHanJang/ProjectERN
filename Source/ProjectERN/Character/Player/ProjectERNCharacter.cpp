@@ -790,6 +790,24 @@ void AProjectERNCharacter::Server_SetGodMode_Implementation(bool bEnable)
 	       *GetName());
 }
 
+void AProjectERNCharacter::Bird()
+{
+	Server_SpawnRideBird();
+}
+
+void AProjectERNCharacter::Server_SpawnRideBird_Implementation()
+{
+	// 플레이어 뒤 + 위 → 위에서 낚아채는 연출 (오프셋은 로컬 상수, 멤버 변수 X)
+	const FVector SpawnLocation = GetActorLocation()
+		- GetActorForwardVector() * 3000.f
+		+ FVector(0.f, 0.f, 5000.f);
+	const FTransform SpawnXform(GetActorRotation(), SpawnLocation);
+
+	// 가드/스폰/Approach/재입력차단은 공용 헬퍼. bConsoleSummon=true → 빠른 비행.
+	AERNIntroBird::RequestPickup(
+		DebugBirdClass, this, SpawnXform, GetActorForwardVector(), /*bConsoleSummon=*/true);
+}
+
 // ===== 인트로: 새 매달림 =====
 
 void AProjectERNCharacter::AttachToIntroBird(AERNIntroBird* Bird)
