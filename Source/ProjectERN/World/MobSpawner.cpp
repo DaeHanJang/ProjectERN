@@ -57,10 +57,6 @@ void AMobSpawner::BeginPlay()
 	// 저장된 데이터가 있다면 저장된 상태로 복원하고 스폰
 	if (bHasSavedStates)
 	{
-		// todo 테스트 삭제
-		UE_LOG(LogTemp, Warning, TEXT("저장된 데이터 있음"));
-		
-		
 		for (const FMobRuntimeState& State : SavedStates)
 		{
 			RestoreMobFromState(State);
@@ -147,19 +143,6 @@ AERNEnemyCharacter* AMobSpawner::SpawnMobFromPoint(UMobSpawnPointComponent* Spaw
 	FActorSpawnParameters SpawnParams;
 	AERNEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AERNEnemyCharacter>(SpawnPoint->EnemyClass,SpawnPoint->GetComponentTransform(), SpawnParams);
 	
-	if (SpawnedEnemy == nullptr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("SpawnedEnemy is nullptr failed spawn enemy"));
-		return nullptr; 
-	}
-
-	// todo 테스트 
-	UE_LOG(LogTemp, Warning, TEXT("패트롤 포인트 전달 완료"));
-
-	
-	// 스폰한 몹에게 패트롤 포인트 전달
-	SpawnedEnemy->SetPatrolPoints(PatrolTargetPoints);
-	
 	// 스폰된 적 활성화된 적으로 추가
 	ActiveEnemiesBySlot.Add(SpawnPoint->SlotId, SpawnedEnemy);
 	
@@ -176,6 +159,7 @@ AERNEnemyCharacter* AMobSpawner::SpawnMobFromPoint(UMobSpawnPointComponent* Spaw
 	}
 	
 	return SpawnedEnemy;
+	
 }
 
 void AMobSpawner::RestoreMobFromState(const FMobRuntimeState& State)
@@ -210,9 +194,6 @@ void AMobSpawner::RestoreMobFromState(const FMobRuntimeState& State)
 	{
 		AttributeSet->SetHealth(FMath::Clamp(State.CurrentHealth,0.f, AttributeSet->GetMaxHealth()));
 	}
-	
-	// todo 테스트 삭제
-	UE_LOG(LogTemp, Warning, TEXT("복구"));
 }
 
 void AMobSpawner::SaveMobStates()
