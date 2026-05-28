@@ -13,6 +13,8 @@ class UNiagaraComponent;
 class UNightRainZoneVisualComponent;
 // 자기장 밤의비 상태가 변할 때 호출되는 델리게이트
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnNightRainZoneStateChanged, const FNightRainZoneState&);
+// 자기장 수렴 후 호출되는 델리게이트
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnNightRainZoneShrinkFinished, const float);
 
 // Is Spatially Loaded = false 를 전제로 만들어진 매니저 엑터입니다. 월드 파티션에서 배치할 때, 꼭 Is Spatially Loaded = false 를 설정해주세요.
 UCLASS()
@@ -36,6 +38,7 @@ public:
 	float GetCurrentRadius() const;
 	
 	FOnNightRainZoneStateChanged OnZoneStateChanged;
+	FOnNightRainZoneShrinkFinished OnZoneShrinkFinished;
 	
 protected:
 	virtual void BeginPlay() override;
@@ -50,6 +53,9 @@ private:
 	
 	// 서버/클라이언트 로컬 구독자에게 상태 변경 알림
 	void BroadcastZoneStateChanged();
+	
+	// 자기장 수렴 종료 알림
+	void BroadcastZoneShrinkFinished();
 	
 	// Server 전용
 	// 페이즈 타이머 설정
