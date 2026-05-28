@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Components/SlateWrapperTypes.h"
 #include "ERNPlayerController.generated.h"
 
 class AERNMinimapPinPoint;
@@ -18,6 +19,7 @@ class AERNBossCharacter;
 class UERNBossHealthBarWidget;
 class UCameraShakeBase;
 class UPostProcessComponent;
+class UERNCompassWidget;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -92,7 +94,9 @@ protected:
 	
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
-	
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 	virtual void AcknowledgePossession(class APawn* P) override;
 
 	// UI 생성 (약간 지연)
@@ -284,7 +288,44 @@ protected:
 	//미니맵 위젯
 	UPROPERTY(Transient)
 	UUserWidget* MinimapWidget;
-	
+
+	// 나침반(방위각) 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UERNCompassWidget> CompassWidgetClass;
+
+	// 나침반 위젯을 숨길 맵 이름 목록
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TArray<FString> HideCompassWidgetMapNames;
+
+	// 나침반 위젯
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> CompassWidget;
+
+#pragma region CutsceneHUD
+protected:
+	// 컷신 중 일괄 숨김 대상이 되는 HUD 위젯 모음 (생성 시 등록)
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UUserWidget>> ManagedHUDWidgets;
+
+	// 컷신 시작 시점의 위젯별 visibility 캐시 (종료 시 복원)
+	UPROPERTY(Transient)
+	TMap<TObjectPtr<UUserWidget>, ESlateVisibility> CachedHUDVisibilities;
+
+	// HUD 위젯을 컷신 숨김 대상으로 등록/해제
+	void RegisterHUDWidget(UUserWidget* Widget);
+	void UnregisterHUDWidget(UUserWidget* Widget);
+
+	// 컷신 서브시스템 이벤트 바인딩/해제 (로컬 컨트롤러 전용)
+	void BindCutsceneEvents();
+	void UnbindCutsceneEvents();
+
+	UFUNCTION()
+	void HandleCutsceneStarted();
+
+	UFUNCTION()
+	void HandleCutsceneFinished();
+#pragma endregion CutsceneHUD
+
 	/** Minimap input action */
 	UPROPERTY(EditAnywhere, Category="Input|Actions")
 	UInputAction* MinimapAction;

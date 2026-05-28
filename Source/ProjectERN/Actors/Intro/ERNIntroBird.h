@@ -37,6 +37,10 @@ public:
 	// BirdStatue용 진입점 (서버 권한) — Approach → Ascend → Flight 자동 진행
 	void StartApproachAndPickup(class AProjectERNCharacter* Target, FVector InAscentDirection);
 
+	// BirdStatue별 비행 파라미터 주입 (서버 권한, 스폰 직후 호출).
+	// Replicated 변수라 초기 리플리케이션으로 클라까지 전파 → deterministic 시뮬 일치.
+	void ConfigureFlight(float InAscentHeight, float InAscentForwardDistance, float InFlightDistance, float InFlightDuration);
+
 	// 부착된 플레이어가 새에서 해제됐을 때 호출 (서버 권한) → 위로 상승 후 Destroy
 	void OnPlayerReleased();
 
@@ -66,13 +70,13 @@ protected:
 
 	// === 비행 파라미터 ===
 
-	// Forward 방향으로 비행할 거리 (cm)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flight")
-	float FlightDistance = 5000.f;
+	// Forward 방향으로 비행할 거리 (cm) — BirdStatue가 인스턴스별로 덮어쓸 수 있어 Replicated
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Flight")
+	float FlightDistance = 100000.0f;
 
-	// 시작 → 끝까지 걸리는 시간 (초)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flight")
-	float FlightDuration = 4.f;
+	// 시작 → 끝까지 걸리는 시간 (초) — BirdStatue가 덮어쓸 수 있어 Replicated
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Flight")
+	float FlightDuration = 50.f;
 
 	// === 이탈 후 ===
 
@@ -114,17 +118,17 @@ protected:
 
 	// === Ascend 페이즈 (BirdStatue 전용 — 솟구침) ===
 
-	// 솟구치는 높이 (cm)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ascent")
-	float AscentHeight = 8000.f;
+	// 솟구치는 높이 (cm) — BirdStatue가 덮어쓸 수 있어 Replicated
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Ascent")
+	float AscentHeight = 5000.f;
 
-	// 솟구치는 동안 Statue Forward 방향으로 추가 이동 거리 (cm)
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ascent")
-	float AscentForwardDistance = 1500.f;
+	// 솟구치는 동안 Statue Forward 방향으로 추가 이동 거리 (cm) — BirdStatue가 덮어쓸 수 있어 Replicated
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Ascent")
+	float AscentForwardDistance = 4000.f;
 
 	// 솟구침 지속 시간 (초)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ascent")
-	float AscentDuration = 1.0f;
+	float AscentDuration = 2.0f;
 
 	// 높이 보간 곡선 (선택, 없으면 선형)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ascent")

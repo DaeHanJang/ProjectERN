@@ -88,6 +88,11 @@ void AERNIntroBird::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AERNIntroBird, AscentStartLocation);
 	DOREPLIFETIME(AERNIntroBird, AscentDirection);
 	DOREPLIFETIME(AERNIntroBird, AscentStartServerTime);
+	// BirdStatue 인스턴스별 비행 파라미터 (deterministic 시뮬 일치용)
+	DOREPLIFETIME(AERNIntroBird, AscentHeight);
+	DOREPLIFETIME(AERNIntroBird, AscentForwardDistance);
+	DOREPLIFETIME(AERNIntroBird, FlightDistance);
+	DOREPLIFETIME(AERNIntroBird, FlightDuration);
 }
 
 void AERNIntroBird::Server_SetSteeringInput_Implementation(float Input)
@@ -139,6 +144,19 @@ void AERNIntroBird::StartApproachAndPickup(AProjectERNCharacter* Target, FVector
 
 	bCameraPrewarmTriggered = false;
 	bIsApproaching = true;
+}
+
+void AERNIntroBird::ConfigureFlight(float InAscentHeight, float InAscentForwardDistance, float InFlightDistance, float InFlightDuration)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AscentHeight = InAscentHeight;
+	AscentForwardDistance = InAscentForwardDistance;
+	FlightDistance = InFlightDistance;
+	FlightDuration = InFlightDuration;
 }
 
 void AERNIntroBird::OnRep_IsApproaching()
@@ -225,6 +243,11 @@ void AERNIntroBird::Tick(float DeltaTime)
 			// 타겟 사라짐/사망 → 비행 취소 + Destroy
 			if (HasAuthority())
 			{
+				// 부착 전 취소이므로 타겟의 재입력 차단 플래그 해제
+				if (ApproachTarget)
+				{
+					ApproachTarget->SetBirdRideActive(false);
+				}
 				bIsApproaching = false;
 				Destroy();
 			}

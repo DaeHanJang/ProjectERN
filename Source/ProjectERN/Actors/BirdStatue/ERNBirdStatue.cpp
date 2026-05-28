@@ -71,8 +71,8 @@ void AERNBirdStatue::Interact_Implementation(APlayerController* PlayerController
 		return;
 	}
 
-	// 이미 새에 매달려 있으면 중복 사용 차단
-	if (Player->GetAttachedBird())
+	// 이미 새를 호출했거나(Approach 중) 매달려 있으면 중복 사용 차단 — 하차 전까지 재입력 무시
+	if (Player->IsBirdRideActive() || Player->GetAttachedBird())
 	{
 		return;
 	}
@@ -91,9 +91,15 @@ void AERNBirdStatue::Interact_Implementation(APlayerController* PlayerController
 		return;
 	}
 
+	// 이 동상의 비행 파라미터를 새에 주입 (Replicated → 클라까지 전파)
+	Bird->ConfigureFlight(AscentHeight, AscentForwardDistance, FlightDistance, FlightDuration);
+
 	// Approach → Ascend → Forward 시퀀스 시작
 	// Ascend 방향은 조각상 Forward (수평으로 정규화)
 	Bird->StartApproachAndPickup(Player, GetActorForwardVector());
+
+	// 새 호출 성공 → 하차 전까지 재입력 차단
+	Player->SetBirdRideActive(true);
 }
 
 bool AERNBirdStatue::CanInteract_Implementation() const

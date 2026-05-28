@@ -21,4 +21,6 @@ enum class EERNMinimapIconType : uint8
 	PlayerMarker1	UMETA(DisplayName = "PlayerMarker1"),
 	PlayerMarker2	UMETA(DisplayName = "PlayerMarker2"),
 	PlayerMarker3	UMETA(DisplayName = "PlayerMarker3"),
+
+	NightRainZoneCenter	UMETA(DisplayName = "NightRainZoneCenter"),
 };

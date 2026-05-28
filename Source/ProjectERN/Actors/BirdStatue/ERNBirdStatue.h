@@ -56,6 +56,24 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Statue")
 	TSubclassOf<AERNIntroBird> BirdClass;
 
+	// === 이 동상에서 스폰되는 새의 비행 파라미터 (동상별 개별 설정) ===
+
+	// 솟구치는 높이 (cm)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Statue|Flight")
+	float AscentHeight = 8000.f;
+
+	// 솟구치는 동안 앞으로 추가 이동 거리 (cm)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Statue|Flight")
+	float AscentForwardDistance = 1500.f;
+
+	// 전진 비행 거리 (cm)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Statue|Flight")
+	float FlightDistance = 100000.f;
+
+	// 전진 비행 시간 (초)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Statue|Flight")
+	float FlightDuration = 50.f;
+
 	// IInteractable 구현
 	virtual void Interact_Implementation(APlayerController* PlayerController) override;
 	virtual bool CanInteract_Implementation() const override;

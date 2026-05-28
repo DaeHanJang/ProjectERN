@@ -25,11 +25,16 @@
 #include "Camera/CameraShakeBase.h"
 #include "Components/PostProcessComponent.h"
 #include "UI/World/ERNMinimapWidget.h"
+#include "UI/World/ERNCompassWidget.h"
 #include "World/ERNMinimapPinPoint.h"
+#include "Subsystem/ERNCutsceneSubsystem.h"
 
 void AERNPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 컷신 동안 HUD 일괄 숨김 (로컬 컨트롤러 전용)
+	BindCutsceneEvents();
 
 	// only spawn touch controls on local player controllers
 	if (ShouldUseTouchControls() && IsLocalPlayerController())
@@ -41,6 +46,7 @@ void AERNPlayerController::BeginPlay()
 		{
 			// add the controls to the player screen
 			MobileControlsWidget->AddToPlayerScreen(0);
+			RegisterHUDWidget(MobileControlsWidget);
 		}
 		else
 		{
@@ -72,6 +78,7 @@ void AERNPlayerController::BeginPlay()
 			if (Container)
 			{
 				Container->AddToViewport();
+				RegisterHUDWidget(Container);
 			}
 		}
 	}
@@ -97,6 +104,7 @@ void AERNPlayerController::BeginPlay()
 			if (ReadyButton)
 			{
 				ReadyButton->AddToViewport();
+				RegisterHUDWidget(ReadyButton);
 			}
 		}
 	}
@@ -126,6 +134,7 @@ void AERNPlayerController::BeginPlay()
 					InteractableInventoryWidget->OnWidgetClosed.AddUniqueDynamic(this, &AERNPlayerController::InventoryClose);
 				}
 				InventoryWidget->AddToViewport(100);
+				RegisterHUDWidget(InventoryWidget);
 				RefreshInventoryWidget();
 			}
 		}
@@ -155,10 +164,35 @@ void AERNPlayerController::BeginPlay()
 						this, &AERNPlayerController::MinimapClose);
 				}
 				MinimapWidget->AddToViewport(1000);
+				RegisterHUDWidget(MinimapWidget);
 			}
 		}
 	}
-	
+
+	// 나침반 위젯 생성 (로컬 플레이어만)
+	if (IsLocalPlayerController() && CompassWidgetClass)
+	{
+		bool bShouldHide = false;
+		for (const FString& MapName : HideCompassWidgetMapNames)
+		{
+			if (CurrentMapName.Contains(MapName))
+			{
+				bShouldHide = true;
+				break;
+			}
+		}
+
+		if (!bShouldHide)
+		{
+			CompassWidget = CreateWidget<UUserWidget>(this, CompassWidgetClass);
+			if (CompassWidget)
+			{
+				CompassWidget->AddToViewport(50);
+				RegisterHUDWidget(CompassWidget);
+			}
+		}
+	}
+
 	// 채팅 위젯 생성 (로컬 플레이어만)
 	if (IsLocalPlayerController() && ChatWidgetClass)
 	{
@@ -179,6 +213,7 @@ void AERNPlayerController::BeginPlay()
 			if (ChatWidget)
 			{
 				ChatWidget->AddToViewport(50);	// ZOrder: HUD 위, 메뉴 아래
+				RegisterHUDWidget(ChatWidget);
 			}
 		}
 	}
@@ -212,10 +247,100 @@ void AERNPlayerController::BeginPlay()
 	}
 }
 
+void AERNPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	UnbindCutsceneEvents();
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void AERNPlayerController::RegisterHUDWidget(UUserWidget* Widget)
+{
+	if (Widget)
+	{
+		ManagedHUDWidgets.AddUnique(Widget);
+	}
+}
+
+void AERNPlayerController::UnregisterHUDWidget(UUserWidget* Widget)
+{
+	if (Widget)
+	{
+		ManagedHUDWidgets.Remove(Widget);
+		CachedHUDVisibilities.Remove(Widget);
+	}
+}
+
+void AERNPlayerController::BindCutsceneEvents()
+{
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
+	UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+	if (GI == nullptr)
+	{
+		return;
+	}
+
+	if (UERNCutsceneSubsystem* Cutscene = GI->GetSubsystem<UERNCutsceneSubsystem>())
+	{
+		Cutscene->OnCutsceneStarted.AddDynamic(this, &AERNPlayerController::HandleCutsceneStarted);
+		Cutscene->OnCutsceneFinished.AddDynamic(this, &AERNPlayerController::HandleCutsceneFinished);
+	}
+}
+
+void AERNPlayerController::UnbindCutsceneEvents()
+{
+	UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+	if (GI == nullptr)
+	{
+		return;
+	}
+
+	if (UERNCutsceneSubsystem* Cutscene = GI->GetSubsystem<UERNCutsceneSubsystem>())
+	{
+		Cutscene->OnCutsceneStarted.RemoveDynamic(this, &AERNPlayerController::HandleCutsceneStarted);
+		Cutscene->OnCutsceneFinished.RemoveDynamic(this, &AERNPlayerController::HandleCutsceneFinished);
+	}
+}
+
+void AERNPlayerController::HandleCutsceneStarted()
+{
+	CachedHUDVisibilities.Reset();
+
+	for (const TObjectPtr<UUserWidget>& Widget : ManagedHUDWidgets)
+	{
+		if (IsValid(Widget))
+		{
+			CachedHUDVisibilities.Add(Widget, Widget->GetVisibility());
+			Widget->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+}
+
+void AERNPlayerController::HandleCutsceneFinished()
+{
+	for (const TObjectPtr<UUserWidget>& Widget : ManagedHUDWidgets)
+	{
+		if (IsValid(Widget) == false)
+		{
+			continue;
+		}
+
+		// 컷신 시작 시 캐싱한 visibility로 복원 (없으면 기본 표시)
+		const ESlateVisibility* CachedVisibility = CachedHUDVisibilities.Find(Widget);
+		Widget->SetVisibility(CachedVisibility ? *CachedVisibility : ESlateVisibility::SelfHitTestInvisible);
+	}
+
+	CachedHUDVisibilities.Reset();
+}
+
 void AERNPlayerController::AcknowledgePossession(class APawn* P)
 {
 	Super::AcknowledgePossession(P);
-	
+
 	RefreshInventoryWidget();
 }
 
@@ -577,6 +702,7 @@ void AERNPlayerController::Client_ShowBossHealthBar_Implementation(AERNBossChara
 		if (BossHealthBarWidget)
 		{
 			BossHealthBarWidget->AddToViewport(50); // 높은 ZOrder로 최상위 표시
+			RegisterHUDWidget(BossHealthBarWidget);
 		}
 	}
 
