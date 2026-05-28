@@ -178,51 +178,6 @@ float UERNGA_UltimateSkillBase::CalculateExplosionDamage(const AProjectERNCharac
 	return (ExplosionData.BaseDamage + AttackPower + AttackPowerBonus) * ExplosionData.DamageMultiplier;
 }
 
-void UERNGA_UltimateSkillBase::ExecuteUltimateGameplayCue(const FERNUltimateGameplayCueData& CueData,
-                                                          AProjectERNCharacter* Caster,
-                                                          const FVector& BaseLocation,
-                                                          const FRotator& BaseRotation) const
-{
-	// Cue가 유효할 때만 실행
-	if (!CueData.bUseCue || !CueData.CueTag.IsValid() || !Caster)
-	{
-		return;
-	}
-
-	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
-	// ASC가 유효할 때 실행
-	if (!ActorInfo || !ActorInfo->AbilitySystemComponent.IsValid())
-	{
-		return;
-	}
-
-	// 서버 또는 로컬 컨트롤 캐릭터면 Cue 실행
-	if (!Caster->HasAuthority() && !Caster->IsLocallyControlled())
-	{
-		return;
-	}
-	
-	// Caster기준 Offset 적용
-	const FVector CueLocation =
-		BaseLocation
-		+ Caster->GetActorForwardVector() * CueData.LocationOffset.X
-		+ Caster->GetActorRightVector() * CueData.LocationOffset.Y
-		+ Caster->GetActorUpVector() * CueData.LocationOffset.Z;
-
-	// Rotation 적용
-	const FRotator CueRotation = BaseRotation + CueData.RotationOffset;
-
-	// Cue Parameter에 모두 적용
-	FGameplayCueParameters CueParams;
-	CueParams.Instigator = Caster;
-	CueParams.EffectCauser = Caster;
-	CueParams.SourceObject = this;
-	CueParams.Location = CueLocation;
-	CueParams.Normal = CueRotation.Vector();
-	CueParams.RawMagnitude = CueData.CueScale;
-
-	ActorInfo->AbilitySystemComponent->ExecuteGameplayCue(CueData.CueTag, CueParams);
-}
 
 void UERNGA_UltimateSkillBase::ExecuteCastGameplayCue()
 {
@@ -251,4 +206,50 @@ void UERNGA_UltimateSkillBase::ExecuteExplosionGameplayCue(AProjectERNCharacter*
 		Caster,
 		ExplosionOrigin,
 		Caster->GetActorRotation());
+}
+
+void UERNGA_UltimateSkillBase::ExecuteUltimateGameplayCue(const FERNUltimateGameplayCueData& CueData,
+                                                          AProjectERNCharacter* Caster,
+                                                          const FVector& BaseLocation,
+                                                          const FRotator& BaseRotation) const
+{
+	// Cue가 유효할 때만 실행
+	if (!CueData.bUseCue || !CueData.CueTag.IsValid() || !Caster)
+	{
+		return;
+	}
+
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	// ASC가 유효할 때 실행
+	if (!ActorInfo || !ActorInfo->AbilitySystemComponent.IsValid())
+	{
+		return;
+	}
+
+	// 서버 또는 로컬 컨트롤 캐릭터면 Cue 실행
+	if (!Caster->HasAuthority() && !Caster->IsLocallyControlled())
+	{
+		return;
+	}
+
+	// Caster기준 Offset 적용
+	const FVector CueLocation =
+		BaseLocation
+		+ Caster->GetActorForwardVector() * CueData.LocationOffset.X
+		+ Caster->GetActorRightVector() * CueData.LocationOffset.Y
+		+ Caster->GetActorUpVector() * CueData.LocationOffset.Z;
+
+	// Rotation 적용
+	const FRotator CueRotation = BaseRotation + CueData.RotationOffset;
+
+	// Cue Parameter에 모두 적용
+	FGameplayCueParameters CueParams;
+	CueParams.Instigator = Caster;
+	CueParams.EffectCauser = Caster;
+	CueParams.SourceObject = this;
+	CueParams.Location = CueLocation;
+	CueParams.Normal = CueRotation.Vector();
+	CueParams.RawMagnitude = CueData.CueScale;
+
+	ActorInfo->AbilitySystemComponent->ExecuteGameplayCue(CueData.CueTag, CueParams);
 }

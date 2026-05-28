@@ -115,6 +115,12 @@ protected:
 	// 폭발 적용 시 GC 실행
 	void ExecuteExplosionGameplayCue(AProjectERNCharacter* Caster, const FVector& ExplosionOrigin);
 	
+	// BP에서 설정한 GameplayCue 데이터 적용 함수
+	void ExecuteUltimateGameplayCue(const FERNUltimateGameplayCueData& CueData,
+									AProjectERNCharacter* Caster,
+									const FVector& BaseLocation,
+									const FRotator& BaseRotation) const;
+	
 private:
 	bool bExplosionAppliedThisActivation = false;
 
@@ -123,9 +129,4 @@ private:
 	void ApplyExplosionDamage(AProjectERNCharacter* Caster, const FVector& Origin) const;
 	// 폭파 대미지 계산
 	float CalculateExplosionDamage(const AProjectERNCharacter* Caster) const;
-	// BP에서 설정한 GameplayCue 데이터 적용 함수
-	void ExecuteUltimateGameplayCue(const FERNUltimateGameplayCueData& CueData,
-	                                AProjectERNCharacter* Caster,
-	                                const FVector& BaseLocation,
-	                                const FRotator& BaseRotation) const;
 };
