@@ -37,6 +37,10 @@ private:
 	
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<UMobSpawnPointComponent>> CachedSpawnPoints;
+	
+	// 월드에 배치된 패트롤 TargetPoint. 월드에서 직접 BP에 넣어줘야 한다.
+	UPROPERTY(EditAnywhere, Category = "Patrol", meta = (AllowPrivateAccess = "true"))
+	TArray<TObjectPtr<AActor>> PatrolTargetPoints;
 private:
 	// 저장된 데이터가 없는 경우의 몬스터 스폰
 	void SpawnInitialMobs();

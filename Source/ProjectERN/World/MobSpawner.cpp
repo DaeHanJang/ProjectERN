@@ -143,6 +143,16 @@ AERNEnemyCharacter* AMobSpawner::SpawnMobFromPoint(UMobSpawnPointComponent* Spaw
 	FActorSpawnParameters SpawnParams;
 	AERNEnemyCharacter* SpawnedEnemy = GetWorld()->SpawnActor<AERNEnemyCharacter>(SpawnPoint->EnemyClass,SpawnPoint->GetComponentTransform(), SpawnParams);
 	
+	if (SpawnedEnemy == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SpawnedEnemy is nullptr failed spawn enemy"));
+		return nullptr; 
+	}
+	
+	// 스폰한 몹에게 패트롤 포인트 전달
+	SpawnedEnemy->SetPatrolPoints(PatrolTargetPoints);
+	
+	
 	// 스폰된 적 활성화된 적으로 추가
 	ActiveEnemiesBySlot.Add(SpawnPoint->SlotId, SpawnedEnemy);
 	
