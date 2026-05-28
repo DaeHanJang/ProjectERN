@@ -73,6 +73,7 @@ void AERNIntroBird::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AERNIntroBird, AttachedPlayer);
+	DOREPLIFETIME(AERNIntroBird, bConsoleSummon);
 	DOREPLIFETIME(AERNIntroBird, bIsFlying);
 	DOREPLIFETIME(AERNIntroBird, StartLocation);
 	DOREPLIFETIME(AERNIntroBird, FlightDirection);
@@ -144,6 +145,41 @@ void AERNIntroBird::StartApproachAndPickup(AProjectERNCharacter* Target, FVector
 
 	bCameraPrewarmTriggered = false;
 	bIsApproaching = true;
+}
+
+AERNIntroBird* AERNIntroBird::RequestPickup(TSubclassOf<AERNIntroBird> BirdClass,
+	AProjectERNCharacter* Target, const FTransform& SpawnXform, FVector Direction, bool bConsoleSummon)
+{
+	if (!Target || !BirdClass || !Target->HasAuthority())
+	{
+		return nullptr;
+	}
+
+	// 사망 / 이미 새 호출 중 / 매달림 → 중복 차단
+	if (Target->IsDead() || Target->IsBirdRideActive() || Target->GetAttachedBird())
+	{
+		return nullptr;
+	}
+
+	UWorld* World = Target->GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AERNIntroBird* Bird = World->SpawnActor<AERNIntroBird>(BirdClass, SpawnXform, SpawnParams);
+	if (!Bird)
+	{
+		return nullptr;
+	}
+
+	Bird->bConsoleSummon = bConsoleSummon;             // 비행 거리/시간 분기 신호
+	Bird->StartApproachAndPickup(Target, Direction);   // Approach → Ascend → 전진
+	Target->SetBirdRideActive(true);                   // 하차 전까지 재입력 차단
+	return Bird;
 }
 
 void AERNIntroBird::ConfigureFlight(float InAscentHeight, float InAscentForwardDistance, float InFlightDistance, float InFlightDuration)
@@ -322,13 +358,17 @@ void AERNIntroBird::Tick(float DeltaTime)
 			CurrentSteeringOffset += CurrentSteeringInput * SteeringSpeed * DeltaTime;
 		}
 
+		// 콘솔 소환이면 빠른 거리/시간 프로파일, 아니면 기본(동상 주입값)
+		const float EffectiveDistance = bConsoleSummon ? ConsoleFlightDistance : FlightDistance;
+		const float EffectiveDuration = bConsoleSummon ? ConsoleFlightDuration : FlightDuration;
+
 		const float ElapsedTime = FMath::Max(0.f, GetWorld()->GetTimeSeconds() - LocalFlightStartTime);
-		const float Alpha = FMath::Clamp(ElapsedTime / FMath::Max(FlightDuration, KINDA_SMALL_NUMBER), 0.f, 1.f);
+		const float Alpha = FMath::Clamp(ElapsedTime / FMath::Max(EffectiveDuration, KINDA_SMALL_NUMBER), 0.f, 1.f);
 
 		// 직진(FlightDirection)은 그대로 + 좌우 누적 오프셋만 추가
 		const FVector Right = FVector::CrossProduct(FVector::UpVector, FlightDirection).GetSafeNormal();
 		const FVector NewLocation = StartLocation
-			+ FlightDirection * (FlightDistance * Alpha)
+			+ FlightDirection * (EffectiveDistance * Alpha)
 			+ Right * CurrentSteeringOffset;
 		SetActorLocation(NewLocation);
 

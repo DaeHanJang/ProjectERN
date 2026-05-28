@@ -60,46 +60,32 @@ void AERNBirdStatue::BeginPlay()
 void AERNBirdStatue::Interact_Implementation(APlayerController* PlayerController)
 {
 	// 서버 권한 정책이므로 서버에서만 실행됨 (인터랙션 시스템이 RPC 처리)
-	if (!HasAuthority() || !PlayerController || !BirdClass)
+	if (!HasAuthority() || !PlayerController)
 	{
 		return;
 	}
 
 	AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(PlayerController->GetPawn());
-	if (!Player || Player->IsDead())
+	if (!Player)
 	{
 		return;
 	}
 
-	// 이미 새를 호출했거나(Approach 중) 매달려 있으면 중복 사용 차단 — 하차 전까지 재입력 무시
-	if (Player->IsBirdRideActive() || Player->GetAttachedBird())
-	{
-		return;
-	}
-
-	// 새 스폰 (BirdSpawnPoint 트랜스폼)
+	// 새 스폰 위치 (BirdSpawnPoint 트랜스폼)
 	const FTransform SpawnXform = BirdSpawnPoint
 		? BirdSpawnPoint->GetComponentTransform()
 		: GetActorTransform();
 
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	// 가드/스폰/Approach/재입력차단 공용 헬퍼. Ascend 방향은 조각상 Forward(수평 정규화).
+	// bConsoleSummon=false → 동상 기본(주입값) 비행.
+	AERNIntroBird* Bird = AERNIntroBird::RequestPickup(
+		BirdClass, Player, SpawnXform, GetActorForwardVector(), /*bConsoleSummon=*/false);
 
-	AERNIntroBird* Bird = GetWorld()->SpawnActor<AERNIntroBird>(BirdClass, SpawnXform, SpawnParams);
-	if (!Bird)
+	if (Bird)
 	{
-		return;
+		// 이 동상의 개별 비행 파라미터 주입 (Replicated → 클라까지 전파)
+		Bird->ConfigureFlight(AscentHeight, AscentForwardDistance, FlightDistance, FlightDuration);
 	}
-
-	// 이 동상의 비행 파라미터를 새에 주입 (Replicated → 클라까지 전파)
-	Bird->ConfigureFlight(AscentHeight, AscentForwardDistance, FlightDistance, FlightDuration);
-
-	// Approach → Ascend → Forward 시퀀스 시작
-	// Ascend 방향은 조각상 Forward (수평으로 정규화)
-	Bird->StartApproachAndPickup(Player, GetActorForwardVector());
-
-	// 새 호출 성공 → 하차 전까지 재입력 차단
-	Player->SetBirdRideActive(true);
 }
 
 bool AERNBirdStatue::CanInteract_Implementation() const

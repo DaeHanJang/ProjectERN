@@ -41,6 +41,16 @@ public:
 	// Replicated 변수라 초기 리플리케이션으로 클라까지 전파 → deterministic 시뮬 일치.
 	void ConfigureFlight(float InAscentHeight, float InAscentForwardDistance, float InFlightDistance, float InFlightDuration);
 
+	// BirdStatue / 콘솔 공용: 가드 → 스폰 → Approach 시작 → 재입력 차단까지 처리.
+	// bConsoleSummon=true면 빠른 비행 프로파일 적용. 실패 시 nullptr 반환.
+	// (서버 권한 필요 — Target->HasAuthority() 내부 검사)
+	static AERNIntroBird* RequestPickup(
+		TSubclassOf<AERNIntroBird> BirdClass,
+		AProjectERNCharacter* Target,
+		const FTransform& SpawnXform,
+		FVector Direction,
+		bool bConsoleSummon);
+
 	// 부착된 플레이어가 새에서 해제됐을 때 호출 (서버 권한) → 위로 상승 후 Destroy
 	void OnPlayerReleased();
 
@@ -77,6 +87,13 @@ protected:
 	// 시작 → 끝까지 걸리는 시간 (초) — BirdStatue가 덮어쓸 수 있어 Replicated
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Flight")
 	float FlightDuration = 50.f;
+
+	// 콘솔 명령으로 소환된 새의 전진 비행 거리/시간 (bConsoleSummon=true면 FlightDistance/Duration 대신 사용)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flight")
+	float ConsoleFlightDistance = 100000.f;   // 동상 기본 100000보다 멀리
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flight")
+	float ConsoleFlightDuration = 10.f;        // 동상 기본 50초보다 짧게
 
 	// === 이탈 후 ===
 
@@ -120,7 +137,7 @@ protected:
 
 	// 솟구치는 높이 (cm) — BirdStatue가 덮어쓸 수 있어 Replicated
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Ascent")
-	float AscentHeight = 5000.f;
+	float AscentHeight = 8000.f;
 
 	// 솟구치는 동안 Statue Forward 방향으로 추가 이동 거리 (cm) — BirdStatue가 덮어쓸 수 있어 Replicated
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = "Ascent")
@@ -143,6 +160,10 @@ private:
 	// 부착된 플레이어 (Replicated)
 	UPROPERTY(Replicated)
 	TObjectPtr<AProjectERNCharacter> AttachedPlayer;
+
+	// 콘솔 명령으로 소환된 새인지 (Replicated → 클라도 동일하게 빠른 Alpha 계산)
+	UPROPERTY(Replicated)
+	bool bConsoleSummon = false;
 
 	// === 비행 상태 (Replicated — initial replication으로 spawn과 함께 도착) ===
 

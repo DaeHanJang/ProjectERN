@@ -268,6 +268,20 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_SetGodMode(bool bEnable);
 
+	// ===== 디버그: 새 호출 (콘솔 명령 bird) =====
+
+	// 콘솔 명령: ~ 키 → bird 입력. 플레이어 뒤+위에서 새가 swoop으로 내려와 태우고 빠르게 전진.
+	UFUNCTION(Exec)
+	void Bird();
+
+	// exec는 소유 클라 실행 → 서버 라우팅 (스폰/부착은 서버 권한)
+	UFUNCTION(Server, Reliable)
+	void Server_SpawnRideBird();
+
+	// 스폰할 새 클래스 (동상이 쓰는 BP_IntroBird 계열 할당)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Debug|Bird")
+	TSubclassOf<class AERNIntroBird> DebugBirdClass;
+
 	// ===== 인트로: 새에 매달림 =====
 
 	// 매달림 상태 (Replicated)
