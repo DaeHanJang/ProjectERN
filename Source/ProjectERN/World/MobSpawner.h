@@ -37,6 +37,9 @@ private:
 	
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<UMobSpawnPointComponent>> CachedSpawnPoints;
+	
+	UPROPERTY(EditAnywhere, Category = "Patrol", meta = (AllowPrivateAccess = "true"))
+	TArray<TObjectPtr<AActor>> PatrolTargetPoints;
 private:
 	// 저장된 데이터가 없는 경우의 몬스터 스폰
 	void SpawnInitialMobs();
