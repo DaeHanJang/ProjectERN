@@ -104,6 +104,11 @@ void ANightRainZoneManager::BroadcastZoneStateChanged()
 	OnZoneStateChanged.Broadcast(ZoneState);
 }
 
+void ANightRainZoneManager::BroadcastZoneShrinkFinished()
+{
+	OnZoneShrinkFinished.Broadcast(ZoneState.PhaseIndex);
+}
+
 void ANightRainZoneManager::StartPhase(const FNightRainZonePhaseConfig& PhaseConfig, const FVector& TargetCenterLocation)
 {
 	if (HasAuthority() == false)
@@ -154,7 +159,10 @@ void ANightRainZoneManager::HandlePhaseFinished()
 		return;
 	}
 	
-	// 자기장 수렴 대기
+	// 자기장 수렴 완료 이벤트 전파
+	BroadcastZoneShrinkFinished();
+	
+	// 자기장 수렴 후 대기
 	FreezeCurrentZoneState();
 	
 	// 자기장 후보 재설정
@@ -162,7 +170,12 @@ void ANightRainZoneManager::HandlePhaseFinished()
 	
 	if (HasNextShrinkPhase())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("다음 장소 있음"));
 		GetWorldTimerManager().SetTimer(PhaseTimerHandle, this, &ANightRainZoneManager::HandleWaitFinished, ZoneState.FreezingDuration, false);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("다음 장소 없음"));
 	}
 }
 
@@ -219,20 +232,6 @@ void ANightRainZoneManager::TickZoneDamage()
 		{
 			continue;
 		}
-
-
-		/*
-		// 디버깅용 로직
-		const float Distance2D = FVector2D::Distance(FVector2D(Pawn->GetActorLocation().X, Pawn->GetActorLocation().Y),FVector2D(Center.X, Center.Y));
-		
-		UE_LOG(LogTemp,Warning,TEXT("NightRain DamageCheck Pawn=%s Center=%s Dist2D=%.1f Radius=%.1f Outside=%s Phase =%d"),
-			*Pawn->GetActorLocation().ToString(),
-			*Center.ToString(),
-			Distance2D,
-			Radius,
-			IsOutsideZone2D(Pawn->GetActorLocation(), Center, Radius) ? TEXT("true") : TEXT("false"),
-			ZoneState.PhaseIndex);
-		*/
 		
 		// 데미지 적용
 		if (IsOutsideZone2D(Pawn->GetActorLocation(), Center, Radius))
