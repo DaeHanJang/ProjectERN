@@ -268,6 +268,20 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_SetGodMode(bool bEnable);
 
+	// ===== 디버그: 새 호출 (콘솔 명령 bird) =====
+
+	// 콘솔 명령: ~ 키 → bird 입력. 플레이어 뒤+위에서 새가 swoop으로 내려와 태우고 빠르게 전진.
+	UFUNCTION(Exec)
+	void Bird();
+
+	// exec는 소유 클라 실행 → 서버 라우팅 (스폰/부착은 서버 권한)
+	UFUNCTION(Server, Reliable)
+	void Server_SpawnRideBird();
+
+	// 스폰할 새 클래스 (동상이 쓰는 BP_IntroBird 계열 할당)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Debug|Bird")
+	TSubclassOf<class AERNIntroBird> DebugBirdClass;
+
 	// ===== 인트로: 새에 매달림 =====
 
 	// 매달림 상태 (Replicated)
@@ -278,6 +292,9 @@ public:
 	UPROPERTY(Replicated)
 	TObjectPtr<class AERNIntroBird> AttachedBird;
 
+	// 서버 전용: 새 호출~하차 구간 중복 입력 차단 플래그
+	bool bBirdRideActive = false;
+
 	// 매달림 루프 몽타주 (BP에서 AM_Shared_Hanging 할당)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
 	TObjectPtr<UAnimMontage> HangingMontage;
@@ -286,15 +303,63 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
 	float HangingFOV = 110.f;
 
+	// 매달림 중 카메라 암 길이 (기본보다 길게 — 확대 연출)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float HangingArmLength = 800.f;
+
+	// FOV/ArmLength FInterpTo 속도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float CameraInterpSpeed = 1.f;
+
+	// 보간 진행도 이 값 이상이면 목표값으로 스냅 (FInterpTo 점근 꼬리 절단)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float CameraSnapThreshold = 0.98f;
+
 	// 매달림 시작 시점에 캐싱한 기본 FOV (해제 시 복원)
 	UPROPERTY(Transient)
 	float CachedDefaultFOV = 90.f;
+
+	// 매달림 시작 시점에 캐싱한 기본 카메라 암 길이 (해제 시 복원)
+	UPROPERTY(Transient)
+	float CachedDefaultArmLength = 400.f;
+
+	// 카메라 보간 진행 중 여부 (소유 클라 Tick에서 보간)
+	bool bIsCameraTransitioning = false;
+
+	// Approach 중 카메라 미리 widen 했는지 — Client_OnAttachedToBird에서 중복 캐싱 방지
+	bool bHangingCameraPrewarmed = false;
+
+	// 보간 시작/목표 값 (진행도 계산용)
+	float CameraTransitionStartArmLength = 0.f;
+	float CameraTransitionStartFOV = 0.f;
+	float CameraTransitionTargetArmLength = 0.f;
+	float CameraTransitionTargetFOV = 0.f;
+
+	// 부착 시 컨트롤 회전도 함께 보간 (release 시에는 사용 안 함)
+	bool bIsControlRotationTransitioning = false;
+	FRotator CameraTransitionStartControlRotation = FRotator::ZeroRotator;
+	FRotator CameraTransitionTargetControlRotation = FRotator::ZeroRotator;
+
+	// Ascend 동안 카메라 lag 파라미터
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float AscentCameraLagSpeed = 5.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float AscentCameraLagMaxDistance = 300.f;
+
+	// 현재 lag 활성 상태 추적 (전환 순간에만 SpringArm 세팅)
+	bool bAscentCameraLagActive = false;
 
 	// 서버: 새에 부착 (인트로 매니저가 호출)
 	void AttachToIntroBird(class AERNIntroBird* Bird);
 
 	// 부착된 새 반환 (PC가 조향 RPC 호출 시 사용)
 	class AERNIntroBird* GetAttachedBird() const { return AttachedBird; }
+
+	// 서버: BirdStatue로 새를 호출한 순간부터 새에서 내릴 때까지 true.
+	// Approach 중에는 AttachedBird가 아직 null이라, 이 플래그로 중복 호출(새 여러 마리)을 차단.
+	bool IsBirdRideActive() const { return bBirdRideActive; }
+	void SetBirdRideActive(bool bActive) { bBirdRideActive = bActive; }
 
 	// 서버: 새에서 해제 (Jump 입력 시 호출)
 	UFUNCTION(Server, Reliable)
@@ -315,6 +380,10 @@ public:
 	// 해당 클라(소유 PC)에서 기본 FOV 복원
 	UFUNCTION(Client, Reliable)
 	void Client_OnReleasedFromBird();
+
+	// 새가 attach 직전(LeadTime 초 전)에 카메라 FOV/암 길이를 미리 widen 시작
+	UFUNCTION(Client, Reliable)
+	void Client_PrewarmHangingCamera();
 
 	UFUNCTION()
 	void OnRep_IsHangingFromBird();

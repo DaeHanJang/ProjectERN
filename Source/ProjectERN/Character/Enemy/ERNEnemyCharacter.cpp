@@ -108,6 +108,24 @@ void AERNEnemyCharacter::BeginPlay()
 		true);
 }
 
+void AERNEnemyCharacter::SetPatrolPoints(const TArray<AActor*>& InPatrolPoints)
+{
+	// AI/BT는 서버에서만 동작
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	PatrolPoints.Reset();
+	for (AActor* Point : InPatrolPoints)
+	{
+		if (IsValid(Point))
+		{
+			PatrolPoints.Add(Point);
+		}
+	}
+}
+
 void AERNEnemyCharacter::BindHitboxOverlaps()
 {
 	TArray<UBoxComponent*> Boxes;
