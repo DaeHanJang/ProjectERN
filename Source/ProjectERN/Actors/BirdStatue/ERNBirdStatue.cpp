@@ -28,8 +28,9 @@ AERNBirdStatue::AERNBirdStatue()
 	InteractionSphere->SetupAttachment(RootComponent);
 	InteractionSphere->SetSphereRadius(200.f);
 	InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	InteractionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-	InteractionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	// 전 채널 Overlap → 캐릭터 InteractionDetector가 오브젝트 타입/캡슐 높이와 무관하게 이 구체를 탐지
+	// (OnSphereBeginOverlap에서 Pawn만 필터링하므로 프롬프트 로직은 영향 없음)
+	InteractionSphere->SetCollisionResponseToAllChannels(ECR_Overlap);
 
 	// 상호작용 프롬프트 위젯
 	InteractionPromptWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionPromptWidget"));
