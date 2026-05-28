@@ -425,8 +425,6 @@ void AERNPlayerController::TryInteract()
 		}
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("TryInteract"));
-	
 	if (CurrentInteractableActor.IsValid())
 	{
 		if (IInteractable* Interactable = Cast<IInteractable>(CurrentInteractableActor.Get()))
@@ -435,7 +433,7 @@ void AERNPlayerController::TryInteract()
 			{
 				return;
 			}
-			
+
 			switch (Interactable->Execute_GetInteractionExecutionPolicy(CurrentInteractableActor.Get()))
 			{
 			case EInteractionExecutionPolicy::LocalOnly:

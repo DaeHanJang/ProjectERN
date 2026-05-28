@@ -12,7 +12,10 @@ class UCurveFloat;
 class AProjectERNCharacter;
 
 /**
- * 인트로 시퀀스용 새 액터 (ACharacter 기반).
+ * 매달려 날아가는 새 액터 (ACharacter 기반) — 두 가지 사용처:
+ *   1) StartFlight()                — 인트로 컷신 (ERNCutsceneSubsystem에서 호출)
+ *   2) StartApproachAndPickup()     — BirdStatue 이동 (Approach → Ascend → Flight 3페이즈)
+ *
  * - Deterministic 클라이언트 시뮬레이션: 위치 리플 OFF, Replicated 상태 변수로 동기화 후 각 머신이 동일 계산
  * - 시간은 GameState::GetServerWorldTimeSeconds()로 동기화 → 모든 머신이 동일 Alpha 계산
  * - HangPoint에 플레이어 캐릭터를 부착
@@ -28,8 +31,11 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	// 비행 시작 (서버 권한 — Replicated 상태 변수 세팅)
+	// 비행 시작 (서버 권한 — Replicated 상태 변수 세팅) — 인트로/Forward 페이즈
 	void StartFlight();
+
+	// BirdStatue용 진입점 (서버 권한) — Approach → Ascend → Flight 자동 진행
+	void StartApproachAndPickup(class AProjectERNCharacter* Target, FVector InAscentDirection);
 
 	// 부착된 플레이어가 새에서 해제됐을 때 호출 (서버 권한) → 위로 상승 후 Destroy
 	void OnPlayerReleased();
@@ -40,12 +46,19 @@ public:
 	// 부착된 플레이어 설정
 	void SetAttachedPlayer(AProjectERNCharacter* Player) { AttachedPlayer = Player; }
 
+	// 솟구침 페이즈 여부 (플레이어가 카메라 lag 토글에 사용)
+	bool IsAscending() const { return bIsAscending; }
+
 protected:
 	virtual void BeginPlay() override;
 
 	// 캐릭터가 매달릴 슬롯 (BP에서 위치 조정, Mesh의 자식)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USceneComponent> HangPoint;
+
+	// HangPoint가 따라갈 본 이름 (지정 시 본의 애니메이션 delta만큼 HangPoint도 이동)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Bird")
+	FName HangBoneName = NAME_None;
 
 	// 비행 중 재생할 나이아가라 (BP에서 NiagaraSystem 에셋 할당)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
@@ -80,6 +93,42 @@ protected:
 	// 좌우 이동 속도 (cm/s) - A/D 누르고 있는 동안 매 틱 누적, 떼면 그 자리 유지
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flight|Steering")
 	float SteeringSpeed = 600.f;
+
+	// === Approach 페이즈 (BirdStatue 전용 — 플레이어를 향해 비행) ===
+
+	// 플레이어를 향해 날아가는 속도 (cm/s)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Approach")
+	float ApproachSpeed = 5000.f;
+
+	// 플레이어 머리 위로 얼마나 위에서 도착할지 (cm) — 자연스러운 매달림 타이밍용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Approach")
+	float ApproachOverheadOffset = 100.f;
+
+	// HangPoint와 Player 거리가 이 값 이하면 자동 attach + Ascend 진입 (cm)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Approach")
+	float AttachTriggerDistance = 150.f;
+
+	// Attach 트리거 전 카메라 widen 미리 시작할 리드 타임 (초). ETA <= 이 값이면 1회 RPC 발사.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Approach")
+	float CameraPrewarmLeadTime = 0.5f;
+
+	// === Ascend 페이즈 (BirdStatue 전용 — 솟구침) ===
+
+	// 솟구치는 높이 (cm)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ascent")
+	float AscentHeight = 8000.f;
+
+	// 솟구치는 동안 Statue Forward 방향으로 추가 이동 거리 (cm)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ascent")
+	float AscentForwardDistance = 1500.f;
+
+	// 솟구침 지속 시간 (초)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ascent")
+	float AscentDuration = 1.0f;
+
+	// 높이 보간 곡선 (선택, 없으면 선형)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Ascent")
+	TObjectPtr<UCurveFloat> AscentHeightCurve = nullptr;
 
 public:
 	// 로컬 클라가 매 입력마다 호출 - 서버에 현재 입력값(-1~1) 전달
@@ -126,6 +175,44 @@ private:
 	// 각 머신의 로컬 FlyAway 시작 시각
 	float LocalFlyAwayStartTime = 0.f;
 
+	// === Approach 상태 (BirdStatue 전용) ===
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsApproaching)
+	bool bIsApproaching = false;
+
+	UPROPERTY(Replicated)
+	TObjectPtr<AProjectERNCharacter> ApproachTarget;
+
+	UFUNCTION()
+	void OnRep_IsApproaching();
+
+	// === Ascend 상태 (BirdStatue 전용) ===
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsAscending)
+	bool bIsAscending = false;
+
+	UPROPERTY(Replicated)
+	FVector AscentStartLocation = FVector::ZeroVector;
+
+	UPROPERTY(Replicated)
+	FVector AscentDirection = FVector::ForwardVector;
+
+	UPROPERTY(Replicated)
+	float AscentStartServerTime = 0.f;
+
+	// 로컬 머신 기준 Ascend 시작 시각 (lag 보정 후 Tick에서 자체 진행)
+	float LocalAscentStartTime = 0.f;
+
+	UFUNCTION()
+	void OnRep_IsAscending();
+
+	// Approach/Ascend 페이즈 전환 (서버 자동)
+	void OnApproachArrived();
+	void OnAscentComplete();
+
+	// Approach 중 카메라 prewarm RPC 중복 발사 방지 (서버 transient)
+	bool bCameraPrewarmTriggered = false;
+
 	// === 조향 상태 ===
 
 	// 서버 권한 누적 좌우 오프셋 (모든 클라 리플 → deterministic 위치 계산)
@@ -145,4 +232,9 @@ private:
 
 	// 서버 동기화된 현재 시각 반환 (GameState->GetServerWorldTimeSeconds() 래퍼)
 	float GetServerNow() const;
+
+	// === HangPoint 본 트래킹 캐싱 (BeginPlay에서 1회 설정) ===
+	FVector HangPointBaseRelative = FVector::ZeroVector;
+	FVector BoneRestComponentLoc = FVector::ZeroVector;
+	bool bHangBoneTracking = false;
 };

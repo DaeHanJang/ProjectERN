@@ -286,9 +286,52 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
 	float HangingFOV = 110.f;
 
+	// 매달림 중 카메라 암 길이 (기본보다 길게 — 확대 연출)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float HangingArmLength = 800.f;
+
+	// FOV/ArmLength FInterpTo 속도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float CameraInterpSpeed = 1.f;
+
+	// 보간 진행도 이 값 이상이면 목표값으로 스냅 (FInterpTo 점근 꼬리 절단)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float CameraSnapThreshold = 0.98f;
+
 	// 매달림 시작 시점에 캐싱한 기본 FOV (해제 시 복원)
 	UPROPERTY(Transient)
 	float CachedDefaultFOV = 90.f;
+
+	// 매달림 시작 시점에 캐싱한 기본 카메라 암 길이 (해제 시 복원)
+	UPROPERTY(Transient)
+	float CachedDefaultArmLength = 400.f;
+
+	// 카메라 보간 진행 중 여부 (소유 클라 Tick에서 보간)
+	bool bIsCameraTransitioning = false;
+
+	// Approach 중 카메라 미리 widen 했는지 — Client_OnAttachedToBird에서 중복 캐싱 방지
+	bool bHangingCameraPrewarmed = false;
+
+	// 보간 시작/목표 값 (진행도 계산용)
+	float CameraTransitionStartArmLength = 0.f;
+	float CameraTransitionStartFOV = 0.f;
+	float CameraTransitionTargetArmLength = 0.f;
+	float CameraTransitionTargetFOV = 0.f;
+
+	// 부착 시 컨트롤 회전도 함께 보간 (release 시에는 사용 안 함)
+	bool bIsControlRotationTransitioning = false;
+	FRotator CameraTransitionStartControlRotation = FRotator::ZeroRotator;
+	FRotator CameraTransitionTargetControlRotation = FRotator::ZeroRotator;
+
+	// Ascend 동안 카메라 lag 파라미터
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float AscentCameraLagSpeed = 5.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
+	float AscentCameraLagMaxDistance = 300.f;
+
+	// 현재 lag 활성 상태 추적 (전환 순간에만 SpringArm 세팅)
+	bool bAscentCameraLagActive = false;
 
 	// 서버: 새에 부착 (인트로 매니저가 호출)
 	void AttachToIntroBird(class AERNIntroBird* Bird);
@@ -315,6 +358,10 @@ public:
 	// 해당 클라(소유 PC)에서 기본 FOV 복원
 	UFUNCTION(Client, Reliable)
 	void Client_OnReleasedFromBird();
+
+	// 새가 attach 직전(LeadTime 초 전)에 카메라 FOV/암 길이를 미리 widen 시작
+	UFUNCTION(Client, Reliable)
+	void Client_PrewarmHangingCamera();
 
 	UFUNCTION()
 	void OnRep_IsHangingFromBird();
