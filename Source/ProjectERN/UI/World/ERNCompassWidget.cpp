@@ -318,7 +318,8 @@ void UERNCompassWidget::UpdateZoneCenter(const FVector& MyLocation, float Camera
 		}
 	}
 
-	const FVector ZoneCenter = ZoneManager->GetCurrentCenter();
+	// 조여드는 현재 중심(GetCurrentCenter)이 아니라, 수축 목적지인 안전지역 원의 중심을 표시
+	const FVector ZoneCenter = ZoneManager->GetZoneState().TargetCenter;
 	const float TargetYaw = WorldYawToTarget(MyLocation, ZoneCenter);
 	PositionByWorldYaw(ZoneMarker, TargetYaw, CameraYaw);
 }
