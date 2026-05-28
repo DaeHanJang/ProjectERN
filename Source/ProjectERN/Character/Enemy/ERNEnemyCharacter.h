@@ -197,6 +197,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 	TArray<AActor*> PatrolPoints;
 
+	// MobSpawner가 스폰 직후 순찰 포인트 할당 (서버에서 호출)
+	UFUNCTION(BlueprintCallable, Category = "AI")
+	void SetPatrolPoints(const TArray<AActor*>& InPatrolPoints);
+
 	// 한 번의 공격에서 중복 히트 방지
 	TArray<AActor*> HitActors;
 
