@@ -843,6 +843,9 @@ void AProjectERNCharacter::Server_ReleaseFromBird_Implementation()
 	AERNIntroBird* Bird = AttachedBird;
 	AttachedBird = nullptr;
 
+	// 하차 → BirdStatue 재입력 허용
+	bBirdRideActive = false;
+
 	// 중력 복구 → ABP가 Falling 자동 감지
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{

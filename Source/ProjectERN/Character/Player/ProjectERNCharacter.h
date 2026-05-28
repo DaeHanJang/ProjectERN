@@ -278,6 +278,9 @@ public:
 	UPROPERTY(Replicated)
 	TObjectPtr<class AERNIntroBird> AttachedBird;
 
+	// 서버 전용: 새 호출~하차 구간 중복 입력 차단 플래그
+	bool bBirdRideActive = false;
+
 	// 매달림 루프 몽타주 (BP에서 AM_Shared_Hanging 할당)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Intro")
 	TObjectPtr<UAnimMontage> HangingMontage;
@@ -338,6 +341,11 @@ public:
 
 	// 부착된 새 반환 (PC가 조향 RPC 호출 시 사용)
 	class AERNIntroBird* GetAttachedBird() const { return AttachedBird; }
+
+	// 서버: BirdStatue로 새를 호출한 순간부터 새에서 내릴 때까지 true.
+	// Approach 중에는 AttachedBird가 아직 null이라, 이 플래그로 중복 호출(새 여러 마리)을 차단.
+	bool IsBirdRideActive() const { return bBirdRideActive; }
+	void SetBirdRideActive(bool bActive) { bBirdRideActive = bActive; }
 
 	// 서버: 새에서 해제 (Jump 입력 시 호출)
 	UFUNCTION(Server, Reliable)
