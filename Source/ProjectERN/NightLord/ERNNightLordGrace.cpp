@@ -52,7 +52,17 @@ void AERNNightLordGrace::BeginPlay()
 	Super::BeginPlay();
 	
 	// Collision Binding
-	InteractionComponent->OnComponentBeginOverlap.AddDynamic(this, &AERNNightLordGrace::OnSphereBeginOverlap);
+	InteractionComponent->OnComponentBeginOverlap.AddUniqueDynamic(this, &AERNNightLordGrace::OnSphereBeginOverlap);
+}
+
+void AERNNightLordGrace::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (InteractionComponent)
+	{
+		InteractionComponent->OnComponentBeginOverlap.RemoveDynamic(this, &AERNNightLordGrace::OnSphereBeginOverlap);
+	}
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void AERNNightLordGrace::Interact_Implementation(APlayerController* PlayerController)
