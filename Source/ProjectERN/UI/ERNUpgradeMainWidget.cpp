@@ -63,7 +63,7 @@ void UERNUpgradeMainWidget::NativeConstruct()
     }
 
     // 포커스 관련 설정 (키보드 조작을 위함)
-    SetIsFocusable(true);
+    bIsFocusable = true;
 
     // 슬롯 렌더링
     PopulateInventorySlots();
@@ -212,7 +212,39 @@ void UERNUpgradeMainWidget::UpdateVisuals()
     }
 
     // 장비 검사
-    if (InventoryRef && InventoryRef->GetInventory().GetItems().IsValidIndex(PreviewIndex))
+    if (PreviewIndex == -2)
+    {
+        // 장착된 장비 검사
+        if (ACharacter* PlayerChar = Cast<ACharacter>(GetOwningPlayerPawn()))
+        {
+            if (UERNEquipmentComponent* EquipComp = PlayerChar->FindComponentByClass<UERNEquipmentComponent>())
+            {
+                const FInventoryItemEntry& Entry = EquipComp->EquipableSlot;
+                if (!Entry.IsValid()) 
+                {
+                    ClearSelection();
+                    return;
+                }
+
+                UItemManagerSubsystem* ItemMgr = GetWorld()->GetGameInstance()->GetSubsystem<UItemManagerSubsystem>();
+                if (ItemMgr)
+                {
+                    const FERNItemTable* Row = ItemMgr->FindItemRow(Entry.GetItemID());
+                    if (!Row || Row->ItemType != EItemType::Equipable)
+                    {
+                        ClearSelection();
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                ClearSelection();
+                return;
+            }
+        }
+    }
+    else if (InventoryRef && InventoryRef->GetInventory().GetItems().IsValidIndex(PreviewIndex))
     {
         const FInventoryItemEntry& Entry = InventoryRef->GetInventory().GetItems()[PreviewIndex];
         if (!Entry.IsValid()) 
