@@ -53,8 +53,20 @@ void AERNBirdStatue::BeginPlay()
 {
 	Super::BeginPlay();
 
-	InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &AERNBirdStatue::OnSphereBeginOverlap);
-	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &AERNBirdStatue::OnSphereEndOverlap);
+	InteractionSphere->OnComponentBeginOverlap.AddUniqueDynamic(this, &AERNBirdStatue::OnSphereBeginOverlap);
+	InteractionSphere->OnComponentEndOverlap.AddUniqueDynamic(this, &AERNBirdStatue::OnSphereEndOverlap);
+}
+
+void AERNBirdStatue::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (InteractionSphere)
+	{
+		InteractionSphere->OnComponentBeginOverlap.RemoveDynamic(this, &AERNBirdStatue::OnSphereBeginOverlap);
+		InteractionSphere->OnComponentEndOverlap.RemoveDynamic(this, &AERNBirdStatue::OnSphereEndOverlap);
+	}
+	
+	
+	Super::EndPlay(EndPlayReason);
 }
 
 void AERNBirdStatue::Interact_Implementation(APlayerController* PlayerController)
