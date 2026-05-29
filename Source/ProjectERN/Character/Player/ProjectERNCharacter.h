@@ -112,6 +112,9 @@ public:
 	AProjectERNCharacter();
 
 	FORCEINLINE UDataTable* GetStatusCurveTable() const { return StatusCurveTable; }
+	
+	UFUNCTION(BlueprintCallable, Category="Attribute")
+	void InitStatus();
 
 	// Level Up
 	UFUNCTION(Server, Reliable)

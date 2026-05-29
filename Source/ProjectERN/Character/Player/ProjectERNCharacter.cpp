@@ -177,6 +177,33 @@ AProjectERNCharacter::AProjectERNCharacter()
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 }
 
+void AProjectERNCharacter::InitStatus()
+{
+	if (!HasAuthority() || !StatusCurveTable)
+	{
+		return;
+	}
+	
+	const FERNPlayerStatusTable* Row = StatusCurveTable->FindRow<FERNPlayerStatusTable>(FName("1"), TEXT("StatusCurveContext"));
+	if (!Row)
+	{
+		return;
+	}
+	
+	AttributeSet->SetMaxHealth(Row->MaxHealth);
+	AttributeSet->SetHealth(Row->MaxHealth);
+	AttributeSet->SetMaxMana(Row->MaxMana);
+	AttributeSet->SetMana(Row->MaxMana);
+	AttributeSet->SetManaRegenRate(Row->ManaRegenRate);
+	AttributeSet->SetMaxStamina(Row->MaxStamina);
+	AttributeSet->SetStamina(Row->MaxStamina);
+	AttributeSet->SetStaminaRegenRate(Row->StaminaRegenRate);
+	AttributeSet->SetAttackPower(Row->AttackPower);
+	AttributeSet->SetDefense(Row->Defense);
+	AttributeSet->SetStaggerResistance(Row->StaggerResistance);
+	AttributeSet->SetMoveSpeed(Row->MoveSpeed);
+}
+
 void AProjectERNCharacter::BeginPlay()
 {
 	Super::BeginPlay();
