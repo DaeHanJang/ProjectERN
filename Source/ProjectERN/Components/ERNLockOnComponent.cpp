@@ -25,7 +25,10 @@ void UERNLockOnComponent::Initialize(USphereComponent* InDetectionSphere, UCamer
 	
 	DetectionSphere = InDetectionSphere;
 	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	DetectionSphere->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	DetectionSphere->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	DetectionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
+	DetectionSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECR_Overlap);
+
 	DetectionSphere->SetSphereRadius(SphereRadius);
 	
 	if (InCameraComponent)
