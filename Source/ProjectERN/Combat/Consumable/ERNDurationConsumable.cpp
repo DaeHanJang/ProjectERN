@@ -70,6 +70,11 @@ void AERNDurationConsumable::ApplyEffectPlayer(AProjectERNCharacter* PlayerChara
 
 void AERNDurationConsumable::ApplyEffectMonster(AERNEnemyCharacter* EnemyCharacter)
 {
+	if (!IsValid(EnemyCharacter))
+	{
+		return;
+	}
+	
 	EnemyCharacter->TakeDamage(MonsterDamage, FDamageEvent(), GetInstigatorController(), GetOwner());
 }
 
@@ -96,6 +101,14 @@ void AERNDurationConsumable::OnFogBeginOverlap(UPrimitiveComponent* OverlappedCo
 	if (OverlappedActors.Contains(OtherActor))
 	{
 		return;
+	}
+	
+	if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor))
+	{
+		if (PlayerCharacter->GetRootComponent() != OtherComp)
+		{
+			return;
+		}
 	}
 	
 	OverlappedActors.Add(OtherActor);

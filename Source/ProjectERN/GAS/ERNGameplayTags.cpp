@@ -23,6 +23,9 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Attacking, "State.Combat.Attacking")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Blocking, "State.Combat.Blocking")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Rolling, "State.Combat.Rolling")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_Jumping, "State.Combat.Jumping")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_UsingSkill, "State.Combat.UsingSkill")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_UsingSkill_Normal, "State.Combat.UsingSkill.Normal")
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Combat_UsingSkill_Ultimate, "State.Combat.UsingSkill.Ultimate")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_OutOfCombat, "State.OutOfCombat")
 
 // 어빌리티
@@ -60,6 +63,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Regen_StaminaBlocked, "State.Regen.StaminaBlock
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Regen_ManaBlocked, "State.Regen.ManaBlocked")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Shield_Amount, "Data.Shield.Amount")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Shield_Duration, "Data.Shield.Duration")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_Heal_Amount, "Data.Heal.Amount")
 
 // 버프
 UE_DEFINE_GAMEPLAY_TAG(TAG_Buff_AttackPower, "Buff.AttackPower")
@@ -72,6 +76,12 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Cooldown_Skill_Ultimate, "Cooldown.Skill.Ultimate")
 // GameplayCue 태그
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Cast_Buff_AttackPower, "GameplayCue.Cast.Buff.AttackPower")
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Buff_Shield_Aura, "GameplayCue.Buff.Shield.Aura")
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_CrimsonJudgment_Cast,"GameplayCue.Ultimate.CrimsonJudgment.Cast")
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_CrimsonJudgment_Explosion,"GameplayCue.Ultimate.CrimsonJudgment.Explosion")
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_Mage_Cast,"GameplayCue.Ultimate.Mage.Cast")
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_Mage_Explosion,"GameplayCue.Ultimate.Mage.Explosion")
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_Sanctuary_Cast, "GameplayCue.Ultimate.Sanctuary.Cast")
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_Sanctuary_Field, "GameplayCue.Ultimate.Sanctuary.Field")
 
 // 이벤트
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Consumable_Throw, "Event.Consumable.Throw")
