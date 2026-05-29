@@ -146,6 +146,7 @@ void AERNEnemyCharacter::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AA
 {
 	// 플레이어만 대상, 중복 히트 방지
 	AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(OtherActor);
+	if (!Player || Player->GetRootComponent() != OtherComp) return;
 	if (!Player || HitActors.Contains(OtherActor)) return;
 
 	HitActors.Add(OtherActor);

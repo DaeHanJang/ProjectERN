@@ -14,7 +14,6 @@
 #include "ERNPlayerController.h"
 #include "ERNPlayerStatusTable.h"
 #include "ERNSkillNiagaraComponent.h"
-#include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
@@ -34,6 +33,7 @@
 #include "Actors/Intro/ERNIntroBird.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Components/ERNLockOnComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Inventory/Item/ERNItemActor.h"
 
@@ -157,6 +157,13 @@ AProjectERNCharacter::AProjectERNCharacter()
 	NightRainPostProcessComponent->BlendWeight = 0.f;
 	NightRainPostProcessComponent->Priority = 100.f;
 	
+	// Create LockOn Component
+	LockOnComponent = CreateDefaultSubobject<UERNLockOnComponent>(TEXT("LockOnComponent"));
+	
+	// Create LockOn Detection Component
+	LockOnDetector = CreateDefaultSubobject<USphereComponent>(TEXT("LockOnDetector"));
+	LockOnDetector->SetupAttachment(GetRootComponent());
+	
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
@@ -178,6 +185,11 @@ void AProjectERNCharacter::BeginPlay()
 	if (HasAuthority())
 	{
 		EnterOutOfCombat();
+	}
+	
+	if (LockOnComponent && LockOnDetector && FollowCamera)
+	{
+		LockOnComponent->Initialize(LockOnDetector, FollowCamera);
 	}
 }
 
@@ -405,26 +417,60 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 	// Sprint 중에는 LockOn 강제 회전을 끈다.
 	// const bool bShouldRotateForLockOn = bIsLockOn && !bIsSprinting && !bIsAttacking;
 
-	if (bIsLockOn && !bIsSprinting && !bIsAttacking)
+	if (bIsLockOn)
 	{
-		if (IsLocallyControlled() && Controller)
+		if (LockOnComponent && LockOnComponent->IsLockOnActive())
 		{
-			const float ControlYaw = Controller->GetControlRotation().Yaw;
-			DesiredLockOnYaw = ControlYaw;
-
-			if (!HasAuthority())
+			DesiredActorRotation = LockOnComponent->GetDesiredRotationToTarget();
+			DesiredLockOnYaw = DesiredActorRotation.Yaw;
+			
+			if (!HasAuthority() && IsLocallyControlled())
 			{
-				Server_UpdateLockOnYaw(ControlYaw);
+				Server_UpdateLockOnYaw(DesiredLockOnYaw);
 			}
 		}
-
-		DesiredActorRotation = GetLockOnDesiredRotation();
-
-		if (HasAuthority() || IsLocallyControlled())
+		else
 		{
-			InterpActorRotation(DeltaSeconds);
+			ApplyLockOnState(false, GetActorRotation());
+			return;
 		}
-
+		
+		// 캐릭터 몸 회전은 질주, 공격 중에는 적용하지 않음
+		if (!bIsSprinting && !bIsAttacking)
+		{
+			if (HasAuthority() || IsLocallyControlled())
+			{
+				InterpActorRotation(DeltaSeconds);
+			}
+		}
+		
+		// 카메라 락온 타겟 바라보게 유지
+		if (IsLocallyControlled() && bUseCameraYawOnLockOn)
+		{
+			AActor* LockOnTarget = LockOnComponent->GetCurrentTarget();
+			AController* Ctrl = GetController();
+			
+			if (IsValid(LockOnTarget) && Ctrl && FollowCamera)
+			{
+				// 타겟 액터의 중점
+				FVector TargetOrigin;
+				// 타겟 액터의 반 크기
+				FVector TargetExtent;
+				LockOnTarget->GetActorBounds(false, TargetOrigin, TargetExtent);
+				
+				const FVector CameraLocation = FollowCamera->GetComponentLocation();
+				// 현재 카메라 위치에서 타겟 액터 중심까지의 방향의 회전값
+				FRotator TargetCameraRotation = (TargetOrigin - CameraLocation).Rotation();
+				TargetCameraRotation.Roll = 0.0f;
+				
+				// 현재 컨트롤러 회전에서 타겟 액터 방향 회전으로 보간
+				const FRotator NewControlRotation = FMath::RInterpTo(Ctrl->GetControlRotation(), TargetCameraRotation, DeltaSeconds, RotationInterpSpeed);
+				
+				// 보간된 회전을 컨트롤러에 적용
+				Ctrl->SetControlRotation(NewControlRotation);
+			}
+		}
+		
 		return;
 	}
 
@@ -685,6 +731,11 @@ void AProjectERNCharacter::DoMove(float Right, float Forward)
 
 void AProjectERNCharacter::DoLook(float Yaw, float Pitch)
 {
+	if (bIsLockOn && LockOnComponent && LockOnComponent->IsLockOnActive())
+	{
+		return;
+	}
+	
 	if (GetController() != nullptr)
 	{
 		// add yaw and pitch input to controller
@@ -728,22 +779,43 @@ void AProjectERNCharacter::ExecuteJumpLaunch()
 	Jump();
 }
 
-void AProjectERNCharacter::ToggleTemporaryLockOn()
+void AProjectERNCharacter::LockOn()
 {
-	const bool bNewLockOn = !bIsLockOn;
-	const FRotator ControlRotation = Controller ? Controller->GetControlRotation() : GetActorRotation();
-
-	ApplyLockOnState(bNewLockOn, ControlRotation);
-
+	if (bIsHangingFromBird || !LockOnComponent)
+	{
+		return;
+	}
+	
+	const bool bNewLockOn = LockOnComponent->ToggleLockOn();
+	
+	const FRotator TargetRotation = bNewLockOn ? LockOnComponent->GetDesiredRotationToTarget() : GetActorRotation();
+	
+	ApplyLockOnState(bNewLockOn, TargetRotation);
+	
 	if (!HasAuthority())
 	{
-		Server_SetLockOn(bNewLockOn, ControlRotation);
+		Server_SetLockOn(bNewLockOn, TargetRotation);
 	}
 }
 
 void AProjectERNCharacter::Server_SetLockOn_Implementation(bool bNewLockOn, FRotator TargetRotation)
 {
-	ApplyLockOnState(bNewLockOn, TargetRotation);
+	if (bNewLockOn)
+	{
+		const bool bServerLocked = LockOnComponent && LockOnComponent->TryLockOn();
+		
+		const FRotator ServerRotation = bServerLocked ? LockOnComponent->GetDesiredRotationToTarget() : GetActorRotation();
+		
+		ApplyLockOnState(bServerLocked, ServerRotation);
+		return;
+	}
+	
+	if (LockOnComponent)
+	{
+		LockOnComponent->ClearLockOn();
+	}
+	
+	ApplyLockOnState(false, TargetRotation);
 }
 
 void AProjectERNCharacter::ApplyLockOnState(bool bNewLockOn, const FRotator& TargetRotation)
@@ -1122,13 +1194,6 @@ void AProjectERNCharacter::HeavyAttack()
 	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Attack_Heavy));
 }
 
-void AProjectERNCharacter::LockOn()
-{
-	if (bIsHangingFromBird) return;
-
-	ToggleTemporaryLockOn();
-}
-
 void AProjectERNCharacter::ToggleSprint()
 {
 	if (bIsHangingFromBird) return;
@@ -1249,11 +1314,9 @@ FRotator AProjectERNCharacter::GetAttackDesiredRotation() const
 	FRotator TargetRotation = GetActorRotation();
 
 	// LockOn상태 일 때
-	if (bIsLockOn && Controller)
+	if (bIsLockOn && LockOnComponent && LockOnComponent->IsLockedOn())
 	{
-		// 카메라 방향과 일치하는 방향으로 회전
-		const FRotator ControlRotation = Controller->GetControlRotation();
-		return FRotator(0.f, ControlRotation.Yaw, 0.f);
+		return LockOnComponent->GetDesiredRotationToTarget();
 	}
 
 	// 입력이 없다면

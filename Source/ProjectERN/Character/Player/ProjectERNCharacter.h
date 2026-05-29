@@ -9,6 +9,7 @@
 #include "GAS/Abilities/WeaponSkill/ERNWeaponSkillTypes.h"
 #include "ProjectERNCharacter.generated.h"
 
+class UERNLockOnComponent;
 class UERNLevelUpWidget;
 class USphereComponent;
 class USpringArmComponent;
@@ -74,6 +75,14 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** Skill Niagara Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	UERNSkillNiagaraComponent* SkillNiagaraComponent;
+	
+	/** LockOn Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UERNLockOnComponent> LockOnComponent;
+	
+	/** LockOn Detection Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<USphereComponent> LockOnDetector;
 
 protected:
 	// InteractionDetector Update
@@ -196,9 +205,6 @@ public:
 
 	// ************** 임시 락온 기능 구현 **************
 public:
-	UFUNCTION(BlueprintCallable, Category="ERN|LockOn")
-	void ToggleTemporaryLockOn();
-
 	bool IsLockOn() const { return bIsLockOn; }
 
 	UFUNCTION(Server, Reliable)
