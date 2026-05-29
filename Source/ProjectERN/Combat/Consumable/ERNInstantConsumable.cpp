@@ -36,7 +36,10 @@ void AERNInstantConsumable::ApplyEffect()
 			{
 				if (AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OverlapActor))
 				{
-					ApplyEffectPlayer(PlayerCharacter);
+					if (PlayerCharacter->GetRootComponent() == OverlapResult.GetComponent())
+					{
+						ApplyEffectPlayer(PlayerCharacter);
+					}
 				}
 			}
 			else if (ApplyType == EApplyType::Monster)
@@ -50,7 +53,10 @@ void AERNInstantConsumable::ApplyEffect()
 			{
 				if (AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OverlapActor))
 				{
-					ApplyEffectPlayer(PlayerCharacter);
+					if (PlayerCharacter->GetRootComponent() == OverlapResult.GetComponent())
+					{
+						ApplyEffectPlayer(PlayerCharacter);
+					}
 				}
 				if (AERNEnemyCharacter* EnemyCharacter = Cast<AERNEnemyCharacter>(OverlapActor))
 				{
@@ -112,6 +118,16 @@ void AERNInstantConsumable::ApplyEffectMonster(AERNEnemyCharacter* EnemyCharacte
 
 void AERNInstantConsumable::UpdateApplyDamageToMonster(AERNEnemyCharacter* EnemyCharacter, int32 Index)
 {
+	if (!IsValid(EnemyCharacter))
+	{
+		GetWorldTimerManager().ClearTimer(MonsterApplyTimers[Index]);
+		if (Index == MonsterApplyTimers.Num() - 1)
+		{
+			Destroy();
+		}
+		return;
+	}
+	
 	EnemyCharacter->TakeDamage(MonsterDamage, FDamageEvent(), GetInstigatorController(), GetOwner());
 	
 	if (CurrentTimers[Index] >= MonsterApplyTime)
