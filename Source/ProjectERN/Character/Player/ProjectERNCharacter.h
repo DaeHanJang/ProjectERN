@@ -27,6 +27,9 @@ class UCameraShakeBase;
 class UERNSkillNiagaraComponent;
 class UPostProcessComponent;
 class AERNEnemyCharacter;
+class UPointLightComponent;
+class UNiagaraComponent;
+class UNiagaraSystem;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -83,6 +86,14 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** LockOn Detection Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<USphereComponent> LockOnDetector;
+
+	/** Head Light */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UPointLightComponent> HeadLight;
+
+	/** Head Light Niagara FX */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UNiagaraComponent> HeadLightFX;
 
 protected:
 	// InteractionDetector Update
@@ -554,4 +565,31 @@ protected:
 
 	// OutOfCombat 태그 즉시 제거 + 타이머 취소
 	void ExitOutOfCombat();
+
+	// ===== 머리 조명 토글 =====
+public:
+	// L키로 바인딩할 InputAction
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Input")
+	TObjectPtr<UInputAction> ToggleLightAction;
+
+	// 켤 때 재생할 Niagara
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|HeadLight")
+	TObjectPtr<UNiagaraSystem> HeadLightFXSystem;
+
+protected:
+	// 조명 ON/OFF 상태 (모든 클라 동기화)
+	UPROPERTY(ReplicatedUsing=OnRep_HeadLightOn, BlueprintReadOnly, Category="ERN|HeadLight")
+	bool bHeadLightOn = false;
+
+	UFUNCTION()
+	void OnRep_HeadLightOn();
+
+	// L 입력 → 서버 요청
+	void ToggleLight();
+
+	UFUNCTION(Server, Reliable)
+	void Server_ToggleLight();
+
+	// 라이트/Niagara 가시성 적용 (서버·클라 공통)
+	void ApplyHeadLightState();
 };

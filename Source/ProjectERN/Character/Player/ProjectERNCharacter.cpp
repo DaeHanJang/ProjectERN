@@ -15,6 +15,8 @@
 #include "ERNPlayerStatusTable.h"
 #include "ERNSkillNiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Components/SphereComponent.h"
@@ -148,7 +150,22 @@ AProjectERNCharacter::AProjectERNCharacter()
 
 	// Create Skill Niagara Component
 	SkillNiagaraComponent = CreateDefaultSubobject<UERNSkillNiagaraComponent>(TEXT("SkillNiagaraComponent"));
-	
+
+	// Head Light
+	HeadLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("HeadLight"));
+	HeadLight->SetupAttachment(GetCapsuleComponent());
+	HeadLight->SetRelativeLocation(FVector(0.f, 0.f, 100.f));
+	HeadLight->SetIntensity(5000.f);
+	HeadLight->SetAttenuationRadius(800.f);
+	HeadLight->SetCastShadows(false);
+	HeadLight->SetVisibility(false);
+
+	// Head Light Niagara
+	HeadLightFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("HeadLightFX"));
+	HeadLightFX->SetupAttachment(GetCapsuleComponent());
+	HeadLightFX->SetRelativeLocation(FVector(0.f, 0.f, 100.f));
+	HeadLightFX->bAutoActivate = false;
+
 	// NightRainZone 자기장 밤의비
 	NightRainPostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("NightRainPostProcessComponent"));
 	NightRainPostProcessComponent->SetupAttachment(FollowCamera);
@@ -299,6 +316,13 @@ void AProjectERNCharacter::BeginPlay()
 	{
 		LockOnComponent->Initialize(LockOnDetector, FollowCamera);
 	}
+
+	// 머리 조명 Niagara 에셋 적용 + 현재 상태 반영
+	if (HeadLightFX && HeadLightFXSystem)
+	{
+		HeadLightFX->SetAsset(HeadLightFXSystem);
+	}
+	ApplyHeadLightState();
 }
 
 void AProjectERNCharacter::PossessedBy(AController* NewController)
@@ -720,6 +744,13 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::UltimateSkill);
+
+	// Head Light 토글
+	if (ToggleLightAction)
+	{
+		InputComp->BindAction(ToggleLightAction, ETriggerEvent::Started,
+			this, &AProjectERNCharacter::ToggleLight);
+	}
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
@@ -959,6 +990,45 @@ void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProp
 	DOREPLIFETIME(AProjectERNCharacter, bGodMode);
 	DOREPLIFETIME(AProjectERNCharacter, bIsHangingFromBird);
 	DOREPLIFETIME(AProjectERNCharacter, AttachedBird);
+	DOREPLIFETIME(AProjectERNCharacter, bHeadLightOn);
+}
+
+void AProjectERNCharacter::ToggleLight()
+{
+	Server_ToggleLight();
+}
+
+void AProjectERNCharacter::Server_ToggleLight_Implementation()
+{
+	bHeadLightOn = !bHeadLightOn;
+	ApplyHeadLightState();
+}
+
+void AProjectERNCharacter::OnRep_HeadLightOn()
+{
+	ApplyHeadLightState();
+}
+
+void AProjectERNCharacter::ApplyHeadLightState()
+{
+	if (HeadLight)
+	{
+		HeadLight->SetVisibility(bHeadLightOn);
+	}
+
+	if (HeadLightFX)
+	{
+		HeadLightFX->SetVisibility(bHeadLightOn);
+
+		if (bHeadLightOn)
+		{
+			HeadLightFX->Activate(true);
+		}
+		else
+		{
+			HeadLightFX->DeactivateImmediate();
+		}
+	}
 }
 
 void AProjectERNCharacter::GodMode()
