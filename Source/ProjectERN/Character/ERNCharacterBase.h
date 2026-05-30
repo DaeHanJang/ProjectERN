@@ -84,6 +84,9 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Character")
 	bool bIsDead = false;
 
+	// 막타 크레딧용 — 마지막으로 유효타를 넣은 컨트롤러 (서버)
+	TWeakObjectPtr<AController> LastHitInstigator;
+
 public:
 	// 데미지 처리
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;

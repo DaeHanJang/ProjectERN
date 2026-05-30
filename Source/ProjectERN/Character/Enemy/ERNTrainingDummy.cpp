@@ -8,6 +8,9 @@
 AERNTrainingDummy::AERNTrainingDummy()
 {
 	// AIControllerClass는 더미 BP에서 순찰 전용 BT를 가진 컨트롤러로 지정
+
+	// 전과(킬수/총데미지) 집계 제외 — 연습용
+	bExcludeFromCombatStats = true;
 }
 
 float AERNTrainingDummy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)

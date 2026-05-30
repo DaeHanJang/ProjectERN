@@ -183,6 +183,20 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_HideBossHealthBar();
 
+	// === 게임 종료 화면 ===
+	UPROPERTY(EditDefaultsOnly, Category = "UI|EndScreen")
+	TSubclassOf<UUserWidget> VictoryBannerWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|EndScreen")
+	TSubclassOf<UUserWidget> DefeatBannerWidgetClass;
+
+	// GameState Multicast가 호출 — 로컬에서 승/패 배너 위젯 생성
+	void ShowEndScreen(bool bVictory);
+
+	// 전과 위젯 "로비로" 버튼 → 서버에 복귀 준비 통지
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "UI|EndScreen")
+	void Server_RequestReturnToLobby();
+
 	// 카메라 흔들림 (공격자 본인/피격자 본인 등 단일 PC 대상)
 	UFUNCTION(Client, Unreliable)
 	void Client_PlayCameraShake(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale);

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "World/Data/ERNMinimapIconTypes.h"
+#include "Inventory/Data/ERNInventoryList.h"
 #include "ERNPlayerState.generated.h"
 
 UENUM(BlueprintType)
@@ -106,6 +107,38 @@ public:
 	
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Attributes")
 	float GetCurrentShield() const;
+
+	// 현재 레벨 (Pawn의 AttributeSet에서 읽고, 폰이 없으면 스냅샷 값 폴백)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Attributes")
+	int32 GetCurrentLevel() const;
+
+	// 현재 플라스크 개수 (폰 없으면 스냅샷 값 폴백)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Attributes")
+	int32 GetCurrentFlaskQuantity() const;
+
+	// 최대 플라스크 개수 (폰 없으면 스냅샷 값 폴백)
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Attributes")
+	int32 GetMaxFlaskQuantity() const;
+
+	// ===== 런 진행 스냅샷 (필드→보스 travel에서만 채움) =====
+	UPROPERTY(Replicated) bool bHasSnapshot = false;
+	UPROPERTY(Replicated) int32 SavedLevel = 1;
+	UPROPERTY(Replicated) int32 SavedGold = 0;
+	UPROPERTY(Replicated) int32 SavedFlaskQuantity = 0;
+	UPROPERTY(Replicated) int32 SavedMaxFlaskQuantity = 0;
+	UPROPERTY(Replicated) TArray<FInventoryItemEntry> SavedInventory;
+	UPROPERTY(Replicated) FItemRuntimeState SavedWeaponState;
+	UPROPERTY(Replicated) FItemRuntimeState SavedConsumableState;
+
+	// ===== 전과(결과) 누적 =====
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Result") int32 KillCount = 0;
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Result") float TotalDamageDealt = 0.f;
+
+	// 서버: Pawn → PlayerState 스냅샷 저장 (필드→보스 travel 직전, 게임 종료 시)
+	void SaveSnapshotFromPawn();
+
+	// 서버: 스냅샷 + 전과 전부 초기화 (로비 복귀 시)
+	void ClearRunProgress();
 	
 	// 플레이어 접속 번호
 #pragma region Minimap

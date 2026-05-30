@@ -194,14 +194,26 @@ float AERNEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 	{
 		Multicast_ShowHealthBar();
 
-		// 공격자 클라이언트에게 데미지 텍스트 표시 요청
+		// 공격자 클라이언트에게 데미지 텍스트 표시 요청 + 누적 데미지(전과)
 		if (HasAuthority())
 		{
-			if (AProjectERNCharacter* AttackerChar = Cast<AProjectERNCharacter>(DamageCauser))
+			AProjectERNCharacter* AttackerChar = Cast<AProjectERNCharacter>(DamageCauser);
+			if (!AttackerChar && EventInstigator)
+			{
+				AttackerChar = Cast<AProjectERNCharacter>(EventInstigator->GetPawn());
+			}
+			if (AttackerChar)
 			{
 				if (AERNPlayerController* PC = Cast<AERNPlayerController>(AttackerChar->GetController()))
 				{
 					PC->Client_ShowDamageText(GetActorLocation(), ActualDamage);
+				}
+				if (!bExcludeFromCombatStats)
+				{
+					if (AERNPlayerState* AttackerPS = AttackerChar->GetPlayerState<AERNPlayerState>())
+					{
+						AttackerPS->TotalDamageDealt += ActualDamage;
+					}
 				}
 			}
 		}
@@ -284,6 +296,18 @@ void AERNEnemyCharacter::Multicast_PlayAttackMontage_Implementation(UAnimMontage
 
 void AERNEnemyCharacter::OnDeath()
 {
+	// 막타 크레딧 — 마지막 유효타를 넣은 플레이어의 KillCount 증가
+	if (HasAuthority() && !bExcludeFromCombatStats)
+	{
+		if (AController* Killer = LastHitInstigator.Get())
+		{
+			if (AERNPlayerState* KillerPS = Killer->GetPlayerState<AERNPlayerState>())
+			{
+				KillerPS->KillCount++;
+			}
+		}
+	}
+
 	// BT 중지 — 사망 후 BT가 다른 몽타주를 트리거해 사망 몽타주를 덮어쓰는 것 방지
 	if (HasAuthority())
 	{

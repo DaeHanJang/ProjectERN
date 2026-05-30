@@ -116,6 +116,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Attribute")
 	void InitStatus();
 
+	// 특정 레벨의 StatusCurveTable 행으로 스탯 적용 (+SetLevel)
+	void InitStatusForLevel(int32 Level);
+
+	// BP possess 흐름 마지막에 호출 — PlayerState 스냅샷이 있으면 복원(없으면 기본값 유지)
+	UFUNCTION(BlueprintCallable, Category="ERN|Run")
+	void ApplyRunSnapshot();
+
 	// Level Up
 	UFUNCTION(Server, Reliable)
 	void Server_LevelUp();

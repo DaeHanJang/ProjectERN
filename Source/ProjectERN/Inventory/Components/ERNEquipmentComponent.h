@@ -36,6 +36,14 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Equipment")
 	void Server_EquipWeapon(FName ItemID);
 
+	// 런타임 상태(강화 수치 포함)로 무기 장착 — 스냅샷 복원용
+	UFUNCTION(Server, Reliable, Category="Equipment")
+	void Server_EquipWeaponFromState(const FItemRuntimeState& WeaponState);
+
+	// 런타임 상태(종류+수량)로 소모품 장착 — 스냅샷 복원용
+	UFUNCTION(Server, Reliable, Category="Equipment")
+	void Server_EquipConsumableFromState(const FItemRuntimeState& ConsumableState);
+
 	// 초기 무기 제거
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Equipment")
 	void Server_UnequipWeapon();
