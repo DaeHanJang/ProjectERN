@@ -16,6 +16,7 @@
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Core/ERNGameInstance.h"
+#include "Core/ERNGameState.h"
 #include "Interfaces/IInteractable.h"
 #include "UI/ERNInventoryWidget.h"
 #include "UI/ERNUIManagerSubsystem.h"
@@ -457,6 +458,12 @@ void AERNPlayerController::SetupInputComponent()
 				EnhancedInputComponent->BindAction(MinimapAction, ETriggerEvent::Started, this,
 													&AERNPlayerController::ToggleMinimap);
 			}
+
+			if (PauseAction)
+			{
+				EnhancedInputComponent->BindAction(PauseAction, ETriggerEvent::Started, this,
+													&AERNPlayerController::TogglePauseMenu);
+			}
 		}
 	}
 }
@@ -636,6 +643,51 @@ void AERNPlayerController::InventoryClose()
 		
 		InventoryWidget->SetVisibility(ESlateVisibility::Hidden);
 		
+		FInputModeGameOnly InputMode;
+		SetInputMode(InputMode);
+		bShowMouseCursor = false;
+	}
+}
+
+void AERNPlayerController::TogglePauseMenu()
+{
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
+	if (!PausedWidget && PausedWidgetClass)
+	{
+		PausedWidget = CreateWidget<UUserWidget>(this, PausedWidgetClass);
+	}
+
+	if (!PausedWidget)
+	{
+		return;
+	}
+
+	// 코옵(네트워크)에서는 실제 일시정지가 불가 — 메뉴 오버레이로만 동작
+	if (!PausedWidget->IsInViewport())
+	{
+		PausedWidget->AddToViewport(500);
+
+		FInputModeGameAndUI InputMode;
+		InputMode.SetWidgetToFocus(PausedWidget->TakeWidget());
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
+	}
+	else
+	{
+		ClosePauseMenu();
+	}
+}
+
+void AERNPlayerController::ClosePauseMenu()
+{
+	if (PausedWidget && PausedWidget->IsInViewport())
+	{
+		PausedWidget->RemoveFromParent();
+
 		FInputModeGameOnly InputMode;
 		SetInputMode(InputMode);
 		bShowMouseCursor = false;
@@ -1037,4 +1089,49 @@ void AERNPlayerController::Client_ReceiveChat_Implementation(const FString& Send
 {
 	// BP가 ChatWidget의 AddMessage 노드 호출 (최대 20개)
 	OnReceiveChatMessage(Sender, Message, SenderColor);
+}
+
+void AERNPlayerController::ShowEndScreen(bool bVictory)
+{
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
+	// 게임 종료 화면에선 게임플레이 HUD(나침반/파티/미니맵 등) 숨김
+	for (const TObjectPtr<UUserWidget>& HUDWidget : ManagedHUDWidgets)
+	{
+		if (IsValid(HUDWidget))
+		{
+			HUDWidget->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+
+	TSubclassOf<UUserWidget> WidgetClass = bVictory ? VictoryBannerWidgetClass : DefeatBannerWidgetClass;
+	if (!WidgetClass)
+	{
+		return;
+	}
+
+	// 배너 위젯(BP)이 일정시간 뒤 전과 위젯으로 전환
+	if (UUserWidget* Banner = CreateWidget<UUserWidget>(this, WidgetClass))
+	{
+		Banner->AddToViewport(200);
+	}
+}
+
+void AERNPlayerController::Server_RequestReturnToLobby_Implementation()
+{
+	if (AERNGameState* GS = GetWorld()->GetGameState<AERNGameState>())
+	{
+		GS->MarkReturnReady(GetPlayerState<AERNPlayerState>());
+	}
+}
+
+void AERNPlayerController::Server_CancelReturnToLobby_Implementation()
+{
+	if (AERNGameState* GS = GetWorld()->GetGameState<AERNGameState>())
+	{
+		GS->UnmarkReturnReady(GetPlayerState<AERNPlayerState>());
+	}
 }

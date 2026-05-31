@@ -169,6 +169,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Stats")
 	float InitialStaggerResistance = 10.f;
 
+	// 전과(킬수/총데미지) 집계에서 제외 (연습용 허수아비 등)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
+	bool bExcludeFromCombatStats = false;
+
 	// 근접 히트박스 설정 (태그로 구분, 태그별 데미지 값 설정)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	TArray<FEnemyHitboxConfig> HitboxConfigs;

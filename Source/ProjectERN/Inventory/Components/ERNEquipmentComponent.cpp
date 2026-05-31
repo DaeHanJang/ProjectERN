@@ -149,6 +149,107 @@ void UERNEquipmentComponent::Server_EquipWeapon_Implementation(FName ItemID)
 	OnEquipmentSlotChanged.Broadcast(EquipableSlot);
 }
 
+void UERNEquipmentComponent::Server_EquipWeaponFromState_Implementation(const FItemRuntimeState& WeaponState)
+{
+	const FName ItemID = WeaponState.GetItemID();
+
+	// 기존 무기 제거
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->Destroy();
+		CurrentWeapon = nullptr;
+	}
+
+	UItemManagerSubsystem* ItemManager = GetItemManagerSubsystem();
+	if (!ItemManager || !ItemManager->ItemValid(ItemID))
+	{
+		return;
+	}
+
+	const UEquipableItemDataAsset* DA = Cast<UEquipableItemDataAsset>(ItemManager->LoadItemDataAssetSync(ItemID, EItemAssetLoadFlags::Gameplay));
+	if (!DA || DA->EquipableClass.IsNull())
+	{
+		return;
+	}
+
+	TSubclassOf<AERNWeaponBase> WeaponClass = DA->EquipableClass.Get();
+	if (!WeaponClass)
+	{
+		return;
+	}
+
+	AERNCharacterBase* Character = Cast<AERNCharacterBase>(GetOwner());
+	if (!Character || !Character->GetMesh())
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = GetOwner();
+	AERNWeaponBase* NewWeapon = GetWorld()->SpawnActor<AERNWeaponBase>(WeaponClass, SpawnParams);
+	if (!NewWeapon)
+	{
+		return;
+	}
+
+	if (TSubclassOf<UGameplayAbility> WeaponSkillClass = DA->EquipableAbility.Get())
+	{
+		Character->SetWeaponAbility(WeaponSkillClass);
+	}
+
+	// 전달받은 런타임 상태(강화 수치 포함) 그대로 적용
+	NewWeapon->Init(WeaponState, DA);
+	NewWeapon->AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("WeaponSocket"));
+	CurrentWeapon = NewWeapon;
+
+	FInventoryItemEntry Entry;
+	Entry.SetItemRuntimeState(WeaponState);
+	EquipableSlot = Entry;
+	OnEquipmentSlotChanged.Broadcast(EquipableSlot);
+}
+
+void UERNEquipmentComponent::Server_EquipConsumableFromState_Implementation(const FItemRuntimeState& ConsumableState)
+{
+	if (!ConsumableState.IsValid())
+	{
+		return;
+	}
+
+	UItemManagerSubsystem* ItemManager = GetItemManagerSubsystem();
+	if (!ItemManager || !ItemManager->ItemValid(ConsumableState.GetItemID()))
+	{
+		return;
+	}
+
+	const UConsumableItemDataAsset* DA = Cast<UConsumableItemDataAsset>(
+		ItemManager->LoadItemDataAssetSync(ConsumableState.GetItemID(), EItemAssetLoadFlags::Gameplay));
+	if (!DA || DA->ConsumableType != EConsumableType::Usable)
+	{
+		return;
+	}
+
+	AERNCharacterBase* Character = Cast<AERNCharacterBase>(GetOwner());
+	if (!Character)
+	{
+		return;
+	}
+
+	// 전달받은 런타임 상태(종류+수량) 그대로 적용
+	CurrentConsumable = ConsumableState;
+
+	// 소모품 사용 효과(어빌리티) 장착
+	if (TSubclassOf<UGameplayAbility> ConsumableAbility = DA->ConsumableAbility.Get())
+	{
+		Character->SetConsumableAbility(ConsumableAbility);
+	}
+
+	// UI 갱신을 위한 슬롯 데이터 갱신 및 리슨 서버용 브로드캐스트
+	FInventoryItemEntry Entry;
+	Entry.SetItemRuntimeState(ConsumableState);
+	ConsumableSlot = Entry;
+	OnConsumableSlotChanged.Broadcast(ConsumableSlot);
+}
+
 void UERNEquipmentComponent::Server_UnequipWeapon_Implementation()
 {
 	if (CurrentWeapon)

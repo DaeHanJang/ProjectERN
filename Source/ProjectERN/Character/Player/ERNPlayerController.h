@@ -183,6 +183,24 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_HideBossHealthBar();
 
+	// === 게임 종료 화면 ===
+	UPROPERTY(EditDefaultsOnly, Category = "UI|EndScreen")
+	TSubclassOf<UUserWidget> VictoryBannerWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|EndScreen")
+	TSubclassOf<UUserWidget> DefeatBannerWidgetClass;
+
+	// GameState Multicast가 호출 — 로컬에서 승/패 배너 위젯 생성
+	void ShowEndScreen(bool bVictory);
+
+	// 전과 위젯 "로비로" 버튼 → 서버에 복귀 준비 통지
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "UI|EndScreen")
+	void Server_RequestReturnToLobby();
+
+	// 전과 위젯 "취소" 버튼 → 서버에 복귀 신청 취소 통지
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "UI|EndScreen")
+	void Server_CancelReturnToLobby();
+
 	// 카메라 흔들림 (공격자 본인/피격자 본인 등 단일 PC 대상)
 	UFUNCTION(Client, Unreliable)
 	void Client_PlayCameraShake(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale);
@@ -329,6 +347,29 @@ protected:
 	/** Minimap input action */
 	UPROPERTY(EditAnywhere, Category="Input|Actions")
 	UInputAction* MinimapAction;
+
+	/** Pause input action (ESC + P) */
+	UPROPERTY(EditAnywhere, Category="Input|Actions")
+	UInputAction* PauseAction;
+
+	// 일시정지 메뉴 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Pause")
+	TSubclassOf<UUserWidget> PausedWidgetClass;
+
+	// 일시정지 메뉴 위젯 인스턴스
+	UPROPERTY(Transient)
+	UUserWidget* PausedWidget = nullptr;
+
+public:
+	// 일시정지 메뉴 열기 <-> 닫기
+	UFUNCTION(BlueprintCallable, Category = "UI|Pause")
+	void TogglePauseMenu();
+
+	// 일시정지 메뉴 닫기 (위젯 내부 버튼에서 호출용)
+	UFUNCTION(BlueprintCallable, Category = "UI|Pause")
+	void ClosePauseMenu();
+
+protected:
 	
 	// 미니맵 열기 <-> 닫기 관리
 	UFUNCTION(BlueprintCallable, Category = "Minimap")

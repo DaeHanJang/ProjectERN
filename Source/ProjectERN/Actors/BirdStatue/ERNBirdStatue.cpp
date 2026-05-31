@@ -122,6 +122,12 @@ void AERNBirdStatue::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedCompone
 {
 	if (APawn* Pawn = Cast<APawn>(OtherActor))
 	{
+		// 로컬 플레이어만 — 서버가 원격 클라 폰 오버랩으로 호스트 화면에 띄우는 것 방지
+		if (!Pawn->IsLocallyControlled())
+		{
+			return;
+		}
+
 		if (AERNPlayerController* PC = Cast<AERNPlayerController>(Pawn->GetController()))
 		{
 			PC->SetCurrentInteractable(this);
@@ -139,6 +145,12 @@ void AERNBirdStatue::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent
 {
 	if (APawn* Pawn = Cast<APawn>(OtherActor))
 	{
+		// 로컬 플레이어만 — 서버가 원격 클라 폰 오버랩으로 호스트 화면에 띄우는 것 방지
+		if (!Pawn->IsLocallyControlled())
+		{
+			return;
+		}
+
 		if (AERNPlayerController* PC = Cast<AERNPlayerController>(Pawn->GetController()))
 		{
 			PC->ClearCurrentInteractable();

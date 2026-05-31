@@ -86,6 +86,12 @@ void ACharacterSelectionPedestal::OnSphereBeginOverlap(UPrimitiveComponent* Over
 	// 플레이어가 범위 안에 들어오면 상호작용 UI 표시
 	if (APawn* Pawn = Cast<APawn>(OtherActor))
 	{
+		// 로컬 플레이어만 — 서버가 원격 클라 폰 오버랩으로 호스트 화면에 띄우는 것 방지
+		if (!Pawn->IsLocallyControlled())
+		{
+			return;
+		}
+
 		if (AERNPlayerController* PC = Cast<AERNPlayerController>(Pawn->GetController()))
 		{
 			PC->SetCurrentInteractable(this);
@@ -105,6 +111,12 @@ void ACharacterSelectionPedestal::OnSphereEndOverlap(UPrimitiveComponent* Overla
 	// 플레이어가 범위 밖으로 나가면 상호작용 UI 숨김
 	if (APawn* Pawn = Cast<APawn>(OtherActor))
 	{
+		// 로컬 플레이어만 — 서버가 원격 클라 폰 오버랩으로 호스트 화면에 띄우는 것 방지
+		if (!Pawn->IsLocallyControlled())
+		{
+			return;
+		}
+
 		if (AERNPlayerController* PC = Cast<AERNPlayerController>(Pawn->GetController()))
 		{
 			PC->ClearCurrentInteractable();

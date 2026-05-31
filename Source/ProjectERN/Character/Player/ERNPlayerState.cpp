@@ -26,8 +26,19 @@ void AERNPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AERNPlayerState, CharacterType);
 	DOREPLIFETIME(AERNPlayerState, PlayerNickname);
 	DOREPLIFETIME(AERNPlayerState, bIsReady);
-	
+
 	DOREPLIFETIME(AERNPlayerState, PlayerNumber);
+
+	DOREPLIFETIME(AERNPlayerState, bHasSnapshot);
+	DOREPLIFETIME(AERNPlayerState, SavedLevel);
+	DOREPLIFETIME(AERNPlayerState, SavedGold);
+	DOREPLIFETIME(AERNPlayerState, SavedFlaskQuantity);
+	DOREPLIFETIME(AERNPlayerState, SavedMaxFlaskQuantity);
+	DOREPLIFETIME(AERNPlayerState, SavedInventory);
+	DOREPLIFETIME(AERNPlayerState, SavedWeaponState);
+	DOREPLIFETIME(AERNPlayerState, SavedConsumableState);
+	DOREPLIFETIME(AERNPlayerState, KillCount);
+	DOREPLIFETIME(AERNPlayerState, TotalDamageDealt);
 }
 
 void AERNPlayerState::CopyProperties(APlayerState* PlayerState)
@@ -40,6 +51,18 @@ void AERNPlayerState::CopyProperties(APlayerState* PlayerState)
 		NewPS->CharacterType = CharacterType;
 		NewPS->PlayerNickname = PlayerNickname;
 		// bIsReady는 새 맵에선 의미 없으므로 복사 안 함
+
+		// 런 진행 스냅샷 + 전과 누적도 새 PS로 이전 (Seamless Travel 보존)
+		NewPS->bHasSnapshot = bHasSnapshot;
+		NewPS->SavedLevel = SavedLevel;
+		NewPS->SavedGold = SavedGold;
+		NewPS->SavedFlaskQuantity = SavedFlaskQuantity;
+		NewPS->SavedMaxFlaskQuantity = SavedMaxFlaskQuantity;
+		NewPS->SavedInventory = SavedInventory;
+		NewPS->SavedWeaponState = SavedWeaponState;
+		NewPS->SavedConsumableState = SavedConsumableState;
+		NewPS->KillCount = KillCount;
+		NewPS->TotalDamageDealt = TotalDamageDealt;
 	}
 }
 
@@ -275,6 +298,51 @@ float AERNPlayerState::GetCurrentShield() const
 	return 0.f;
 }
 
+int32 AERNPlayerState::GetCurrentLevel() const
+{
+	if (APawn* Pawn = GetPawn())
+	{
+		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(Pawn))
+		{
+			if (const UERNAttributeSet* AS = Character->GetAttributeSet())
+			{
+				return static_cast<int32>(AS->GetLevel());
+			}
+		}
+	}
+	return SavedLevel; // 폰이 없으면 스냅샷 값 폴백 (기본 1)
+}
+
+int32 AERNPlayerState::GetCurrentFlaskQuantity() const
+{
+	if (APawn* Pawn = GetPawn())
+	{
+		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(Pawn))
+		{
+			if (const UERNAttributeSet* AS = Character->GetAttributeSet())
+			{
+				return static_cast<int32>(AS->GetFlaskQuantity());
+			}
+		}
+	}
+	return SavedFlaskQuantity;
+}
+
+int32 AERNPlayerState::GetMaxFlaskQuantity() const
+{
+	if (APawn* Pawn = GetPawn())
+	{
+		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(Pawn))
+		{
+			if (const UERNAttributeSet* AS = Character->GetAttributeSet())
+			{
+				return static_cast<int32>(AS->GetMaxFlaskQuantity());
+			}
+		}
+	}
+	return SavedMaxFlaskQuantity;
+}
+
 #pragma region Minimap
 void AERNPlayerState::SetPlayerNumber_ServerOnly(int32 InNumber)
 {
@@ -316,3 +384,58 @@ EERNMinimapIconType AERNPlayerState::GetMinimapPlayerMarkerIconType() const
 	}
 }
 #pragma endregion
+
+void AERNPlayerState::SaveSnapshotFromPawn()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AProjectERNCharacter* Char = Cast<AProjectERNCharacter>(GetPawn());
+	if (!Char)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Snapshot] SAVE FAIL (%s): no pawn"), *GetPlayerName());
+		return;
+	}
+
+	if (const UERNAttributeSet* AS = Char->GetAttributeSet())
+	{
+		SavedLevel = static_cast<int32>(AS->GetLevel());
+		SavedGold  = static_cast<int32>(AS->GetGold());
+		SavedFlaskQuantity    = static_cast<int32>(AS->GetFlaskQuantity());
+		SavedMaxFlaskQuantity = static_cast<int32>(AS->GetMaxFlaskQuantity());
+	}
+	if (UERNInventoryComponent* Inv = Char->GetInventoryComponent())
+	{
+		SavedInventory = Inv->GetInventory().GetItems();
+	}
+	if (UERNEquipmentComponent* Eq = Char->GetEquipmentComponent())
+	{
+		SavedWeaponState     = Eq->EquipableSlot.GetItemRuntimeState();
+		SavedConsumableState = Eq->CurrentConsumable;
+	}
+	bHasSnapshot = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("[Snapshot] SAVE %s: Level=%d Gold=%d InvItems=%d Weapon=%s"),
+		*GetPlayerName(), SavedLevel, SavedGold, SavedInventory.Num(), *SavedWeaponState.GetItemID().ToString());
+}
+
+void AERNPlayerState::ClearRunProgress()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bHasSnapshot = false;
+	SavedLevel = 1;
+	SavedGold = 0;
+	SavedFlaskQuantity = 0;
+	SavedMaxFlaskQuantity = 0;
+	SavedInventory.Reset();
+	SavedWeaponState = FItemRuntimeState();
+	SavedConsumableState = FItemRuntimeState();
+	KillCount = 0;
+	TotalDamageDealt = 0.f;
+}

@@ -74,6 +74,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|UI")
 	FText BossName;
 
+	// 최종보스 여부 — 이 보스를 잡으면 게임 클리어(승리) 처리
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss")
+	bool bIsFinalBoss = false;
+
 	// 보스전 BGM (감지 시 재생)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Sound")
 	TObjectPtr<USoundBase> BossBGM;
