@@ -19,6 +19,7 @@
 #include "Core/ERNGameState.h"
 #include "Interfaces/IInteractable.h"
 #include "UI/ERNInventoryWidget.h"
+#include "UI/ERNEntranceWidget.h"
 #include "UI/ERNUIManagerSubsystem.h"
 #include "UI/ERNDamageTextActor.h"
 #include "UI/ERNBossHealthBarWidget.h"
@@ -692,6 +693,27 @@ void AERNPlayerController::ClosePauseMenu()
 		SetInputMode(InputMode);
 		bShowMouseCursor = false;
 	}
+}
+
+void AERNPlayerController::ShowEntranceWidget(const FText& EntranceText)
+{
+	if (!IsLocalPlayerController() || !EntranceWidgetClass)
+	{
+		return;
+	}
+
+	// 매번 새로 생성 — 위젯이 애니메이션 후 스스로 RemoveFromParent 하므로
+	// 재진입 시 새 인스턴스로 애니메이션을 다시 재생
+	EntranceWidget = CreateWidget<UERNEntranceWidget>(this, EntranceWidgetClass);
+	if (!EntranceWidget)
+	{
+		return;
+	}
+
+	EntranceWidget->AddToViewport(50);
+
+	// 텍스트블록에 반영 (숨김/애니메이션/RemoveFromParent는 위젯 BP 내부에서 처리)
+	EntranceWidget->SetEntranceText(EntranceText);
 }
 
 void AERNPlayerController::Client_ShowDamageText_Implementation(FVector Location, float Damage)

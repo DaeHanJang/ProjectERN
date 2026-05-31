@@ -360,6 +360,10 @@ protected:
 	UPROPERTY(Transient)
 	UUserWidget* PausedWidget = nullptr;
 
+	// 진입 안내 위젯 인스턴스
+	UPROPERTY(Transient)
+	class UERNEntranceWidget* EntranceWidget = nullptr;
+
 public:
 	// 일시정지 메뉴 열기 <-> 닫기
 	UFUNCTION(BlueprintCallable, Category = "UI|Pause")
@@ -368,6 +372,16 @@ public:
 	// 일시정지 메뉴 닫기 (위젯 내부 버튼에서 호출용)
 	UFUNCTION(BlueprintCallable, Category = "UI|Pause")
 	void ClosePauseMenu();
+
+	// === 지역 진입 안내 위젯 ===
+
+	// 진입 위젯 클래스 (BP에서 지정 — UERNEntranceWidget 자식)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Entrance")
+	TSubclassOf<class UERNEntranceWidget> EntranceWidgetClass;
+
+	// 진입 안내 표시 (트리거 박스가 로컬에서 호출, 텍스트 전달)
+	UFUNCTION(BlueprintCallable, Category = "UI|Entrance")
+	void ShowEntranceWidget(const FText& EntranceText);
 
 protected:
 	
