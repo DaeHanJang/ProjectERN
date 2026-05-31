@@ -108,6 +108,9 @@ public:
 	// 전과 위젯 "로비로" 버튼 → PC RPC가 호출 (복귀 준비 등록)
 	void MarkReturnReady(AERNPlayerState* PS);
 
+	// 전과 위젯 "취소" 버튼 → PC RPC가 호출 (복귀 신청 해제)
+	void UnmarkReturnReady(AERNPlayerState* PS);
+
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 

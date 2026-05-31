@@ -12,6 +12,9 @@
 
 class UERNDummyShopProvider;
 class UUserWidget;
+class USoundMix;
+class USoundClass;
+class UERNSaveSettings;
 
 UCLASS()
 class PROJECTERN_API UERNGameInstance : public UGameInstance
@@ -101,6 +104,95 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Loading")
 	TSubclassOf<UUserWidget> GetLoadingWidgetClass() const { return LoadingWidgetClass; }
 
+	// ===== 설정: 저장/로드 =====
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	void SaveSettings();
+
+	UFUNCTION(BlueprintCallable, Category = "Settings")
+	void LoadAndApplySettings();
+
+	UPROPERTY(BlueprintReadOnly, Category = "Settings")
+	UERNSaveSettings* CachedSettings = nullptr;
+
+	// ===== 설정: 오디오 =====
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|Audio")
+	void SetMasterVolume(float Volume);
+	UFUNCTION(BlueprintPure, Category = "Settings|Audio")
+	float GetMasterVolume() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|Audio")
+	void SetMusicVolume(float Volume);
+	UFUNCTION(BlueprintPure, Category = "Settings|Audio")
+	float GetMusicVolume() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|Audio")
+	void SetSFXVolume(float Volume);
+	UFUNCTION(BlueprintPure, Category = "Settings|Audio")
+	float GetSFXVolume() const;
+
+	// ===== 설정: 비디오 =====
+
+	// 0=Fullscreen, 1=WindowedFullscreen, 2=Windowed
+	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
+	void SetWindowMode(int32 Mode);
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	int32 GetWindowMode() const;
+
+	// 데스크탑 해상도 이하의 16:9 해상도 목록
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	TArray<FIntPoint> GetSupportedResolutions() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
+	void SetResolution(FIntPoint Resolution);
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	FIntPoint GetCurrentResolution() const;
+
+	// "1920 x 1080" 형식 문자열
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	static FString FormatResolution(FIntPoint Resolution);
+
+	// 밝기 0~100 (감마 적용 + 저장)
+	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
+	void SetBrightness(float Value);
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	float GetBrightness() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
+	void SetOverallQuality(int32 Level);
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	int32 GetOverallQuality() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
+	void SetShadowQuality(int32 Level);
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	int32 GetShadowQuality() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
+	void SetAntiAliasingQuality(int32 Level);
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	int32 GetAntiAliasingQuality() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
+	void SetTextureQuality(int32 Level);
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	int32 GetTextureQuality() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
+	void SetViewDistanceQuality(int32 Level);
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	int32 GetViewDistanceQuality() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
+	void SetEffectsQuality(int32 Level);
+	UFUNCTION(BlueprintPure, Category = "Settings|Video")
+	int32 GetEffectsQuality() const;
+
+	// 설정 적용 + 저장 (GameUserSettings.ini)
+	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
+	void ApplyVideoSettings();
+
 protected:
 	// 세션 인터페이스
 	IOnlineSessionPtr SessionInterface;
@@ -184,6 +276,23 @@ protected:
 
 	// 강화 시스템 초기화
 	void InitializeUpgradeSystem();
+
+	// ===== 설정: 오디오 에셋 (에디터에서 할당) =====
+
+	UPROPERTY(EditDefaultsOnly, Category = "Settings|Audio")
+	USoundMix* MasterSoundMix;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Settings|Audio")
+	USoundClass* MasterSoundClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Settings|Audio")
+	USoundClass* MusicSoundClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Settings|Audio")
+	USoundClass* SFXSoundClass;
+
+	// SoundClass 볼륨 적용 (MasterSoundMix override)
+	void ApplyAudioVolume(USoundClass* SoundClass, float Volume);
 
 	// ===== 로딩 화면 =====
 

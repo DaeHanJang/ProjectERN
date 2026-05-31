@@ -439,6 +439,32 @@ void AERNGameState::MarkReturnReady(AERNPlayerState* PS)
 	}
 }
 
+void AERNGameState::UnmarkReturnReady(AERNPlayerState* PS)
+{
+	if (!HasAuthority() || !PS)
+	{
+		return;
+	}
+
+	ReturnReadyPlayers.Remove(PS);
+
+	// 유효한 신청자 수 재계산
+	int32 ReadyCount = 0;
+	for (const TWeakObjectPtr<AERNPlayerState>& Weak : ReturnReadyPlayers)
+	{
+		if (Weak.IsValid())
+		{
+			++ReadyCount;
+		}
+	}
+
+	// 신청자가 모두 취소되면 타임아웃 타이머 정지 (아무도 대기 안 함)
+	if (ReadyCount == 0)
+	{
+		GetWorldTimerManager().ClearTimer(ReturnTimeoutHandle);
+	}
+}
+
 void AERNGameState::ReturnToLobbyNow()
 {
 	if (!HasAuthority())

@@ -458,6 +458,12 @@ void AERNPlayerController::SetupInputComponent()
 				EnhancedInputComponent->BindAction(MinimapAction, ETriggerEvent::Started, this,
 													&AERNPlayerController::ToggleMinimap);
 			}
+
+			if (PauseAction)
+			{
+				EnhancedInputComponent->BindAction(PauseAction, ETriggerEvent::Started, this,
+													&AERNPlayerController::TogglePauseMenu);
+			}
 		}
 	}
 }
@@ -637,6 +643,51 @@ void AERNPlayerController::InventoryClose()
 		
 		InventoryWidget->SetVisibility(ESlateVisibility::Hidden);
 		
+		FInputModeGameOnly InputMode;
+		SetInputMode(InputMode);
+		bShowMouseCursor = false;
+	}
+}
+
+void AERNPlayerController::TogglePauseMenu()
+{
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
+	if (!PausedWidget && PausedWidgetClass)
+	{
+		PausedWidget = CreateWidget<UUserWidget>(this, PausedWidgetClass);
+	}
+
+	if (!PausedWidget)
+	{
+		return;
+	}
+
+	// 코옵(네트워크)에서는 실제 일시정지가 불가 — 메뉴 오버레이로만 동작
+	if (!PausedWidget->IsInViewport())
+	{
+		PausedWidget->AddToViewport(500);
+
+		FInputModeGameAndUI InputMode;
+		InputMode.SetWidgetToFocus(PausedWidget->TakeWidget());
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
+	}
+	else
+	{
+		ClosePauseMenu();
+	}
+}
+
+void AERNPlayerController::ClosePauseMenu()
+{
+	if (PausedWidget && PausedWidget->IsInViewport())
+	{
+		PausedWidget->RemoveFromParent();
+
 		FInputModeGameOnly InputMode;
 		SetInputMode(InputMode);
 		bShowMouseCursor = false;
@@ -1074,5 +1125,13 @@ void AERNPlayerController::Server_RequestReturnToLobby_Implementation()
 	if (AERNGameState* GS = GetWorld()->GetGameState<AERNGameState>())
 	{
 		GS->MarkReturnReady(GetPlayerState<AERNPlayerState>());
+	}
+}
+
+void AERNPlayerController::Server_CancelReturnToLobby_Implementation()
+{
+	if (AERNGameState* GS = GetWorld()->GetGameState<AERNGameState>())
+	{
+		GS->UnmarkReturnReady(GetPlayerState<AERNPlayerState>());
 	}
 }

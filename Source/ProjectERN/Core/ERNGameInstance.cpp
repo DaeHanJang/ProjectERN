@@ -11,6 +11,12 @@
 #include "Shop/Provider/ERNNetworkShopProvider.h"
 #include "Shop/Provider/ERNDataTableShopProvider.h"
 #include "Enhancement/Provider/ERNUpgradeProvider.h"
+#include "Core/ERNSaveSettings.h"
+#include "GameFramework/GameUserSettings.h"
+#include "Sound/SoundMix.h"
+#include "Sound/SoundClass.h"
+
+static const FString ERNSettingsSlotName = TEXT("ERNSettings");
 
 UERNGameInstance::UERNGameInstance()
 {
@@ -33,6 +39,9 @@ void UERNGameInstance::Init()
 
 	// 강화 시스템 초기화
 	InitializeUpgradeSystem();
+
+	// 저장된 설정 로드 + 적용
+	LoadAndApplySettings();
 }
 
 void UERNGameInstance::HostSession(FString ServerName, int32 MaxPlayers)
@@ -518,4 +527,271 @@ TScriptInterface<IERNUpgradeDataProvider> UERNGameInstance::GetUpgradeDataProvid
 		Result.SetInterface(Cast<IERNUpgradeDataProvider>(UpgradeDataProvider));
 	}
 	return Result;
+}
+
+// ===== 설정: 저장/로드 =====
+
+void UERNGameInstance::SaveSettings()
+{
+	if (CachedSettings)
+	{
+		UGameplayStatics::SaveGameToSlot(CachedSettings, ERNSettingsSlotName, 0);
+	}
+}
+
+void UERNGameInstance::LoadAndApplySettings()
+{
+	if (UGameplayStatics::DoesSaveGameExist(ERNSettingsSlotName, 0))
+	{
+		CachedSettings = Cast<UERNSaveSettings>(UGameplayStatics::LoadGameFromSlot(ERNSettingsSlotName, 0));
+	}
+
+	if (!CachedSettings)
+	{
+		CachedSettings = Cast<UERNSaveSettings>(UGameplayStatics::CreateSaveGameObject(UERNSaveSettings::StaticClass()));
+	}
+
+	// 오디오 볼륨 적용
+	if (MasterSoundMix)
+	{
+		UGameplayStatics::PushSoundMixModifier(GetWorld(), MasterSoundMix);
+		ApplyAudioVolume(MasterSoundClass, CachedSettings->MasterVolume);
+		ApplyAudioVolume(MusicSoundClass, CachedSettings->MusicVolume);
+		ApplyAudioVolume(SFXSoundClass, CachedSettings->SFXVolume);
+	}
+
+	// 밝기 적용
+	if (GEngine)
+	{
+		float Gamma = FMath::GetMappedRangeValueClamped(
+			FVector2D(0.0f, 100.0f), FVector2D(1.5f, 3.0f), CachedSettings->Brightness);
+		GEngine->DisplayGamma = Gamma;
+	}
+}
+
+// ===== 설정: 오디오 =====
+
+void UERNGameInstance::ApplyAudioVolume(USoundClass* SoundClass, float Volume)
+{
+	if (!MasterSoundMix || !SoundClass) return;
+
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	UGameplayStatics::SetSoundMixClassOverride(World, MasterSoundMix, SoundClass,
+		FMath::Clamp(Volume, 0.0f, 1.0f), 1.0f, 0.0f, true);
+}
+
+void UERNGameInstance::SetMasterVolume(float Volume)
+{
+	if (!CachedSettings) return;
+	CachedSettings->MasterVolume = FMath::Clamp(Volume, 0.0f, 1.0f);
+	ApplyAudioVolume(MasterSoundClass, CachedSettings->MasterVolume);
+	SaveSettings();
+}
+
+float UERNGameInstance::GetMasterVolume() const
+{
+	return CachedSettings ? CachedSettings->MasterVolume : 1.0f;
+}
+
+void UERNGameInstance::SetMusicVolume(float Volume)
+{
+	if (!CachedSettings) return;
+	CachedSettings->MusicVolume = FMath::Clamp(Volume, 0.0f, 1.0f);
+	ApplyAudioVolume(MusicSoundClass, CachedSettings->MusicVolume);
+	SaveSettings();
+}
+
+float UERNGameInstance::GetMusicVolume() const
+{
+	return CachedSettings ? CachedSettings->MusicVolume : 1.0f;
+}
+
+void UERNGameInstance::SetSFXVolume(float Volume)
+{
+	if (!CachedSettings) return;
+	CachedSettings->SFXVolume = FMath::Clamp(Volume, 0.0f, 1.0f);
+	ApplyAudioVolume(SFXSoundClass, CachedSettings->SFXVolume);
+	SaveSettings();
+}
+
+float UERNGameInstance::GetSFXVolume() const
+{
+	return CachedSettings ? CachedSettings->SFXVolume : 1.0f;
+}
+
+// ===== 설정: 비디오 =====
+
+void UERNGameInstance::SetWindowMode(int32 Mode)
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	if (!Settings) return;
+
+	EWindowMode::Type WinMode;
+	switch (Mode)
+	{
+	case 0: WinMode = EWindowMode::Fullscreen; break;
+	case 1: WinMode = EWindowMode::WindowedFullscreen; break;
+	case 2: WinMode = EWindowMode::Windowed; break;
+	default: WinMode = EWindowMode::WindowedFullscreen; break;
+	}
+
+	Settings->SetFullscreenMode(WinMode);
+
+	// Fullscreen 모드는 데스크탑 해상도와 일치해야 정상 작동
+	if (WinMode == EWindowMode::Fullscreen)
+	{
+		Settings->SetScreenResolution(Settings->GetDesktopResolution());
+	}
+}
+
+int32 UERNGameInstance::GetWindowMode() const
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	if (!Settings) return 1;
+
+	switch (Settings->GetFullscreenMode())
+	{
+	case EWindowMode::Fullscreen: return 0;
+	case EWindowMode::WindowedFullscreen: return 1;
+	case EWindowMode::Windowed: return 2;
+	default: return 1;
+	}
+}
+
+TArray<FIntPoint> UERNGameInstance::GetSupportedResolutions() const
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	FIntPoint DesktopRes = Settings ? Settings->GetDesktopResolution() : FIntPoint(1920, 1080);
+
+	const TArray<FIntPoint> AllResolutions = {
+		FIntPoint(3840, 2160),
+		FIntPoint(2560, 1440),
+		FIntPoint(1920, 1080),
+		FIntPoint(1600, 900),
+		FIntPoint(1280, 720)
+	};
+
+	TArray<FIntPoint> Resolutions;
+	for (const FIntPoint& Res : AllResolutions)
+	{
+		if (Res.X <= DesktopRes.X && Res.Y <= DesktopRes.Y)
+		{
+			Resolutions.Add(Res);
+		}
+	}
+	return Resolutions;
+}
+
+void UERNGameInstance::SetResolution(FIntPoint Resolution)
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	if (Settings) Settings->SetScreenResolution(Resolution);
+}
+
+FIntPoint UERNGameInstance::GetCurrentResolution() const
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	return Settings ? Settings->GetScreenResolution() : FIntPoint(1920, 1080);
+}
+
+FString UERNGameInstance::FormatResolution(FIntPoint Resolution)
+{
+	return FString::Printf(TEXT("%d x %d"), Resolution.X, Resolution.Y);
+}
+
+void UERNGameInstance::SetBrightness(float Value)
+{
+	if (!CachedSettings) return;
+	CachedSettings->Brightness = FMath::Clamp(Value, 0.0f, 100.0f);
+
+	if (GEngine)
+	{
+		float Gamma = FMath::GetMappedRangeValueClamped(
+			FVector2D(0.0f, 100.0f), FVector2D(1.5f, 3.0f), CachedSettings->Brightness);
+		GEngine->DisplayGamma = Gamma;
+	}
+
+	SaveSettings();
+}
+
+float UERNGameInstance::GetBrightness() const
+{
+	return CachedSettings ? CachedSettings->Brightness : 50.0f;
+}
+
+void UERNGameInstance::SetOverallQuality(int32 Level)
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	if (Settings) Settings->SetOverallScalabilityLevel(Level);
+}
+int32 UERNGameInstance::GetOverallQuality() const
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	return Settings ? Settings->GetOverallScalabilityLevel() : 3;
+}
+
+void UERNGameInstance::SetShadowQuality(int32 Level)
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	if (Settings) Settings->SetShadowQuality(Level);
+}
+int32 UERNGameInstance::GetShadowQuality() const
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	return Settings ? Settings->GetShadowQuality() : 3;
+}
+
+void UERNGameInstance::SetAntiAliasingQuality(int32 Level)
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	if (Settings) Settings->SetAntiAliasingQuality(Level);
+}
+int32 UERNGameInstance::GetAntiAliasingQuality() const
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	return Settings ? Settings->GetAntiAliasingQuality() : 3;
+}
+
+void UERNGameInstance::SetTextureQuality(int32 Level)
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	if (Settings) Settings->SetTextureQuality(Level);
+}
+int32 UERNGameInstance::GetTextureQuality() const
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	return Settings ? Settings->GetTextureQuality() : 3;
+}
+
+void UERNGameInstance::SetViewDistanceQuality(int32 Level)
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	if (Settings) Settings->SetViewDistanceQuality(Level);
+}
+int32 UERNGameInstance::GetViewDistanceQuality() const
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	return Settings ? Settings->GetViewDistanceQuality() : 3;
+}
+
+void UERNGameInstance::SetEffectsQuality(int32 Level)
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	if (Settings) Settings->SetVisualEffectQuality(Level);
+}
+int32 UERNGameInstance::GetEffectsQuality() const
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	return Settings ? Settings->GetVisualEffectQuality() : 3;
+}
+
+void UERNGameInstance::ApplyVideoSettings()
+{
+	UGameUserSettings* Settings = UGameUserSettings::GetGameUserSettings();
+	if (!Settings) return;
+
+	Settings->ApplySettings(false);
+	Settings->SaveSettings();
 }
