@@ -20,6 +20,7 @@ class UERNBossHealthBarWidget;
 class UCameraShakeBase;
 class UPostProcessComponent;
 class UERNCompassWidget;
+class UERNSkillCoolPanel;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -245,7 +246,7 @@ public:
 	// 채팅 수신 시 BP에서 위젯에 메시지 추가 (Sender + Message + Color)
 	UFUNCTION(BlueprintImplementableEvent, Category = "UI|Chat")
 	void OnReceiveChatMessage(const FString& Sender, const FString& Message, FLinearColor SenderColor);
-
+	
 private:
 	// 보스 체력바 위젯 인스턴스
 	UPROPERTY(Transient)
@@ -395,4 +396,25 @@ private:
 	void DestroyOwnedMinimapPins_ServerOnly();
 	
 #pragma endregion
+	
+#pragma region SkillPanel
+	// ===== 스킬 쿨타임 UI =====
+protected:
+	// 스킬 쿨타임 패널 클래스
+	UPROPERTY(EditDefaultsOnly, Category="UI|SkillCooldown")
+	TSubclassOf<UERNSkillCoolPanel> SkillCoolPanelWidgetClass;
+
+	// 스킬 쿨타임 UI를 숨길 맵 이름 목록
+	UPROPERTY(EditAnywhere, Category="UI|SkillCooldown")
+	TArray<FString> HideSkillCoolPanelMapNames;
+
+	// 현재 생성된 스킬 쿨타임 패널
+	UPROPERTY(Transient)
+	TObjectPtr<UERNSkillCoolPanel> SkillCoolPanelWidget;
+	
+private:
+	// 캐릭터 변경 시 캐릭터에 따라 패널 변경
+	void RefreshSkillCoolPanel() const;
+	
+#pragma endregion SkillPanel
 };
