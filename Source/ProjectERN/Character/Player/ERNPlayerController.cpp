@@ -30,6 +30,7 @@
 #include "UI/World/ERNCompassWidget.h"
 #include "World/ERNMinimapPinPoint.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
+#include "UI/ERNSkillCoolPanel.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -219,6 +220,33 @@ void AERNPlayerController::BeginPlay()
 			}
 		}
 	}
+	
+	// 스킬 쿨타임 패널 생성 (로컬 플레이어만)
+	if (IsLocalPlayerController() && SkillCoolPanelWidgetClass)
+	{
+		// 숨겨야 할 맵인지 확인 (메인 메뉴 등)
+		bool bShouldHide = false;
+		for (const FString& MapName : HideSkillCoolPanelMapNames)
+		{
+			if (CurrentMapName.Contains(MapName))
+			{
+				bShouldHide = true;
+				break;
+			}
+		}
+
+		if (!bShouldHide)
+		{
+			SkillCoolPanelWidget = CreateWidget<UERNSkillCoolPanel>(this, SkillCoolPanelWidgetClass);
+
+			if (SkillCoolPanelWidget)
+			{
+				SkillCoolPanelWidget->AddToViewport(50);
+				// 컷신 시작 시 함께 숨겨지도록 등록한다.
+				RegisterHUDWidget(SkillCoolPanelWidget);
+			}
+		}
+	}
 
 	// 닉네임 전송 (로컬 플레이어만) - 타이머로 재시도
 	if (IsLocalPlayerController())
@@ -344,6 +372,7 @@ void AERNPlayerController::AcknowledgePossession(class APawn* P)
 	Super::AcknowledgePossession(P);
 
 	RefreshInventoryWidget();
+	RefreshSkillCoolPanel();
 }
 
 void AERNPlayerController::RefreshInventoryWidget() const
@@ -1064,6 +1093,16 @@ void AERNPlayerController::DestroyOwnedMinimapPins_ServerOnly()
 		}
 	}
 	
+}
+
+void AERNPlayerController::RefreshSkillCoolPanel() const
+{
+	if (!IsLocalPlayerController() || !SkillCoolPanelWidget)
+	{
+		return;
+	}
+
+	SkillCoolPanelWidget->RefreshFromCurrentCharacter();
 }
 #pragma endregion
 

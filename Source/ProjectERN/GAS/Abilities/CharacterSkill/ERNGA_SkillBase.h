@@ -12,6 +12,7 @@ class UAnimMontage;
 class UAbilityTask_PlayMontageAndWait;
 class UGameplayEffect;
 class UNiagaraSystem;
+class UTexture2D;
 
 // 몽타주 섹션 구조체
 USTRUCT(BlueprintType)
@@ -62,6 +63,10 @@ protected:
 	// 자식 클래스인 NormalSkillBase / UltimateSkillBase 생성자에서 자동 지정하므로 BP에서는 수정하지 않는다.(VisibleDefaultsOnly)
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category="ERN|Skill|Cooldown")
 	FGameplayTagContainer CooldownTags;
+	
+	// 스킬 이미지
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Skill|UI")
+	TObjectPtr<UTexture2D> SkillIconTexture;
 
 	// 쿨다운 확인
 	virtual bool CheckCooldown(
@@ -98,4 +103,8 @@ public:
 	// 쿨다운 적용에 필요한 값이 모두 준비됐는지 확인
 	UFUNCTION(BlueprintPure, Category="ERN|Skill|Cooldown")
 	bool IsSkillCooldownConfigured() const;
+	
+	// 스킬 이미지 Getter
+	UFUNCTION(BlueprintPure, Category="ERN|Skill|UI")
+	UTexture2D* GetSkillIconTexture() const { return SkillIconTexture; }
 };

@@ -21,7 +21,7 @@ class PROJECTERN_API AERNMeleeWeapon : public AERNWeaponBase
 
 public:
 	AERNMeleeWeapon();
-
+	
 	// 히트박스 활성화 (AnimNotifyState_MeleeHitbox에서 호출)
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Melee")
 	void EnableHitbox();
@@ -29,7 +29,7 @@ public:
 	// 히트박스 비활성화 (AnimNotifyState_MeleeHitbox에서 호출)
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Melee")
 	void DisableHitbox();
-
+	
 protected:
 	// 무기 히트박스
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Melee")
@@ -63,4 +63,39 @@ public:
 
 	// 히트박스 Getter (무기 스킬에서 사용)
 	UBoxComponent* GetHitboxComponent() const { return HitboxComponent; }
+	
+	// ===== 히트 판정 수정 - Trace 기반 =====
+	void BeginAttackTrace();
+	void TickAttackTrace();
+	void EndAttackTrace();
+	
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Weapon|Trace")
+	TObjectPtr<USceneComponent> TraceStart;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Weapon|Trace")
+	TObjectPtr<USceneComponent> TraceEnd;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Trace")
+	float TraceRadius = 18.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Trace", meta=(ClampMin="2"))
+	int32 TraceSampleCount = 5;
+
+	bool bAttackTraceActive = false;
+
+	TArray<FVector> PreviousTracePoints;
+
+	TArray<FVector> GetCurrentTracePoints() const;
+	void HandleTraceHit(const FHitResult& HitResult);
+	
+	// 디버그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Trace|Debug")
+	bool bDrawDebugTrace = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Trace|Debug", meta=(ClampMin="0.0"))
+	float DebugTraceDuration = 0.1f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Trace|Debug", meta=(ClampMin="0.0"))
+	float DebugTraceThickness = 1.5f;
 };
