@@ -4,6 +4,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "GameFramework/Character.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
@@ -274,6 +275,15 @@ void AERNProjectileBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AAc
 		OtherPlayer->TryApplyStagger(StaggerPower, ImpactPoint);
 	}
 
+	// 직격 넉백 - 맞은 대상을 투사체 진행 방향 그대로 밀어냄
+	if (bKnockbackEnabled)
+	{
+		const FVector KnockbackDir = (ProjectileMovement && !ProjectileMovement->Velocity.IsNearlyZero())
+			? ProjectileMovement->Velocity
+			: GetActorForwardVector();
+		ApplyKnockback(Cast<ACharacter>(OtherActor), KnockbackDir, KnockbackForce);
+	}
+
 	// 폭발 투사체면 범위 데미지 추가 적용
 	if (bExplode)
 	{
@@ -419,6 +429,12 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 			{
 				Enemy->TakeDamage(ExplosionDamage, FDamageEvent(), GetInstigatorController(), OwnerActor);
 				Enemy->TryApplyStagger(ExplosionStaggerPower);
+
+				// 폭발 넉백 - 폭발 중심에서 바깥(방사형)으로 밀어냄
+				if (bKnockbackEnabled)
+				{
+					ApplyKnockback(Enemy, HitActor->GetActorLocation() - ExplosionCenter, ExplosionKnockbackForce);
+				}
 			}
 		}
 		// 적이 쏜 폭발 - 플레이어에게만 데미지
@@ -429,6 +445,12 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 				Player->TakeDamage(ExplosionDamage, FDamageEvent(), GetInstigatorController(), OwnerActor);
 				// 폭발 중심을 HitOrigin으로 전달 → 플레이어가 폭발 방향 기준 4방향 경직
 				Player->TryApplyStagger(ExplosionStaggerPower, ExplosionCenter);
+
+				// 폭발 넉백 - 폭발 중심에서 바깥(방사형)으로 밀어냄
+				if (bKnockbackEnabled)
+				{
+					ApplyKnockback(Player, HitActor->GetActorLocation() - ExplosionCenter, ExplosionKnockbackForce);
+				}
 			}
 		}
 	}
@@ -438,6 +460,18 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 	{
 		Multicast_PlayExplosionShake(ExplosionCenter);
 	}
+}
+
+// 대상 캐릭터를 지정 방향으로 밀어냄 (서버 권위)
+void AERNProjectileBase::ApplyKnockback(ACharacter* TargetCharacter, const FVector& Direction, float Force)
+{
+	if (!TargetCharacter || Force <= 0.f) return;
+
+	const FVector LaunchDir = Direction.GetSafeNormal();
+	if (LaunchDir.IsNearlyZero()) return;
+
+	// 서버에서 호출 - CharacterMovementComponent가 PendingLaunchVelocity를 클라로 복제
+	TargetCharacter->LaunchCharacter(LaunchDir * Force, true, true);
 }
 
 void AERNProjectileBase::Multicast_PlayExplosionShake_Implementation(FVector Origin)

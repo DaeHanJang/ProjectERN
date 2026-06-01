@@ -188,6 +188,12 @@ void AERNEnemyCharacter::Multicast_PlayHitSound_Implementation(USoundBase* Sound
 
 float AERNEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	// 무적이면 데미지 무시 (Mob/Boss/TrainingDummy 모두 이 함수를 경유)
+	if (bIsImmortal)
+	{
+		return 0.0f;
+	}
+
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	if (ActualDamage > 0.0f)

@@ -16,6 +16,7 @@ class USoundBase;
 class USoundAttenuation;
 class UAudioComponent;
 class UCameraShakeBase;
+class ACharacter;
 
 /**
  * AERNProjectileBase - 원거리 투사체 베이스
@@ -61,6 +62,9 @@ protected:
 
 	// 폭발 범위 데미지 적용
 	void ApplyExplosionDamage(const FVector& ExplosionCenter);
+
+	// 대상 캐릭터를 지정 방향으로 밀어냄 (서버 권위, Direction은 내부에서 정규화)
+	void ApplyKnockback(ACharacter* TargetCharacter, const FVector& Direction, float Force);
 
 	// 플레이어 owner 기준 직격/폭발 데미지 재계산 (서버, BeginPlay)
 	void RecalculateDamageFromOwner();
@@ -134,6 +138,15 @@ public:
 	// 경직력 (BP_투사체마다 다르게 설정)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile")
 	float StaggerPower = 15.f;
+
+	// 넉백(밀어내기) 활성화 - 직격/폭발 양쪽에 적용 (BP_투사체별 개별 설정)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Knockback")
+	bool bKnockbackEnabled = false;
+
+	// 직격 넉백 세기 (cm/s) - 맞은 대상을 투사체 진행 방향으로 밀어냄
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Knockback",
+		meta = (EditCondition = "bKnockbackEnabled", ClampMin = "0.0"))
+	float KnockbackForce = 600.f;
 
 	// 유도 활성화 (BP_투사체별 개별 설정)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Homing")
@@ -224,6 +237,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
 		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
 	float ExplosionStaggerPower = 30.f;
+
+	// 폭발 넉백 세기 (cm/s) - 폭발 중심에서 바깥(방사형)으로 밀어냄 (bKnockbackEnabled 활성화 시 작동)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",
+		meta = (EditCondition = "bExplode", ClampMin = "0.0"))
+	float ExplosionKnockbackForce = 800.f;
 
 	// 폭발 카메라 흔들림 (반경 내 모든 플레이어 카메라 거리 감쇠 흔들림)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Explosion",

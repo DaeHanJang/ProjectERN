@@ -173,6 +173,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stats")
 	bool bExcludeFromCombatStats = false;
 
+	// 무적 - true면 모든 데미지 무시 (TakeDamage에서 즉시 0 반환). 런타임 토글 가능
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	bool bIsImmortal = false;
+
 	// 근접 히트박스 설정 (태그로 구분, 태그별 데미지 값 설정)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	TArray<FEnemyHitboxConfig> HitboxConfigs;
