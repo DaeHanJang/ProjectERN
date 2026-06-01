@@ -424,6 +424,9 @@ protected:
 	float DefaultSpeed = 600; // 기본 속도
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
+	float DrinkingSpeed = 300; // 아이템 사용 중 속도
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
 	float TargetingSpeed = 300; // 타겟팅 중 속도
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
@@ -448,6 +451,11 @@ protected:
 	// 콤보/공격처럼 한 번만 회전시키고 끝낼 때 사용
 	bool bHasPendingActorRotation = false;
 
+	// 이동 속도에 영향을 주는 GAS 태그가 추가되거나 제거될 때 호출
+	void BindMovementSpeedTagEvents();
+
+	void HandleMovementSpeedTagChanged(const FGameplayTag ChangedTag, int32 NewCount);
+	
 public:
 	// 움직임 속도 변화 함수
 	UFUNCTION(BlueprintCallable, Category="ERN|Movement")
@@ -461,6 +469,7 @@ public:
 	void SetPendingAttackRotation(const FRotator& TargetRotation);
 
 protected:
+	
 	// Sprint 관련 변수/함수
 	FVector2D CachedMoveInput = FVector2D::ZeroVector;
 
