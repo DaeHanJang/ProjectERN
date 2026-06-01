@@ -32,13 +32,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSoftObjectPtr<USkeletalMesh> SkeletalMesh = nullptr;
 	
-	// 메시 회전
+	// 메시 트랜스폼
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FRotator Rotator = FRotator::ZeroRotator;
-	
-	// 메시 스케일
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector Scale = FVector::OneVector;
+	FTransform Transform = FTransform::Identity;
 	
 	// 사운드
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)

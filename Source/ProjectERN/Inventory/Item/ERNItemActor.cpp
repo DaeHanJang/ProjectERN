@@ -8,8 +8,8 @@
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Data/EquipableItemDataAsset.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
-#include "Kismet/GameplayStatics.h"
 #include "Manager/ItemManagerSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
@@ -23,8 +23,11 @@ AERNItemActor::AERNItemActor()
 	// Collision
 	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	SetRootComponent(Collision);
-	Collision->InitSphereRadius(150.0f);
-	Collision->SetCollisionProfileName(TEXT("OverlapAll"));
+	Collision->InitSphereRadius(10.0f);
+	Collision->SetCollisionProfileName(TEXT("BlockAll"));
+	Collision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
+	Collision->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
+	Collision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Ignore);
 	
 	// Mesh
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
@@ -35,6 +38,21 @@ AERNItemActor::AERNItemActor()
 	SkeletalMesh->SetupAttachment(GetRootComponent());
 	SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
+	// InteractionCollision
+	InteractionCollision = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionCollision"));
+	InteractionCollision->SetupAttachment(GetRootComponent());
+	InteractionCollision->InitSphereRadius(150.0f);
+	InteractionCollision->SetCollisionProfileName(TEXT("OverlapAll"));
+	InteractionCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
+	
+	// MovementComponent
+	MovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("MovementComponent"));
+	MovementComponent->SetUpdatedComponent(GetRootComponent());
+	MovementComponent->InitialSpeed = 0.0f;
+	MovementComponent->MaxSpeed = 1000.0f;
+	MovementComponent->ProjectileGravityScale = 0.0f;
+	MovementComponent->bAutoActivate = false;
+	
 	// Effect
 	EffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("EffectComponent"));
 	EffectComponent->SetupAttachment(GetRootComponent());
@@ -43,7 +61,7 @@ AERNItemActor::AERNItemActor()
 	PromptComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("PromptComponent"));
 	PromptComponent->SetupAttachment(GetRootComponent());
 	PromptComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.f));
-	static ConstructorHelpers::FClassFinder<UUserWidget> PromptClass(TEXT("/Game/Blueprint/Widget/WBP_InteractE"));
+	static ConstructorHelpers::FClassFinder<UUserWidget> PromptClass(TEXT("/Game/Blueprint/Widget/Interact/WBP_InteractE"));
 	if (PromptClass.Succeeded())
 	{
 		PromptComponent->SetWidgetClass(PromptClass.Class);
@@ -78,6 +96,13 @@ void AERNItemActor::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& 
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
 	DOREPLIFETIME(AERNItemActor, ItemRuntimeState);
+}
+
+void AERNItemActor::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	SetReplicateMovement(true);
 }
 
 void AERNItemActor::Interact_Implementation(APlayerController* PlayerController)
@@ -150,6 +175,19 @@ FText AERNItemActor::GetInteractionText_Implementation() const
 EInteractionExecutionPolicy AERNItemActor::GetInteractionExecutionPolicy_Implementation() const
 {
 	return EInteractionExecutionPolicy::ServerAuthority;
+}
+
+void AERNItemActor::Launch(const FVector& Direction) const
+{
+	if (!HasAuthority() || !MovementComponent)
+	{
+		return;
+	}
+	
+	MovementComponent->ProjectileGravityScale = 3.0f;
+	MovementComponent->Velocity = Direction.GetSafeNormal2D() * 500.0f + FVector::UpVector * 200.0f;
+	MovementComponent->UpdateComponentVelocity();
+	MovementComponent->Activate(true);
 }
 
 void AERNItemActor::InitializeRuntimeState(const FItemRuntimeState& InItemRuntimeState)
@@ -232,14 +270,14 @@ void AERNItemActor::SetMesh(const UItemDataAssetBase* DA) const
 	if (DA->StaticMesh)
 	{
 		StaticMesh->SetStaticMesh(DA->StaticMesh.Get());
-		StaticMesh->SetRelativeRotation(DA->Rotator);
-		StaticMesh->SetRelativeScale3D(DA->Scale);
+		StaticMesh->SetRelativeLocationAndRotation(DA->Transform.GetLocation(), DA->Transform.GetRotation());
+		StaticMesh->SetRelativeScale3D(DA->Transform.GetScale3D());
 	}
 	else if (DA->SkeletalMesh)
 	{
 		SkeletalMesh->SetSkeletalMesh(DA->SkeletalMesh.Get());
-		SkeletalMesh->SetRelativeRotation(DA->Rotator);
-		SkeletalMesh->SetRelativeScale3D(DA->Scale);
+		SkeletalMesh->SetRelativeLocationAndRotation(DA->Transform.GetLocation(), DA->Transform.GetRotation());
+		SkeletalMesh->SetRelativeScale3D(DA->Transform.GetScale3D());
 	}
 }
 

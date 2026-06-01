@@ -6,9 +6,11 @@
 #include "Data/ERNItemRuntimeState.h"
 #include "Data/ERNItemTable.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Interfaces/IInteractable.h"
 #include "ERNItemActor.generated.h"
 
+class UProjectileMovementComponent;
 class UNiagaraSystem;
 class UWidgetComponent;
 class UNiagaraComponent;
@@ -37,6 +39,8 @@ public:
 	virtual FText GetInteractionText_Implementation() const override;
 	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
 	
+	// Item Launch
+	void Launch(const FVector& Direction) const;
 	// Item RuntimeState Initialization
 	UFUNCTION(BlueprintCallable)
 	void InitializeRuntimeState(const FItemRuntimeState& InItemRuntimeState);
@@ -47,6 +51,9 @@ public:
 	bool CanBeInteractedBy(const APlayerController* PC) const;
 	// 현재 클라만 보이도록 설정
 	void UpdateOwnerOnlyVisibility() const;
+	
+protected:
+	virtual void BeginPlay() override;
 	
 private:
 	// Get ItemManager
@@ -78,6 +85,14 @@ private:
 	TObjectPtr<UStaticMeshComponent> StaticMesh;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	TObjectPtr<USkeletalMeshComponent> SkeletalMesh;
+	
+	// InteractionCollision
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<USphereComponent> InteractionCollision; 
+	
+	// MovementComponent
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UProjectileMovementComponent> MovementComponent;
 	
 	// Effect
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))

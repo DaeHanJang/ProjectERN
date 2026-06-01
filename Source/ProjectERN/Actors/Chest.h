@@ -7,6 +7,7 @@
 #include "Interfaces/IInteractable.h"
 #include "Chest.generated.h"
 
+class UBoxComponent;
 class UWidgetComponent;
 class UNiagaraComponent;
 class UNiagaraSystem;
@@ -44,11 +45,15 @@ private:
 private:
 	// Collision
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
-	TObjectPtr<USphereComponent> Collision;
+	TObjectPtr<UBoxComponent> Collision;
 	
 	// Mesh
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	TObjectPtr<USkeletalMeshComponent> SkeletalMesh;
+	
+	// Interaction Collision
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<USphereComponent> InteractionCollision;
 	
 	// Effect
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))

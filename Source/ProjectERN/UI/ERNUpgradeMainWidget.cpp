@@ -63,7 +63,7 @@ void UERNUpgradeMainWidget::NativeConstruct()
     }
 
     // 포커스 관련 설정 (키보드 조작을 위함)
-    bIsFocusable = true;
+    SetIsFocusable(true);
 
     // 슬롯 렌더링
     PopulateInventorySlots();
