@@ -929,11 +929,11 @@ void AERNPlayerController::SetNightRainPostProcessBlendWeight_Local(float BlendW
 }
 #pragma endregion
 
-void AERNPlayerController::Client_CompleteChurchInteraction_Implementation(AChurch* Church, FVector EffectLocation)
+void AERNPlayerController::Client_CompleteChurchInteraction_Implementation(AChurch* Church)
 {
 	if (Church)
 	{
-		Church->CompleteInteractionLocally(EffectLocation);
+		Church->CompleteInteractionLocally(GetCharacter());
 	}
 }
 

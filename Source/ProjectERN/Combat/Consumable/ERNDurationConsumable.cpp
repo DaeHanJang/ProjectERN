@@ -10,16 +10,11 @@
 #include "Components/AudioComponent.h"
 #include "Components/SphereComponent.h"
 #include "Engine/DamageEvents.h"
+#include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 AERNDurationConsumable::AERNDurationConsumable()
 {
-	// Fog Collision
-	FogCollision = CreateDefaultSubobject<USphereComponent>(TEXT("FogCollision"));
-	FogCollision->SetupAttachment(GetRootComponent());
-	FogCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	FogCollision->SetGenerateOverlapEvents(true);
-	
 	// VFX Component
 	EffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("EffectComponent"));
 	EffectComponent->SetupAttachment(GetRootComponent());
@@ -31,19 +26,8 @@ AERNDurationConsumable::AERNDurationConsumable()
 	SoundComponent->bAutoActivate = false;
 }
 
-void AERNDurationConsumable::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	FogCollision->InitSphereRadius(SweepRadius);
-	// FogCollision Overlap Event Binding
-	FogCollision->OnComponentBeginOverlap.AddDynamic(this, &AERNDurationConsumable::OnFogBeginOverlap);
-	FogCollision->OnComponentEndOverlap.AddDynamic(this, &AERNDurationConsumable::OnFogEndOverlap);
-}
-
 void AERNDurationConsumable::ApplyEffect()
 {
-	FogCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Multicast_PlayEffectAndSound();
 	GetWorldTimerManager().SetTimer(ApplyTimerHandle, this, &AERNDurationConsumable::UpdateFogCollision, Rate, true, 0.0f);
 }
@@ -80,80 +64,67 @@ void AERNDurationConsumable::ApplyEffectMonster(AERNEnemyCharacter* EnemyCharact
 
 void AERNDurationConsumable::UpdateFogCollision()
 {	
-	FogCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	CurrentTime += Rate;
+	if (!HasAuthority())
+	{
+		return;
+	}
 	
 	if (CurrentTime >= ApplyTime)
 	{
 		GetWorldTimerManager().ClearTimer(ApplyTimerHandle);
 		Destroy();
-	}
-}
-
-void AERNDurationConsumable::OnFogBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-                                               UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	if (!OtherActor || OtherActor == this)
-	{
 		return;
 	}
 	
-	if (OverlappedActors.Contains(OtherActor))
-	{
-		return;
-	}
+	TArray<FOverlapResult> Results;
 	
-	if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor))
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECC_Pawn);
+	
+	FCollisionQueryParams QueryParams;
+	
+	GetWorld()->OverlapMultiByObjectType(Results, GetActorLocation(), FQuat::Identity, ObjectParams, FCollisionShape::MakeSphere(SweepRadius), QueryParams);
+	
+	TSet<AActor*> AppliedActors;
+	
+	for (const FOverlapResult& Result : Results)
 	{
-		if (PlayerCharacter->GetRootComponent() != OtherComp)
+		AActor* Target = Result.GetActor();
+		if (!IsValid(Target) || AppliedActors.Contains(Target))
 		{
-			return;
+			continue;
+		}
+		
+		AppliedActors.Add(Target);
+		
+		if (ApplyType == EApplyType::Player)
+		{
+			if (AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(Target))
+			{
+				ApplyEffectPlayer(PlayerCharacter);
+			}
+		}
+		else if (ApplyType == EApplyType::Monster)
+		{
+			if (AERNEnemyCharacter* EnemyCharacter = Cast<AERNEnemyCharacter>(Target))
+			{
+				ApplyEffectMonster(EnemyCharacter);
+			}
+		}
+		else if (ApplyType == EApplyType::All)
+		{
+			if (AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(Target))
+			{
+				ApplyEffectPlayer(PlayerCharacter);
+			}
+			if (AERNEnemyCharacter* EnemyCharacter = Cast<AERNEnemyCharacter>(Target))
+			{
+				ApplyEffectMonster(EnemyCharacter);
+			}
 		}
 	}
 	
-	OverlappedActors.Add(OtherActor);
-}
-
-void AERNDurationConsumable::OnFogEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	if (!OtherActor || OtherActor == this)
-	{
-		return;
-	}
-	
-	if (OverlappedActors.Remove(OtherActor) == 0)
-	{
-		return;
-	}
-	
-	if (ApplyType == EApplyType::Player)
-	{
-		if (AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor))
-		{
-			ApplyEffectPlayer(PlayerCharacter);
-		}
-	}
-	else if (ApplyType == EApplyType::Monster)
-	{
-		if (AERNEnemyCharacter* EnemyCharacter = Cast<AERNEnemyCharacter>(OtherActor))
-		{
-			ApplyEffectMonster(EnemyCharacter);
-		}
-	}
-	else if (ApplyType == EApplyType::All)
-	{
-		if (AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor))
-		{
-			ApplyEffectPlayer(PlayerCharacter);
-		}
-		if (AERNEnemyCharacter* EnemyCharacter = Cast<AERNEnemyCharacter>(OtherActor))
-		{
-			ApplyEffectMonster(EnemyCharacter);
-		}
-	}
-	
-	FogCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	CurrentTime += Rate;
 }
 
 void AERNDurationConsumable::Multicast_PlayEffectAndSound_Implementation()

@@ -22,11 +22,13 @@ AChurch::AChurch()
 	SetRootComponent(Collision);
 	Collision->InitSphereRadius(250.0f);
 	Collision->SetCollisionProfileName(TEXT("OverlapAll"));
+	Collision->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
 	
 	// Mesh
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 	Mesh->SetupAttachment(GetRootComponent());
 	Mesh->SetCollisionProfileName(TEXT("BlockAll"));
+	Mesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Overlap);
 	
 	// Effect
 	EffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("EffectComponent"));
@@ -62,7 +64,7 @@ void AChurch::Interact_Implementation(APlayerController* PlayerController)
 	InteractedPlayerControllers.Add(PlayerController);
 	if (AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerController))
 	{
-		PC->Client_CompleteChurchInteraction(this, PlayerCharacter->GetActorLocation());
+		PC->Client_CompleteChurchInteraction(this);
 	}
 }
 
@@ -92,7 +94,7 @@ EInteractionExecutionPolicy AChurch::GetInteractionExecutionPolicy_Implementatio
 	return EInteractionExecutionPolicy::ServerAuthority;
 }
 
-void AChurch::CompleteInteractionLocally(const FVector EffectLocation) const
+void AChurch::CompleteInteractionLocally(ACharacter* Character) const
 {
 	if (EffectComponent)
 	{
@@ -104,13 +106,15 @@ void AChurch::CompleteInteractionLocally(const FVector EffectLocation) const
 		PromptComponent->SetHiddenInGame(true);
 	}
 	
-	if (InteractionEffect)
+	if (AERNCharacterBase* ERNCharacter = Cast<AERNCharacterBase>(Character))
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), InteractionEffect, EffectLocation);
-	}
-	
-	if (InteractionSound)
-	{
-		UGameplayStatics::SpawnSoundAtLocation(GetWorld(), InteractionSound, EffectLocation);
+		if (!HasAuthority())
+		{
+			ERNCharacter->Server_RequestEffectAndSound(InteractionEffect, ERNCharacter->GetActorLocation(), InteractionSound, ERNCharacter->GetActorLocation());
+		}
+		else
+		{
+			ERNCharacter->Multicast_PlayEffectAndSound(InteractionEffect, ERNCharacter->GetActorLocation(), InteractionSound, ERNCharacter->GetActorLocation());
+		}
 	}
 }

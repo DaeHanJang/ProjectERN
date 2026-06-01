@@ -4,6 +4,7 @@
 
 #include "Camera/CameraComponent.h"
 #include "Character/ERNCharacterBase.h"
+#include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Components/SphereComponent.h"
 
 // Sets default values for this component's properties
@@ -14,6 +15,26 @@ UERNLockOnComponent::UERNLockOnComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 	SetIsReplicatedByDefault(true);
+}
+
+bool UERNLockOnComponent::IsLockedOn() const
+{
+	if (AERNCharacterBase* ERNCharacter = Cast<AERNCharacterBase>(CurrentTarget))
+	{
+		return LockOnState == ELockOnState::Locked && IsValid(CurrentTarget) && !ERNCharacter->IsDead();
+	}
+	
+	return LockOnState == ELockOnState::Locked && IsValid(CurrentTarget);
+}
+
+bool UERNLockOnComponent::IsLockOnActive() const
+{
+	if (AERNCharacterBase* ERNCharacter = Cast<AERNCharacterBase>(CurrentTarget))
+	{
+		return (LockOnState == ELockOnState::Locked || LockOnState == ELockOnState::Lost) && IsValid(CurrentTarget) && !ERNCharacter->IsDead();
+	}
+	
+	return (LockOnState == ELockOnState::Locked || LockOnState == ELockOnState::Lost) && IsValid(CurrentTarget);
 }
 
 void UERNLockOnComponent::Initialize(USphereComponent* InDetectionSphere, UCameraComponent* InCameraComponent)
@@ -121,8 +142,6 @@ AActor* UERNLockOnComponent::FindBaseTarget() const
 	
 	const FVector ForwardVector = GetForwardVector();
 	const float MinDot = FMath::Cos(FMath::DegreesToRadians(Degree));
-	
-	DrawDebugCone(GetWorld(), GetSourceLocation(), GetForwardVector(), DetectionSphere->GetScaledSphereRadius(), FMath::DegreesToRadians(Degree), FMath::DegreesToRadians(Degree), 32, FColor::Green, false, 1.0f, 0, 1.0f);
 	
 	for (AActor* Candidate : Candidates)
 	{

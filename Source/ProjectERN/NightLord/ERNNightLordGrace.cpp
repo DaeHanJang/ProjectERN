@@ -25,6 +25,7 @@ AERNNightLordGrace::AERNNightLordGrace()
 	SetRootComponent(InteractionComponent);
 	InteractionComponent->InitSphereRadius(250.0f);
 	InteractionComponent->SetCollisionProfileName(TEXT("OverlapAll"));
+	InteractionComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
 	InteractionComponent->SetGenerateOverlapEvents(true);
 	
 	// Mesh

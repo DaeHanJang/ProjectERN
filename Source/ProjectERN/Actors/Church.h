@@ -29,7 +29,7 @@ public:
 	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
 	
 	// Complete Interaction
-	void CompleteInteractionLocally(const FVector EffectLocation) const; 
+	void CompleteInteractionLocally(ACharacter* Character) const; 
 	
 
 private:

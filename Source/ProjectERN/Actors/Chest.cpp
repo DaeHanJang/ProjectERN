@@ -3,8 +3,10 @@
 #include "Actors/Chest.h"
 
 #include "NiagaraComponent.h"
+#include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Inventory/Item/ERNItemActor.h"
 #include "Inventory/Item/Data/ERNDropTable.h"
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
@@ -18,25 +20,35 @@ AChest::AChest()
 	bReplicates = true;
 
 	// Collision
-	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
+	Collision = CreateDefaultSubobject<UBoxComponent>(TEXT("Collision"));
 	SetRootComponent(Collision);
-	Collision->InitSphereRadius(150.0f);
-	Collision->SetCollisionProfileName(TEXT("OverlapAll"));
+	Collision->InitBoxExtent(FVector(40.0f, 80.0f, 40.0f));
+	Collision->SetCollisionProfileName(TEXT("BlockAll"));
 	
 	// Mesh
 	SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMesh"));
 	SkeletalMesh->SetupAttachment(GetRootComponent());
 	SkeletalMesh->SetCollisionProfileName(TEXT("BlockAll"));
+	SkeletalMesh->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -40.0f), FRotator(0.0f, 90.0f, 0.0f));
+	
+	// InteractionCollision
+	InteractionCollision = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionCollision"));
+	InteractionCollision->SetupAttachment(GetRootComponent());
+	InteractionCollision->InitSphereRadius(150.0f);
+	InteractionCollision->SetCollisionProfileName(TEXT("OverlapAll"));
+	InteractionCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
 	
 	// Effect
 	EffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("EffectComponent"));
 	EffectComponent->SetupAttachment(GetRootComponent());
+	EffectComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 50.0f));
 	
 	// Prompt
 	PromptComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("PromptComponent"));
 	PromptComponent->SetupAttachment(GetRootComponent());
 	PromptComponent->SetWidgetSpace(EWidgetSpace::Screen);
 	PromptComponent->SetVisibility(false);
+	PromptComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f));
 }
 
 void AChest::Interact_Implementation(APlayerController* PlayerController)
@@ -56,7 +68,12 @@ void AChest::Interact_Implementation(APlayerController* PlayerController)
 		FItemRuntimeState ItemRuntimeState;
 		if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState))
 		{
-			ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(-150.0f, 0.0f, 50.0f), GetActorRotation());
+			const FVector DropLocation = GetActorLocation() + FVector::UpVector * 50.0f;
+			AActor* Item = ItemManager->SpawnItem(ItemRuntimeState, DropLocation, GetActorForwardVector().Rotation());
+			if (AERNItemActor* ERNItem = Cast<AERNItemActor>(Item))
+			{
+				ERNItem->Launch(-GetActorForwardVector());
+			}
 		}
 	}
 	
@@ -128,6 +145,10 @@ void AChest::Dissolve_Implementation()
 	RemainingDissolveTime = DissolveTime;
 	DynamicMaterial0->SetScalarParameterValue(TEXT("Dissolve"), 1.0f);
 	
+	if (PromptComponent)
+	{
+		PromptComponent->SetVisibility(false);
+	}
 	if (InteractAnimation)
 	{
 		SkeletalMesh->PlayAnimation(InteractAnimation, false);
