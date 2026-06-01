@@ -88,6 +88,21 @@ public:
 	
 	// Copy Inventory
 	void CopyFrom(const FInventoryList& SourceInventory, const int32 Size);
+
+	// 스냅샷 배열로 복원 (travel 진행 보존용)
+	void RestoreFrom(const TArray<FInventoryItemEntry>& InEntries, const int32 Size)
+	{
+		Items = InEntries;
+		if (Items.Num() < Size)
+		{
+			Items.AddDefaulted(Size - Items.Num());
+		}
+		for (FInventoryItemEntry& Item : Items)
+		{
+			MarkItemDirty(Item);
+		}
+		MarkArrayDirty();
+	}
 	
 	// Debug Log
 	void LogInventory() const;

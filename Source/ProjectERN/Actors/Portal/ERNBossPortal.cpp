@@ -9,6 +9,7 @@
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Character/Player/ERNPlayerState.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
 
 AERNBossPortal::AERNBossPortal()
@@ -138,6 +139,15 @@ void AERNBossPortal::CheckAndTriggerTravel()
 
 	// 모든 클라이언트에 로딩 화면 표시
 	Multicast_ShowLoadingScreen();
+
+	// 필드→보스: 각 플레이어 진행 상황(레벨/골드/인벤/무기) 스냅샷 저장 → 보스맵에서 복원
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		if (AERNPlayerState* ERNPS = Cast<AERNPlayerState>(PS))
+		{
+			ERNPS->SaveSnapshotFromPawn();
+		}
+	}
 
 	// 서버 트래블
 	World->ServerTravel(BossMapName + TEXT("?listen"));

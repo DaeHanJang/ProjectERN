@@ -22,6 +22,7 @@
 #include "BrainComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Subsystem/ERNSoundSubsystem.h"
+#include "Core/ERNGameState.h"
 
 AERNBossCharacter::AERNBossCharacter()
 {
@@ -399,6 +400,15 @@ void AERNBossCharacter::OnDeath()
 
 		// 보스 BGM 페이드 아웃
 		Multicast_StopBossBGM();
+	}
+
+	// 최종보스 사망 → 게임 클리어(승리) 처리
+	if (HasAuthority() && bIsFinalBoss)
+	{
+		if (AERNGameState* GS = GetWorld()->GetGameState<AERNGameState>())
+		{
+			GS->HandleGameClear();
+		}
 	}
 
 	// 부모 사망 처리 (사망 몽타주 재생, 이동/충돌 비활성화, 딜레이 후 Destroy 등)

@@ -258,6 +258,9 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 
 		UE_LOG(LogTemp, Log, TEXT("%s took %.2f damage. Health: %.2f"), *GetName(), RemainingDamage, NewHealth);
 
+		// 막타 크레딧용 — 마지막 유효타를 넣은 컨트롤러 캐싱
+		LastHitInstigator = EventInstigator;
+
 		// 사망 체크
 		if (NewHealth <= 0.0f)
 		{

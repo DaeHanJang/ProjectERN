@@ -8,6 +8,7 @@
 #include "ERNGameState.generated.h"
 
 class ULevelSequence;
+class AERNPlayerState;
 
 // 플레이어 배열 변경 시 호출되는 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerArrayChanged);
@@ -89,6 +90,27 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Boss")
 	void StartBossEncounterSequence();
 
+	// === 게임 종료(승/패) → 전과 → 로비 ===
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game")
+	FString LobbyMapName = TEXT("Map_Lobby");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game")
+	float ReturnToLobbyTimeout = 60.f;
+
+	// 승리 (최종보스 사망 시 ERNBossCharacter가 호출)
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void HandleGameClear();
+
+	// 패배 (패배 조건 확정 시 호출)
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void HandleGameOver();
+
+	// 전과 위젯 "로비로" 버튼 → PC RPC가 호출 (복귀 준비 등록)
+	void MarkReturnReady(AERNPlayerState* PS);
+
+	// 전과 위젯 "취소" 버튼 → PC RPC가 호출 (복귀 신청 해제)
+	void UnmarkReturnReady(AERNPlayerState* PS);
+
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -133,6 +155,22 @@ protected:
 	void OnLocalCutsceneFinished();
 
 	FTimerHandle CountdownTimerHandle;
+
+	// === 게임 종료 처리 내부 ===
+	void EndGame(bool bVictory);
+
+	// 전원에게 승/패 배너 표시 (배너 위젯이 일정시간 뒤 전과 위젯으로 전환)
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ShowEndScreen(bool bVictory);
+
+	// 진행/전과 초기화 후 로비로 ServerTravel
+	void ReturnToLobbyNow();
+
+	UPROPERTY()
+	TSet<TWeakObjectPtr<AERNPlayerState>> ReturnReadyPlayers;
+
+	bool bEnded = false;
+	FTimerHandle ReturnTimeoutHandle;
 
 protected:
 	// PlayerArray 리플리케이션 콜백

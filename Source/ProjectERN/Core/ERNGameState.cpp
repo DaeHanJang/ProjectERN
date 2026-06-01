@@ -9,6 +9,7 @@
 #include "EngineUtils.h"
 #include "TimerManager.h"
 #include "Character/Enemy/ERNBossCharacter.h"
+#include "Character/Player/ERNPlayerController.h"
 
 AERNGameState::AERNGameState()
 {
@@ -367,4 +368,122 @@ void AERNGameState::OnLocalCutsceneFinished()
 void AERNGameState::Multicast_OnCountdownFinished_Implementation()
 {
 	OnCountdownFinished.Broadcast();
+}
+
+void AERNGameState::HandleGameClear()
+{
+	EndGame(true);
+}
+
+void AERNGameState::HandleGameOver()
+{
+	EndGame(false);
+}
+
+void AERNGameState::EndGame(bool bVictory)
+{
+	if (!HasAuthority() || bEnded)
+	{
+		return;
+	}
+	bEnded = true;
+
+	// 전과용 최종 진행/스탯 캡처 (KillCount/TotalDamage는 이미 누적돼 있음)
+	for (APlayerState* PS : PlayerArray)
+	{
+		if (AERNPlayerState* ERNPS = Cast<AERNPlayerState>(PS))
+		{
+			ERNPS->SaveSnapshotFromPawn();
+		}
+	}
+
+	// 전원에게 승/패 배너 표시 (배너 위젯이 일정시간 뒤 전과 위젯으로 전환)
+	Multicast_ShowEndScreen(bVictory);
+
+	// 아무도 버튼을 안 누를 경우 대비 — 타임아웃 후 강제 복귀
+	GetWorldTimerManager().SetTimer(ReturnTimeoutHandle, this,
+		&AERNGameState::ReturnToLobbyNow, ReturnToLobbyTimeout, false);
+}
+
+void AERNGameState::Multicast_ShowEndScreen_Implementation(bool bVictory)
+{
+	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		if (AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PC))
+		{
+			ERNPC->ShowEndScreen(bVictory);
+		}
+	}
+}
+
+void AERNGameState::MarkReturnReady(AERNPlayerState* PS)
+{
+	if (!HasAuthority() || !PS)
+	{
+		return;
+	}
+	ReturnReadyPlayers.Add(PS);
+
+	int32 ReadyCount = 0;
+	for (const TWeakObjectPtr<AERNPlayerState>& Weak : ReturnReadyPlayers)
+	{
+		if (Weak.IsValid())
+		{
+			++ReadyCount;
+		}
+	}
+
+	if (ReadyCount >= PlayerArray.Num())
+	{
+		ReturnToLobbyNow();
+	}
+}
+
+void AERNGameState::UnmarkReturnReady(AERNPlayerState* PS)
+{
+	if (!HasAuthority() || !PS)
+	{
+		return;
+	}
+
+	ReturnReadyPlayers.Remove(PS);
+
+	// 유효한 신청자 수 재계산
+	int32 ReadyCount = 0;
+	for (const TWeakObjectPtr<AERNPlayerState>& Weak : ReturnReadyPlayers)
+	{
+		if (Weak.IsValid())
+		{
+			++ReadyCount;
+		}
+	}
+
+	// 신청자가 모두 취소되면 타임아웃 타이머 정지 (아무도 대기 안 함)
+	if (ReadyCount == 0)
+	{
+		GetWorldTimerManager().ClearTimer(ReturnTimeoutHandle);
+	}
+}
+
+void AERNGameState::ReturnToLobbyNow()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	GetWorldTimerManager().ClearTimer(ReturnTimeoutHandle);
+
+	// 진행/전과 전부 초기화 → 로비 폰은 기본값으로 스폰됨
+	for (APlayerState* PS : PlayerArray)
+	{
+		if (AERNPlayerState* ERNPS = Cast<AERNPlayerState>(PS))
+		{
+			ERNPS->ClearRunProgress();
+		}
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		World->ServerTravel(LobbyMapName + TEXT("?listen"));
+	}
 }

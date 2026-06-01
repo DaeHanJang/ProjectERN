@@ -31,8 +31,12 @@ void UERNInventoryComponent::CopyInventoryFrom(const UERNInventoryComponent* Sou
 void UERNInventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	Inventory.Init(MaxSlotSize);
+
+	// 스냅샷 복원이 먼저 일어났으면(아이템 존재) 덮어쓰지 않음
+	if (Inventory.GetItems().Num() == 0)
+	{
+		Inventory.Init(MaxSlotSize);
+	}
 }
 
 void UERNInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

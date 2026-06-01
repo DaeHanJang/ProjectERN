@@ -15,6 +15,8 @@
 #include "ERNPlayerStatusTable.h"
 #include "ERNSkillNiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Components/SphereComponent.h"
@@ -148,7 +150,22 @@ AProjectERNCharacter::AProjectERNCharacter()
 
 	// Create Skill Niagara Component
 	SkillNiagaraComponent = CreateDefaultSubobject<UERNSkillNiagaraComponent>(TEXT("SkillNiagaraComponent"));
-	
+
+	// Head Light
+	HeadLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("HeadLight"));
+	HeadLight->SetupAttachment(GetCapsuleComponent());
+	HeadLight->SetRelativeLocation(FVector(0.f, 0.f, 100.f));
+	HeadLight->SetIntensity(5000.f);
+	HeadLight->SetAttenuationRadius(800.f);
+	HeadLight->SetCastShadows(false);
+	HeadLight->SetVisibility(false);
+
+	// Head Light Niagara
+	HeadLightFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("HeadLightFX"));
+	HeadLightFX->SetupAttachment(GetCapsuleComponent());
+	HeadLightFX->SetRelativeLocation(FVector(0.f, 0.f, 100.f));
+	HeadLightFX->bAutoActivate = false;
+
 	// NightRainZone 자기장 밤의비
 	NightRainPostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("NightRainPostProcessComponent"));
 	NightRainPostProcessComponent->SetupAttachment(FollowCamera);
@@ -204,6 +221,87 @@ void AProjectERNCharacter::InitStatus()
 	AttributeSet->SetMoveSpeed(Row->MoveSpeed);
 }
 
+void AProjectERNCharacter::InitStatusForLevel(int32 Level)
+{
+	if (!HasAuthority() || !StatusCurveTable || !AttributeSet)
+	{
+		return;
+	}
+
+	const FERNPlayerStatusTable* Row = StatusCurveTable->FindRow<FERNPlayerStatusTable>(
+		FName(FString::FromInt(Level)), TEXT("InitStatusForLevel"));
+	if (!Row)
+	{
+		return;
+	}
+
+	AttributeSet->SetMaxHealth(Row->MaxHealth);
+	AttributeSet->SetHealth(Row->MaxHealth);
+	AttributeSet->SetMaxMana(Row->MaxMana);
+	AttributeSet->SetMana(Row->MaxMana);
+	AttributeSet->SetManaRegenRate(Row->ManaRegenRate);
+	AttributeSet->SetMaxStamina(Row->MaxStamina);
+	AttributeSet->SetStamina(Row->MaxStamina);
+	AttributeSet->SetStaminaRegenRate(Row->StaminaRegenRate);
+	AttributeSet->SetAttackPower(Row->AttackPower);
+	AttributeSet->SetDefense(Row->Defense);
+	AttributeSet->SetStaggerResistance(Row->StaggerResistance);
+	AttributeSet->SetMoveSpeed(Row->MoveSpeed);
+	AttributeSet->SetLevel(Level);
+}
+
+void AProjectERNCharacter::ApplyRunSnapshot()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AERNPlayerState* PS = GetPlayerState<AERNPlayerState>();
+	UE_LOG(LogTemp, Warning, TEXT("[Snapshot] APPLY called. PS=%s hasSnapshot=%d"),
+		PS ? *PS->GetPlayerName() : TEXT("NULL"), PS ? PS->bHasSnapshot : 0);
+
+	if (!PS || !PS->bHasSnapshot)
+	{
+		return; // 스냅샷 없으면 기본값 유지 = 초기화
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Snapshot] APPLY %s: Level=%d Gold=%d InvItems=%d"),
+		*PS->GetPlayerName(), PS->SavedLevel, PS->SavedGold, PS->SavedInventory.Num());
+
+	// 레벨 기반 스탯 재적용 (+SetLevel) → 그 위에 골드 복원
+	InitStatusForLevel(PS->SavedLevel);
+	if (AttributeSet)
+	{
+		AttributeSet->SetGold(PS->SavedGold);
+		AttributeSet->SetMaxFlaskQuantity(PS->SavedMaxFlaskQuantity);
+		AttributeSet->SetFlaskQuantity(PS->SavedFlaskQuantity);
+	}
+
+	// 인벤토리 복원 (강화 수치 포함) + 리슨서버 UI 갱신
+	if (InventoryComponent)
+	{
+		FInventoryList& Inv = InventoryComponent->GetInventory();
+		Inv.RestoreFrom(PS->SavedInventory, PS->SavedInventory.Num());
+		for (const FInventoryItemEntry& E : Inv.GetItems())
+		{
+			InventoryComponent->OnInventorySlotChanged.Broadcast(E);
+		}
+	}
+
+	// 장착 무기 복원 (강화 수치 포함)
+	if (EquipmentComponent && PS->SavedWeaponState.IsValid())
+	{
+		EquipmentComponent->Server_EquipWeaponFromState(PS->SavedWeaponState);
+	}
+
+	// 장착 소모품 복원 (종류 + 수량)
+	if (EquipmentComponent && PS->SavedConsumableState.IsValid())
+	{
+		EquipmentComponent->Server_EquipConsumableFromState(PS->SavedConsumableState);
+	}
+}
+
 void AProjectERNCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -218,6 +316,13 @@ void AProjectERNCharacter::BeginPlay()
 	{
 		LockOnComponent->Initialize(LockOnDetector, FollowCamera);
 	}
+
+	// 머리 조명 Niagara 에셋 적용 + 현재 상태 반영
+	if (HeadLightFX && HeadLightFXSystem)
+	{
+		HeadLightFX->SetAsset(HeadLightFXSystem);
+	}
+	ApplyHeadLightState();
 }
 
 void AProjectERNCharacter::PossessedBy(AController* NewController)
@@ -639,6 +744,13 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::UltimateSkill);
+
+	// Head Light 토글
+	if (ToggleLightAction)
+	{
+		InputComp->BindAction(ToggleLightAction, ETriggerEvent::Started,
+			this, &AProjectERNCharacter::ToggleLight);
+	}
 }
 
 void AProjectERNCharacter::Move(const FInputActionValue& Value)
@@ -878,6 +990,45 @@ void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProp
 	DOREPLIFETIME(AProjectERNCharacter, bGodMode);
 	DOREPLIFETIME(AProjectERNCharacter, bIsHangingFromBird);
 	DOREPLIFETIME(AProjectERNCharacter, AttachedBird);
+	DOREPLIFETIME(AProjectERNCharacter, bHeadLightOn);
+}
+
+void AProjectERNCharacter::ToggleLight()
+{
+	Server_ToggleLight();
+}
+
+void AProjectERNCharacter::Server_ToggleLight_Implementation()
+{
+	bHeadLightOn = !bHeadLightOn;
+	ApplyHeadLightState();
+}
+
+void AProjectERNCharacter::OnRep_HeadLightOn()
+{
+	ApplyHeadLightState();
+}
+
+void AProjectERNCharacter::ApplyHeadLightState()
+{
+	if (HeadLight)
+	{
+		HeadLight->SetVisibility(bHeadLightOn);
+	}
+
+	if (HeadLightFX)
+	{
+		HeadLightFX->SetVisibility(bHeadLightOn);
+
+		if (bHeadLightOn)
+		{
+			HeadLightFX->Activate(true);
+		}
+		else
+		{
+			HeadLightFX->DeactivateImmediate();
+		}
+	}
 }
 
 void AProjectERNCharacter::GodMode()
