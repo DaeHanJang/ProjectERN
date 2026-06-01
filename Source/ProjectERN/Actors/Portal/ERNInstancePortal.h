@@ -63,6 +63,10 @@ protected:
 	// 도착 지점이 모자랄 때 첫 지점 주위로 흩는 반경
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal", meta = (ClampMin = "0.0"))
 	float DestinationSpreadRadius = 150.f;
+	
+	// 일회용포탈 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal")
+	bool bIsreusable = false;
 
 	// 상호작용 안내 문구
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal")

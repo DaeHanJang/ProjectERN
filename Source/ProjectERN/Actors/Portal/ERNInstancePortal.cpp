@@ -122,6 +122,11 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 	BroadcastPortalChat();
 
 	// TODO: 자기장/낮밤 Pause(던전 입장) / Resume(필드 복귀) 연동
+	
+	if (!bIsreusable)
+	{
+		Destroy();
+	}
 }
 
 bool AERNInstancePortal::CanInteract_Implementation() const
