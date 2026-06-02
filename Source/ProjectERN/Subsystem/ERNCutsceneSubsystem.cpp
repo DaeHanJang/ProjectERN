@@ -22,6 +22,7 @@
 #include "Components/SceneComponent.h"
 #include "GameFramework/GameModeBase.h"
 #include "Subsystem/ERNSoundSubsystem.h"
+#include "TimerManager.h"
 
 void UERNCutsceneSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {

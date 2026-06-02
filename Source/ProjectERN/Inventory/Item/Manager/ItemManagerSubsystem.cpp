@@ -52,6 +52,16 @@ const FERNItemTable* UItemManagerSubsystem::FindItemRow(const FName ItemID) cons
 	return ItemTable->FindRow<FERNItemTable>(ItemID, TEXT("UItemManagerSubsystem::FindItemRow"));
 }
 
+TArray<FName> UItemManagerSubsystem::GetAllItemIDs() const
+{
+	if (!ItemTable)
+	{
+		return TArray<FName>();
+	}
+
+	return ItemTable->GetRowNames();
+}
+
 bool UItemManagerSubsystem::ItemValid(const FName ItemID) const
 {
 	return FindItemRow(ItemID) != nullptr;
