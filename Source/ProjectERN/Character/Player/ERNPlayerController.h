@@ -265,11 +265,18 @@ private:
 	
 #pragma region NightRainZone
 public:
+	// 서버의 자기장 포스트 프로세스 상태 업데이트
 	void UpdateNightRainPostProcessState_ServerOnly(bool bShouldEnable);
 	
+	// 클라이언트 개별의 자기장 포스트 프로세스 적용 결정
 	UFUNCTION(Client, Reliable)
 	void Client_SetNightRainZonePostProcessEnabled(bool bEnabled);
 	
+	// 자기장 무시 (인스턴스 던전 사용 중 자기장 무시)
+	void SetIgnoreNightRainZone_ServerOnly(bool bIgnore);
+	// 자기장 무시 가능 여부
+	bool bIsIgnoreNightRainZone()const { return bIgnoreNightRainZone_Server; };
+
 private:
 	void SetNightRainZonePostProcessEnabled_Local(bool bEnabled);
 	void TickNightRainZonePostProcessBlend();
@@ -289,6 +296,10 @@ private:
 	float NightRainPostProcessInterpSpeed = 8.f;
 	
 	FTimerHandle NightRainPostProcessBlendTimerHandle;
+	
+	// 서버에서 자기장 판정 제외 여부로 사용될 플래그
+	bool bIgnoreNightRainZone_Server = false;
+	
 #pragma endregion
 	
 #pragma region Minimap

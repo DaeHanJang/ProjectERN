@@ -8,6 +8,7 @@
 #include "World/Data/NightRainZonePhaseConfigData.h"
 #include "NightRainZoneManager.generated.h"
 
+class AERNPlayerController;
 class ANightRainZoneCenterPoint;
 class UNiagaraComponent;
 class UNightRainZoneVisualComponent;
@@ -39,6 +40,16 @@ public:
 	
 	FOnNightRainZoneStateChanged OnZoneStateChanged;
 	FOnNightRainZoneShrinkFinished OnZoneShrinkFinished;
+	
+	// 자기장 진행 일시정지
+	void PauseZoneProgress_ServerOnly();
+	// 자기장 진행 재개
+	void ResumeZoneProgress_ServerOnly();
+	
+	bool bIsPauseZone() const { return bZoneProgressPaused; }
+	
+	// 자기장 면역 상태 부여
+	void SetIgnoreNightRainZone(AERNPlayerController* PlayerController, bool bIgnore);
 	
 protected:
 	virtual void BeginPlay() override;
@@ -142,4 +153,11 @@ private:
 	// 자기장 안/밖 여부 확인 주기
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Night Rain Zone|Effect", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
 	float InCircleCheckInterval = 0.2f;
+	
+	// 자기장 진행 일시정지 여부
+	bool bZoneProgressPaused = false;
+	// 수렴 중 일시정지인지 여부
+	bool bPausedDuringShrink = false;
+	// 일시정지 한 시점의 수렴 진행 시간
+	float PausedPhaseRemainingTime = 0.0f;
 };

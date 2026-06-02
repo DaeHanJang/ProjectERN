@@ -194,4 +194,20 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_DayNightCycleState)
 	FERNDayNightCycleState DayNightCycleState;
 #pragma endregion DayNightCycle
+	
+#pragma region InstancePortal
+public:
+	//  인스턴스 포탈 사용중인 플레이어 증가
+	void AddInstancePortalState(AERNPlayerState* PlayerState);
+	//  인스턴스 포탈 사용중인 플레이어 감소
+	void RemoveInstancePortalState(AERNPlayerState* PlayerState);
+	//  인스턴스 포탈 사용중인 플레이어 수
+	int32 GetInstancePortalInPlayer() const { return InstancePortalInPlayer.Num(); }
+	
+private:
+	
+	//  인스턴스 포탈 사용중인 플레이어
+	UPROPERTY()
+	TSet<TObjectPtr<AERNPlayerState>> InstancePortalInPlayer;
+#pragma endregion InstancePortal
 };

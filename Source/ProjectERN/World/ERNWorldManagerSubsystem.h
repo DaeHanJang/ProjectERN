@@ -55,6 +55,4 @@ private:
 	// 몹 스포너 데이터 저장소
 	UPROPERTY()
 	TMap<FName, FSpawnerMobRuntimeStates> SpawnerMobStates;
-	
-	
 };

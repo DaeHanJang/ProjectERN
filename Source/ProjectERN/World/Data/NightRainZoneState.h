@@ -45,9 +45,23 @@ struct PROJECTERN_API FNightRainZoneState
 	UPROPERTY(BlueprintReadOnly)
 	int32 Revision = 0;
 	
+	// 자기장 진행 일시정지 유무
+	UPROPERTY(BlueprintReadOnly)
+	bool bProgressPaused = false;
+	
+	// 일시정지 상태의 수렴 진행도
+	UPROPERTY(BlueprintReadOnly)
+	float PausedAlpha = 0.f;
+	
 	//진행도
 	float GetAlpha(double ServerTime) const
 	{
+		// 일시정지라면 계산 없이 즉시 멈춘 시점의 값 반환
+		if (bProgressPaused)
+		{
+			return PausedAlpha;
+		}
+		
 		if (PhaseDuration <= 0.f)
 		{
 			return 1.f;

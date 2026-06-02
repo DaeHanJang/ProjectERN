@@ -13,6 +13,9 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/Controller.h"
 #include "Character/Player/ERNPlayerController.h"
+#include "Character/Player/ERNPlayerState.h"
+#include "Core/ERNGameState.h"
+#include "World/NightRainZoneManager.h"
 
 AERNInstancePortal::AERNInstancePortal()
 {
@@ -79,13 +82,13 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 		return;
 	}
 
-	AGameStateBase* GS = World->GetGameState();
+	AERNGameState* GS = World->GetGameState<AERNGameState>();
 	if (!GS)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[InstancePortal] GameState is null"));
 		return;
 	}
-
+	
 	UE_LOG(LogTemp, Warning, TEXT("[InstancePortal] PlayerArray=%d, DestPoints=%d"),
 		GS->PlayerArray.Num(), DestinationPoints.Num());
 
@@ -116,12 +119,36 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 		{
 			C->SetControlRotation(Dest.GetRotation().Rotator());
 		}
+		
+		// TODO: 자기장/낮밤 Pause(던전 입장) / Resume(필드 복귀) 연동
+		AERNPlayerState* ERNPlayerState = Cast<AERNPlayerState>(PS);
+		if (ERNPlayerState == nullptr)
+		{
+			continue;
+		}
+		
+		// 던전 입장
+		if (true)
+		{
+			GS->AddInstancePortalState(ERNPlayerState);
+			if (NightRainZoneManager->bIsPauseZone() == false)
+			{
+				NightRainZoneManager->PauseZoneProgress_ServerOnly();
+			}
+		}
+		// 필드 복귀
+		else
+		{
+			GS->RemoveInstancePortalState(ERNPlayerState);
+			if (NightRainZoneManager->bIsPauseZone() == true)
+			{
+				NightRainZoneManager->ResumeZoneProgress_ServerOnly();
+			}
+		}
 	}
 
 	// 포탈별 채팅 알림 (입장/탈출 등)
 	BroadcastPortalChat();
-
-	// TODO: 자기장/낮밤 Pause(던전 입장) / Resume(필드 복귀) 연동
 	
 	if (!bIsreusable)
 	{

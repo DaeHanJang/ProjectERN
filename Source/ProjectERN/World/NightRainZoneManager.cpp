@@ -4,6 +4,7 @@
 #include "World/NightRainZoneManager.h"
 
 #include "EngineUtils.h"
+#include "IDetailTreeNode.h"
 #include "NiagaraComponent.h"
 #include "NightRainZoneCenterPoint.h"
 #include "NightRainZoneVisualComponent.h"
@@ -54,7 +55,15 @@ void ANightRainZoneManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	StopDamageTimer();
 	StopInCircleCheckTimer();
 
-	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
+	// 타이머 정리
+	UWorld* World = GetWorld();
+	if (World && HasAuthority())
+	{
+		FTimerManager& TimerManager = World->GetTimerManager();
+		TimerManager.ClearTimer(DamageTimerHandle);
+		TimerManager.ClearTimer(PhaseTimerHandle);
+		TimerManager.ClearTimer(InCircleCheckTimerHandle);
+	}
 	
 	Super::EndPlay(EndPlayReason);
 }
@@ -88,6 +97,97 @@ float ANightRainZoneManager::GetCurrentRadius() const
 {
 	return ZoneState.GetRadiusAtTime(GetSyncedServerTimeSeconds());
 }
+
+void ANightRainZoneManager::PauseZoneProgress_ServerOnly()
+{
+	if (HasAuthority() == false || bZoneProgressPaused)
+	{
+		return;
+	}
+	
+	if (GetWorldTimerManager().IsTimerActive(PhaseTimerHandle) == false)
+	{
+		return;
+	}
+	
+	const double ServerTime = GetSyncedServerTimeSeconds();
+	
+	// 자기장 진행 일시정지
+	bZoneProgressPaused = true;
+	bPausedDuringShrink = ZoneState.bShrinking;
+	// 자기장 페이즈 진행도 저장
+	PausedPhaseRemainingTime = GetWorldTimerManager().GetTimerRemaining(PhaseTimerHandle);
+	
+	// 페이즈 타이머 제거
+	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
+	
+	// 페이즈 최신화 (일시정지 상태로 최신화)
+	FNightRainZoneState NewState = ZoneState;
+	NewState.bProgressPaused = true;
+	NewState.PausedAlpha = ZoneState.GetAlpha(ServerTime);
+	NewState.Revision++;
+	
+	SetZoneState_ServerOnly(NewState);
+}
+
+void ANightRainZoneManager::ResumeZoneProgress_ServerOnly()
+{
+	if (HasAuthority() == false || bZoneProgressPaused == false)
+	{
+		return;
+	}
+	
+	// 멈춘 시점의 시간이 반환됨 (아직 bProgressPaused = true인 상태이기 때문)
+	const double ServerTime = GetSyncedServerTimeSeconds();
+	
+	// 일시정지 하기 전의 남은 진행 시간을 그대로 이어받음
+	const float ResumeDuration = FMath::Max(PausedPhaseRemainingTime, 0.01f);
+	
+	// 자기장 자체의 상태 최신화
+	FNightRainZoneState NewState = ZoneState;
+	NewState.bProgressPaused = false;
+	NewState.PausedAlpha = 0.f;
+	NewState.PhaseStartServerWorldTimeSeconds = ServerTime;		// 멈춘 시점의 시간을 가져옴
+	NewState.Revision++;
+	
+	// 수축중이였다면 시간에 맞춰서 중심점, 반지름 정확하게 다시 제공, 수축 타이머 새롭게 재가동
+	if (bPausedDuringShrink)
+	{
+		NewState.bShrinking = true;
+		NewState.StartCenter = ZoneState.GetCenterAtTime(ServerTime);
+		NewState.StartRadius = ZoneState.GetRadiusAtTime(ServerTime);
+		NewState.PhaseDuration = ResumeDuration;
+		
+		SetZoneState_ServerOnly(NewState);
+		
+		GetWorldTimerManager().SetTimer(PhaseTimerHandle,this,&ANightRainZoneManager::HandlePhaseFinished,ResumeDuration,false);
+	}
+	// 수축중이 아니라면 기존에 기다린 시간 반영. 대기 타이머 새롭게 재가동
+	else
+	{
+		NewState.bShrinking = false;
+		NewState.PhaseDuration = 0.f;
+		NewState.FreezingDuration = ResumeDuration;
+		
+		SetZoneState_ServerOnly(NewState);
+		
+		GetWorldTimerManager().SetTimer(PhaseTimerHandle, this, &ANightRainZoneManager::HandlePhaseFinished,ResumeDuration,false);
+	}
+	
+	// 매니저 상태 최신화
+	bZoneProgressPaused = false;
+	bPausedDuringShrink = false;
+	PausedPhaseRemainingTime = 0.f;
+}
+
+void ANightRainZoneManager::SetIgnoreNightRainZone(AERNPlayerController* PlayerController, bool bIgnore)
+{
+	if (PlayerController ==	nullptr)
+	{
+		return;
+	}
+}
+
 
 void ANightRainZoneManager::OnRep_ZoneState()
 {
@@ -225,9 +325,18 @@ void ANightRainZoneManager::TickZoneDamage()
 	
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		APlayerController* PC = It->Get();
-		APawn* Pawn = PC ? PC->GetPawn() : nullptr;
+		AERNPlayerController* PC = Cast<AERNPlayerController>(It->Get());
+		if (PC == nullptr)
+		{
+			continue;
+		}
 		
+		if (PC->bIsIgnoreNightRainZone())
+		{
+			continue;;
+		}
+		
+		APawn* Pawn = PC->GetPawn();
 		if (Pawn == nullptr)
 		{
 			continue;
@@ -289,6 +398,12 @@ void ANightRainZoneManager::TickInCircleCheck()
 	{
 		AERNPlayerController* PC = Cast<AERNPlayerController>(It->Get());
 		if (PC == nullptr)
+		{
+			continue;
+		}
+		
+		
+		if (PC->bIsIgnoreNightRainZone())
 		{
 			continue;
 		}
@@ -585,5 +700,3 @@ void ANightRainZoneManager::UpdateZoneCenterPoints()
 		}
 	}
 }
-
-
