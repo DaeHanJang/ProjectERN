@@ -19,8 +19,6 @@ public:
 	AERNDurationConsumable();
 	
 protected:
-	virtual void BeginPlay() override;
-	
 	virtual void ApplyEffect() override;
 	virtual void ApplyEffectPlayer(AProjectERNCharacter* PlayerCharacter) override;
 	virtual void ApplyEffectMonster(AERNEnemyCharacter* EnemyCharacter) override;
@@ -28,19 +26,9 @@ protected:
 private:
 	void UpdateFogCollision();
 	
-	UFUNCTION()
-	void OnFogBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	
-	UFUNCTION()
-	void OnFogEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-	
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayEffectAndSound();
 private:
-	// Fog Collision
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Collision", meta=(AllowPrivateAccess="true"))
-	TObjectPtr<USphereComponent> FogCollision;
-	
 	// VFX Component
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Effect", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UNiagaraComponent> EffectComponent;

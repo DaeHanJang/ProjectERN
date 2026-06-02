@@ -36,8 +36,8 @@ public:
 	UERNLockOnComponent();
 	
 	FORCEINLINE AActor* GetCurrentTarget() const { return CurrentTarget; }
-	FORCEINLINE bool IsLockedOn() const { return LockOnState == ELockOnState::Locked && IsValid(CurrentTarget); }
-	FORCEINLINE bool IsLockOnActive() const { return (LockOnState == ELockOnState::Locked || LockOnState == ELockOnState::Lost) && IsValid(CurrentTarget); }
+	bool IsLockedOn() const;
+	bool IsLockOnActive() const;
 	FRotator GetDesiredRotationToTarget() const;
 	
 	void Initialize(USphereComponent* InDetectionSphere, UCameraComponent* InCameraComponent = nullptr);

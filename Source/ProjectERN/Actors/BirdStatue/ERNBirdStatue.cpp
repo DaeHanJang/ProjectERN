@@ -13,7 +13,8 @@
 
 AERNBirdStatue::AERNBirdStatue()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
 
 	// Scene Root - StatueMesh를 자식으로 두면 BP에서 메시 회전 자유롭게 가능
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
@@ -53,8 +54,44 @@ void AERNBirdStatue::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SetActorTickEnabled(true);
+
+	ComponentBaseZMap.Empty();
+	
+	// 블루프린트에서 임의로 추가한 Wing 컴포넌트 등 모든 스태틱 메시를 찾아 등록
+	TArray<UStaticMeshComponent*> MeshComps;
+	GetComponents<UStaticMeshComponent>(MeshComps);
+	for (UStaticMeshComponent* Mesh : MeshComps)
+	{
+		if (Mesh)
+		{
+			ComponentBaseZMap.Add(Mesh, Mesh->GetRelativeLocation().Z);
+		}
+	}
+
 	InteractionSphere->OnComponentBeginOverlap.AddUniqueDynamic(this, &AERNBirdStatue::OnSphereBeginOverlap);
 	InteractionSphere->OnComponentEndOverlap.AddUniqueDynamic(this, &AERNBirdStatue::OnSphereEndOverlap);
+}
+
+void AERNBirdStatue::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (ComponentBaseZMap.Num() > 0)
+	{
+		RunningTime += DeltaTime;
+		float DeltaZ = FMath::Sin(RunningTime * BobSpeed) * BobHeight;
+		
+		for (auto& Pair : ComponentBaseZMap)
+		{
+			if (USceneComponent* Comp = Pair.Key)
+			{
+				FVector NewLocation = Comp->GetRelativeLocation();
+				NewLocation.Z = Pair.Value + DeltaZ;
+				Comp->SetRelativeLocation(NewLocation);
+			}
+		}
+	}
 }
 
 void AERNBirdStatue::EndPlay(const EEndPlayReason::Type EndPlayReason)

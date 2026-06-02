@@ -16,6 +16,7 @@ AERNConsumableBase::AERNConsumableBase()
 	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	SetRootComponent(Collision);
 	Collision->SetCollisionProfileName(TEXT("BlockAllDynamic"));
+	Collision->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
 	Collision->SetNotifyRigidBodyCollision(true);
 	Collision->IgnoreActorWhenMoving(GetOwner(), true);
 	
@@ -27,10 +28,10 @@ AERNConsumableBase::AERNConsumableBase()
 	// MovementComponent
 	MovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("MovementComponent"));
 	MovementComponent->SetUpdatedComponent(GetRootComponent());
-	MovementComponent->InitialSpeed = 1200.0f;
-	MovementComponent->MaxSpeed = 1200.0f;
-	MovementComponent->ProjectileGravityScale = 0.2f;
-	MovementComponent->bRotationFollowsVelocity = true;
+	MovementComponent->InitialSpeed = 1800.0f;
+	MovementComponent->MaxSpeed = 1800.0f;
+	MovementComponent->ProjectileGravityScale = 0.4f;
+	MovementComponent->bRotationFollowsVelocity = false;
 	
 	InitialLifeSpan = 5.0f;
 }

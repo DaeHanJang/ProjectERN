@@ -36,6 +36,8 @@ void AERNPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+
+
 	// 컷신 동안 HUD 일괄 숨김 (로컬 컨트롤러 전용)
 	BindCutsceneEvents();
 
@@ -59,6 +61,15 @@ void AERNPlayerController::BeginPlay()
 
 	// 현재 맵 이름 가져오기 (UI 생성용)
 	FString CurrentMapName = GetWorld()->GetMapName();
+
+	// 명시적으로 게임 모드로 초기화하여 이전 맵(메인 메뉴 등)에서 넘어온 UI 포커스를 해제
+	// 단, 메인 메뉴(MainMenu) 맵인 경우에는 예외 (UI 조작이 필요하므로)
+	if (IsLocalPlayerController() && !CurrentMapName.Contains(TEXT("MainMenu")))
+	{
+		FInputModeGameOnly InputMode;
+		SetInputMode(InputMode);
+		bShowMouseCursor = false;
+	}
 
 	// 파티 상태 위젯 생성 (로컬 플레이어만)
 	if (IsLocalPlayerController() && PartyStatusContainerClass)
@@ -945,11 +956,11 @@ void AERNPlayerController::SetNightRainPostProcessBlendWeight_Local(float BlendW
 }
 #pragma endregion
 
-void AERNPlayerController::Client_CompleteChurchInteraction_Implementation(AChurch* Church, FVector EffectLocation)
+void AERNPlayerController::Client_CompleteChurchInteraction_Implementation(AChurch* Church)
 {
 	if (Church)
 	{
-		Church->CompleteInteractionLocally(EffectLocation);
+		Church->CompleteInteractionLocally(GetCharacter());
 	}
 }
 

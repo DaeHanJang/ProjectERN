@@ -146,10 +146,24 @@ void AERNPlayerState::Server_ChangeCharacterClass_Implementation(ECharacterType 
 	SpawnParams.Owner = PC;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
+	// 구 캐릭터 장착 해제 및 인벤토리 정리
+	if (AProjectERNCharacter* OldCharacter = Cast<AProjectERNCharacter>(OldPawn))
+	{
+		if (UERNEquipmentComponent* EquipComp = OldCharacter->FindComponentByClass<UERNEquipmentComponent>())
+		{
+			// 장착된 무기가 있다면 인벤토리 복사 전에 먼저 해제
+			EquipComp->Server_UnequipWeapon();
+		}
+	}
+
 	AProjectERNCharacter* NewCharacter = GetWorld()->SpawnActor<AProjectERNCharacter>(
 		NewCharacterClass, Location, Rotation, SpawnParams);
 	if (NewCharacter)
 	{
+		// 직업 변경 시 기존 무기/소모품 스냅샷 초기화 (새 캐릭터가 구 무기를 덮어쓰는 문제 방지)
+		SavedWeaponState = FItemRuntimeState();
+		SavedConsumableState = FItemRuntimeState();
+
 		// Possess
 		PC->Possess(NewCharacter);
 
@@ -163,25 +177,16 @@ void AERNPlayerState::Server_ChangeCharacterClass_Implementation(ECharacterType 
 	{
 		if (UERNInventoryComponent* OldInventory = OldCharacter->GetInventoryComponent())
 		{
-			if (UERNInventoryComponent* NewInventory = NewCharacter->GetInventoryComponent())
+			if (UERNInventoryComponent* NewInventory = NewCharacter ? NewCharacter->GetInventoryComponent() : nullptr)
 			{
 				NewInventory->CopyInventoryFrom(OldInventory);
 			}
 		}
 	}
 	
-	// 기존 캐릭터 파괴 (장착된 무기도 함께 정리)
+	// 기존 캐릭터 파괴
 	if (OldPawn)
 	{
-		// Equipment 컴포넌트가 있다면 무기 먼저 해제
-		if (AProjectERNCharacter* OldCharacter = Cast<AProjectERNCharacter>(OldPawn))
-		{
-			if (UERNEquipmentComponent* EquipComp = OldCharacter->FindComponentByClass<UERNEquipmentComponent>())
-			{
-				// 장착된 무기가 있다면 먼저 해제
-				EquipComp->Server_UnequipWeapon();
-			}
-		}
 		OldPawn->Destroy();
 	}
 }

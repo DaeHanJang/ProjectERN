@@ -212,7 +212,7 @@ public:
 	
 	// 교회 상호작용 후 효과 제거
 	UFUNCTION(Client, Reliable)
-	void Client_CompleteChurchInteraction(AChurch* Church, FVector EffectLocation);
+	void Client_CompleteChurchInteraction(AChurch* Church);
 
 	// 인트로 타이틀 위젯 표시 (타이밍은 위젯 내부 UMG Animation으로 관리)
 	UFUNCTION(Client, Reliable)

@@ -80,6 +80,15 @@ public:
 	virtual FText GetInteractionText_Implementation() const override;
 	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
 
+	virtual void Tick(float DeltaTime) override;
+
+	// 오르락 내리락 애니메이션 설정
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Statue|Animation")
+	float BobSpeed = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Statue|Animation")
+	float BobHeight = 10.0f;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -92,4 +101,7 @@ private:
 	UFUNCTION()
 	void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	float RunningTime = 0.0f;
+	TMap<USceneComponent*, float> ComponentBaseZMap;
 };

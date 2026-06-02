@@ -386,6 +386,7 @@ void AERNEnemyCharacter::SpawnDrops()
 	
 	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
 	{
+		int32 DropIndex = 0;
 		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 		{
 			APlayerController* PC = It->Get();
@@ -393,25 +394,26 @@ void AERNEnemyCharacter::SpawnDrops()
 			{
 				FItemRuntimeState ItemRuntimeState;
 				AActor* Item = nullptr;
+				const FVector DropLocation = GetActorLocation() + FVector::UpVector * 50.0f * ++DropIndex;
 
 				switch (PS->CharacterType)
 				{
 				case ECharacterType::Warrior:
 					if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState, EDropItemType::Sword))
 					{
-						Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), GetActorRotation());
+						Item = ItemManager->SpawnItem(ItemRuntimeState, DropLocation, GetActorForwardVector().Rotation());
 					}
 					break;
 				case ECharacterType::Mage:
 					if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState, EDropItemType::Staff))
 					{
-						Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), GetActorRotation());
+						Item = ItemManager->SpawnItem(ItemRuntimeState, DropLocation, GetActorForwardVector().Rotation());
 					}
 					break;
 				case ECharacterType::Support:
 					if (ItemManager->RollItemFromDropTable(DropTable, ItemRuntimeState, EDropItemType::Polearm))
 					{
-						Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorLocation() + FVector(0.0f, 0.0f, 50.0f), GetActorRotation());
+						Item = ItemManager->SpawnItem(ItemRuntimeState, DropLocation, GetActorForwardVector().Rotation());
 					}
 					break;
 				default:
@@ -427,6 +429,7 @@ void AERNEnemyCharacter::SpawnDrops()
 					Item->bOnlyRelevantToOwner = true;
 					if (AERNItemActor* ERNItem = Cast<AERNItemActor>(Item))
 					{
+						ERNItem->Launch(GetActorForwardVector());
 						ERNItem->UpdateOwnerOnlyVisibility();
 					}
 				}

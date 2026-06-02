@@ -44,7 +44,7 @@ DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin)
 {
 	Super::TryApplyStagger(IncomingStaggerPower, HitOrigin);
-
+	
 	if (!AbilitySystemComponent || !AttributeSet)
 	{
 		return;
@@ -55,13 +55,13 @@ void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVe
 	{
 		return;
 	}
-
+	
 	// 무적이면 카메라 흔들림 무시
 	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Immunity_Damage))
 	{
 		return;
 	}
-
+	
 	// 최소 경직을 위한 데미지 DamageShakeThresholdSmall 이상일 때만 흔들림
 	if (IncomingStaggerPower >= DamageShakeThresholdSmall && HasAuthority())
 	{
@@ -167,21 +167,20 @@ AProjectERNCharacter::AProjectERNCharacter()
 	HeadLightFX->bAutoActivate = false;
 
 	// NightRainZone 자기장 밤의비
-	NightRainPostProcessComponent = CreateDefaultSubobject<
-		UPostProcessComponent>(TEXT("NightRainPostProcessComponent"));
+	NightRainPostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("NightRainPostProcessComponent"));
 	NightRainPostProcessComponent->SetupAttachment(FollowCamera);
 	NightRainPostProcessComponent->bEnabled = true;
 	NightRainPostProcessComponent->bUnbound = true;
 	NightRainPostProcessComponent->BlendWeight = 0.f;
 	NightRainPostProcessComponent->Priority = 100.f;
-
+	
 	// Create LockOn Component
 	LockOnComponent = CreateDefaultSubobject<UERNLockOnComponent>(TEXT("LockOnComponent"));
-
+	
 	// Create LockOn Detection Component
 	LockOnDetector = CreateDefaultSubobject<USphereComponent>(TEXT("LockOnDetector"));
 	LockOnDetector->SetupAttachment(GetRootComponent());
-
+	
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
@@ -189,7 +188,7 @@ AProjectERNCharacter::AProjectERNCharacter()
 
 	// 기본값 설정
 	CharacterType = ECharacterType::Warrior;
-
+	
 	// 캐릭터 겹쳤을 때 카메라 조정 방지
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
@@ -201,14 +200,13 @@ void AProjectERNCharacter::InitStatus()
 	{
 		return;
 	}
-
-	const FERNPlayerStatusTable* Row = StatusCurveTable->FindRow<FERNPlayerStatusTable>(
-		FName("1"), TEXT("StatusCurveContext"));
+	
+	const FERNPlayerStatusTable* Row = StatusCurveTable->FindRow<FERNPlayerStatusTable>(FName("1"), TEXT("StatusCurveContext"));
 	if (!Row)
 	{
 		return;
 	}
-
+	
 	AttributeSet->SetMaxHealth(Row->MaxHealth);
 	AttributeSet->SetHealth(Row->MaxHealth);
 	AttributeSet->SetMaxMana(Row->MaxMana);
@@ -261,7 +259,7 @@ void AProjectERNCharacter::ApplyRunSnapshot()
 
 	AERNPlayerState* PS = GetPlayerState<AERNPlayerState>();
 	UE_LOG(LogTemp, Warning, TEXT("[Snapshot] APPLY called. PS=%s hasSnapshot=%d"),
-	       PS ? *PS->GetPlayerName() : TEXT("NULL"), PS ? PS->bHasSnapshot : 0);
+		PS ? *PS->GetPlayerName() : TEXT("NULL"), PS ? PS->bHasSnapshot : 0);
 
 	if (!PS || !PS->bHasSnapshot)
 	{
@@ -269,7 +267,7 @@ void AProjectERNCharacter::ApplyRunSnapshot()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[Snapshot] APPLY %s: Level=%d Gold=%d InvItems=%d"),
-	       *PS->GetPlayerName(), PS->SavedLevel, PS->SavedGold, PS->SavedInventory.Num());
+		*PS->GetPlayerName(), PS->SavedLevel, PS->SavedGold, PS->SavedInventory.Num());
 
 	// 레벨 기반 스탯 재적용 (+SetLevel) → 그 위에 골드 복원
 	InitStatusForLevel(PS->SavedLevel);
@@ -313,7 +311,7 @@ void AProjectERNCharacter::BeginPlay()
 	{
 		EnterOutOfCombat();
 	}
-
+	
 	if (LockOnComponent && LockOnDetector && FollowCamera)
 	{
 		LockOnComponent->Initialize(LockOnDetector, FollowCamera);
@@ -452,21 +450,19 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 	if (bIsCameraTransitioning && IsLocallyControlled() && FollowCamera && CameraBoom)
 	{
 		const float NewArm = FMath::FInterpTo(CameraBoom->TargetArmLength,
-		                                      CameraTransitionTargetArmLength, DeltaSeconds, CameraInterpSpeed * 20);
+			CameraTransitionTargetArmLength, DeltaSeconds, CameraInterpSpeed * 20);
 		const float NewFOV = FMath::FInterpTo(FollowCamera->FieldOfView,
-		                                      CameraTransitionTargetFOV, DeltaSeconds, CameraInterpSpeed * 20);
+			CameraTransitionTargetFOV, DeltaSeconds, CameraInterpSpeed * 20);
 
 		CameraBoom->TargetArmLength = NewArm;
 		FollowCamera->SetFieldOfView(NewFOV);
 
 		const float ArmRange = CameraTransitionTargetArmLength - CameraTransitionStartArmLength;
 		const float FOVRange = CameraTransitionTargetFOV - CameraTransitionStartFOV;
-		const float ArmProgress = FMath::IsNearlyZero(ArmRange)
-			                          ? 1.f
-			                          : (NewArm - CameraTransitionStartArmLength) / ArmRange;
-		const float FOVProgress = FMath::IsNearlyZero(FOVRange)
-			                          ? 1.f
-			                          : (NewFOV - CameraTransitionStartFOV) / FOVRange;
+		const float ArmProgress = FMath::IsNearlyZero(ArmRange) ? 1.f
+			: (NewArm - CameraTransitionStartArmLength) / ArmRange;
+		const float FOVProgress = FMath::IsNearlyZero(FOVRange) ? 1.f
+			: (NewFOV - CameraTransitionStartFOV) / FOVRange;
 		float Progress = FMath::Min(ArmProgress, FOVProgress);
 
 		// 컨트롤 회전 보간 (부착 시에만 활성 — release 시엔 자유 회전 유지)
@@ -476,19 +472,15 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 			{
 				const FRotator CurRot = Ctrl->GetControlRotation();
 				const FRotator NewRot = FMath::RInterpTo(CurRot,
-				                                         CameraTransitionTargetControlRotation, DeltaSeconds,
-				                                         CameraInterpSpeed * 20);
+					CameraTransitionTargetControlRotation, DeltaSeconds, CameraInterpSpeed * 20);
 				Ctrl->SetControlRotation(NewRot);
 
 				const float StartAngle = CameraTransitionStartControlRotation.Quaternion()
-				                                                             .AngularDistance(
-					                                                             CameraTransitionTargetControlRotation.
-					                                                             Quaternion());
+					.AngularDistance(CameraTransitionTargetControlRotation.Quaternion());
 				const float CurAngle = NewRot.Quaternion()
-				                             .AngularDistance(CameraTransitionTargetControlRotation.Quaternion());
+					.AngularDistance(CameraTransitionTargetControlRotation.Quaternion());
 				const float RotProgress = (StartAngle > KINDA_SMALL_NUMBER)
-					                          ? 1.f - (CurAngle / StartAngle)
-					                          : 1.f;
+					? 1.f - (CurAngle / StartAngle) : 1.f;
 				Progress = FMath::Min(Progress, RotProgress);
 			}
 		}
@@ -566,7 +558,7 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 		{
 			DesiredActorRotation = LockOnComponent->GetDesiredRotationToTarget();
 			DesiredLockOnYaw = DesiredActorRotation.Yaw;
-
+			
 			if (!HasAuthority() && IsLocallyControlled())
 			{
 				Server_UpdateLockOnYaw(DesiredLockOnYaw);
@@ -577,44 +569,49 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 			ApplyLockOnState(false, GetActorRotation());
 			return;
 		}
-
+		
 		// 캐릭터 몸 회전은 질주, 공격 중에는 적용하지 않음
-		if (!bIsSprinting && !bIsAttacking)
+		if (!bIsSprinting)
 		{
 			if (HasAuthority() || IsLocallyControlled())
 			{
 				InterpActorRotation(DeltaSeconds);
 			}
 		}
-
+		
 		// 카메라 락온 타겟 바라보게 유지
 		if (IsLocallyControlled() && bUseCameraYawOnLockOn)
 		{
-			AActor* LockOnTarget = LockOnComponent->GetCurrentTarget();
+			const AActor* LockOnTarget = LockOnComponent->GetCurrentTarget();
 			AController* Ctrl = GetController();
-
+			
 			if (IsValid(LockOnTarget) && Ctrl && FollowCamera)
 			{
-				// 타겟 액터의 중점
-				FVector TargetOrigin;
-				// 타겟 액터의 반 크기
-				FVector TargetExtent;
-				LockOnTarget->GetActorBounds(false, TargetOrigin, TargetExtent);
-
+				const FVector TargetFocusLocation = LockOnTarget->GetActorLocation();
 				const FVector CameraLocation = FollowCamera->GetComponentLocation();
 				// 현재 카메라 위치에서 타겟 액터 중심까지의 방향의 회전값
-				FRotator TargetCameraRotation = (TargetOrigin - CameraLocation).Rotation();
+				FRotator TargetCameraRotation = (TargetFocusLocation - CameraLocation).Rotation();
+				// 가까운 거리에서는 Pitch 갱신 약하게
+				const float Dist2D = FVector::Dist2D(CameraLocation, TargetFocusLocation);
+				if (Dist2D < 300.0f)
+				{
+					TargetCameraRotation.Pitch = Ctrl->GetControlRotation().Pitch;
+				}
+				else
+				{
+					// Pitch 각도 제한
+					TargetCameraRotation.Pitch = FMath::Clamp(TargetCameraRotation.Pitch, -35.0f, 15.0f);
+				}
 				TargetCameraRotation.Roll = 0.0f;
-
+				
 				// 현재 컨트롤러 회전에서 타겟 액터 방향 회전으로 보간
-				const FRotator NewControlRotation = FMath::RInterpTo(Ctrl->GetControlRotation(), TargetCameraRotation,
-				                                                     DeltaSeconds, RotationInterpSpeed);
-
+				const FRotator NewControlRotation = FMath::RInterpTo(Ctrl->GetControlRotation(), TargetCameraRotation, DeltaSeconds, RotationInterpSpeed);
+				
 				// 보간된 회전을 컨트롤러에 적용
 				Ctrl->SetControlRotation(NewControlRotation);
 			}
 		}
-
+		
 		return;
 	}
 
@@ -729,18 +726,18 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 
 	// Flask
 	InputComp->BindNativeInputAction(
-		InputConfig,
-		TAG_Input_Flask,
-		ETriggerEvent::Started,
-		this,
+		InputConfig, 
+		TAG_Input_Flask, 
+		ETriggerEvent::Started, 
+		this, 
 		&AProjectERNCharacter::DrinkFlask);
-
+	
 	// Consumable
 	InputComp->BindNativeInputAction(
-		InputConfig,
-		TAG_Input_Consumable,
-		ETriggerEvent::Started,
-		this,
+		InputConfig, 
+		TAG_Input_Consumable, 
+		ETriggerEvent::Started, 
+		this, 
 		&AProjectERNCharacter::UseConsumable);
 
 	InputComp->BindNativeInputAction(
@@ -749,7 +746,7 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::NormalSkill);
-
+	
 	InputComp->BindNativeInputAction(
 		InputConfig,
 		TAG_Input_UltimateSkill,
@@ -761,7 +758,7 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	if (ToggleLightAction)
 	{
 		InputComp->BindAction(ToggleLightAction, ETriggerEvent::Started,
-		                      this, &AProjectERNCharacter::ToggleLight);
+			this, &AProjectERNCharacter::ToggleLight);
 	}
 }
 
@@ -795,7 +792,7 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 	const bool bIsGettingHit =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Stagger);
-
+	
 	const bool bIsUsingSkill =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_UsingSkill);
@@ -886,7 +883,7 @@ void AProjectERNCharacter::DoLook(float Yaw, float Pitch)
 	{
 		return;
 	}
-
+	
 	if (GetController() != nullptr)
 	{
 		// add yaw and pitch input to controller
@@ -936,13 +933,13 @@ void AProjectERNCharacter::LockOn()
 	{
 		return;
 	}
-
+	
 	const bool bNewLockOn = LockOnComponent->ToggleLockOn();
-
+	
 	const FRotator TargetRotation = bNewLockOn ? LockOnComponent->GetDesiredRotationToTarget() : GetActorRotation();
-
+	
 	ApplyLockOnState(bNewLockOn, TargetRotation);
-
+	
 	if (!HasAuthority())
 	{
 		Server_SetLockOn(bNewLockOn, TargetRotation);
@@ -954,20 +951,18 @@ void AProjectERNCharacter::Server_SetLockOn_Implementation(bool bNewLockOn, FRot
 	if (bNewLockOn)
 	{
 		const bool bServerLocked = LockOnComponent && LockOnComponent->TryLockOn();
-
-		const FRotator ServerRotation = bServerLocked
-			                                ? LockOnComponent->GetDesiredRotationToTarget()
-			                                : GetActorRotation();
-
+		
+		const FRotator ServerRotation = bServerLocked ? LockOnComponent->GetDesiredRotationToTarget() : GetActorRotation();
+		
 		ApplyLockOnState(bServerLocked, ServerRotation);
 		return;
 	}
-
+	
 	if (LockOnComponent)
 	{
 		LockOnComponent->ClearLockOn();
 	}
-
+	
 	ApplyLockOnState(false, TargetRotation);
 }
 
@@ -1443,12 +1438,12 @@ void AProjectERNCharacter::DrinkFlask()
 	{
 		return;
 	}
-
+	
 	if (AttributeSet->GetFlaskQuantity() < 1)
 	{
 		return;
 	}
-
+	
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Flask));
@@ -1461,12 +1456,12 @@ void AProjectERNCharacter::UseConsumable()
 	{
 		return;
 	}
-
+	
 	if (EquipmentComponent->GetCurrentConsumableQuantity() < 1)
 	{
 		return;
 	}
-
+	
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Consumable));
@@ -1737,7 +1732,7 @@ float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
                                        AController* EventInstigator, AActor* DamageCauser)
 {
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-
+	
 	return ActualDamage;
 }
 
@@ -1789,13 +1784,12 @@ void AProjectERNCharacter::InteractionChurch_Implementation() const
 	{
 		return;
 	}
-
+	
 	const int32 NewFlaskQuantity = static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()) + 1;
 	AttributeSet->SetMaxFlaskQuantity(NewFlaskQuantity);
 	AttributeSet->SetFlaskQuantity(NewFlaskQuantity);
-
-	UE_LOG(LogTemp, Warning, TEXT("%s, MaxFlaskQuantity: %d"), *GetNameSafe(this),
-	       static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()));
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s, MaxFlaskQuantity: %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()));
 }
 
 void AProjectERNCharacter::Multicast_PlayWeaponSkillInstantNiagaraEffects_Implementation(
