@@ -99,5 +99,13 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     bool bIsShopActive = true;
 
+    /** 고정 상점 여부 */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    bool bIsFixedShop = false;
+
+    /** 고정 상점 데이터 테이블 (bIsFixedShop이 true일 때만 유효) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop", meta = (EditCondition = "bIsFixedShop"))
+    class UDataTable* FixedShopDataTable = nullptr;
+
 
 };

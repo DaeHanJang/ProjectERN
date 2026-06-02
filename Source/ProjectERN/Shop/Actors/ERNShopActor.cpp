@@ -134,7 +134,15 @@ void AERNShopActor::Interact_Implementation(APlayerController* PlayerController)
 
     // 상점 열기 (자신을 TargetNPC로 전달하여 위임 패턴에 사용)
     UE_LOG(LogShopProvider, Log, TEXT("[ShopActor] 상점 열기 요청: %s"), *ShopDisplayName.ToString());
-    ShopComp->OpenShopRandom(ShopID, ShopType, SlotConfigs, this);
+    
+    if (bIsFixedShop && FixedShopDataTable != nullptr)
+    {
+        ShopComp->OpenShopFixed(ShopID, ShopType, FixedShopDataTable, this);
+    }
+    else
+    {
+        ShopComp->OpenShopRandom(ShopID, ShopType, SlotConfigs, this);
+    }
 }
 
 bool AERNShopActor::CanInteract_Implementation() const

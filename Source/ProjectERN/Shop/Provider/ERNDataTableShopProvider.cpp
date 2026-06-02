@@ -97,6 +97,11 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
                     }
                 }
                 
+                if (It->bIsFree)
+                {
+                    ActualBuyPrice = 0;
+                }
+                
                 ItemData.Price = ActualBuyPrice;
                 ItemData.bIsAvailable = (ItemData.StockCount != 0);
                 ItemData.UniqueID = FGuid::NewGuid();
@@ -143,6 +148,11 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
                         }
                     }
                     
+                    if (Candidates[i].bIsFree)
+                    {
+                        ActualBuyPrice = 0;
+                    }
+                    
                     ItemData.Price = ActualBuyPrice;
                     ItemData.bIsAvailable = (ItemData.StockCount != 0);
                     ItemData.UniqueID = FGuid::NewGuid();
@@ -173,6 +183,81 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
 
         UE_LOG(LogShopProvider, Warning, TEXT("  -> [%d] ItemID: %s | 분류: %s"), i, *Item.ItemID.ToString(), *CategoryStr);
     }
+    UE_LOG(LogShopProvider, Warning, TEXT("====================================="));
+
+    return NewInventory;
+}
+
+FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID, EShopType ShopType, UDataTable* FixedDataTable)
+{
+    FERNShopInventory NewInventory;
+    NewInventory.ShopID = ShopID;
+    NewInventory.ShopType = ShopType;
+
+    if (!FixedDataTable)
+    {
+        UE_LOG(LogShopProvider, Warning, TEXT("GenerateFixedInventory: 고정 상점 데이터 테이블이 유효하지 않습니다."));
+        return NewInventory;
+    }
+
+    TArray<FERNShopProductTable*> AllEntries;
+    FixedDataTable->GetAllRows<FERNShopProductTable>(TEXT("GenerateFixedInventory"), AllEntries);
+
+    UItemManagerSubsystem* ItemMgr = nullptr;
+    if (OwnerObject && OwnerObject->GetWorld())
+    {
+        if (UGameInstance* GI = OwnerObject->GetWorld()->GetGameInstance())
+        {
+            ItemMgr = GI->GetSubsystem<UItemManagerSubsystem>();
+        }
+    }
+
+    for (FERNShopProductTable* Entry : AllEntries)
+    {
+        if (Entry)
+        {
+            FERNShopItemData ItemData;
+            ItemData.ItemID = Entry->ItemID;
+            ItemData.StockCount = Entry->MaxStock;
+            
+            int32 ActualBuyPrice = 0;
+            if (ItemMgr)
+            {
+                if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(ItemData.ItemID))
+                {
+                    ItemData.ItemCategory = ItemRow->ItemType;
+                    for (const FItemShopPrice& ShopPrice : ItemRow->ShopPrices)
+                    {
+                        if (ShopPrice.ShopType == ShopType)
+                        {
+                            ActualBuyPrice = ShopPrice.BuyPrice;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (Entry->bIsFree)
+            {
+                ActualBuyPrice = 0;
+            }
+            
+            ItemData.Price = ActualBuyPrice;
+            ItemData.bIsAvailable = (ItemData.StockCount != 0);
+            ItemData.UniqueID = FGuid::NewGuid();
+
+            NewInventory.Items.Add(ItemData);
+        }
+    }
+
+    // 아이템 정렬 (장비 -> 소모품 순 등)
+    NewInventory.Items.Sort([](const FERNShopItemData& A, const FERNShopItemData& B)
+    {
+        return A.ItemCategory < B.ItemCategory;
+    });
+
+    UE_LOG(LogShopProvider, Warning, TEXT("====================================="));
+    UE_LOG(LogShopProvider, Warning, TEXT("[%s] 고정 상점 생성 완료. 총 %d개 아이템."), *ShopID.ToString(), NewInventory.Items.Num());
     UE_LOG(LogShopProvider, Warning, TEXT("====================================="));
 
     return NewInventory;

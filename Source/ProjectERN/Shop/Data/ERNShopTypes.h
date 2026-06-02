@@ -53,6 +53,10 @@ struct FERNShopProductTable : public FTableRowBase
     // 6. 최소 등장 보장 여부 (true면 랜덤을 무시하고 최우선 배치)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     bool bGuaranteed = false;
+
+    // 7. 무료 제공 여부 (true면 기존 아이템 테이블의 가격을 무시하고 0원에 판매)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    bool bIsFree = false;
 };
 
 /**

@@ -42,6 +42,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Shop")
     void OpenShopRandom(FName RequestShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, AActor* TargetNPC = nullptr);
 
+    /** 고정 데이터 테이블 방식 상점 열기 */
+    UFUNCTION(BlueprintCallable, Category = "Shop")
+    void OpenShopFixed(FName RequestShopID, EShopType ShopType, class UDataTable* FixedDataTable, AActor* TargetNPC = nullptr);
+
     /** 상점 닫기 */
     UFUNCTION(BlueprintCallable, Category = "Shop")
     void CloseShop();
@@ -77,6 +81,10 @@ protected:
     /** 클라이언트 → 서버: 단일 마스터 테이블 기반 상점 생성 및 열기 요청 */
     UFUNCTION(Server, Reliable, Category = "Shop")
     void Server_OpenShopRandom(FName RequestShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, AActor* TargetNPC);
+
+    /** 클라이언트 → 서버: 고정 상점 데이터 기반 상점 열기 요청 */
+    UFUNCTION(Server, Reliable, Category = "Shop")
+    void Server_OpenShopFixed(FName RequestShopID, EShopType ShopType, class UDataTable* FixedDataTable, AActor* TargetNPC);
 
     /** 클라이언트 → 서버: 구매 요청 (안전한 파라미터) */
     UFUNCTION(Server, Reliable, Category = "Shop")

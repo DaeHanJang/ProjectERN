@@ -84,6 +84,19 @@ void UERNShopComponent::OpenShopRandom(FName RequestShopID, EShopType ShopType, 
     Server_OpenShopRandom(RequestShopID, ShopType, SlotConfigs, TargetNPC);
 }
 
+void UERNShopComponent::OpenShopFixed(FName RequestShopID, EShopType ShopType, UDataTable* FixedDataTable, AActor* TargetNPC)
+{
+    CurrentShopID = RequestShopID;
+    CurrentShopType = ShopType;
+    CurrentTargetNPC = TargetNPC;
+    bIsShopOpen = true;
+
+    UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] 고정 상점 열기: %s (Authority: %s)"),
+        *RequestShopID.ToString(), GetOwner()->HasAuthority() ? TEXT("Server") : TEXT("Client"));
+
+    Server_OpenShopFixed(RequestShopID, ShopType, FixedDataTable, TargetNPC);
+}
+
 void UERNShopComponent::OpenShop(EShopType ShopType, AActor* TargetNPC)
 {
     CurrentShopType = ShopType;
@@ -141,6 +154,34 @@ void UERNShopComponent::Server_OpenShopRandom_Implementation(FName RequestShopID
             else
             {
                 InventoryData = DTProvider->GenerateRandomInventory(RequestShopID, ShopType, SlotConfigs);
+                DTProvider->CachedShopData.Add(RequestShopID, InventoryData);
+            }
+
+            Client_ReceiveShopData(InventoryData);
+        }
+    }
+}
+
+void UERNShopComponent::Server_OpenShopFixed_Implementation(FName RequestShopID, EShopType ShopType, UDataTable* FixedDataTable, AActor* TargetNPC)
+{
+    CurrentShopID = RequestShopID;
+    CurrentShopType = ShopType;
+    CurrentTargetNPC = TargetNPC;
+    bIsShopOpen = true;
+
+    if (DataProvider)
+    {
+        if (UERNDataTableShopProvider* DTProvider = Cast<UERNDataTableShopProvider>(Cast<UObject>(DataProvider)))
+        {
+            FERNShopInventory InventoryData;
+
+            if (DTProvider->CachedShopData.Contains(RequestShopID))
+            {
+                InventoryData = DTProvider->CachedShopData[RequestShopID];
+            }
+            else
+            {
+                InventoryData = DTProvider->GenerateFixedInventory(RequestShopID, ShopType, FixedDataTable);
                 DTProvider->CachedShopData.Add(RequestShopID, InventoryData);
             }
 
