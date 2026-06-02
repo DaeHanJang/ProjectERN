@@ -218,7 +218,7 @@ void AProjectERNCharacter::InitStatus()
 	AttributeSet->SetAttackPower(Row->AttackPower);
 	AttributeSet->SetDefense(Row->Defense);
 	AttributeSet->SetStaggerResistance(Row->StaggerResistance);
-	AttributeSet->SetMoveSpeed(Row->MoveSpeed);
+	AttributeSet->SetDownResistance(Row->DownResistance);
 }
 
 void AProjectERNCharacter::InitStatusForLevel(int32 Level)
@@ -246,7 +246,7 @@ void AProjectERNCharacter::InitStatusForLevel(int32 Level)
 	AttributeSet->SetAttackPower(Row->AttackPower);
 	AttributeSet->SetDefense(Row->Defense);
 	AttributeSet->SetStaggerResistance(Row->StaggerResistance);
-	AttributeSet->SetMoveSpeed(Row->MoveSpeed);
+	AttributeSet->SetDownResistance(Row->DownResistance);
 	AttributeSet->SetLevel(Level);
 }
 
