@@ -15,49 +15,8 @@ AMiddleBossSpawner::AMiddleBossSpawner()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-// Called when the game starts or when spawned
-void AMiddleBossSpawner::BeginPlay()
+void AMiddleBossSpawner::SpawnMob()
 {
-	Super::BeginPlay();
-
-	GetWorldTimerManager().SetTimerForNextTick(
-		this,
-		&AMiddleBossSpawner::BindNightRainManager
-	);
-	
-}
-
-// Called every frame
-void AMiddleBossSpawner::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-
-void AMiddleBossSpawner::BindNightRainManager()
-{
-	for (TActorIterator<ANightRainZoneManager> It(GetWorld()); It; ++It)
-	{
-		ANightRainZoneManager* Manager = *It;
-		if (!IsValid(Manager))
-		{
-			continue;
-		}
-
-		BoundNightRainManager = Manager;
-
-		Manager->OnZoneShrinkFinished.AddUObject(this, &AMiddleBossSpawner::SpawnMob);
-		
-		return;
-	}
-}
-
-void AMiddleBossSpawner::SpawnMob(float ZonePhase)
-{
-	if (ZonePhase != 2)
-	{
-		return;
-	}
-	
 	if (EnemyClass == nullptr)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("AMiddleBossSpawner:: EnemyClass is nullptr"));
