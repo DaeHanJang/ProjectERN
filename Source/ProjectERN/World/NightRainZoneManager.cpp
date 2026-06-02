@@ -262,6 +262,9 @@ void ANightRainZoneManager::HandlePhaseFinished()
 	// 자기장 수렴 완료 이벤트 전파
 	BroadcastZoneShrinkFinished();
 	
+	// 현재 수렴 포인트가 처리할 이벤트가 있다면 실행
+	CurrentCenterPoint->HandleZoneShrinkFinished();
+	
 	// 자기장 수렴 후 대기
 	FreezeCurrentZoneState();
 	
@@ -617,15 +620,15 @@ void ANightRainZoneManager::StartNextShrinkPhase()
 		return;
 	}
 
-	ANightRainZoneCenterPoint* NextCenterPoint = ChooseNextZoneCenter(ZoneState.PhaseIndex);
-	if (NextCenterPoint == nullptr)
+	CurrentCenterPoint = ChooseNextZoneCenter(ZoneState.PhaseIndex);
+	if (CurrentCenterPoint == nullptr)
 	{
 		return;
 	}
 
 	const FNightRainZonePhaseConfig& NextPhaseConfig = ZoneConfig->PhaseConfigs[NextPhaseIndex];
 
-	StartPhase(NextPhaseConfig, NextCenterPoint->GetActorLocation());
+	StartPhase(NextPhaseConfig, CurrentCenterPoint->GetActorLocation());
 }
 
 void ANightRainZoneManager::FreezeCurrentZoneState()

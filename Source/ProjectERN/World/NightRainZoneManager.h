@@ -145,8 +145,13 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Night Rain Zone|Visual", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UNightRainZoneVisualComponent> VisualComponent;
 	
+	// 자기장 중심 포인트 후보
 	UPROPERTY()
 	TArray<ANightRainZoneCenterPoint*> CachedZoneCenterPoints;
+	
+	// 현재 사용중인 자기장 중심 포인트
+	UPROPERTY()
+	TObjectPtr<ANightRainZoneCenterPoint> CurrentCenterPoint;
 	
 	FTimerHandle InCircleCheckTimerHandle;
 	

@@ -7,7 +7,6 @@
 #include "MiddleBossSpawner.generated.h"
 
 class AERNEnemyCharacter;
-class ANightRainZoneManager;
 
 UCLASS()
 class PROJECTERN_API AMiddleBossSpawner : public AActor
@@ -17,25 +16,11 @@ class PROJECTERN_API AMiddleBossSpawner : public AActor
 public:
 	// Sets default values for this actor's properties
 	AMiddleBossSpawner();
-	
 
-	
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-	void BindNightRainManager();
-	
 	UFUNCTION()
-	void SpawnMob(float ZonePhase);
-	
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-	
+	void SpawnMob();
+
 private:
-	UPROPERTY()
-	TObjectPtr<ANightRainZoneManager> BoundNightRainManager;
-	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (AllowPrivateAccess = true))
 	TSubclassOf<AERNEnemyCharacter> EnemyClass;
 };
