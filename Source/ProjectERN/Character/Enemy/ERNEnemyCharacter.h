@@ -141,6 +141,14 @@ public:
 	// 드롭 테이블
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
 	TObjectPtr<UDataTable> DropTable;
+
+	// 사망 시 인스턴스 포탈 스폰 확률 (0~1, 몬스터별 설정). 0이면 스폰 안 함
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "InstancePortal", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float InstancePortalSpawnChance = 0.f;
+
+	// 스폰할 인스턴스 포탈 클래스 (몬스터별로 다른 던전 포탈 지정 가능)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "InstancePortal")
+	TSubclassOf<class AERNInstancePortal> InstancePortalClass;
 	
 	// 보상 골드
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
@@ -223,6 +231,9 @@ protected:
 	// 골드 드롭
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
 	virtual void SpawnGold();
+
+	// 확률 판정 후 빈 도착 지점이 있으면 인스턴스 포탈 스폰 (서버 권위)
+	void TrySpawnInstancePortal();
 
 private:
 	UFUNCTION()

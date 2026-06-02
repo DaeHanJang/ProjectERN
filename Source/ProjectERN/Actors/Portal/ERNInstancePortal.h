@@ -8,6 +8,7 @@
 #include "ERNInstancePortal.generated.h"
 
 class ANightRainZoneManager;
+class AERNPortalDestinationPoint;
 class USceneComponent;
 class UStaticMeshComponent;
 class USphereComponent;
@@ -26,6 +27,9 @@ class PROJECTERN_API AERNInstancePortal : public AActor, public IInteractable
 
 public:
 	AERNInstancePortal();
+
+	// 동적 스폰 시 도착 지점 주입 (적 사망 스폰 경로에서 호출)
+	void SetDestinationPoint(AERNPortalDestinationPoint* InDestinationPoint);
 
 	// IInteractable
 	virtual void Interact_Implementation(APlayerController* PlayerController) override;
@@ -77,8 +81,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal|Chat")
 	FString ChatSender = TEXT("System");
 
+	// 던전 입장 시 채팅 메시지 (bIsInInstance == false 인 상태에서 탑승)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal|Chat")
-	FString ChatMessage;
+	FString EnterChatMessage;
+
+	// 던전 복귀 시 채팅 메시지 (bIsInInstance == true 인 상태에서 탑승)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal|Chat")
+	FString ReturnChatMessage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal|Chat")
 	FLinearColor ChatColor = FLinearColor::White;
@@ -95,9 +104,12 @@ private:
 	// PlayerIndex번째 플레이어의 도착 트랜스폼 계산
 	FTransform ResolveDestination(int32 PlayerIndex) const;
 
-	// 전원에게 채팅 시스템 메시지 전송 (서버)
-	void BroadcastPortalChat() const;
-	
+	// 전원에게 채팅 시스템 메시지 전송 (서버) — 입장/복귀에 따라 다른 문구
+	void BroadcastPortalChat(bool bEntering) const;
+
+	// ZoneManager 참조 확보 (에디터 배치 참조가 없으면 런타임에 월드에서 탐색하여 캐싱)
+	ANightRainZoneManager* ResolveNightRainZoneManager();
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NightRainZoneManager", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<ANightRainZoneManager> NightRainZoneManager;
 };

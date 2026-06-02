@@ -39,6 +39,9 @@ void AERNPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AERNPlayerState, SavedConsumableState);
 	DOREPLIFETIME(AERNPlayerState, KillCount);
 	DOREPLIFETIME(AERNPlayerState, TotalDamageDealt);
+
+	DOREPLIFETIME(AERNPlayerState, bIsInInstance);
+	DOREPLIFETIME(AERNPlayerState, SavedFieldTransform);
 }
 
 void AERNPlayerState::CopyProperties(APlayerState* PlayerState)

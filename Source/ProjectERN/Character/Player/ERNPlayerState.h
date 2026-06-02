@@ -134,6 +134,15 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Result") int32 KillCount = 0;
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Result") float TotalDamageDealt = 0.f;
 
+	// ===== 인스턴스 포탈 =====
+	// 인스턴스 던전 안에 있는지 여부 (필드=false 기본, 포탈 사용 시 토글). 상태 주인은 PlayerState로 통일
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "InstancePortal")
+	bool bIsInInstance = false;
+
+	// 인스턴스 입장 직전 필드 위치 (복귀 포탈에서 이 위치로 순간이동)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "InstancePortal")
+	FTransform SavedFieldTransform;
+
 	// 서버: Pawn → PlayerState 스냅샷 저장 (필드→보스 travel 직전, 게임 종료 시)
 	void SaveSnapshotFromPawn();
 
