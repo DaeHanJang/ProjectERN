@@ -16,6 +16,8 @@
 #include "Character/Player/ERNPlayerState.h"
 #include "Core/ERNGameState.h"
 #include "World/NightRainZoneManager.h"
+#include "Actors/Portal/ERNPortalDestinationPoint.h"
+#include "EngineUtils.h"
 
 AERNInstancePortal::AERNInstancePortal()
 {
@@ -54,6 +56,18 @@ void AERNInstancePortal::BeginPlay()
 	InteractionSphere->OnComponentEndOverlap.AddUniqueDynamic(this, &AERNInstancePortal::OnSphereEndOverlap);
 }
 
+void AERNInstancePortal::SetDestinationPoint(AERNPortalDestinationPoint* InDestinationPoint)
+{
+	if (!HasAuthority() || InDestinationPoint == nullptr)
+	{
+		return;
+	}
+
+	// 동적 스폰 포탈은 단일 도착 지점을 사용 (전원은 ResolveDestination의 분산 로직으로 흩어짐)
+	DestinationPoints.Reset();
+	DestinationPoints.Add(InDestinationPoint);
+}
+
 void AERNInstancePortal::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	if (InteractionSphere)
@@ -89,8 +103,15 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 		return;
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("[InstancePortal] PlayerArray=%d, DestPoints=%d"),
-		GS->PlayerArray.Num(), DestinationPoints.Num());
+	// 전원 함께 이동하므로 누른 플레이어의 상태로 입장/복귀를 일괄 판정 (엇갈림 방지)
+	bool bEntering = true;
+	if (const AERNPlayerState* InteractorPS = PlayerController ? PlayerController->GetPlayerState<AERNPlayerState>() : nullptr)
+	{
+		bEntering = (InteractorPS->bIsInInstance == false);
+	}
+
+	// 동적 스폰 포탈은 에디터 참조가 없으므로 런타임에 확보
+	ANightRainZoneManager* ZoneManager = ResolveNightRainZoneManager();
 
 	// 한 명이 눌러도 전원 이동
 	int32 Index = 0;
@@ -99,56 +120,64 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 		APawn* Pawn = PS ? PS->GetPawn() : nullptr;
 		if (!Pawn)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[InstancePortal] PS=%s Pawn is null"), *GetNameSafe(PS));
 			continue;
 		}
 
-		const FTransform Dest = ResolveDestination(Index++);
-
-		UE_LOG(LogTemp, Warning, TEXT("[InstancePortal] %s : %s -> %s"),
-			*Pawn->GetName(), *Pawn->GetActorLocation().ToString(), *Dest.GetLocation().ToString());
-
-		// 서버에서 옮기면 RepMovement로 모든 클라에 복제
-		const bool bMoved = Pawn->SetActorLocationAndRotation(Dest.GetLocation(), Dest.GetRotation(),
-			false, nullptr, ETeleportType::TeleportPhysics);
-
-		UE_LOG(LogTemp, Warning, TEXT("[InstancePortal] %s bMoved=%d, after=%s"),
-			*Pawn->GetName(), bMoved, *Pawn->GetActorLocation().ToString());
-
-		if (AController* C = Pawn->GetController())
-		{
-			C->SetControlRotation(Dest.GetRotation().Rotator());
-		}
-		
-		// TODO: 자기장/낮밤 Pause(던전 입장) / Resume(필드 복귀) 연동
 		AERNPlayerState* ERNPlayerState = Cast<AERNPlayerState>(PS);
 		if (ERNPlayerState == nullptr)
 		{
 			continue;
 		}
-		
-		// 던전 입장
-		if (true)
+
+		FTransform Dest;
+		if (bEntering)
+		{
+			// 입장 — 현재 필드 위치를 각자 저장한 뒤 도착 지점으로 이동
+			ERNPlayerState->SavedFieldTransform = Pawn->GetActorTransform();
+			Dest = ResolveDestination(Index++);
+		}
+		else
+		{
+			// 복귀 — 저장해둔 필드 위치로 순간이동 (저장하지 않음)
+			Dest = ERNPlayerState->SavedFieldTransform;
+		}
+
+		// 서버에서 옮기면 RepMovement로 모든 클라에 복제
+		Pawn->SetActorLocationAndRotation(Dest.GetLocation(), Dest.GetRotation(),
+			false, nullptr, ETeleportType::TeleportPhysics);
+
+		if (AController* C = Pawn->GetController())
+		{
+			C->SetControlRotation(Dest.GetRotation().Rotator());
+		}
+
+		// 상태 토글 + 입장 인원 카운트 갱신 (자기장 Pause 판단용)
+		ERNPlayerState->bIsInInstance = bEntering;
+		if (bEntering)
 		{
 			GS->AddInstancePortalState(ERNPlayerState);
-			if (NightRainZoneManager->bIsPauseZone() == false)
-			{
-				NightRainZoneManager->PauseZoneProgress_ServerOnly();
-			}
 		}
-		// 필드 복귀
 		else
 		{
 			GS->RemoveInstancePortalState(ERNPlayerState);
-			if (NightRainZoneManager->bIsPauseZone() == true)
-			{
-				NightRainZoneManager->ResumeZoneProgress_ServerOnly();
-			}
 		}
 	}
 
-	// 포탈별 채팅 알림 (입장/탈출 등)
-	BroadcastPortalChat();
+	// 자기장 진행 Pause(입장) / Resume(복귀) — 전원 처리 후 한 번만
+	if (ZoneManager)
+	{
+		if (bEntering && ZoneManager->bIsPauseZone() == false)
+		{
+			ZoneManager->PauseZoneProgress_ServerOnly();
+		}
+		else if (!bEntering && ZoneManager->bIsPauseZone() == true)
+		{
+			ZoneManager->ResumeZoneProgress_ServerOnly();
+		}
+	}
+
+	// 포탈별 채팅 알림 (입장/복귀에 따라 다른 문구)
+	BroadcastPortalChat(bEntering);
 	
 	if (!bIsreusable)
 	{
@@ -199,9 +228,38 @@ FTransform AERNInstancePortal::ResolveDestination(int32 PlayerIndex) const
 	return Base;
 }
 
-void AERNInstancePortal::BroadcastPortalChat() const
+ANightRainZoneManager* AERNInstancePortal::ResolveNightRainZoneManager()
 {
-	if (ChatMessage.IsEmpty())
+	// 에디터에서 배치된 참조가 있으면 그대로 사용
+	if (IsValid(NightRainZoneManager))
+	{
+		return NightRainZoneManager;
+	}
+
+	// 동적 스폰 포탈 등 참조가 비어있으면 월드에서 탐색하여 캐싱
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return nullptr;
+	}
+
+	for (TActorIterator<ANightRainZoneManager> It(World); It; ++It)
+	{
+		if (IsValid(*It))
+		{
+			NightRainZoneManager = *It;
+			return NightRainZoneManager;
+		}
+	}
+
+	return nullptr;
+}
+
+void AERNInstancePortal::BroadcastPortalChat(bool bEntering) const
+{
+	// 입장/복귀에 따라 다른 문구 선택
+	const FString& Message = bEntering ? EnterChatMessage : ReturnChatMessage;
+	if (Message.IsEmpty())
 	{
 		return;
 	}
@@ -216,7 +274,7 @@ void AERNInstancePortal::BroadcastPortalChat() const
 	{
 		if (AERNPlayerController* PC = Cast<AERNPlayerController>(It->Get()))
 		{
-			PC->Client_ReceiveChat(ChatSender, ChatMessage, ChatColor);
+			PC->Client_ReceiveChat(ChatSender, Message, ChatColor);
 		}
 	}
 }

@@ -22,6 +22,9 @@
 #include "Inventory/Item/ERNItemActor.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISense_Sight.h"
+#include "EngineUtils.h"
+#include "Actors/Portal/ERNInstancePortal.h"
+#include "Actors/Portal/ERNPortalDestinationPoint.h"
 
 AERNEnemyCharacter::AERNEnemyCharacter()
 {
@@ -364,6 +367,9 @@ void AERNEnemyCharacter::OnDeath()
 			// 아이템 드롭
 			SpawnDrops();
 
+			// 인스턴스 포탈 스폰 (확률 + 빈 지점 있을 때만)
+			TrySpawnInstancePortal();
+
 			// 액터 제거
 			Destroy();
 		}, CleanupDelay, false);
@@ -460,4 +466,66 @@ void AERNEnemyCharacter::SpawnGold()
 		
 		PlayerCharacter->AddGold(RewordGold);
 	}
+}
+
+void AERNEnemyCharacter::TrySpawnInstancePortal()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 확률/클래스 미설정 시 스폰 안 함
+	if (InstancePortalClass == nullptr || InstancePortalSpawnChance <= 0.f)
+	{
+		return;
+	}
+
+	// 몬스터별 확률 판정
+	if (FMath::FRand() > InstancePortalSpawnChance)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	// 빈 도착 지점 후보 수집 (NightRainZoneManager::CollectZoneCenter 와 동일하게 TActorIterator 사용)
+	TArray<AERNPortalDestinationPoint*> Candidates;
+	for (TActorIterator<AERNPortalDestinationPoint> It(World); It; ++It)
+	{
+		AERNPortalDestinationPoint* Point = *It;
+		if (IsValid(Point) && Point->bIsUsed == false)
+		{
+			Candidates.Add(Point);
+		}
+	}
+
+	// 빈 지점이 없으면 애초에 스폰하지 않음 (생겼다 Destroy 되는 깜빡임 방지)
+	if (Candidates.Num() == 0)
+	{
+		return;
+	}
+
+	// 후보 중 랜덤 선택 → 일회용이므로 즉시 점유 (반납 없음)
+	AERNPortalDestinationPoint* ChosenPoint = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
+	ChosenPoint->bIsUsed = true;
+
+	// 포탈은 적이 죽은 자리에 스폰
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	AERNInstancePortal* Portal = World->SpawnActor<AERNInstancePortal>(
+		InstancePortalClass, GetActorLocation(), GetActorRotation(), SpawnParams);
+
+	if (Portal == nullptr)
+	{
+		return;
+	}
+
+	// 선택된 지점을 포탈의 도착 지점으로 주입
+	Portal->SetDestinationPoint(ChosenPoint);
 }
