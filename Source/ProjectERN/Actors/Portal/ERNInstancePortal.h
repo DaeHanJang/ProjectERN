@@ -7,6 +7,7 @@
 #include "Interfaces/IInteractable.h"
 #include "ERNInstancePortal.generated.h"
 
+class ANightRainZoneManager;
 class USceneComponent;
 class UStaticMeshComponent;
 class USphereComponent;
@@ -96,4 +97,7 @@ private:
 
 	// 전원에게 채팅 시스템 메시지 전송 (서버)
 	void BroadcastPortalChat() const;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NightRainZoneManager", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<ANightRainZoneManager> NightRainZoneManager;
 };

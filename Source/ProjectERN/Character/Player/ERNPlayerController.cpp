@@ -845,6 +845,12 @@ void AERNPlayerController::UpdateNightRainPostProcessState_ServerOnly(bool bShou
 		return;
 	}
 	
+	// 자기장 무시 상태라면 판정 생략
+	if (bIgnoreNightRainZone_Server)
+	{
+		bShouldEnable = false;
+	}
+	
 	if (bServerNightRainPostProcessEnabled == bShouldEnable)
 	{
 		return;
@@ -852,6 +858,27 @@ void AERNPlayerController::UpdateNightRainPostProcessState_ServerOnly(bool bShou
 	
 	bServerNightRainPostProcessEnabled = bShouldEnable;
 	Client_SetNightRainZonePostProcessEnabled(bShouldEnable);
+}
+
+void AERNPlayerController::SetIgnoreNightRainZone_ServerOnly(bool bIgnore)
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	// UpdateNightRainPostProcessState_ServerOnly 를 여러번 호출하지 않도록 중복 호출 방지
+	if (bIgnoreNightRainZone_Server == bIgnore)
+	{
+		return;
+	}
+	
+	bIgnoreNightRainZone_Server = bIgnore;
+	
+	if (bIgnoreNightRainZone_Server)
+	{
+		UpdateNightRainPostProcessState_ServerOnly(false);
+	}
 }
 
 // 클라이언트 : 자기 로컬 화면만 변경

@@ -171,6 +171,32 @@ void AERNGameState::OnRep_DayNightCycleState()
 	OnDayNightCycleStateChanged.Broadcast(DayNightCycleState);
 }
 
+void AERNGameState::AddInstancePortalState(AERNPlayerState* PlayerState)
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	if (IsValid(PlayerState))
+	{
+		InstancePortalInPlayer.Add(PlayerState);
+	}
+}
+
+void AERNGameState::RemoveInstancePortalState(AERNPlayerState* PlayerState)
+{
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	if (IsValid(PlayerState))
+	{
+		InstancePortalInPlayer.Remove(PlayerState);
+	}
+}
+
 void AERNGameState::CheckAllPlayersReady()
 {
 	// 서버에서만 실행
