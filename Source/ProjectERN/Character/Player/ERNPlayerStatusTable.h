@@ -20,7 +20,7 @@ public:
 	
 	// 비용
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 Cost = 1000;
+	int32 Cost = 0;
 	
 	// 최대 체력
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -40,22 +40,22 @@ public:
 	
 	// 스태미나 재생
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float StaminaRegenRate = 0.03f;
+	float StaminaRegenRate = 0.01f;
 	
 	// 공격력
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float AttackPower = 10.0f;
+	float AttackPower = 5.0f;
 	
 	// 방어력
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float Defense = 5.0f;
-	
-	// 이동 속도
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float MoveSpeed = 600.0f;
+	float Defense = 0.0f;
 	
 	// 강인도
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float StaggerResistance = 10.0f;
+	float StaggerResistance = 0.0f;
+	
+	// 강인도(녹 다운)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DownResistance = 0.0f;
 	
 };
