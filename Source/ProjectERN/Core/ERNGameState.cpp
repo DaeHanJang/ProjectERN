@@ -508,8 +508,22 @@ void AERNGameState::ReturnToLobbyNow()
 		}
 	}
 
+	// 전원에게 로딩화면 표시 (ServerTravel은 다음 틱에 이동하므로 multicast가 먼저 전달됨)
+	Multicast_ShowLoadingScreen();
+
 	if (UWorld* World = GetWorld())
 	{
 		World->ServerTravel(LobbyMapName + TEXT("?listen"));
+	}
+}
+
+void AERNGameState::Multicast_ShowLoadingScreen_Implementation()
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UERNCutsceneSubsystem* CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>())
+		{
+			CutsceneSubsystem->ShowLoadingScreen();
+		}
 	}
 }
