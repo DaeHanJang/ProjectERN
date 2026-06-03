@@ -4,7 +4,7 @@
 #include "World/NightRainZoneManager.h"
 
 #include "EngineUtils.h"
-#include "IDetailTreeNode.h"
+//#include "IDetailTreeNode.h"
 #include "NiagaraComponent.h"
 #include "NightRainZoneCenterPoint.h"
 #include "NightRainZoneVisualComponent.h"

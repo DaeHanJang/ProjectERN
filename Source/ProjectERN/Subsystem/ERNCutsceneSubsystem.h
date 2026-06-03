@@ -110,6 +110,24 @@ protected:
 	void PlayCutsceneInternal(ULevelSequence* Sequence, bool bDisablePlayerInput, bool bBindPlayers);
 
 private:
+	// ===== 에셋 웜업 (PSO/메시 히칭 완화) =====
+
+	// 로딩 화면 동안 카메라 앞에 모든 아이템을 잠깐 spawn하여 메시/PSO를 미리 컴파일
+	// PostLoadMap 직후엔 카메라가 아직 폰으로 블렌드되기 전(원점)이라 컬링되므로,
+	// 카메라/폰이 준비될 때까지 짧은 간격으로 재시도한 뒤 실제 시야 앞에 스폰
+	void WarmUpFieldItems();
+
+	// 웜업용으로 spawn한 임시 아이템 액터 일괄 제거 (몇 프레임 렌더 후 호출)
+	void CleanupWarmUpActors();
+
+	// 웜업용으로 spawn한 임시 아이템 액터들
+	UPROPERTY()
+	TArray<TObjectPtr<AActor>> WarmUpActors;
+
+	// 카메라/폰 준비를 기다리는 재시도 횟수 (0.1초 간격, 최대 WarmUpMaxRetries회)
+	int32 WarmUpRetryCount = 0;
+	static constexpr int32 WarmUpMaxRetries = 50;
+
 	// ===== 로딩 화면 =====
 
 	// 로딩 위젯 생성 + 뷰포트 부착 (이미 부착되어 있으면 no-op)

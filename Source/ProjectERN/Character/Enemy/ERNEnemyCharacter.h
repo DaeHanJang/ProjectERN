@@ -152,7 +152,7 @@ public:
 	
 	// 보상 골드
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")
-	int32 BasicRewordGold = 100;
+	int32 BasicRewordGold = 1000;
 
 	// 골드 편차
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drops")

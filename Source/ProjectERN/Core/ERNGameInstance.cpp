@@ -7,6 +7,7 @@
 #include "Online/OnlineSessionNames.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Kismet/GameplayStatics.h"
+#include "Subsystem/ERNCutsceneSubsystem.h"
 #include "Shop/Provider/ERNDummyShopProvider.h"
 #include "Shop/Provider/ERNNetworkShopProvider.h"
 #include "Shop/Provider/ERNDataTableShopProvider.h"
@@ -91,6 +92,12 @@ void UERNGameInstance::OnCreateSessionComplete(FName SessionName, bool bWasSucce
 		// ServerTravel은 기존 NetDriver가 있을 때만 ?listen이 유효함
 		if (GetWorld())
 		{
+			// 로비 진입 로딩화면 (호스트) — OpenLevel 로드 동안 화면 가림
+			if (UERNCutsceneSubsystem* CutsceneSubsystem = GetSubsystem<UERNCutsceneSubsystem>())
+			{
+				CutsceneSubsystem->ShowLoadingScreen();
+			}
+
 			UGameplayStatics::OpenLevel(GetWorld(),
 				FName(TEXT("/Game/Assets/Maps/Map_Lobby")),
 				true,
@@ -236,6 +243,12 @@ void UERNGameInstance::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCo
 			APlayerController* PC = GetWorld()->GetFirstPlayerController();
 			if (PC)
 			{
+				// 로비 진입 로딩화면 (클라) — ClientTravel 연결/로드 동안 화면 가림
+				if (UERNCutsceneSubsystem* CutsceneSubsystem = GetSubsystem<UERNCutsceneSubsystem>())
+				{
+					CutsceneSubsystem->ShowLoadingScreen();
+				}
+
 				PC->ClientTravel(ConnectInfo, TRAVEL_Absolute);
 			}
 		}
