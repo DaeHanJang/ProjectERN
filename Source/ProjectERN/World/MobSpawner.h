@@ -28,6 +28,16 @@ public:
 	FName GetMobSpawnerID() const { return MobSpawnerID; }
 	void SetMobSpawnerID(const FName NewID) { MobSpawnerID = NewID; }
 	
+	// 근처의 PatrolPoint 수집
+	UFUNCTION(BlueprintCallable, CallInEditor, Category="Patrol")
+	void CollectPatrolPoints();
+	
+	UFUNCTION(BlueprintCallable, CallInEditor, Category="Patrol")
+	void ClearPatrolPoints();
+	
+	UFUNCTION(BlueprintCallable, CallInEditor, Category="Patrol")
+	void EnsureMobSpawnerID();
+	
 private:
 	UPROPERTY(EditAnywhere)
 	FName MobSpawnerID;

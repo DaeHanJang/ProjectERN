@@ -4,9 +4,11 @@
 #include "World/MobSpawner.h"
 
 #include "ERNWorldManagerSubsystem.h"
+#include "MobPatrolPoint.h"
 #include "MobSpawnPointComponent.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "GAS/ERNAttributeSet.h"
+#include "Kismet/GameplayStatics.h"
 #include "World/Data/MobRuntimeState.h"
 
 // Sets default values
@@ -85,6 +87,71 @@ void AMobSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 	
 	Super::EndPlay(EndPlayReason);
+}
+
+void AMobSpawner::CollectPatrolPoints()
+{
+	EnsureMobSpawnerID();
+	Modify();
+	
+	PatrolTargetPoints.Empty();
+	
+	// 자식 엑터 중에서 부착된 포인트 수집, 연결
+	TArray<AActor*> AttachedActors;
+	GetAttachedActors(AttachedActors, true, true);
+	
+	for (AActor* Actor : AttachedActors)
+	{
+		AMobPatrolPoint* Point = Cast<AMobPatrolPoint>(Actor);
+		if (Point == nullptr)
+		{
+			continue;
+		}
+		
+		Point->Modify();
+		Point->OwningSpawnerID = MobSpawnerID;
+		Point->OwningSpawner = this;
+		PatrolTargetPoints.AddUnique(Point);
+	}
+	
+	// 부착되지 않은 연결된 엑터 수집
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+	
+	TArray<AActor*> FoundActors;
+	UGameplayStatics::GetAllActorsOfClass(World, AMobPatrolPoint::StaticClass(), FoundActors);
+	
+	for (AActor* Actor : FoundActors)
+	{
+		// 본인 소속이 아니라면 생략. 소속은 PCG에서 생성될 때 자동으로 할당됨
+		AMobPatrolPoint* PatrolPoint = Cast<AMobPatrolPoint>(Actor);
+		if (PatrolPoint == nullptr || PatrolPoint->OwningSpawner != this)
+		{
+			continue;
+		}
+		
+		PatrolTargetPoints.AddUnique(PatrolPoint);
+	}
+}
+
+void AMobSpawner::ClearPatrolPoints()
+{
+	Modify();
+	PatrolTargetPoints.Empty();
+}
+
+void AMobSpawner::EnsureMobSpawnerID()
+{
+	if (MobSpawnerID.IsNone() == false)
+	{
+		return;
+	}
+	
+	//몹 스포너 ID 비어 있으면 할당
+	Modify();
 }
 
 void AMobSpawner::SpawnInitialMobs()
