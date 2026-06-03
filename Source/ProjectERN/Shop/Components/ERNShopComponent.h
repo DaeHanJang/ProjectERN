@@ -44,7 +44,7 @@ public:
 
     /** 고정 데이터 테이블 방식 상점 열기 */
     UFUNCTION(BlueprintCallable, Category = "Shop")
-    void OpenShopFixed(FName RequestShopID, EShopType ShopType, class UDataTable* FixedDataTable, AActor* TargetNPC = nullptr);
+    void OpenShopFixed(FName RequestShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, class UDataTable* FixedDataTable, AActor* TargetNPC = nullptr);
 
     /** 상점 닫기 */
     UFUNCTION(BlueprintCallable, Category = "Shop")
@@ -84,7 +84,7 @@ protected:
 
     /** 클라이언트 → 서버: 고정 상점 데이터 기반 상점 열기 요청 */
     UFUNCTION(Server, Reliable, Category = "Shop")
-    void Server_OpenShopFixed(FName RequestShopID, EShopType ShopType, class UDataTable* FixedDataTable, AActor* TargetNPC);
+    void Server_OpenShopFixed(FName RequestShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, class UDataTable* FixedDataTable, AActor* TargetNPC);
 
     /** 클라이언트 → 서버: 구매 요청 (안전한 파라미터) */
     UFUNCTION(Server, Reliable, Category = "Shop")

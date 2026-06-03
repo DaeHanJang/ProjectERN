@@ -137,7 +137,7 @@ void AERNShopActor::Interact_Implementation(APlayerController* PlayerController)
     
     if (bIsFixedShop && FixedShopDataTable != nullptr)
     {
-        ShopComp->OpenShopFixed(ShopID, ShopType, FixedShopDataTable, this);
+        ShopComp->OpenShopFixed(ShopID, ShopType, SlotConfigs, FixedShopDataTable, this);
     }
     else
     {

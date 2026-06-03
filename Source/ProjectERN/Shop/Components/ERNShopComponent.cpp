@@ -84,7 +84,7 @@ void UERNShopComponent::OpenShopRandom(FName RequestShopID, EShopType ShopType, 
     Server_OpenShopRandom(RequestShopID, ShopType, SlotConfigs, TargetNPC);
 }
 
-void UERNShopComponent::OpenShopFixed(FName RequestShopID, EShopType ShopType, UDataTable* FixedDataTable, AActor* TargetNPC)
+void UERNShopComponent::OpenShopFixed(FName RequestShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, UDataTable* FixedDataTable, AActor* TargetNPC)
 {
     CurrentShopID = RequestShopID;
     CurrentShopType = ShopType;
@@ -94,7 +94,7 @@ void UERNShopComponent::OpenShopFixed(FName RequestShopID, EShopType ShopType, U
     UE_LOG(LogShopProvider, Log, TEXT("[ShopComponent] 고정 상점 열기: %s (Authority: %s)"),
         *RequestShopID.ToString(), GetOwner()->HasAuthority() ? TEXT("Server") : TEXT("Client"));
 
-    Server_OpenShopFixed(RequestShopID, ShopType, FixedDataTable, TargetNPC);
+    Server_OpenShopFixed(RequestShopID, ShopType, SlotConfigs, FixedDataTable, TargetNPC);
 }
 
 void UERNShopComponent::OpenShop(EShopType ShopType, AActor* TargetNPC)
@@ -162,7 +162,7 @@ void UERNShopComponent::Server_OpenShopRandom_Implementation(FName RequestShopID
     }
 }
 
-void UERNShopComponent::Server_OpenShopFixed_Implementation(FName RequestShopID, EShopType ShopType, UDataTable* FixedDataTable, AActor* TargetNPC)
+void UERNShopComponent::Server_OpenShopFixed_Implementation(FName RequestShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, UDataTable* FixedDataTable, AActor* TargetNPC)
 {
     CurrentShopID = RequestShopID;
     CurrentShopType = ShopType;
@@ -181,7 +181,7 @@ void UERNShopComponent::Server_OpenShopFixed_Implementation(FName RequestShopID,
             }
             else
             {
-                InventoryData = DTProvider->GenerateFixedInventory(RequestShopID, ShopType, FixedDataTable);
+                InventoryData = DTProvider->GenerateFixedInventory(RequestShopID, ShopType, SlotConfigs, FixedDataTable);
                 DTProvider->CachedShopData.Add(RequestShopID, InventoryData);
             }
 
