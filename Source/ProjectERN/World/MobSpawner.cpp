@@ -126,9 +126,17 @@ void AMobSpawner::CollectPatrolPoints()
 	
 	for (AActor* Actor : FoundActors)
 	{
-		// 본인 소속이 아니라면 생략. 소속은 PCG에서 생성될 때 자동으로 할당됨
 		AMobPatrolPoint* PatrolPoint = Cast<AMobPatrolPoint>(Actor);
-		if (PatrolPoint == nullptr || PatrolPoint->OwningSpawner != this)
+		if (PatrolPoint == nullptr || MobSpawnerID.IsNone())
+		{
+			continue;
+		}
+		
+		// 본인 소속이 아니라면 생략. 소속은 PCG에서 생성될 때 BP에서 이벤트로 EnsureMobSpawnerID() 를 자동으로 호출하면서 주입됨
+		bool bMatchesByRef = PatrolPoint->OwningSpawner == this;
+		bool bMatchesByID = PatrolPoint->OwningSpawnerID == MobSpawnerID;
+		
+		if (bMatchesByRef == false || bMatchesByID == false)
 		{
 			continue;
 		}
@@ -150,8 +158,11 @@ void AMobSpawner::EnsureMobSpawnerID()
 		return;
 	}
 	
-	//몹 스포너 ID 비어 있으면 할당
+	//몹 스포너 ID 비어 있으면 할당. MobSpawner_ + GUID
 	Modify();
+	
+	const FString NewID = FString::Printf(TEXT("MobSpawner_%s"), *FGuid::NewGuid().ToString(EGuidFormats::Short));
+	MobSpawnerID = FName(*NewID);
 }
 
 void AMobSpawner::SpawnInitialMobs()

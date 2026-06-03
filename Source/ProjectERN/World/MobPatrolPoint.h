@@ -25,7 +25,4 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Patrol")
 	TObjectPtr<AMobSpawner> OwningSpawner = nullptr;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Patrol")
-	int32 PatrolIndex = 0;
 };
