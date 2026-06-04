@@ -62,7 +62,7 @@ private:
 	
 private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="LookOn|Sphere", meta=(AllowPrivateAccess="true"))
-	float SphereRadius = 2000.0f;
+	float SphereRadius = 10000.0f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="LookOn|Sphere", meta=(AllowPrivateAccess="true"))
 	TArray<TSubclassOf<AActor>> TargetActorClasses;
