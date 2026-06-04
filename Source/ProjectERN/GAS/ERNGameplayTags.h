@@ -47,6 +47,9 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Stagger)			// 현재 경직 중
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_SuperArmor)		// 슈퍼아머 (경직 무시)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_StaggerImmune)		// 피격 무적 프레임
 
+// 플레이어 생명 상태
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Life_Downed)		// HP가 0이 되어 기절 상태
+
 // 상태(움직임)
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Falling)	    // 공중 상태
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Landing)	    // 착지 모션 진행중

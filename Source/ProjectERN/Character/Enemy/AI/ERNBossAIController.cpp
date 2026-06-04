@@ -87,6 +87,19 @@ void AERNBossAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 
 		if (Stimulus.WasSuccessfullySensed())
 		{
+			// 플레이어 생사 확인 후 감지 방지
+			if (!Player->IsAlive())
+			{
+				RemoveAggroTarget(Player);
+
+				if (Boss)
+				{
+					Player->NotifyLostBy(Boss);
+				}
+
+				return;
+			}
+			
 			// 시야 진입: 어그로 추가 + 추적 리스트 등록
 			AddAggro(Player, 10.0f);
 			PerceivedPlayers.AddUnique(Player);
@@ -147,6 +160,12 @@ void AERNBossAIController::SetTarget(AActor* NewTarget)
 	{
 		AActor* OldTarget = Cast<AActor>(Blackboard->GetValueAsObject(TEXT("TargetActor")));
 
+		// 타겟 설정 방지 방어코드
+		if (NewTarget && !IsValidAggroTarget(NewTarget))
+		{
+			NewTarget = nullptr;
+		}
+		
 		// 타겟이 실제로 변경될 때만 시간 기록
 		if (NewTarget != OldTarget)
 		{
@@ -162,6 +181,13 @@ void AERNBossAIController::AddAggro(AActor* Target, float AggroAmount)
 {
 	if (!Target)
 	{
+		return;
+	}
+	
+	// 유효하지 않은 대상이면 어그로 타겟에서 제거
+	if (!IsValidAggroTarget(Target))
+	{
+		RemoveAggroTarget(Target);
 		return;
 	}
 
@@ -195,7 +221,8 @@ AActor* AERNBossAIController::GetHighestAggroTarget() const
 
 	for (const auto& Pair : AggroTable)
 	{
-		if (Pair.Value > HighestAggro && IsValid(Pair.Key))
+		// if (Pair.Value > HighestAggro && IsValid(Pair.Key))
+		if (Pair.Value > HighestAggro && IsValidAggroTarget(Pair.Key))
 		{
 			HighestAggro = Pair.Value;
 			HighestTarget = Pair.Key;
@@ -216,9 +243,18 @@ void AERNBossAIController::TickSightAggro()
 		for (int32 i = PerceivedPlayers.Num() - 1; i >= 0; --i)
 		{
 			AActor* Player = PerceivedPlayers[i];
+			
+			/*
 			if (!IsValid(Player))
 			{
 				PerceivedPlayers.RemoveAt(i);
+				continue;
+			}
+			*/
+			// 유효 대상 판단 확인 수정
+			if (!IsValidAggroTarget(Player))
+			{
+				RemoveAggroTarget(Player);
 				continue;
 			}
 
@@ -238,7 +274,8 @@ void AERNBossAIController::DecayAggro()
 	{
 		Pair.Value -= AggroDecayRate;
 
-		if (Pair.Value <= 0.0f || !IsValid(Pair.Key))
+		// if (Pair.Value <= 0.0f || !IsValid(Pair.Key))
+		if (Pair.Value <= 0.0f || !IsValidAggroTarget(Pair.Key))
 		{
 			ToRemove.Add(Pair.Key);
 		}
@@ -337,7 +374,8 @@ AActor* AERNBossAIController::GetSecondHighestAggroTarget() const
 			continue;
 		}
 
-		if (Pair.Value > SecondHighestAggro && IsValid(Pair.Key))
+		// if (Pair.Value > SecondHighestAggro && IsValid(Pair.Key))
+		if (Pair.Value > SecondHighestAggro && IsValidAggroTarget(Pair.Key))
 		{
 			SecondHighestAggro = Pair.Value;
 			SecondTarget = Pair.Key;
@@ -345,4 +383,29 @@ AActor* AERNBossAIController::GetSecondHighestAggroTarget() const
 	}
 
 	return SecondTarget;
+}
+
+bool AERNBossAIController::IsValidAggroTarget(AActor* Target) const
+{
+	// 플레이어 캐릭터가 살아있는지 확인
+	const AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Target);
+	return Player && Player->IsAlive();
+}
+
+void AERNBossAIController::RemoveAggroTarget(AActor* Target)
+{
+	if (!Target)
+	{
+		return;
+	}
+	
+	AggroTable.Remove(Target);
+	PerceivedPlayers.Remove(Target);
+
+	if (Blackboard && Blackboard->GetValueAsObject(TEXT("TargetActor")) == Target)
+	{
+		Blackboard->ClearValue(TEXT("TargetActor"));
+		CurrentTargetStartTime = 0.f;
+		CachedCurrentTarget.Reset();
+	}
 }

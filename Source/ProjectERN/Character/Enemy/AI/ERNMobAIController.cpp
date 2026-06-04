@@ -93,6 +93,22 @@ void AERNMobAIController::OnTargetDetected(AActor* Actor, FAIStimulus Stimulus)
 
 		if (Stimulus.WasSuccessfullySensed())
 		{
+			// 플레이어가 죽어있는 상태면 감지 대상에서 제외
+			if (!Player->IsAlive())
+			{
+				if (Cast<AActor>(Blackboard->GetValueAsObject(TEXT("TargetActor"))) == Player)
+				{
+					SetTarget(nullptr);
+				}
+
+				if (SelfEnemy)
+				{
+					Player->NotifyLostBy(SelfEnemy);
+				}
+
+				return;
+			}
+
 			SetTarget(Player);
 
 			// 비전투 해제 알림
@@ -127,6 +143,15 @@ void AERNMobAIController::SetTarget(AActor* NewTarget)
 		return;
 	}
 
+	// 살아있는 대상만 Target으로 지정
+	if (const AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(NewTarget))
+	{
+		if (!Player->IsAlive())
+		{
+			NewTarget = nullptr;
+		}
+	}
+	
 	if (NewTarget)
 	{
 		Blackboard->SetValueAsObject(TEXT("TargetActor"), NewTarget);
@@ -153,7 +178,8 @@ TArray<AActor*> AERNMobAIController::GetPerceivedPlayers()
 	for (AActor* Actor : Perceived)
 	{
 		AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Actor);
-		if (Player)
+		// 살아있는 대상만 적용
+		if (Player && Player->IsAlive())
 		{
 			Result.Add(Actor);
 		}
@@ -209,6 +235,21 @@ void AERNMobAIController::CheckLeashDistance()
 	if (!CurrentTarget)
 	{
 		return;
+	}
+	
+	// 플레이어가 죽으면 타겟팅 취소
+	if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(CurrentTarget))
+	{
+		if (!Player->IsAlive())
+		{
+			if (AERNEnemyCharacter* SelfEnemy = Cast<AERNEnemyCharacter>(GetPawn()))
+			{
+				Player->NotifyLostBy(SelfEnemy);
+			}
+
+			SetTarget(nullptr);
+			return;
+		}
 	}
 
 	// 스폰 지점에서 자기 위치 거리 측정

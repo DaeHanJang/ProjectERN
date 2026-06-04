@@ -5,6 +5,7 @@
 
 #include "EngineUtils.h"
 //#include "IDetailTreeNode.h"
+#include "ERNMinimapTargetPoint.h"
 #include "NiagaraComponent.h"
 #include "NightRainZoneCenterPoint.h"
 #include "NightRainZoneVisualComponent.h"
@@ -186,6 +187,62 @@ void ANightRainZoneManager::SetIgnoreNightRainZone(AERNPlayerController* PlayerC
 	{
 		return;
 	}
+}
+
+FVector ANightRainZoneManager::FindNearestNightLordGraceSafeLocation(const APawn* Pawn) const
+{
+	const FVector CurrentCenter = GetCurrentCenter();
+	const float CurrentRadius = GetCurrentRadius();
+	
+	if (Pawn == nullptr)
+	{
+		return CurrentCenter;
+	}
+	
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return CurrentCenter;
+	}
+	
+	const FVector PawnLocation = Pawn->GetActorLocation();
+	
+	bool bFoundSafeLocation = false;
+	FVector BestLocation = CurrentCenter;
+	float BestDist = MAX_FLT;
+	
+	// 미니맵에 밝혀진 화툿불 위치를 대상으로 후보 탐색
+	for (TActorIterator<AERNMinimapTargetPoint> It(World); It; ++It)
+	{
+		AERNMinimapTargetPoint* TargetPoint = *It;
+		if (IsValid(TargetPoint) == false)
+		{
+			continue;
+		}
+		
+		if (TargetPoint->IconType != EERNMinimapIconType::NightLordGrace)
+		{
+			continue;
+		}
+		
+		const FVector TargetLocation = TargetPoint->GetActorLocation();
+		
+		// 자기장 범위 밖은 제외
+		if (IsOutsideZone2D(TargetLocation, CurrentCenter, CurrentRadius))
+		{
+			continue;
+		}
+		
+		const float Dist = FVector::DistSquared2D(PawnLocation, TargetLocation);
+		if (Dist < BestDist)
+		{
+			BestDist = Dist;
+			BestLocation = TargetLocation;
+			bFoundSafeLocation = true;
+		}
+	}
+	
+	return bFoundSafeLocation ? BestLocation : CurrentCenter;
 }
 
 

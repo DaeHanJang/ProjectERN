@@ -23,6 +23,7 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Subsystem/ERNSoundSubsystem.h"
 #include "Core/ERNGameState.h"
+#include "Actors/Portal/ERNBossPortal.h"
 
 AERNBossCharacter::AERNBossCharacter()
 {
@@ -409,6 +410,31 @@ void AERNBossCharacter::OnDeath()
 		{
 			GS->HandleGameClear();
 		}
+	}
+
+	// 중간보스 사망 → 일정 시간 후 죽은 자리에 보스 포탈 스폰
+	// 주의: 부모 OnDeath가 사망 몽타주 길이 후 this를 Destroy하므로,
+	//       딜레이가 그보다 길면 this가 무효화됨 → 위치/회전/월드를 값으로 캡처해 this 미참조
+	if (HasAuthority() && bIsMidBoss && BossPortalClass)
+	{
+		UWorld* World = GetWorld();
+		const FVector  SpawnLoc = GetActorLocation();
+		const FRotator SpawnRot = GetActorRotation();
+		TSubclassOf<AERNBossPortal> PortalClass = BossPortalClass;
+
+		FTimerHandle PortalTimer;
+		World->GetTimerManager().SetTimer(PortalTimer,
+			FTimerDelegate::CreateLambda([World, SpawnLoc, SpawnRot, PortalClass]()
+			{
+				if (!World) return;
+
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.SpawnCollisionHandlingOverride =
+					ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+				World->SpawnActor<AERNBossPortal>(PortalClass, SpawnLoc, SpawnRot, SpawnParams);
+			}),
+			BossPortalSpawnDelay, false);
 	}
 
 	// 부모 사망 처리 (사망 몽타주 재생, 이동/충돌 비활성화, 딜레이 후 Destroy 등)

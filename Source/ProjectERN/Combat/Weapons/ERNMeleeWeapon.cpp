@@ -9,6 +9,7 @@
 #include "Character/Player/ERNPlayerController.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Character/Player/ProjectERNCharacter.h"
 #include "GAS/ERNAttributeSet.h"
 
 AERNMeleeWeapon::AERNMeleeWeapon()
@@ -296,30 +297,37 @@ void AERNMeleeWeapon::HandleTraceHit(const FHitResult& HitResult)
 	{
 		return;
 	}
-
+	
 	// 무기 소유자 자신과 이미 적중한 대상은 제외한다.
 	if (HitActor == GetOwner() || HitActors.Contains(HitActor))
 	{
 		return;
 	}
-
+	
+	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+	if (!OwnerCharacter)
+	{
+		return;
+	}
+	
+	AController* InstigatorController = OwnerCharacter->GetController();
+	
+	// 부활 공격 적용
+	if (AProjectERNCharacter::TryApplyReviveHit(HitActor, InstigatorController))
+	{
+		HitActors.Add(HitActor);
+		return;
+	}
+	
 	// 현재 일반 공격은 적 캐릭터만 타격한다.
 	AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(HitActor);
 	if (!Enemy)
 	{
 		return;
 	}
-
-	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (!OwnerCharacter)
-	{
-		return;
-	}
-
+	
 	// 같은 공격 유효 구간에서는 대상 하나당 한 번만 대미지를 준다.
 	HitActors.Add(HitActor);
-
-	AController* InstigatorController = OwnerCharacter->GetController();
 
 	UAbilitySystemComponent* ASC =UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerCharacter);
 
@@ -344,7 +352,7 @@ void AERNMeleeWeapon::HandleTraceHit(const FHitResult& HitResult)
 		OwnerCharacter);
 
 	Enemy->TryApplyStagger(StaggerPower);
-
+	
 	// Sweep 결과의 ImpactPoint를 사용하므로 기존 Overlap 방식보다
 	// 실제 검 궤적에 가까운 위치에 이펙트를 재생할 수 있다.
 	if (HitEffect)

@@ -115,6 +115,9 @@ protected:
 	/** Returns true if the player should use UMG touch controls */
 	bool ShouldUseTouchControls() const;
 	
+	// 플레이어 캐릭터 생사 확인
+	bool IsPlayerAlive() const;
+	
 private:
 	// 인벤토리 UI에 이벤트 바인딩
 	void RefreshInventoryWidget() const;

@@ -28,6 +28,17 @@ public:
 	FName GetMobSpawnerID() const { return MobSpawnerID; }
 	void SetMobSpawnerID(const FName NewID) { MobSpawnerID = NewID; }
 	
+	// 근처의 PatrolPoint 수집
+	UFUNCTION(BlueprintCallable, CallInEditor, Category="Patrol")
+	void CollectPatrolPoints();
+	
+	UFUNCTION(BlueprintCallable, CallInEditor, Category="Patrol")
+	void ClearPatrolPoints();
+	
+	// 몹 스포너 ID 생성. PCG 그래프로 Spawn 될 때 1회 실행됨. 이후 Collect 마다 추가 호출
+	UFUNCTION(BlueprintCallable, CallInEditor, Category="Patrol")
+	void EnsureMobSpawnerID();
+	
 private:
 	UPROPERTY(EditAnywhere)
 	FName MobSpawnerID;
@@ -38,7 +49,7 @@ private:
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<UMobSpawnPointComponent>> CachedSpawnPoints;
 	
-	// 월드에 배치된 패트롤 TargetPoint. 월드에서 직접 BP에 넣어줘야 한다.
+	// 월드에 배치된 패트롤 TargetPoint. PCG_MobPatrolPoint 로 생성함.
 	UPROPERTY(EditAnywhere, Category = "Patrol", meta = (AllowPrivateAccess = "true"))
 	TArray<TObjectPtr<AActor>> PatrolTargetPoints;
 private:

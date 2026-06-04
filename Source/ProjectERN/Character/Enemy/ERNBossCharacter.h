@@ -78,6 +78,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss")
 	bool bIsFinalBoss = false;
 
+	// 중간보스 여부 — true면 사망 후 죽은 자리에 보스 포탈 스폰
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss")
+	bool bIsMidBoss = false;
+
+	// 스폰할 보스 포탈 클래스 (BP에서 지정)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Portal")
+	TSubclassOf<class AERNBossPortal> BossPortalClass;
+
+	// 사망 후 보스 포탈 스폰까지 딜레이(초)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Portal", meta = (ClampMin = "0.0"))
+	float BossPortalSpawnDelay = 10.f;
+
 	// 보스전 BGM (감지 시 재생)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Sound")
 	TObjectPtr<USoundBase> BossBGM;

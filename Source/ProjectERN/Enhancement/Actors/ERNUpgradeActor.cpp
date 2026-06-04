@@ -21,8 +21,8 @@ AERNUpgradeActor::AERNUpgradeActor()
     InteractionSphere->SetupAttachment(RootComponent);
     InteractionSphere->SetSphereRadius(200.f);
     InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    InteractionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-    InteractionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+    InteractionSphere->SetCollisionResponseToAllChannels(ECR_Overlap);
+    InteractionSphere->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
     InteractionPromptWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionPromptWidget"));
     InteractionPromptWidget->SetupAttachment(RootComponent);
