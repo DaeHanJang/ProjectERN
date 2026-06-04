@@ -172,7 +172,7 @@ void ANightRainZoneManager::ResumeZoneProgress_ServerOnly()
 		
 		SetZoneState_ServerOnly(NewState);
 		
-		GetWorldTimerManager().SetTimer(PhaseTimerHandle, this, &ANightRainZoneManager::HandlePhaseFinished,ResumeDuration,false);
+		GetWorldTimerManager().SetTimer(PhaseTimerHandle, this, &ANightRainZoneManager::HandleWaitFinished,ResumeDuration,false);
 	}
 	
 	// 매니저 상태 최신화
