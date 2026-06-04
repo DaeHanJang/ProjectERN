@@ -34,7 +34,7 @@ public:
 
     /** 지정된 고정 상점 테이블로부터 상점 인벤토리를 생성합니다. */
     UFUNCTION(BlueprintCallable, Category = "Shop|Generation")
-    FERNShopInventory GenerateFixedInventory(FName ShopID, EShopType ShopType, class UDataTable* FixedDataTable);
+    FERNShopInventory GenerateFixedInventory(FName ShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, class UDataTable* FixedDataTable);
 
     // ===== 델리게이트 선언부 (Provider 구현체에는 필수) =====
     UPROPERTY(BlueprintAssignable, Category = "Shop")

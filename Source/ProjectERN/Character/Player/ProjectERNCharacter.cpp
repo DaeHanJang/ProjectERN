@@ -1126,6 +1126,11 @@ void AProjectERNCharacter::Bird()
 	Server_SpawnRideBird();
 }
 
+void AProjectERNCharacter::SummonRideBird()
+{
+	Server_SpawnRideBird();
+}
+
 void AProjectERNCharacter::Server_SpawnRideBird_Implementation()
 {
 	// 플레이어 뒤 + 위 → 위에서 낚아채는 연출 (오프셋은 로컬 상수, 멤버 변수 X)

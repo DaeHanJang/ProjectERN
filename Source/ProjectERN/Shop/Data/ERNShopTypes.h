@@ -57,6 +57,10 @@ struct FERNShopProductTable : public FTableRowBase
     // 7. 무료 제공 여부 (true면 기존 아이템 테이블의 가격을 무시하고 0원에 판매)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     bool bIsFree = false;
+
+    // 8. 가격 배율 (예: 1.5 = 1.5배 가격, 0.5 = 반값 할인)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop", meta=(ClampMin="0.0"))
+    float PriceMultiplier = 1.0f;
 };
 
 /**

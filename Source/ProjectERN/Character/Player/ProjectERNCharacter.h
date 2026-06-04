@@ -321,6 +321,11 @@ public:
 	UFUNCTION(Exec)
 	void Bird();
 
+	// 시퀀서 이벤트 → 이 노드 호출. 내부에서 서버로 라우팅되어 자기 새 1마리 스폰.
+	// (각 클라가 Get Player Character(0) 로컬 캐릭터에 대해 호출 → 플레이어당 1마리)
+	UFUNCTION(BlueprintCallable, Category = "Intro|Bird")
+	void SummonRideBird();
+
 	// exec는 소유 클라 실행 → 서버 라우팅 (스폰/부착은 서버 권한)
 	UFUNCTION(Server, Reliable)
 	void Server_SpawnRideBird();

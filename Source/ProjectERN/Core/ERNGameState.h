@@ -163,6 +163,10 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_ShowEndScreen(bool bVictory);
 
+	// 전원(호스트+클라)에게 로딩화면 표시 — 로비 복귀 ServerTravel 직전 호출
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ShowLoadingScreen();
+
 	// 진행/전과 초기화 후 로비로 ServerTravel
 	void ReturnToLobbyNow();
 

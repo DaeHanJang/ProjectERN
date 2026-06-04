@@ -90,10 +90,10 @@ protected:
 
 	// 콘솔 명령으로 소환된 새의 전진 비행 거리/시간 (bConsoleSummon=true면 FlightDistance/Duration 대신 사용)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flight")
-	float ConsoleFlightDistance = 100000.f;   // 동상 기본 100000보다 멀리
+	float ConsoleFlightDistance = 100000.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Flight")
-	float ConsoleFlightDuration = 10.f;        // 동상 기본 50초보다 짧게
+	float ConsoleFlightDuration = 50.f;
 
 	// === 이탈 후 ===
 

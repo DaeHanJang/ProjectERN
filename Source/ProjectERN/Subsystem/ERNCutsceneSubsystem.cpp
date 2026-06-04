@@ -22,6 +22,10 @@
 #include "Components/SceneComponent.h"
 #include "GameFramework/GameModeBase.h"
 #include "Subsystem/ERNSoundSubsystem.h"
+#include "Inventory/Item/Manager/ItemManagerSubsystem.h"
+#include "Inventory/Item/Data/ERNItemRuntimeState.h"
+#include "Camera/PlayerCameraManager.h"
+#include "TimerManager.h"
 
 void UERNCutsceneSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -75,6 +79,10 @@ void UERNCutsceneSubsystem::OnPostLoadMapWithWorld(UWorld* LoadedWorld)
 			FTimerDelegate::CreateUObject(this, &UERNCutsceneSubsystem::EnsureLoadingWidgetInViewport));
 	}
 
+	// 필드맵 진입 시 아이템 메시/PSO 웜업 (카메라/폰 준비 후 시야 앞에서 미리 렌더 → 첫 드롭 히칭 완화)
+	WarmUpRetryCount = 0;
+	WarmUpFieldItems();
+
 	// 9초 시점에 새 인트로 시작 (서버에서 spawn + 부착) — 1초 동안 클라 리플리케이션 도착할 시간 확보
 	if (UERNGameInstance* GameInst = Cast<UERNGameInstance>(GetGameInstance()))
 	{
@@ -91,13 +99,15 @@ void UERNCutsceneSubsystem::OnPostLoadMapWithWorld(UWorld* LoadedWorld)
 		}
 	}
 
-	// 10초 시점에 로딩 화면 제거 (새 spawn보다 1초 늦게 — 이때 플레이어는 이미 새에 매달려있음)
+	// 로딩 화면 제거 — 로비맵은 인트로가 없으므로 5초, 그 외(필드/보스, 인트로 연출)는 10초
+	const bool bIsLobbyMap = LoadedWorld->GetMapName().Contains(TEXT("Map_Lobby"));
+	const float HideLoadingDelay = bIsLobbyMap ? 5.0f : 10.0f;
 	FTimerHandle TimerHandle;
 	LoadedWorld->GetTimerManager().SetTimer(
 		TimerHandle,
 		this,
 		&UERNCutsceneSubsystem::HideLoadingScreen,
-		10.0f,
+		HideLoadingDelay,
 		false
 	);
 }
@@ -190,6 +200,105 @@ void UERNCutsceneSubsystem::HideLoadingScreen()
 	OnLoadingFinished.Broadcast();
 
 	// 새 인트로는 로딩 종료 1초 전(OnPostLoadMapWithWorld의 9초 타이머)에 이미 시작됨 — 여기선 호출 안 함
+}
+
+// ===== 에셋 웜업 =====
+
+void UERNCutsceneSubsystem::WarmUpFieldItems()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// 데디케이티드 서버는 렌더링이 없으므로 웜업 불필요
+	if (World->GetNetMode() == ENetMode::NM_DedicatedServer)
+	{
+		return;
+	}
+
+	UItemManagerSubsystem* ItemManager = GetGameInstance() ? GetGameInstance()->GetSubsystem<UItemManagerSubsystem>() : nullptr;
+	if (!ItemManager)
+	{
+		return;
+	}
+
+	// 카메라/폰 준비 확인 — PostLoadMap 직후엔 아직 미possess이거나 카메라가 원점(0,0,0)이라
+	// 여기서 스폰하면 시야 밖이라 컬링되어 PSO가 안 구워진다. 준비될 때까지 짧게 재시도
+	APlayerController* PC = World->GetFirstPlayerController();
+	const APawn* Pawn = PC ? PC->GetPawn() : nullptr;
+	const bool bCameraReady = PC && PC->PlayerCameraManager &&
+		!PC->PlayerCameraManager->GetCameraLocation().IsNearlyZero();
+	if (!PC || !Pawn || !bCameraReady)
+	{
+		if (WarmUpRetryCount < WarmUpMaxRetries)
+		{
+			++WarmUpRetryCount;
+			FTimerHandle RetryTimerHandle;
+			World->GetTimerManager().SetTimer(
+				RetryTimerHandle,
+				this,
+				&UERNCutsceneSubsystem::WarmUpFieldItems,
+				0.1f,
+				false);
+		}
+		return;
+	}
+
+	const FVector CamLoc = PC->PlayerCameraManager->GetCameraLocation();
+	const FVector CamForward = PC->PlayerCameraManager->GetCameraRotation().Vector();
+	// 카메라 코앞
+	const FVector WarmUpLocation = CamLoc + CamForward * 300.f;
+
+	// ItemTable의 모든 아이템을 그 위치에 한 번씩 spawn → 메시 적용 시 PSO 컴파일 트리거
+	const TArray<FName> AllItemIDs = ItemManager->GetAllItemIDs();
+	for (const FName& ItemID : AllItemIDs)
+	{
+		if (!ItemManager->ItemValid(ItemID))
+		{
+			continue;
+		}
+
+		FItemRuntimeState RuntimeState;
+		RuntimeState.SetItemID(ItemID);
+		RuntimeState.SetQuantity(1);
+		AActor* WarmUpItem = ItemManager->SpawnItem(RuntimeState, WarmUpLocation, FRotator::ZeroRotator);
+		if (WarmUpItem)
+		{
+			// 순수 로컬 렌더 웜업용 — 리슨 호스트에서 클라로 복제되지 않도록 차단
+			WarmUpItem->SetReplicates(false);
+			// 습득/충돌 방지
+			WarmUpItem->SetActorEnableCollision(false);
+			WarmUpActors.Add(WarmUpItem);
+		}
+	}
+
+	if (WarmUpActors.Num() == 0)
+	{
+		return;
+	}
+
+	// 몇 프레임 렌더링되도록 잠시 살려둔 뒤 일괄 제거 (즉시 destroy하면 한 번도 안 그려져 PSO 미생성)
+	FTimerHandle CleanupTimerHandle;
+	World->GetTimerManager().SetTimer(
+		CleanupTimerHandle,
+		this,
+		&UERNCutsceneSubsystem::CleanupWarmUpActors,
+		2.0f,
+		false);
+}
+
+void UERNCutsceneSubsystem::CleanupWarmUpActors()
+{
+	for (AActor* WarmUpItem : WarmUpActors)
+	{
+		if (IsValid(WarmUpItem))
+		{
+			WarmUpItem->Destroy();
+		}
+	}
+	WarmUpActors.Empty();
 }
 
 // ===== 인트로 시퀀스 =====

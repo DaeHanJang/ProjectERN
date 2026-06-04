@@ -101,6 +101,10 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
                 {
                     ActualBuyPrice = 0;
                 }
+                else
+                {
+                    ActualBuyPrice = FMath::RoundToInt(ActualBuyPrice * It->PriceMultiplier);
+                }
                 
                 ItemData.Price = ActualBuyPrice;
                 ItemData.bIsAvailable = (ItemData.StockCount != 0);
@@ -152,6 +156,10 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
                     {
                         ActualBuyPrice = 0;
                     }
+                    else
+                    {
+                        ActualBuyPrice = FMath::RoundToInt(ActualBuyPrice * Candidates[i].PriceMultiplier);
+                    }
                     
                     ItemData.Price = ActualBuyPrice;
                     ItemData.bIsAvailable = (ItemData.StockCount != 0);
@@ -188,7 +196,7 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
     return NewInventory;
 }
 
-FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID, EShopType ShopType, UDataTable* FixedDataTable)
+FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, UDataTable* FixedDataTable)
 {
     FERNShopInventory NewInventory;
     NewInventory.ShopID = ShopID;
@@ -203,6 +211,10 @@ FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID
     TArray<FERNShopProductTable*> AllEntries;
     FixedDataTable->GetAllRows<FERNShopProductTable>(TEXT("GenerateFixedInventory"), AllEntries);
 
+    FRandomStream RandStream;
+    if (DebugRandomSeed > 0) RandStream.Initialize(DebugRandomSeed);
+    else RandStream.GenerateNewSeed();
+
     UItemManagerSubsystem* ItemMgr = nullptr;
     if (OwnerObject && OwnerObject->GetWorld())
     {
@@ -212,41 +224,130 @@ FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID
         }
     }
 
-    for (FERNShopProductTable* Entry : AllEntries)
+    for (const FERNShopSlotConfig& Config : SlotConfigs)
     {
-        if (Entry)
+        TArray<FERNShopProductTable> Candidates;
+        for (FERNShopProductTable* Entry : AllEntries)
         {
-            FERNShopItemData ItemData;
-            ItemData.ItemID = Entry->ItemID;
-            ItemData.StockCount = Entry->MaxStock;
-            
-            int32 ActualBuyPrice = 0;
-            if (ItemMgr)
+            if (Entry)
             {
-                if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(ItemData.ItemID))
+                EItemType ActualItemType = EItemType::None;
+                if (ItemMgr)
                 {
-                    ItemData.ItemCategory = ItemRow->ItemType;
-                    for (const FItemShopPrice& ShopPrice : ItemRow->ShopPrices)
+                    if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(Entry->ItemID))
                     {
-                        if (ShopPrice.ShopType == ShopType)
+                        ActualItemType = ItemRow->ItemType;
+                    }
+                }
+
+                if (ActualItemType == Config.Category)
+                {
+                    Candidates.Add(*Entry);
+                }
+            }
+        }
+
+        int32 SelectedCount = 0;
+
+        for (auto It = Candidates.CreateIterator(); It; ++It)
+        {
+            if (It->bGuaranteed && SelectedCount < Config.SlotCount)
+            {
+                FERNShopItemData ItemData;
+                ItemData.ItemID = It->ItemID;
+                ItemData.ItemCategory = Config.Category;
+                ItemData.StockCount = It->MaxStock;
+                
+                int32 ActualBuyPrice = 0;
+                if (ItemMgr)
+                {
+                    if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(ItemData.ItemID))
+                    {
+                        for (const FItemShopPrice& ShopPrice : ItemRow->ShopPrices)
                         {
-                            ActualBuyPrice = ShopPrice.BuyPrice;
-                            break;
+                            if (ShopPrice.ShopType == ShopType)
+                            {
+                                ActualBuyPrice = ShopPrice.BuyPrice;
+                                break;
+                            }
                         }
                     }
                 }
-            }
-            
-            if (Entry->bIsFree)
-            {
-                ActualBuyPrice = 0;
-            }
-            
-            ItemData.Price = ActualBuyPrice;
-            ItemData.bIsAvailable = (ItemData.StockCount != 0);
-            ItemData.UniqueID = FGuid::NewGuid();
+                
+                if (It->bIsFree)
+                {
+                    ActualBuyPrice = 0;
+                }
+                else
+                {
+                    ActualBuyPrice = FMath::RoundToInt(ActualBuyPrice * It->PriceMultiplier);
+                }
+                
+                ItemData.Price = ActualBuyPrice;
+                ItemData.bIsAvailable = (ItemData.StockCount != 0);
+                ItemData.UniqueID = FGuid::NewGuid();
 
-            NewInventory.Items.Add(ItemData);
+                NewInventory.Items.Add(ItemData);
+                It.RemoveCurrent();
+                SelectedCount++;
+            }
+        }
+
+        while (SelectedCount < Config.SlotCount && Candidates.Num() > 0)
+        {
+            float TotalWeight = 0.f;
+            for (const auto& C : Candidates) TotalWeight += C.SpawnWeight;
+
+            if (TotalWeight <= 0.f) break;
+
+            float RandomValue = RandStream.FRandRange(0.f, TotalWeight);
+            float Accumulated = 0.f;
+
+            for (int32 i = 0; i < Candidates.Num(); ++i)
+            {
+                Accumulated += Candidates[i].SpawnWeight;
+                if (RandomValue <= Accumulated)
+                {
+                    FERNShopItemData ItemData;
+                    ItemData.ItemID = Candidates[i].ItemID;
+                    ItemData.ItemCategory = Config.Category;
+                    ItemData.StockCount = Candidates[i].MaxStock;
+                    
+                    int32 ActualBuyPrice = 0;
+                    if (ItemMgr)
+                    {
+                        if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(ItemData.ItemID))
+                        {
+                            for (const FItemShopPrice& ShopPrice : ItemRow->ShopPrices)
+                            {
+                                if (ShopPrice.ShopType == ShopType)
+                                {
+                                    ActualBuyPrice = ShopPrice.BuyPrice;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (Candidates[i].bIsFree)
+                    {
+                        ActualBuyPrice = 0;
+                    }
+                    else
+                    {
+                        ActualBuyPrice = FMath::RoundToInt(ActualBuyPrice * Candidates[i].PriceMultiplier);
+                    }
+                    
+                    ItemData.Price = ActualBuyPrice;
+                    ItemData.bIsAvailable = (ItemData.StockCount != 0);
+                    ItemData.UniqueID = FGuid::NewGuid();
+
+                    NewInventory.Items.Add(ItemData);
+                    Candidates.RemoveAt(i);
+                    SelectedCount++;
+                    break;
+                }
+            }
         }
     }
 

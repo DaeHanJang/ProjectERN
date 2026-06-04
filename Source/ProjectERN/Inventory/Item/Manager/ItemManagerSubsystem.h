@@ -39,8 +39,10 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 	
-	// ItemTable에서 ItemID에 해당하는 RowData 가져오기 
+	// ItemTable에서 ItemID에 해당하는 RowData 가져오기
 	const FERNItemTable* FindItemRow(const FName ItemID) const;
+	// ItemTable에 등록된 모든 ItemID 반환 (웜업/사전 로드용)
+	TArray<FName> GetAllItemIDs() const;
 	// 아이템 검증
 	UFUNCTION(BlueprintPure, Category="ItemManager")
 	bool ItemValid(const FName ItemID) const;
