@@ -35,6 +35,7 @@
 #include "Actors/Intro/ERNIntroBird.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Components/ERNDownedComponent.h"
 #include "Components/ERNLockOnComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Inventory/Item/ERNItemActor.h"
@@ -43,8 +44,14 @@ DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
 void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin)
 {
+	// 살아 있는 상태가 아니라면 경직 면역
+	if (!IsAlive())
+	{
+		return;
+	}
+
 	Super::TryApplyStagger(IncomingStaggerPower, HitOrigin);
-	
+
 	if (!AbilitySystemComponent || !AttributeSet)
 	{
 		return;
@@ -55,13 +62,13 @@ void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVe
 	{
 		return;
 	}
-	
+
 	// 무적이면 카메라 흔들림 무시
 	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Immunity_Damage))
 	{
 		return;
 	}
-	
+
 	// 최소 경직을 위한 데미지 DamageShakeThresholdSmall 이상일 때만 흔들림
 	if (IncomingStaggerPower >= DamageShakeThresholdSmall && HasAuthority())
 	{
@@ -167,20 +174,24 @@ AProjectERNCharacter::AProjectERNCharacter()
 	HeadLightFX->bAutoActivate = false;
 
 	// NightRainZone 자기장 밤의비
-	NightRainPostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(TEXT("NightRainPostProcessComponent"));
+	NightRainPostProcessComponent = CreateDefaultSubobject<
+		UPostProcessComponent>(TEXT("NightRainPostProcessComponent"));
 	NightRainPostProcessComponent->SetupAttachment(FollowCamera);
 	NightRainPostProcessComponent->bEnabled = true;
 	NightRainPostProcessComponent->bUnbound = true;
 	NightRainPostProcessComponent->BlendWeight = 0.f;
 	NightRainPostProcessComponent->Priority = 100.f;
-	
+
 	// Create LockOn Component
 	LockOnComponent = CreateDefaultSubobject<UERNLockOnComponent>(TEXT("LockOnComponent"));
-	
+
 	// Create LockOn Detection Component
 	LockOnDetector = CreateDefaultSubobject<USphereComponent>(TEXT("LockOnDetector"));
 	LockOnDetector->SetupAttachment(GetRootComponent());
-	
+
+	// Create Downed Component
+	DownedComponent = CreateDefaultSubobject<UERNDownedComponent>(TEXT("DownedComponent"));
+
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
@@ -188,7 +199,7 @@ AProjectERNCharacter::AProjectERNCharacter()
 
 	// 기본값 설정
 	CharacterType = ECharacterType::Warrior;
-	
+
 	// 캐릭터 겹쳤을 때 카메라 조정 방지
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
@@ -200,13 +211,14 @@ void AProjectERNCharacter::InitStatus()
 	{
 		return;
 	}
-	
-	const FERNPlayerStatusTable* Row = StatusCurveTable->FindRow<FERNPlayerStatusTable>(FName("1"), TEXT("StatusCurveContext"));
+
+	const FERNPlayerStatusTable* Row = StatusCurveTable->FindRow<FERNPlayerStatusTable>(
+		FName("1"), TEXT("StatusCurveContext"));
 	if (!Row)
 	{
 		return;
 	}
-	
+
 	AttributeSet->SetMaxHealth(Row->MaxHealth);
 	AttributeSet->SetHealth(Row->MaxHealth);
 	AttributeSet->SetMaxMana(Row->MaxMana);
@@ -259,7 +271,7 @@ void AProjectERNCharacter::ApplyRunSnapshot()
 
 	AERNPlayerState* PS = GetPlayerState<AERNPlayerState>();
 	UE_LOG(LogTemp, Warning, TEXT("[Snapshot] APPLY called. PS=%s hasSnapshot=%d"),
-		PS ? *PS->GetPlayerName() : TEXT("NULL"), PS ? PS->bHasSnapshot : 0);
+	       PS ? *PS->GetPlayerName() : TEXT("NULL"), PS ? PS->bHasSnapshot : 0);
 
 	if (!PS || !PS->bHasSnapshot)
 	{
@@ -267,7 +279,7 @@ void AProjectERNCharacter::ApplyRunSnapshot()
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("[Snapshot] APPLY %s: Level=%d Gold=%d InvItems=%d"),
-		*PS->GetPlayerName(), PS->SavedLevel, PS->SavedGold, PS->SavedInventory.Num());
+	       *PS->GetPlayerName(), PS->SavedLevel, PS->SavedGold, PS->SavedInventory.Num());
 
 	// 레벨 기반 스탯 재적용 (+SetLevel) → 그 위에 골드 복원
 	InitStatusForLevel(PS->SavedLevel);
@@ -312,6 +324,12 @@ void AProjectERNCharacter::BeginPlay()
 		EnterOutOfCombat();
 	}
 	
+	// 부활 완료 바인딩
+	if (HasAuthority() && DownedComponent)
+	{
+		DownedComponent->OnReviveGaugeDepleted.AddUObject(this, &AProjectERNCharacter::CompleteRevive);
+	}
+	
 	if (LockOnComponent && LockOnDetector && FollowCamera)
 	{
 		LockOnComponent->Initialize(LockOnDetector, FollowCamera);
@@ -323,7 +341,7 @@ void AProjectERNCharacter::BeginPlay()
 		HeadLightFX->SetAsset(HeadLightFXSystem);
 	}
 	ApplyHeadLightState();
-	
+
 	BindMovementSpeedTagEvents();
 	UpdateMovementSpeed();
 }
@@ -389,6 +407,20 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 	{
 		return;
 	}
+	
+	// 죽었다면 상호작용 불가
+	if (!IsAlive())
+	{
+		AActor* CurrentInteractable = ERNController->GetCurrentInteractable();
+
+		if (IsValid(CurrentInteractable) && CurrentInteractable->Implements<UInteractable>())
+		{
+			IInteractable::Execute_EndInteract(CurrentInteractable, ERNController);
+		}
+
+		ERNController->ClearCurrentInteractable();
+		return;
+	}
 
 	// 상호작용 감지 콜리전과 겹쳐진 액터 수집
 	TArray<AActor*> OverlappingActors;
@@ -450,19 +482,21 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 	if (bIsCameraTransitioning && IsLocallyControlled() && FollowCamera && CameraBoom)
 	{
 		const float NewArm = FMath::FInterpTo(CameraBoom->TargetArmLength,
-			CameraTransitionTargetArmLength, DeltaSeconds, CameraInterpSpeed * 20);
+		                                      CameraTransitionTargetArmLength, DeltaSeconds, CameraInterpSpeed * 20);
 		const float NewFOV = FMath::FInterpTo(FollowCamera->FieldOfView,
-			CameraTransitionTargetFOV, DeltaSeconds, CameraInterpSpeed * 20);
+		                                      CameraTransitionTargetFOV, DeltaSeconds, CameraInterpSpeed * 20);
 
 		CameraBoom->TargetArmLength = NewArm;
 		FollowCamera->SetFieldOfView(NewFOV);
 
 		const float ArmRange = CameraTransitionTargetArmLength - CameraTransitionStartArmLength;
 		const float FOVRange = CameraTransitionTargetFOV - CameraTransitionStartFOV;
-		const float ArmProgress = FMath::IsNearlyZero(ArmRange) ? 1.f
-			: (NewArm - CameraTransitionStartArmLength) / ArmRange;
-		const float FOVProgress = FMath::IsNearlyZero(FOVRange) ? 1.f
-			: (NewFOV - CameraTransitionStartFOV) / FOVRange;
+		const float ArmProgress = FMath::IsNearlyZero(ArmRange)
+			                          ? 1.f
+			                          : (NewArm - CameraTransitionStartArmLength) / ArmRange;
+		const float FOVProgress = FMath::IsNearlyZero(FOVRange)
+			                          ? 1.f
+			                          : (NewFOV - CameraTransitionStartFOV) / FOVRange;
 		float Progress = FMath::Min(ArmProgress, FOVProgress);
 
 		// 컨트롤 회전 보간 (부착 시에만 활성 — release 시엔 자유 회전 유지)
@@ -472,15 +506,19 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 			{
 				const FRotator CurRot = Ctrl->GetControlRotation();
 				const FRotator NewRot = FMath::RInterpTo(CurRot,
-					CameraTransitionTargetControlRotation, DeltaSeconds, CameraInterpSpeed * 20);
+				                                         CameraTransitionTargetControlRotation, DeltaSeconds,
+				                                         CameraInterpSpeed * 20);
 				Ctrl->SetControlRotation(NewRot);
 
 				const float StartAngle = CameraTransitionStartControlRotation.Quaternion()
-					.AngularDistance(CameraTransitionTargetControlRotation.Quaternion());
+				                                                             .AngularDistance(
+					                                                             CameraTransitionTargetControlRotation.
+					                                                             Quaternion());
 				const float CurAngle = NewRot.Quaternion()
-					.AngularDistance(CameraTransitionTargetControlRotation.Quaternion());
+				                             .AngularDistance(CameraTransitionTargetControlRotation.Quaternion());
 				const float RotProgress = (StartAngle > KINDA_SMALL_NUMBER)
-					? 1.f - (CurAngle / StartAngle) : 1.f;
+					                          ? 1.f - (CurAngle / StartAngle)
+					                          : 1.f;
 				Progress = FMath::Min(Progress, RotProgress);
 			}
 		}
@@ -558,7 +596,7 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 		{
 			DesiredActorRotation = LockOnComponent->GetDesiredRotationToTarget();
 			DesiredLockOnYaw = DesiredActorRotation.Yaw;
-			
+
 			if (!HasAuthority() && IsLocallyControlled())
 			{
 				Server_UpdateLockOnYaw(DesiredLockOnYaw);
@@ -569,7 +607,7 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 			ApplyLockOnState(false, GetActorRotation());
 			return;
 		}
-		
+
 		// 캐릭터 몸 회전은 질주, 공격 중에는 적용하지 않음
 		if (!bIsSprinting)
 		{
@@ -578,13 +616,13 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 				InterpActorRotation(DeltaSeconds);
 			}
 		}
-		
+
 		// 카메라 락온 타겟 바라보게 유지
 		if (IsLocallyControlled() && bUseCameraYawOnLockOn)
 		{
 			const AActor* LockOnTarget = LockOnComponent->GetCurrentTarget();
 			AController* Ctrl = GetController();
-			
+
 			if (IsValid(LockOnTarget) && Ctrl && FollowCamera)
 			{
 				const FVector TargetFocusLocation = LockOnTarget->GetActorLocation();
@@ -603,15 +641,16 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 					TargetCameraRotation.Pitch = FMath::Clamp(TargetCameraRotation.Pitch, -35.0f, 15.0f);
 				}
 				TargetCameraRotation.Roll = 0.0f;
-				
+
 				// 현재 컨트롤러 회전에서 타겟 액터 방향 회전으로 보간
-				const FRotator NewControlRotation = FMath::RInterpTo(Ctrl->GetControlRotation(), TargetCameraRotation, DeltaSeconds, RotationInterpSpeed);
-				
+				const FRotator NewControlRotation = FMath::RInterpTo(Ctrl->GetControlRotation(), TargetCameraRotation,
+				                                                     DeltaSeconds, RotationInterpSpeed);
+
 				// 보간된 회전을 컨트롤러에 적용
 				Ctrl->SetControlRotation(NewControlRotation);
 			}
 		}
-		
+
 		return;
 	}
 
@@ -726,18 +765,18 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 
 	// Flask
 	InputComp->BindNativeInputAction(
-		InputConfig, 
-		TAG_Input_Flask, 
-		ETriggerEvent::Started, 
-		this, 
+		InputConfig,
+		TAG_Input_Flask,
+		ETriggerEvent::Started,
+		this,
 		&AProjectERNCharacter::DrinkFlask);
-	
+
 	// Consumable
 	InputComp->BindNativeInputAction(
-		InputConfig, 
-		TAG_Input_Consumable, 
-		ETriggerEvent::Started, 
-		this, 
+		InputConfig,
+		TAG_Input_Consumable,
+		ETriggerEvent::Started,
+		this,
 		&AProjectERNCharacter::UseConsumable);
 
 	InputComp->BindNativeInputAction(
@@ -746,7 +785,7 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		ETriggerEvent::Started,
 		this,
 		&AProjectERNCharacter::NormalSkill);
-	
+
 	InputComp->BindNativeInputAction(
 		InputConfig,
 		TAG_Input_UltimateSkill,
@@ -758,7 +797,7 @@ void AProjectERNCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	if (ToggleLightAction)
 	{
 		InputComp->BindAction(ToggleLightAction, ETriggerEvent::Started,
-			this, &AProjectERNCharacter::ToggleLight);
+		                      this, &AProjectERNCharacter::ToggleLight);
 	}
 }
 
@@ -766,6 +805,15 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 {
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
+
+	// 움직일 수 없는 상태면
+	if (LifeState == EERNPlayerLifeState::Collapsing ||
+		LifeState == EERNPlayerLifeState::Reviving ||
+		LifeState == EERNPlayerLifeState::Respawning)
+	{
+		CachedMoveInput = FVector2D::ZeroVector;
+		return;
+	}
 
 	// 인트로 매달림 중: 좌우 입력만 새 조향에 전달
 	if (bIsHangingFromBird)
@@ -792,7 +840,7 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 	const bool bIsGettingHit =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Stagger);
-	
+
 	const bool bIsUsingSkill =
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_UsingSkill);
@@ -883,7 +931,7 @@ void AProjectERNCharacter::DoLook(float Yaw, float Pitch)
 	{
 		return;
 	}
-	
+
 	if (GetController() != nullptr)
 	{
 		// add yaw and pitch input to controller
@@ -933,13 +981,13 @@ void AProjectERNCharacter::LockOn()
 	{
 		return;
 	}
-	
+
 	const bool bNewLockOn = LockOnComponent->ToggleLockOn();
-	
+
 	const FRotator TargetRotation = bNewLockOn ? LockOnComponent->GetDesiredRotationToTarget() : GetActorRotation();
-	
+
 	ApplyLockOnState(bNewLockOn, TargetRotation);
-	
+
 	if (!HasAuthority())
 	{
 		Server_SetLockOn(bNewLockOn, TargetRotation);
@@ -948,21 +996,35 @@ void AProjectERNCharacter::LockOn()
 
 void AProjectERNCharacter::Server_SetLockOn_Implementation(bool bNewLockOn, FRotator TargetRotation)
 {
-	if (bNewLockOn)
+	// 죽은 상태라면 LockOn 사용하지 않음
+	if (!IsAlive())
 	{
-		const bool bServerLocked = LockOnComponent && LockOnComponent->TryLockOn();
+		if (LockOnComponent)
+		{
+			LockOnComponent->ClearLockOn();
+		}
 		
-		const FRotator ServerRotation = bServerLocked ? LockOnComponent->GetDesiredRotationToTarget() : GetActorRotation();
-		
-		ApplyLockOnState(bServerLocked, ServerRotation);
+		ApplyLockOnState(false, GetActorRotation());
 		return;
 	}
 	
+	if (bNewLockOn)
+	{
+		const bool bServerLocked = LockOnComponent && LockOnComponent->TryLockOn();
+
+		const FRotator ServerRotation = bServerLocked
+			                                ? LockOnComponent->GetDesiredRotationToTarget()
+			                                : GetActorRotation();
+
+		ApplyLockOnState(bServerLocked, ServerRotation);
+		return;
+	}
+
 	if (LockOnComponent)
 	{
 		LockOnComponent->ClearLockOn();
 	}
-	
+
 	ApplyLockOnState(false, TargetRotation);
 }
 
@@ -982,6 +1044,11 @@ void AProjectERNCharacter::ApplyLockOnState(bool bNewLockOn, const FRotator& Tar
 
 void AProjectERNCharacter::Server_UpdateLockOnYaw_Implementation(float NewYaw)
 {
+	if (!IsAlive())
+	{
+		return;
+	}
+	
 	DesiredLockOnYaw = NewYaw;
 }
 
@@ -995,6 +1062,7 @@ void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProp
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME(AProjectERNCharacter, LifeState);
 	DOREPLIFETIME(AProjectERNCharacter, bIsLockOn);
 	DOREPLIFETIME(AProjectERNCharacter, bGodMode);
 	DOREPLIFETIME(AProjectERNCharacter, bIsHangingFromBird);
@@ -1272,10 +1340,10 @@ void AProjectERNCharacter::BindMovementSpeedTagEvents()
 	}
 
 	AbilitySystemComponent->RegisterGameplayTagEvent(TAG_State_Movement_Consumable, EGameplayTagEventType::NewOrRemoved)
-						  .AddUObject(this, &AProjectERNCharacter::HandleMovementSpeedTagChanged);
+	                      .AddUObject(this, &AProjectERNCharacter::HandleMovementSpeedTagChanged);
 
 	AbilitySystemComponent->RegisterGameplayTagEvent(TAG_State_Movement_Flask, EGameplayTagEventType::NewOrRemoved)
-						  .AddUObject(this, &AProjectERNCharacter::HandleMovementSpeedTagChanged);
+	                      .AddUObject(this, &AProjectERNCharacter::HandleMovementSpeedTagChanged);
 }
 
 void AProjectERNCharacter::HandleMovementSpeedTagChanged(const FGameplayTag ChangedTag, int32 NewCount)
@@ -1290,6 +1358,22 @@ void AProjectERNCharacter::UpdateMovementSpeed()
 		return;
 	}
 
+	// 기절 상태라면
+	if (LifeState == EERNPlayerLifeState::Downed)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = DownedMoveSpeed;
+		return;
+	}
+
+	// 특정 상태 동안 움직임 방지
+	if (LifeState == EERNPlayerLifeState::Collapsing ||	// 기절 
+	LifeState == EERNPlayerLifeState::Reviving ||		// 부활
+	LifeState == EERNPlayerLifeState::Respawning)		// 리스폰
+	{
+		GetCharacterMovement()->MaxWalkSpeed = 0.f;
+		return;
+	}
+	
 	// 태그 부여 여부 확인 (대시 스킬)
 	const bool bIsDashSkill = AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_DashSkill);
@@ -1438,12 +1522,12 @@ void AProjectERNCharacter::DrinkFlask()
 	{
 		return;
 	}
-	
+
 	if (AttributeSet->GetFlaskQuantity() < 1)
 	{
 		return;
 	}
-	
+
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Flask));
@@ -1456,12 +1540,12 @@ void AProjectERNCharacter::UseConsumable()
 	{
 		return;
 	}
-	
+
 	if (EquipmentComponent->GetCurrentConsumableQuantity() < 1)
 	{
 		return;
 	}
-	
+
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Consumable));
@@ -1580,11 +1664,20 @@ void AProjectERNCharacter::SetPendingAttackRotation(const FRotator& TargetRotati
 
 void AProjectERNCharacter::Server_SetPendingAttackRotation_Implementation(FRotator TargetRotation)
 {
+	if (!IsAlive())
+	{
+		return;
+	}
 	SetPendingAttackRotation(TargetRotation);
 }
 
 void AProjectERNCharacter::Server_CacheLightAttackComboInput_Implementation(FRotator TargetRotation)
 {
+	if (!IsAlive())
+	{
+		return;
+	}
+	
 	CacheActiveLightAttackComboInput(TargetRotation);
 }
 
@@ -1715,6 +1808,11 @@ bool AProjectERNCharacter::TryEndActiveChannelingWeaponSkill()
 
 void AProjectERNCharacter::Server_RequestEndActiveChannelingWeaponSkill_Implementation()
 {
+	if (!IsAlive())
+	{
+		return;
+	}
+	
 	TryEndActiveChannelingWeaponSkill();
 }
 
@@ -1731,9 +1829,12 @@ void AProjectERNCharacter::Server_RequestRoll_Implementation(FVector_NetQuantize
 float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
                                        AController* EventInstigator, AActor* DamageCauser)
 {
-	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-	
-	return ActualDamage;
+	if (!IsAlive())
+	{
+		return 0.f;
+	}
+
+	return Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 }
 
 void AProjectERNCharacter::Server_LevelUp_Implementation()
@@ -1784,12 +1885,13 @@ void AProjectERNCharacter::InteractionChurch_Implementation() const
 	{
 		return;
 	}
-	
+
 	const int32 NewFlaskQuantity = static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()) + 1;
 	AttributeSet->SetMaxFlaskQuantity(NewFlaskQuantity);
 	AttributeSet->SetFlaskQuantity(NewFlaskQuantity);
-	
-	UE_LOG(LogTemp, Warning, TEXT("%s, MaxFlaskQuantity: %d"), *GetNameSafe(this), static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()));
+
+	UE_LOG(LogTemp, Warning, TEXT("%s, MaxFlaskQuantity: %d"), *GetNameSafe(this),
+	       static_cast<int32>(AttributeSet->GetMaxFlaskQuantity()));
 }
 
 void AProjectERNCharacter::Multicast_PlayWeaponSkillInstantNiagaraEffects_Implementation(
@@ -1930,5 +2032,272 @@ void AProjectERNCharacter::ExitOutOfCombat()
 		{
 			ASC->RemoveLooseGameplayTag(TAG_State_OutOfCombat);
 		}
+	}
+}
+
+void AProjectERNCharacter::OnRep_LifeState()
+{
+	// 태그 갱신
+	RefreshLifeStateTags();
+	// 이동속도 갱신
+	UpdateMovementSpeed();
+}
+
+void AProjectERNCharacter::SetLifeState(EERNPlayerLifeState NewState)
+{
+	// 서버에서만 실행 || 같은 상태면 return
+	if (!HasAuthority() || LifeState == NewState)
+	{
+		return;
+	}
+
+	// Set
+	LifeState = NewState;
+	// 태그 갱신
+	RefreshLifeStateTags();
+	// Replication
+	ForceNetUpdate();
+}
+
+void AProjectERNCharacter::RefreshLifeStateTags()
+{
+	if (!AbilitySystemComponent)
+	{
+		return;
+	}
+
+	// 죽음
+	AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Life_Downed,
+	                                                 LifeState == EERNPlayerLifeState::Downed ? 1 : 0);
+}
+
+void AProjectERNCharacter::OnDeath()
+{
+	// 서버에서만 처리
+	if (!HasAuthority() || !IsAlive())
+	{
+		return;
+	}
+
+	// 죽음 상태 진입
+	EnterCollapsingState();
+}
+
+void AProjectERNCharacter::EnterCollapsingState()
+{
+	// 쓰러지는 상태
+	SetLifeState(EERNPlayerLifeState::Collapsing);
+
+	// 입력 제거
+	CachedMoveInput = FVector2D::ZeroVector;
+	// 스프린트 종료
+	StopSprint();
+
+	// 모든 어빌리티 캔슬
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->CancelAllAbilities();
+	}
+
+	// 락온 종료
+	if (LockOnComponent)
+	{
+		LockOnComponent->ClearLockOn();
+	}
+
+	ApplyLockOnState(false, GetActorRotation());
+
+	// 이동 즉시 비활성
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	// 기절 진입 몽타주 재생
+	Multicast_PlayDeathMontage();
+
+	// 몽타주와 관계 없이 최소 1초 적용
+	const float CollapseDuration = DeathMontage ? DeathMontage->GetPlayLength() : CollapseFallbackDuration;
+
+	// 죽음 상태 타이머
+	GetWorldTimerManager().SetTimer(
+		CollapseTimerHandle,
+		this,
+		&AProjectERNCharacter::FinishCollapsingState,
+		FMath::Max(CollapseDuration, 0.01f), // 최소 시간 적용
+		false);
+}
+
+void AProjectERNCharacter::FinishCollapsingState()
+{
+	// 서버에서만 적용 || Collapsing 상태일 때만 적용
+	if (!HasAuthority() || LifeState != EERNPlayerLifeState::Collapsing)
+	{
+		return;
+	}
+
+	// 기절 상태 진입
+	EnterDownedState();
+}
+
+void AProjectERNCharacter::EnterDownedState()
+{
+	// 기절 상태로 변경
+	SetLifeState(EERNPlayerLifeState::Downed);
+
+	if (DownedComponent)
+	{
+		// 패널티 스택 증가
+		DownedComponent->EnterDownedState(DownedComponent->GetPenaltyStacks() + 1);
+	}
+
+	// 이동 모드를 지상 보행으로 변경
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->SetMovementMode(MOVE_Walking);
+	}
+
+	// 움직임 속도 제한 적용
+	UpdateMovementSpeed();
+}
+
+bool AProjectERNCharacter::bApplyReviveHit(AController* Reviver)
+{
+	if (!CanApplyReviveHit(Reviver))
+	{
+		return false;
+	}
+
+	DownedComponent->ApplyReviveHit(Reviver);
+	return true;
+}
+
+bool AProjectERNCharacter::TryApplyReviveHit(AActor* HitActor, AController* Reviver)
+{
+	AProjectERNCharacter* DownedPlayer = Cast<AProjectERNCharacter>(HitActor);
+	if (!DownedPlayer || !DownedPlayer->IsDowned())
+	{
+		return false;
+	}
+
+	return DownedPlayer->bApplyReviveHit(Reviver);
+}
+
+bool AProjectERNCharacter::CanApplyReviveHit(AController* Reviver) const
+{
+	if (!HasAuthority() || !IsDowned() || !DownedComponent)
+	{
+		return false;
+	}
+
+	if (DownedComponent->GetDownedHealth() <= 0.f)
+	{
+		return false;
+	}
+
+	const APawn* ReviverPawn = Reviver ? Reviver->GetPawn() : nullptr;
+	const AProjectERNCharacter* ReviverCharacter = Cast<AProjectERNCharacter>(ReviverPawn);
+
+	return ReviverCharacter && ReviverCharacter != this && ReviverCharacter->IsAlive();
+}
+
+void AProjectERNCharacter::CompleteRevive()
+{
+	// 서버에서만 실행
+	if (!HasAuthority() || !IsDowned())
+	{
+		return;
+	}
+
+	// 부활 시작
+	EnterRevivingState();
+}
+
+void AProjectERNCharacter::EnterRevivingState()
+{
+	// 서버에서만
+	if (!HasAuthority() || !IsDowned())
+	{
+		return;
+	}
+
+	// State 변경
+	SetLifeState(EERNPlayerLifeState::Reviving);
+
+	if (DownedComponent)
+	{
+		DownedComponent->ExitDownedState();
+	}
+
+	// 부활 체력 적용
+	if (AttributeSet)
+	{
+		const float ReviveHealth = FMath::Max(1.f, AttributeSet->GetMaxHealth() * ReviveHealthRatio);
+		AttributeSet->SetHealth(ReviveHealth);
+	}
+
+	// 캐싱된 입력 제거
+	CachedMoveInput = FVector2D::ZeroVector;
+	// 전력질주 Stop
+	StopSprint();
+
+	// 모든 어빌리티
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->CancelAllAbilities();
+	}
+
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	// 몽타주 재생
+	Multicast_PlayReviveMontage();
+	
+	// Fallback으로 최소 시간 설정
+	const float ReviveDuration = ReviveMontage ? ReviveMontage->GetPlayLength() : ReviveFallbackDuration;
+
+	GetWorldTimerManager().ClearTimer(ReviveTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		ReviveTimerHandle,
+		this,
+		&AProjectERNCharacter::FinishRevivingState,
+		FMath::Max(ReviveDuration, 0.01f),
+		false);
+
+	ForceNetUpdate();
+}
+
+void AProjectERNCharacter::FinishRevivingState()
+{
+	if (!HasAuthority() || LifeState != EERNPlayerLifeState::Reviving)
+	{
+		return;
+	}
+
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->SetMovementMode(MOVE_Walking);
+	}
+
+	SetLifeState(EERNPlayerLifeState::Alive);
+	UpdateMovementSpeed();
+	ForceNetUpdate();
+}
+
+void AProjectERNCharacter::Multicast_PlayReviveMontage_Implementation()
+{
+	if (!ReviveMontage || !GetMesh())
+	{
+		return;
+	}
+	
+	// 멀티캐스트로 부활 몽타주 재생
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Play(ReviveMontage);
 	}
 }

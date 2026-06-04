@@ -17,7 +17,7 @@ bool AERNAoE_Heal::IsValidAoETarget(AActor* TargetActor, UPrimitiveComponent* Ov
 
 	// Sanctuary 힐 장판은 죽지 않은 현재 플레이어 캐릭터만 회복 대상으로 본다.
 	AProjectERNCharacter* TargetCharacter = Cast<AProjectERNCharacter>(TargetActor);
-	if (!TargetCharacter || TargetCharacter->IsDead())
+	if (!TargetCharacter || !TargetCharacter->IsAlive())
 	{
 		return false;
 	}

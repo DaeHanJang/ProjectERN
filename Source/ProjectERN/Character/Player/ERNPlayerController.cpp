@@ -515,6 +515,12 @@ bool AERNPlayerController::ShouldUseTouchControls() const
 	return SVirtualJoystick::ShouldDisplayTouchInterface() || bForceTouchControls;
 }
 
+bool AERNPlayerController::IsPlayerAlive() const
+{
+	const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(GetPawn());
+	return !PlayerCharacter || PlayerCharacter->IsAlive();
+}
+
 void AERNPlayerController::ToggleReady()
 {
 	AERNPlayerState* PS = GetPlayerState<AERNPlayerState>();
@@ -587,6 +593,11 @@ void AERNPlayerController::CheckAndFixCharacterType()
 
 void AERNPlayerController::TryInteract()
 {
+	if (!IsPlayerAlive())
+	{
+		return;
+	}
+	
 	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
 	{
 		if (const UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
@@ -622,18 +633,25 @@ void AERNPlayerController::TryInteract()
 
 void AERNPlayerController::Server_TryInteract_Implementation(AActor* InteractableActor)
 {
-	if (InteractableActor->Implements<UInteractable>())
+	if (!IsPlayerAlive() || !IsValid(InteractableActor) || !InteractableActor->Implements<UInteractable>())
 	{
-		if (IInteractable::Execute_CanInteract(InteractableActor))
-		{
-			IInteractable::Execute_Interact(InteractableActor, this);
-		}
+		return;
+	}
+
+	if (IInteractable::Execute_CanInteract(InteractableActor))
+	{
+		IInteractable::Execute_Interact(InteractableActor, this);
 	}
 }
 
 void AERNPlayerController::InventoryOpen()
 {
 	if (!InventoryWidget)
+	{
+		return;
+	}
+	
+	if (!IsPlayerAlive())
 	{
 		return;
 	}

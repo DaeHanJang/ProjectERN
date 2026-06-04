@@ -251,7 +251,22 @@ void AERNProjectileBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AAc
 	AERNEnemyCharacter* OtherEnemy = Cast<AERNEnemyCharacter>(OtherActor);
 
 	// 같은 팀이면 통과
-	if (PlayerShooter && OtherPlayer) return;
+	// 부활 공격은 적용으로 수정
+	if (PlayerShooter && OtherPlayer)
+	{
+		if (AProjectERNCharacter::TryApplyReviveHit(OtherPlayer, PlayerShooter->GetController()))
+		{
+			const FVector ImpactPoint = bFromSweep ? FVector(SweepResult.ImpactPoint) : GetActorLocation();
+
+			const FRotator ImpactRot = bFromSweep ? SweepResult.ImpactNormal.Rotation() : GetActorRotation();
+
+			Multicast_PlayImpactEffect(ImpactPoint, ImpactRot);
+			SetLifeSpan(0.2f);
+		}
+
+		return;
+	}
+	
 	if (EnemyShooter && OtherEnemy) return;
 
 	// 유효한 타겟인지 확인
@@ -327,6 +342,7 @@ void AERNProjectileBase::InitializeHoming()
 // 적 탐색 (임시)
 AActor* AERNProjectileBase::FindHomingTargetForPlayer() const
 {
+	/*
 	TArray<AActor*> Enemies;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AERNEnemyCharacter::StaticClass(), Enemies);
 
@@ -350,6 +366,69 @@ AActor* AERNProjectileBase::FindHomingTargetForPlayer() const
 		BestDistSq = DistSq;
 		Best = E;
 	}
+	return Best;
+	*/
+
+	AActor* Best = nullptr;
+	float BestDistSq = HomingSearchRadius * HomingSearchRadius;
+
+	const FVector Origin = GetActorLocation();
+	const FVector Forward = GetActorForwardVector();
+	const float CosAngle = FMath::Cos(FMath::DegreesToRadians(HomingSearchHalfAngle));
+
+	auto ConsiderTarget = [&](AActor* Candidate)
+	{
+		if (!IsValid(Candidate) || Candidate == GetOwner())
+		{
+			return;
+		}
+
+		const FVector ToTarget = Candidate->GetActorLocation() - Origin;
+		const float DistSq = ToTarget.SizeSquared();
+
+		if (DistSq > BestDistSq)
+		{
+			return;
+		}
+
+		if (FVector::DotProduct(Forward, ToTarget.GetSafeNormal()) < CosAngle)
+		{
+			return;
+		}
+
+		BestDistSq = DistSq;
+		Best = Candidate;
+	};
+
+	TArray<AActor*> Enemies;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AERNEnemyCharacter::StaticClass(), Enemies);
+
+	for (AActor* Actor : Enemies)
+	{
+		AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(Actor);
+		if (!Enemy || Enemy->IsDead())
+		{
+			continue;
+		}
+
+		ConsiderTarget(Enemy);
+	}
+
+	// 부활용 아군 호밍 기능 추가
+	TArray<AActor*> Players;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AProjectERNCharacter::StaticClass(),Players);
+
+	for (AActor* Actor : Players)
+	{
+		AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Actor);
+		if (!Player || !Player->IsDowned())
+		{
+			continue;
+		}
+
+		ConsiderTarget(Player);
+	}
+
 	return Best;
 }
 
@@ -425,6 +504,15 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 		// 플레이어가 쏜 폭발 - 적에게만 데미지
 		if (PlayerShooter)
 		{
+			// 기절한 아군에게도 적용
+			if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(HitActor))
+			{
+				if (AProjectERNCharacter::TryApplyReviveHit(Player, PlayerShooter->GetController()))
+				{
+					continue;
+				}
+			}
+			
 			if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(HitActor))
 			{
 				Enemy->TakeDamage(ExplosionDamage, FDamageEvent(), GetInstigatorController(), OwnerActor);

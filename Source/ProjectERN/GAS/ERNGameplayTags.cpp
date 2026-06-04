@@ -45,6 +45,9 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Stagger, "State.Stagger")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_SuperArmor, "State.SuperArmor")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_StaggerImmune, "State.StaggerImmune")
 
+// 플레이어 생명 상태
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Life_Downed, "State.Life.Downed")
+
 // 상태 (움직임)
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Falling, "State.Movement.Falling")
 UE_DEFINE_GAMEPLAY_TAG(TAG_State_Movement_Landing, "State.Movement.Landing")
