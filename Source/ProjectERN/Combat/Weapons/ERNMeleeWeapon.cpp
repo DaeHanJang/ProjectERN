@@ -9,7 +9,6 @@
 #include "Character/Player/ERNPlayerController.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
-#include "SWarningOrErrorBox.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "GAS/ERNAttributeSet.h"
 
