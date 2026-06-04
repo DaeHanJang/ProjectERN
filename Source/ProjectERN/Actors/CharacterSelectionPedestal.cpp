@@ -21,8 +21,8 @@ ACharacterSelectionPedestal::ACharacterSelectionPedestal()
 	InteractionSphere->SetupAttachment(RootComponent);
 	InteractionSphere->SetSphereRadius(200.f);
 	InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	InteractionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-	InteractionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	InteractionSphere->SetCollisionResponseToAllChannels(ECR_Overlap);
+	InteractionSphere->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
 	// 상호작용 프롬프트 위젯 컴포넌트
 	InteractionPromptWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionPromptWidget"));
