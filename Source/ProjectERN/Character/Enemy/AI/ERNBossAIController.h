@@ -138,4 +138,11 @@ private:
 	// 현재 타겟 (변경 감지용)
 	UPROPERTY()
 	TWeakObjectPtr<AActor> CachedCurrentTarget;
+	
+	// ===== 플레이어 목숨 상태에 따른 어그로 변경 헬퍼 함수 =====
+	// 플레이어 캐릭터가 살아있는지 확인
+	bool IsValidAggroTarget(AActor* Target) const;
+	// 어그로 제거
+	void RemoveAggroTarget(AActor* Target);
+	// ===== 
 };

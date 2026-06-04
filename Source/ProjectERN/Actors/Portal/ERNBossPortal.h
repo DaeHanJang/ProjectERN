@@ -43,7 +43,7 @@ protected:
 
 	// 이동할 보스맵 이름
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal")
-	FString BossMapName = TEXT("Map_BossArena");
+	FString BossMapName = TEXT("Persistent_01");
 
 	// 현재 포탈 안에 있는 플레이어 수 (UI 피드백용 — 클라에 리플)
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Portal")

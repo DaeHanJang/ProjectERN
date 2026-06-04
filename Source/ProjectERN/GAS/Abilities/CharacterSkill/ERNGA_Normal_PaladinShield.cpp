@@ -275,7 +275,7 @@ bool UERNGA_Normal_PaladinShield::IsValidShieldTarget(
 		return false;
 	}
 
-	if (TargetCharacter->IsDead())
+	if (!Caster->IsAlive() || !TargetCharacter->IsAlive())
 	{
 		return false;
 	}

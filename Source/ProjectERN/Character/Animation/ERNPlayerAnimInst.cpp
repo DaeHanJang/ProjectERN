@@ -36,6 +36,13 @@ void UERNPlayerAnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		return;
 	}
 	
+	bIsDowned = false;
+
+	if (const AProjectERNCharacter* ProjectCharacter = Cast<AProjectERNCharacter>(Char))
+	{
+		bIsDowned = ProjectCharacter->IsDowned();
+	}
+	
 	// 공중 확인 (점프/낙하)
 	bIsInAir = MovementComp->IsFalling();
 

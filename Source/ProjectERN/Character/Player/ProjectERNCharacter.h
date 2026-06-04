@@ -30,8 +30,20 @@ class AERNEnemyCharacter;
 class UPointLightComponent;
 class UNiagaraComponent;
 class UNiagaraSystem;
+class UERNDownedComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
+
+// 플레이어의 생명 상태를 분류하는 열거형 클래스
+UENUM(BlueprintType)
+enum class EERNPlayerLifeState : uint8
+{
+	Alive UMETA(DisplayName = "Alive"),				// 살아 있음
+	Collapsing UMETA(DisplayName = "Collapsing"),   // 쓰러지는 몽타주 재생 중
+	Downed UMETA(DisplayName = "Downed"),			// 다운 상태
+	Reviving UMETA(DisplayName = "Reviving"),		// 부활 중
+	Respawning UMETA(DisplayName = "Respawning")	// 리스폰 중
+};
 
 /**
  *  A simple player-controllable third person character
@@ -71,18 +83,18 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** Interaction Detection Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	USphereComponent* InteractionDetector;
-	
+
 	// InteractionDetector TimerHandle
 	FTimerHandle DetectionTimerHandle;
-	
+
 	/** Skill Niagara Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	UERNSkillNiagaraComponent* SkillNiagaraComponent;
-	
+
 	/** LockOn Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UERNLockOnComponent> LockOnComponent;
-	
+
 	/** LockOn Detection Component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<USphereComponent> LockOnDetector;
@@ -94,6 +106,10 @@ class AProjectERNCharacter : public AERNCharacterBase
 	/** Head Light Niagara FX */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UNiagaraComponent> HeadLightFX;
+	
+	/** Downed State Component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UERNDownedComponent> DownedComponent;
 
 protected:
 	// InteractionDetector Update
@@ -123,7 +139,7 @@ public:
 	AProjectERNCharacter();
 
 	FORCEINLINE UDataTable* GetStatusCurveTable() const { return StatusCurveTable; }
-	
+
 	UFUNCTION(BlueprintCallable, Category="Attribute")
 	void InitStatus();
 
@@ -175,7 +191,7 @@ protected:
 
 	/** Called for flask on input */
 	void DrinkFlask();
-	
+
 	/** Called for Consumable on input */
 	void UseConsumable();
 
@@ -250,9 +266,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn")
 	bool bUseCameraYawOnLockOn = true;
 
+	// 서버의 값을 클라이언트로 복제할 멤버 변수 목록을 등록하는 함수
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	
 	// ************** 임시 락온 기능 구현 **************
-
 public:
 	// 공격 중 움직일 수 있게 하기 위함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
@@ -267,15 +284,18 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake")
 	TSubclassOf<UCameraShakeBase> TakeDamageShakeClass_Big;
-	
+
 	// 데미지/MaxHealth 비율 임계값 — 미만이면 없음, 10 이하면 small, 20 이하면 medium, 30 이상이면 Big
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake",
+		meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float DamageShakeThresholdSmall = 10.f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake",
+		meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float DamageShakeThresholdMedium = 20.f;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake",
+		meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float DamageShakeThresholdBig = 30.f;
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
@@ -283,7 +303,7 @@ public:
 
 	// StaggerPower에 따른 카메라 흔들림을 위한 경직 재정의
 	virtual void TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin = FVector::ZeroVector) override;
-	
+
 	// 디버그 무적 (HP가 1 아래로 안 떨어짐) — 콘솔 명령 GodMode로 토글
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Debug")
 	bool bGodMode = false;
@@ -430,7 +450,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
 	float DrinkingSpeed = 300; // 아이템 사용 중 속도
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
 	float TargetingSpeed = 300; // 타겟팅 중 속도
 
@@ -445,6 +465,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Movement")
 	float DashSkillSpeed = 1500; // 대시 스킬용 속도 (전사 일반 스킬)
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Movement")
+	float DownedMoveSpeed = 100.f;	// 기절 상태 속도
 
 	// 회전 보간 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Movement")
@@ -460,7 +483,7 @@ protected:
 	void BindMovementSpeedTagEvents();
 
 	void HandleMovementSpeedTagChanged(const FGameplayTag ChangedTag, int32 NewCount);
-	
+
 public:
 	// 움직임 속도 변화 함수
 	UFUNCTION(BlueprintCallable, Category="ERN|Movement")
@@ -474,7 +497,6 @@ public:
 	void SetPendingAttackRotation(const FRotator& TargetRotation);
 
 protected:
-	
 	// Sprint 관련 변수/함수
 	FVector2D CachedMoveInput = FVector2D::ZeroVector;
 
@@ -533,15 +555,19 @@ private:
 
 	// *** 멀티 환경에서 방향별 구르기 적용시키기 ***
 
-	
+
 	// NightRainZone 자기장 밤의비
 #pragma region NightRainZone
+
 public:
 	UPostProcessComponent* GetNightRainPostProcessComponent() const { return NightRainPostProcessComponent; }
+
 private:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NightRain|PostProcess", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NightRain|PostProcess",
+		meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UPostProcessComponent> NightRainPostProcessComponent;
 #pragma endregion
+
 public:
 	// 캐릭터 HeavyAttack 입력을 토글로 변경
 	bool TryEndActiveChannelingWeaponSkill();
@@ -606,4 +632,89 @@ protected:
 
 	// 라이트/Niagara 가시성 적용 (서버·클라 공통)
 	void ApplyHeadLightState();
+
+	// ===== 플레이어 생명 상태 관련 구현 =====
+public:
+	UFUNCTION(BlueprintPure, Category = "ERN|LifeState")
+	EERNPlayerLifeState GetLifeState() const { return LifeState; }
+
+	UFUNCTION(BlueprintPure, Category = "ERN|LifeState")
+	bool IsDowned() const { return LifeState == EERNPlayerLifeState::Downed; }
+	
+	UFUNCTION(BlueprintPure, Category = "ERN|LifeState")
+	bool IsAlive() const { return LifeState == EERNPlayerLifeState::Alive; }
+
+	// DownedComponent Getter
+	FORCEINLINE UERNDownedComponent* GetDownedComponent() const
+	{
+		return DownedComponent;
+	}
+protected:
+	UPROPERTY(ReplicatedUsing = OnRep_LifeState, BlueprintReadOnly, Category = "ERN|LifeState")
+	EERNPlayerLifeState LifeState = EERNPlayerLifeState::Alive;
+
+	// 생명상태 Replicate
+	UFUNCTION()
+	void OnRep_LifeState();
+
+	// 생명상태 설정
+	void SetLifeState(EERNPlayerLifeState NewState);
+	// 생명상태 태그 갱신
+	void RefreshLifeStateTags();
+	
+	// 죽었을 때 처리함수 (플레이어 전용)
+	virtual void OnDeath() override;
+
+	// 쓰러지는 상태
+	void EnterCollapsingState();
+	// 쓰러지기가 끝난 상태
+	void FinishCollapsingState();
+	// 기절 상태 진입
+	void EnterDownedState();
+
+	FTimerHandle CollapseTimerHandle;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState")
+	float CollapseFallbackDuration = 1.f;
+	// ===== 플레이어 생명 상태 관련 구현 =====
+	
+	// ===== 부활 처리 ======
+public:
+	// 기절 상태 공격 처리 적용 여부
+	UFUNCTION(BlueprintCallable, Category="ERN|Downed")
+	bool bApplyReviveHit(AController* Reviver);
+
+	static bool TryApplyReviveHit(AActor* HitActor, AController* Reviver);
+	
+protected:
+	// 부활 공격 조건 검사
+	bool CanApplyReviveHit(AController* Reviver) const;
+	
+	// 부활
+	void CompleteRevive();
+
+	// 부활 몽타주 재생 상태 진입
+	void EnterRevivingState();
+
+	// 부활 몽타주 종료 후 Alive 복귀
+	void FinishRevivingState();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayReviveMontage();
+
+	// 부활 몽타주
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Revive")
+	TObjectPtr<UAnimMontage> ReviveMontage;
+
+	// 부활 fallback 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Revive")
+	float ReviveFallbackDuration = 1.f;
+
+	// fallback 적용을 위한 부활 타이머
+	FTimerHandle ReviveTimerHandle;
+	
+	// 부활 시 적용할 체력 비율
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float ReviveHealthRatio = 0.5f;
+	// ===== 부활 처리 =====
 };
