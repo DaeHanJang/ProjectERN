@@ -223,6 +223,15 @@ public:
 	// NotifyState End 시 호출
 	void ClearHitActors() { HitActors.Empty(); }
 
+	// 출력 데미지 배율 (기본 1.0). 동적 난이도에서 보스가 조우 시 설정. 잡몹은 1.0 유지.
+	// 근접 히트박스/투사체 데미지에 곱해짐. 서버에서만 사용(데미지 계산이 서버 권위).
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat", meta = (ClampMin = "0.0"))
+	float OutgoingDamageMultiplier = 1.f;
+
+	// AnimNotifyState가 활성화 구간 동안 설정하는 데미지/경직력 오버라이드 (HitboxConfig 값보다 우선)
+	void SetHitboxOverride(bool bDamage, float Damage, bool bStagger, float StaggerPower);
+	void ClearHitboxOverride();
+
 protected:
 	// 드랍 처리
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
@@ -236,6 +245,12 @@ protected:
 	void TrySpawnInstancePortal();
 
 private:
+	// NotifyState가 설정한 활성 오버라이드 (구간 종료 시 ClearHitboxOverride로 해제)
+	bool  bActiveDamageOverride = false;
+	float ActiveDamageOverride = 0.f;
+	bool  bActiveStaggerOverride = false;
+	float ActiveStaggerOverride = 0.f;
+
 	UFUNCTION()
 	void OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,

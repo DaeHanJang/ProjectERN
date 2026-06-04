@@ -131,6 +131,38 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Boss|UI")
 	void ShowHealthBarToAllPlayers();
 
+	// === 동적 난이도 ===
+	// 파티 평균 공격력/레벨에 따라 보스 체력/출력 데미지를 조정 (조우 시 1회, 체력바 표시 직전 호출)
+	UFUNCTION(BlueprintCallable, Category = "Boss|Difficulty")
+	void ApplyDynamicDifficulty();
+
+	// 체력 배율 계수 — 파티 평균 공격력이 기준치를 1 넘을 때마다 체력 +이 값(비율)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "0.0"))
+	float HealthScalePerAttack = 0.01f;
+
+	// 공격력 배율 계수 — 파티 평균 레벨이 기준치를 1 넘을 때마다 출력 데미지 +이 값(비율)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "0.0"))
+	float AttackScalePerLevel = 1.2f;
+
+	// 체력 스케일 기준치 (파티 평균 공격력)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty")
+	float AttackBaseline = 100.f;
+
+	// 공격 스케일 기준치 (파티 평균 레벨)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty")
+	float LevelBaseline = 9.f;
+
+	// 풀파티 인원수 — 이 인원이면 체력 100%. 인원이 적을수록 Count/FullPartySize 비율로 체력 감소 (예: 3명 기준 2명=0.66, 1명=0.33)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "1"))
+	int32 FullPartySize = 3;
+
+	// 체력/공격 배율 상한 (과도한 스케일 방지)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "1.0"))
+	float MaxHealthMultiplier = 3.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "1.0"))
+	float MaxAttackMultiplier = 2.f;
+
 	// 모든 머신에서 보스 BGM 재생 (AIC가 첫 감지 시 호출)
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayBossBGM();
@@ -168,4 +200,7 @@ private:
 
 	// 체력바가 이미 표시되었는지 여부
 	bool bHealthBarShown = false;
+
+	// 동적 난이도가 이미 적용되었는지 여부 (중복 적용 방지)
+	bool bDynamicDifficultyApplied = false;
 };

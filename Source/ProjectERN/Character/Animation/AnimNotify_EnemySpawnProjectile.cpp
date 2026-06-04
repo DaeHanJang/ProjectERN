@@ -77,6 +77,11 @@ void UAnimNotify_EnemySpawnProjectile::Notify(USkeletalMeshComponent* MeshComp, 
 		{
 			Projectile->HomingTarget = TargetActor;
 		}
+
+		// 동적 난이도 출력 배율 적용 (적 투사체는 BP 설정 Damage를 그대로 쓰므로 여기서 곱함. 잡몹은 1.0)
+		Projectile->Damage *= Enemy->OutgoingDamageMultiplier;
+		Projectile->ExplosionDamage *= Enemy->OutgoingDamageMultiplier;
+
 		Projectile->FinishSpawning(SpawnTransform);
 	}
 }

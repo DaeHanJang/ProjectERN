@@ -26,6 +26,20 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Hitbox")
 	FName HitboxTag = NAME_None;
 
+	// 데미지 오버라이드 — true면 HitboxConfig의 Damage 대신 이 값 사용 (스테이트별 데미지 차등)
+	UPROPERTY(EditAnywhere, Category = "Hitbox")
+	bool bOverrideDamage = false;
+
+	UPROPERTY(EditAnywhere, Category = "Hitbox", meta = (EditCondition = "bOverrideDamage", ClampMin = "0.0"))
+	float DamageOverride = 0.f;
+
+	// 경직력 오버라이드 — true면 HitboxConfig의 StaggerPower 대신 이 값 사용
+	UPROPERTY(EditAnywhere, Category = "Hitbox")
+	bool bOverrideStaggerPower = false;
+
+	UPROPERTY(EditAnywhere, Category = "Hitbox", meta = (EditCondition = "bOverrideStaggerPower", ClampMin = "0.0"))
+	float StaggerPowerOverride = 0.f;
+
 private:
 	void SetHitboxEnabled(USkeletalMeshComponent* MeshComp, bool bEnabled);
 };
