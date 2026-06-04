@@ -51,6 +51,9 @@ public:
 	// 자기장 면역 상태 부여
 	void SetIgnoreNightRainZone(AERNPlayerController* PlayerController, bool bIgnore);
 	
+	// 안전 지대 좌표 반환
+	FVector FindNearestNightLordGraceSafeLocation(const APawn* Pawn) const;
+	
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
