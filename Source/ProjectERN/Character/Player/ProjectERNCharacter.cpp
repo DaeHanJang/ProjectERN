@@ -1078,6 +1078,12 @@ void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
 		return;
 	}
 
+	// 살아 있을때만 적용
+	if (!IsAlive())
+	{
+		return;
+	}
+	
 	if (bIsDead)
 	{
 		return;
