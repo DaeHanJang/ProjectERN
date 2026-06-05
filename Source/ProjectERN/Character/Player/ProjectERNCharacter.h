@@ -332,6 +332,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
 	bool bCanMoveWhileAttacking = false;
 
+	// 라이프스틸 — 적에게 준 데미지 중 회복할 비율 (0.15 = 15%). 0이면 비활성 (Warrior BP에만 설정)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
+	float LifestealFraction = 0.f;
+
+	// 가한 데미지 기반 자가 회복 (서버 권위). 적 TakeDamage에서 공격자로 호출됨
+	void ApplyLifesteal(float DamageDealt);
+
 	// 피격 시 카메라 흔들림 (데미지/MaxHealth 비율로 강도 분기)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake")
 	TSubclassOf<UCameraShakeBase> TakeDamageShakeClass_Small;
