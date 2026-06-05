@@ -852,7 +852,12 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_UsingSkill);
 
-	if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsLanding || bIsGettingHit || bIsUsingSkill)
+	/*if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsLanding || bIsGettingHit || bIsUsingSkill)
+	{
+		return;
+	}*/
+	
+	if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsGettingHit || bIsUsingSkill)
 	{
 		return;
 	}
