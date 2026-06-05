@@ -29,6 +29,8 @@ bool UERNUIManagerSubsystem::RequestOpenUI(EERNUIType UIType)
 	// 열기 허용
 	ActiveUIType = UIType;
 	
+	OnUIStateChanged.Broadcast(ActiveUIType);
+
 	UE_LOG(LogUIManager, Log, TEXT("[UIManager] UI [%d] 열림"), (int32)UIType);
 	return true;
 }
@@ -45,6 +47,8 @@ void UERNUIManagerSubsystem::CloseActiveUI()
 	
 	// 전체 UI가 닫힐 때, 연관된 서브 팝업들도 전부 닫기
 	CloseConfirmPurchasePopup();
+
+	OnUIStateChanged.Broadcast(ActiveUIType);
 
 	UE_LOG(LogUIManager, Log, TEXT("[UIManager] UI [%d] 닫힘"), (int32)ClosedType);
 }

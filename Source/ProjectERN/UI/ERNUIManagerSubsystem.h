@@ -61,6 +61,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI|Popup")
 	void CloseConfirmPurchasePopup();
 
+	/** UI 상태 변경 시 호출되는 이벤트 */
+	UPROPERTY(BlueprintAssignable, Category = "UI|Events")
+	FOnUIStateChanged OnUIStateChanged;
+
 private:
 	/** 현재 활성화된 UI 타입 */
 	EERNUIType ActiveUIType = EERNUIType::None;
