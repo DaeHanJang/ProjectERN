@@ -280,8 +280,6 @@ bool UERNLockOnComponent::HasLineOfSightToTarget(AActor* Target) const
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(GetOwner());
 		
-	DrawDebugLine(GetWorld(), GetOwner()->GetActorLocation(), Target->GetActorLocation(), FColor::Cyan, false, 1.0f, 0, 1.0f);
-		
 	const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, GetOwner()->GetActorLocation(), Target->GetActorLocation(), ECollisionChannel::ECC_Visibility, Params);
 	
 	return !bHit || HitResult.GetActor() == Target;

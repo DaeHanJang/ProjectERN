@@ -25,8 +25,8 @@ UERNAttributeSet::UERNAttributeSet()
 	InitGold(1000000.f);
 	InitStaggerResistance(10.f);
 	InitDownResistance(20.f);
-	InitMaxFlaskQuantity(3.0f);
-	InitFlaskQuantity(3.0f);
+	InitMaxFlaskQuantity(5.0f);
+	InitFlaskQuantity(5.0f);
 	InitShield(0.f);
 }
 

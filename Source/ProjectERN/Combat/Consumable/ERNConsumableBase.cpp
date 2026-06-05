@@ -10,7 +10,7 @@ AERNConsumableBase::AERNConsumableBase()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
-	SetReplicates(true);
+	bReplicates = true;
 	
 	// Collision
 	Collision = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
@@ -18,7 +18,6 @@ AERNConsumableBase::AERNConsumableBase()
 	Collision->SetCollisionProfileName(TEXT("BlockAllDynamic"));
 	Collision->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
 	Collision->SetNotifyRigidBodyCollision(true);
-	Collision->IgnoreActorWhenMoving(GetOwner(), true);
 	
 	// Mesh
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
@@ -40,6 +39,15 @@ void AERNConsumableBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	SetReplicateMovement(true);
+	if (GetOwner())
+	{
+		Collision->IgnoreActorWhenMoving(GetOwner(), true);
+	}
+	if (GetInstigator())
+	{
+		Collision->IgnoreActorWhenMoving(GetInstigator(), true);
+	}
 	Collision->OnComponentHit.AddDynamic(this, &AERNConsumableBase::OnCollisionHit);
 }
 

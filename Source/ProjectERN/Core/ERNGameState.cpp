@@ -461,6 +461,14 @@ void AERNGameState::MarkReturnReady(AERNPlayerState* PS)
 
 	if (ReadyCount >= PlayerArray.Num())
 	{
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			if (AERNPlayerController* PC = Cast<AERNPlayerController>(*It))
+			{
+				PC->Client_ResetInteractionInputState();
+			}
+		}
+		
 		ReturnToLobbyNow();
 	}
 }
