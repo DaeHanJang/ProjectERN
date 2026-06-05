@@ -852,7 +852,12 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 		AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_UsingSkill);
 
-	if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsLanding || bIsGettingHit || bIsUsingSkill)
+	/*if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsLanding || bIsGettingHit || bIsUsingSkill)
+	{
+		return;
+	}*/
+	
+	if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsGettingHit || bIsUsingSkill)
 	{
 		return;
 	}
@@ -961,15 +966,98 @@ void AProjectERNCharacter::DoJumpStart()
 		return;
 	}
 
-	// 공중 상태라면 벽 점프 실행
+	// 공중 상태라면
 	if (AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Falling))
 	{
+		// 코요테 타임 중이면 벽 점프 대신 일반 점프 (발판에서 막 떨어진 직후 점프 보정)
+		// 입력을 받았으니 만료 타이머는 멈춤 (실행 도중 만료로 CanJump가 막히는 것 방지),
+		// 실제 소비는 점프 성공 시 OnJumped에서 처리
+		if (bCoyoteJumpAvailable)
+		{
+			GetWorldTimerManager().ClearTimer(CoyoteTimerHandle);
+			// 일반 점프 GA는 낙하 중(State.Movement.Falling) 차단되므로 GA를 거치지 않고 직접 점프.
+			// CanJumpInternal이 코요테로 true를 반환 → DoJump가 JumpZVelocity 적용, 소비는 OnJumped에서.
+			Jump();
+			return;
+		}
+
+		// 점프 버퍼: 공중에서 점프를 눌렀으나 즉시 점프되지 않는 경우 입력 시각 기록 → 착지 시 실행
+		JumpBufferedPressTime = GetWorld()->GetTimeSeconds();
+
+		// 그 외에는 벽 점프 실행
 		AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_WallJump));
 		return;
 	}
 
 	// 점프 실행
 	AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Movement_Jump));
+}
+
+void AProjectERNCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
+{
+	// Super에서 Falling 태그 On/Off 처리됨
+	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+
+	const UCharacterMovementComponent* Move = GetCharacterMovement();
+	if (Move && Move->MovementMode == MOVE_Falling)
+	{
+		// 점프(Combat.Jumping)로 인한 낙하가 아니라 '걸어서' 떨어진 경우에만 코요테 타임 시작
+		const bool bJumpedOff = AbilitySystemComponent
+			&& AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Jumping);
+
+		if (!bJumpedOff && CoyoteTime > 0.f)
+		{
+			bCoyoteJumpAvailable = true;
+			GetWorldTimerManager().SetTimer(CoyoteTimerHandle, this,
+				&AProjectERNCharacter::EndCoyoteTime, CoyoteTime, false);
+		}
+	}
+	else
+	{
+		// 착지 등 공중 이탈 → 코요테 종료
+		EndCoyoteTime();
+	}
+}
+
+bool AProjectERNCharacter::CanJumpInternal_Implementation() const
+{
+	// 코요테 타임 동안은 공중이어도 일반 점프 허용 (엔진 기본은 JumpMaxCount=1이라 낙하 중 차단됨)
+	if (bCoyoteJumpAvailable)
+	{
+		return true;
+	}
+
+	return Super::CanJumpInternal_Implementation();
+}
+
+void AProjectERNCharacter::OnJumped_Implementation()
+{
+	Super::OnJumped_Implementation();
+
+	// 점프가 실제로 성공한 순간 코요테 타임 소비 (중복 점프 방지)
+	EndCoyoteTime();
+}
+
+void AProjectERNCharacter::EndCoyoteTime()
+{
+	bCoyoteJumpAvailable = false;
+	GetWorldTimerManager().ClearTimer(CoyoteTimerHandle);
+}
+
+void AProjectERNCharacter::Landed(const FHitResult& Hit)
+{
+	Super::Landed(Hit);
+
+	// 점프 버퍼: 착지 직전에 미리 누른 점프가 버퍼 시간 안이면 착지 시 점프 실행
+	const bool bBuffered = JumpBufferTime > 0.f
+		&& (GetWorld()->GetTimeSeconds() - JumpBufferedPressTime) <= JumpBufferTime;
+	JumpBufferedPressTime = -100.f; // 소비
+
+	if (bBuffered)
+	{
+		// 착지 시점엔 아직 Falling 태그가 남아있을 수 있어(다음 틱에 Walking 전환) 한 틱 뒤 일반 점프
+		GetWorldTimerManager().SetTimerForNextTick(this, &AProjectERNCharacter::DoJumpStart);
+	}
 }
 
 void AProjectERNCharacter::DoJumpEnd()

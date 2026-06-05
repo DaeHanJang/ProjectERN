@@ -36,6 +36,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	float FallSpeed;	// 낙하 속도 (착지 모션 분기용)
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
+	float HorizontalSpeed;	// 수평 이동 속도 (X,Y만, Z 제외 — 점프/낙하 중 이동 판정용)
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	float Direction;  // 이동 방향 (Yaw 각도, -180 ~ 180)

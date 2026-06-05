@@ -57,6 +57,7 @@ void UERNPlayerAnimInst::NativeUpdateAnimation(float DeltaSeconds)
 		if (ProjChar->bIsHangingFromBird)
 		{
 			Speed = 0.f;
+			HorizontalSpeed = 0.f;
 			Velocity = FVector::ZeroVector;
 			Direction = 0.f;
 			bIsAccelerating = false;
@@ -134,6 +135,9 @@ void UERNPlayerAnimInst::NativeUpdateAnimation(float DeltaSeconds)
 
 		PreviousLocation = CurrentLocation;
 	}
+
+	// 수평 속도 (X,Y만, Z 제외) — 컷신 중에는 Speed(CutsceneSpeed)를 그대로 사용
+	HorizontalSpeed = bInCutscene ? Speed : Velocity.Size2D();
 
 	// 낙하 속도 계산
 	if (bIsInAir)
