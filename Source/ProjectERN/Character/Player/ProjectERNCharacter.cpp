@@ -11,6 +11,7 @@
 #include "InputActionValue.h"
 #include "ProjectERN.h"
 #include "AbilitySystemComponent.h"
+#include "EngineUtils.h"
 #include "ERNPlayerController.h"
 #include "ERNPlayerStatusTable.h"
 #include "ERNSkillNiagaraComponent.h"
@@ -39,6 +40,7 @@
 #include "Components/ERNLockOnComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Inventory/Item/ERNItemActor.h"
+#include "World/NightRainZoneManager.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -2071,9 +2073,14 @@ void AProjectERNCharacter::RefreshLifeStateTags()
 		return;
 	}
 
-	// 죽음
-	AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Life_Downed,
-	                                                 LifeState == EERNPlayerLifeState::Downed ? 1 : 0);
+	// 죽음 태그
+	const bool bShouldApplyDownedTag = 
+		LifeState == EERNPlayerLifeState::Collapsing ||
+		LifeState == EERNPlayerLifeState::Downed ||
+		LifeState == EERNPlayerLifeState::Reviving ||
+		LifeState == EERNPlayerLifeState::Respawning;
+
+	AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Life_Downed, bShouldApplyDownedTag ? 1 : 0);
 }
 
 void AProjectERNCharacter::OnDeath()

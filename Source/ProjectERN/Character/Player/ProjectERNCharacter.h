@@ -716,5 +716,4 @@ protected:
 	// 부활 시 적용할 체력 비율
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState", meta=(ClampMin="0.0", ClampMax="1.0"))
 	float ReviveHealthRatio = 0.5f;
-	// ===== 부활 처리 =====
 };
