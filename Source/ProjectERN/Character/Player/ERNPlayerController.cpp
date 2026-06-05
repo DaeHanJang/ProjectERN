@@ -858,7 +858,7 @@ void AERNPlayerController::Client_ShowBossHealthBar_Implementation(AERNBossChara
 		BossHealthBarWidget = CreateWidget<UERNBossHealthBarWidget>(this, BossHealthBarWidgetClass);
 		if (BossHealthBarWidget)
 		{
-			BossHealthBarWidget->AddToViewport(50); // 높은 ZOrder로 최상위 표시
+			BossHealthBarWidget->AddToViewport(0); // 가장 낮은 ZOrder — 다른 HUD 위젯들 아래에 표시
 			RegisterHUDWidget(BossHealthBarWidget);
 		}
 	}
