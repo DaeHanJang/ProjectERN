@@ -31,6 +31,7 @@ class UPointLightComponent;
 class UNiagaraComponent;
 class UNiagaraSystem;
 class UERNDownedComponent;
+class ANightRainZoneManager;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -654,6 +655,7 @@ protected:
 	// 라이트/Niagara 가시성 적용 (서버·클라 공통)
 	void ApplyHeadLightState();
 
+#pragma region PlayerLifeState
 	// ===== 플레이어 생명 상태 관련 구현 =====
 public:
 	UFUNCTION(BlueprintPure, Category = "ERN|LifeState")
@@ -697,7 +699,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState")
 	float CollapseFallbackDuration = 1.f;
-	// ===== 플레이어 생명 상태 관련 구현 =====
+
+#pragma endregion PlayerLifeState
+	
+#pragma region PlayerRevive
 	
 	// ===== 부활 처리 ======
 public:
@@ -737,4 +742,89 @@ protected:
 	// 부활 시 적용할 체력 비율
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState", meta=(ClampMin="0.0", ClampMax="1.0"))
 	float ReviveHealthRatio = 0.5f;
+#pragma endregion PlayerRevive
+	
+#pragma region PlayerRespawn
+	
+public:
+	// 리스폰 시작 진입점
+	UFUNCTION(BlueprintCallable, Category="ERN|Respawn")
+	void CompleteDownedCountdown();
+
+protected:
+	// 죽음 몽타주 끝난 후 실행
+	void FinishRespawnDeathMontage();
+
+	// 멀티캐스트 몽타주 재생
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayRespawnDeathMontage();
+	
+	// 캐릭터 LifeState를 리스폰 상태로 바꿔줌
+	void EnterRespawningState();
+	
+	// 리스폰 프리로드 시작 (충돌값 조절 필요?)
+	void BeginRespawnPreload(const FTransform& RespawnTransform);
+	
+	// 프리로드 준비상태 확인 (타이머 돌면서 지속 확인)
+	void CheckRespawnPreloadReady();
+	
+	// 실제 리스폰 적용
+	void FinishRespawningState();
+	
+	// 리스폰 프리로드 정리
+	void CleanupRespawnPreload();
+	
+	// 리스폰 위치 계산
+	FTransform ResolveRespawnTransform() const;
+	
+	// FindNightRainZoneManager에서 리스폰 위치를 받아오기 때문에 먼저 찾아야 함
+	ANightRainZoneManager* FindNightRainZoneManager() const;
+
+	// 리스폰 전 죽는 모션 몽타주
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn")
+	TObjectPtr<UAnimMontage> RespawnDeathMontage;
+
+	// 죽음 몽타주 fallback시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="0.01"))
+	float RespawnDeathFallbackDuration = 1.f;
+	
+	// 자동 리스폰까지 대기 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="0.0"))
+	float DownedRespawnCountdownDuration = 30.f;
+
+	// 리스폰 위치 주변을 미리 로딩할 반경
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="1000.0"))
+	float RespawnPreloadRadius = 20000.f;
+
+	// 월드 파티션 로딩 완료 여부 확인 주기
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="0.01"))
+	float RespawnPreloadCheckInterval = 0.1f;
+
+	// 프리로드 최대 대기 시간: 이 시간이 지나면 프리로드가 적용되지 않아도 리스폰 진행
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="0.1"))
+	float RespawnPreloadTimeout = 5.f;
+
+	// 캐릭터 텔레포트 후 프리로드 스트리밍 소스 유지 시간 (텔레포트 후 스트리밍 소스가 사라져야 안정적이기 때문)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="0.0"))
+	float RespawnPostTeleportPreloadKeepTime = 1.f;
+
+	// 리스폰 후 적용할 체력 비율 (1.f == 최대 체력)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float RespawnHealthRatio = 1.f;
+
+	// 죽음 몽타주 적용 타이머
+	FTimerHandle RespawnDeathMontageTimerHandle;
+	// Downed 상태에서 리스폰 카운트다운 타이머
+	FTimerHandle DownedRespawnTimerHandle;
+	// 리스폰 위치 로딩 완료 체크용 (CheckRespawnPreloadReady 함수 반복 실행)
+	FTimerHandle RespawnPreloadCheckTimerHandle;
+	// 텔레포트 후 일정 시간 뒤 프리로드 정리까지 대기용 타이머
+	FTimerHandle RespawnPreloadCleanupTimerHandle;
+
+	// 리스폰 목적지 저장 변수
+	FTransform PendingRespawnTransform;
+	// 프리로드 대기 시간이 얼마나 지났는지 기록하는 값
+	float RespawnPreloadElapsedTime = 0.f;
+	
+#pragma endregion PlayerRespawn
 };

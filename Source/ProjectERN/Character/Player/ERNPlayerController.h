@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "Components/SlateWrapperTypes.h"
+#include "WorldPartition/WorldPartitionStreamingSource.h"
 #include "ERNPlayerController.generated.h"
 
 class AERNMinimapPinPoint;
@@ -445,4 +446,52 @@ private:
 	void RefreshSkillCoolPanel() const;
 	
 #pragma endregion SkillPanel
+
+#pragma region PlayerRespawn
+	
+protected:
+	// PlayerController가 월드 파티션 스트리밍 소스를 제공할 때 호출되는 함수
+	virtual bool GetStreamingSourcesInternal(TArray<FWorldPartitionStreamingSource>& OutStreamingSources) const override;
+	
+public:
+	// 리스폰 목적지를 프리로드하는 함수
+	void BeginRespawnPreloadStreaming(const FVector& Location, float Radius);
+	// 프리로드 종료
+	void EndRespawnPreloadStreaming();
+
+	// 월드 파티션 스트리밍 끝났는지 확인
+	bool IsRespawnPreloadStreamingCompleted() const;
+	// 서버가 클라이언트도 확인
+	bool IsRespawnClientPreloadReadyOnServer() const { return bRespawnClientPreloadReady_Server; }
+
+	// 서버가 소유 클라에게 프리로드 명령을 내리는 클라이언트 RPC
+	UFUNCTION(Client, Reliable)
+	void Client_BeginRespawnPreloadStreaming(FVector Location, float Radius);
+
+	// 클라이언트 프리로드 종료
+	UFUNCTION(Client, Reliable)
+	void Client_EndRespawnPreloadStreaming();
+	
+private:
+	// 클라이언트 로컬 타이머 콜백
+	void CheckRespawnPreloadStreamingReady_Local();
+	
+	// 타이머 종료 후 호출되는 함수. 리스폰 위치 로딩이 끝났음을 알려주는 서버 RPC 
+	UFUNCTION(Server, Reliable)
+	void Server_NotifyRespawnPreloadStreamingReady();
+
+	// 리스폰 프리로드 스트리밍 활성화 여부 플래그
+	bool bRespawnPreloadStreamingActive = false;
+	// 클라이언트 위치 로딩 확인 플래그
+	bool bRespawnClientPreloadReady_Server = false;
+
+	// 리스폰 프리로드 위치
+	FVector RespawnPreloadLocation = FVector::ZeroVector;
+	// 프리로드 반경 (캐릭터에서 값을 받아옴)
+	float RespawnPreloadRadius = 20000.f;
+
+	// 월드 파티션 로딩 확인 타이머 핸들 (0.1초 주기)
+	FTimerHandle RespawnPreloadReadyCheckTimerHandle;
+	
+#pragma endregion PlayerRespawn
 };
