@@ -30,6 +30,6 @@ protected:
 	
 	// Projectile spawn offset from the player
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Consumable|Throw", meta=(AllowPrivateAccess="true"))
-	float ThrowForwardDistance = 100.0f;
+	float ThrowForwardDistance = 50.0f;
 	
 };

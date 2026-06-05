@@ -20,8 +20,6 @@ void AERNInstantConsumable::ApplyEffect()
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(SweepRadius);
 	
-	DrawDebugSphere(GetWorld(), GetActorLocation(), SweepRadius, 16, FColor::Green, false, 2.0f);
-
 	if (GetWorld()->OverlapMultiByChannel(OverlapResults, GetActorLocation(), FQuat::Identity, ECollisionChannel::ECC_Pawn, Sphere))
 	{
 		for (const FOverlapResult& OverlapResult : OverlapResults)

@@ -5,6 +5,12 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogUIManager, Log, All);
 
+void UERNUIManagerSubsystem::ResetUIState()
+{
+	ActiveUIType = EERNUIType::None;
+	ActiveConfirmPurchasePopup = nullptr;
+}
+
 bool UERNUIManagerSubsystem::RequestOpenUI(EERNUIType UIType)
 {
 	if (UIType == EERNUIType::None)

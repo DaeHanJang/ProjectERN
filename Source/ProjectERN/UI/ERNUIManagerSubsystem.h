@@ -40,6 +40,9 @@ class PROJECTERN_API UERNUIManagerSubsystem : public ULocalPlayerSubsystem
 
 public:
 	// ── 핵심 API ──
+	
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ResetUIState();
 
 	/** UI 열기 요청. 다른 UI가 이미 열려있으면 false 반환 */
 	UFUNCTION(BlueprintCallable, Category = "UI")

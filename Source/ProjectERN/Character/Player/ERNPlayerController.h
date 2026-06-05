@@ -145,6 +145,9 @@ public:
 	// ServerSide 상호작용 시도
 	UFUNCTION(Server, Reliable)
 	void Server_TryInteract(AActor* InteractableActor);
+	
+	UFUNCTION(Client, Reliable)
+	void Client_ResetInteractionInputState();
 
 	// Pedestal(상호작용가능한액터)에서 호출용
 	AActor* GetCurrentInteractable() const { return CurrentInteractableActor.Get(); }

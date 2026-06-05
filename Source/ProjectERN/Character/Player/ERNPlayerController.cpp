@@ -673,6 +673,23 @@ void AERNPlayerController::TryInteract()
 	}
 }
 
+void AERNPlayerController::Client_ResetInteractionInputState_Implementation()
+{
+	ClearCurrentInteractable();
+	
+	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			UIManager->ResetUIState();
+		}
+	}
+	
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+	bShowMouseCursor  = false;
+}
+
 void AERNPlayerController::Server_TryInteract_Implementation(AActor* InteractableActor)
 {
 	if (!IsPlayerAlive() || !IsValid(InteractableActor) || !InteractableActor->Implements<UInteractable>())

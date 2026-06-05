@@ -429,7 +429,7 @@ void AERNEnemyCharacter::SpawnDrops()
 			{
 				FItemRuntimeState ItemRuntimeState;
 				AActor* Item = nullptr;
-				const FVector DropLocation = GetActorLocation() + FVector::UpVector * 50.0f * ++DropIndex;
+				const FVector DropLocation = GetActorLocation() + FVector::UpVector * 100.0f * ++DropIndex;
 
 				switch (PS->CharacterType)
 				{
