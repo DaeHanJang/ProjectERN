@@ -11,6 +11,7 @@
 #include "InputActionValue.h"
 #include "ProjectERN.h"
 #include "AbilitySystemComponent.h"
+#include "EngineUtils.h"
 #include "ERNPlayerController.h"
 #include "ERNPlayerStatusTable.h"
 #include "ERNSkillNiagaraComponent.h"
@@ -39,6 +40,7 @@
 #include "Components/ERNLockOnComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Inventory/Item/ERNItemActor.h"
+#include "World/NightRainZoneManager.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -642,8 +644,13 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 				}
 				else
 				{
-					// Pitch 각도 제한
-					TargetCameraRotation.Pitch = FMath::Clamp(TargetCameraRotation.Pitch, -35.0f, 15.0f);
+					// 먼 타겟일수록 카메라가 수평이 되어 캐릭터-적이 겹치는 문제 보정:
+					// 거리에 따라 상한 피치를 낮춰 카메라가 강제로 더 아래를 보게 함
+					const float MaxPitch = FMath::GetMappedRangeValueClamped(
+						FVector2D(LockOnPitchNearDistance, LockOnPitchFarDistance),
+						FVector2D(LockOnPitchMaxNear, LockOnPitchMaxFar),
+						Dist2D);
+					TargetCameraRotation.Pitch = FMath::Clamp(TargetCameraRotation.Pitch, LockOnPitchMin, MaxPitch);
 				}
 				TargetCameraRotation.Roll = 0.0f;
 
@@ -2076,9 +2083,14 @@ void AProjectERNCharacter::RefreshLifeStateTags()
 		return;
 	}
 
-	// 죽음
-	AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Life_Downed,
-	                                                 LifeState == EERNPlayerLifeState::Downed ? 1 : 0);
+	// 죽음 태그
+	const bool bShouldApplyDownedTag = 
+		LifeState == EERNPlayerLifeState::Collapsing ||
+		LifeState == EERNPlayerLifeState::Downed ||
+		LifeState == EERNPlayerLifeState::Reviving ||
+		LifeState == EERNPlayerLifeState::Respawning;
+
+	AbilitySystemComponent->SetLooseGameplayTagCount(TAG_State_Life_Downed, bShouldApplyDownedTag ? 1 : 0);
 }
 
 void AProjectERNCharacter::OnDeath()
