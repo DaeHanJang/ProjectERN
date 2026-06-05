@@ -40,7 +40,9 @@ void UERNPlayerAnimInst::NativeUpdateAnimation(float DeltaSeconds)
 
 	if (const AProjectERNCharacter* ProjectCharacter = Cast<AProjectERNCharacter>(Char))
 	{
-		bIsDowned = ProjectCharacter->IsDowned();
+		const EERNPlayerLifeState LifeState = ProjectCharacter->GetLifeState();
+
+		bIsDowned = LifeState == EERNPlayerLifeState::Collapsing || LifeState == EERNPlayerLifeState::Downed;
 	}
 	
 	// 공중 확인 (점프/낙하)

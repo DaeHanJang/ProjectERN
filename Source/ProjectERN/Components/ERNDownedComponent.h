@@ -51,11 +51,11 @@ public:
 protected:
 	// 기절 상태 HP Base
 	UPROPERTY(EditDefaultsOnly, Category="ERN|Downed")
-	float BaseDownedHealth = 100.f;
+	float BaseDownedHealth = 0.f;
 
 	// 죽음 패널티 당 추가 체력
 	UPROPERTY(EditDefaultsOnly, Category="ERN|Downed")
-	float DownedHealthPerPenaltyStack = 50.f;
+	float DownedHealthPerPenaltyStack = 30.f;
 
 	// 매 타격 적용할 고정 대미지
 	UPROPERTY(EditDefaultsOnly, Category="ERN|Downed")
@@ -63,7 +63,7 @@ protected:
 
 	// 죽음 패널티 최대 스택
 	UPROPERTY(EditDefaultsOnly, Category="ERN|Downed")
-	int32 MaxPenaltyStacks = 3;
+	int32 MaxPenaltyStacks = 5;
 
 	// 현재 기절 상태 체력
 	UPROPERTY(ReplicatedUsing=OnRep_DownedHealth)
