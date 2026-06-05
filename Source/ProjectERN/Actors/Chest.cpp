@@ -82,12 +82,12 @@ void AChest::Interact_Implementation(APlayerController* PlayerController)
 
 bool AChest::CanInteract_Implementation() const
 {
-	return !IsActorBeingDestroyed() && DropTable && DropTable->GetRowStruct() == FERNDropTable::StaticStruct() && !bOpened;
+	return !IsActorBeingDestroyed() && DropTable && DropTable->GetRowStruct() == FERNDropTable::StaticStruct() && !bOpened && !bDestroyed;
 }
 
 void AChest::ActivateInteract_Implementation() const
 {
-	if (PromptComponent)
+	if (PromptComponent && CanInteract_Implementation())
 	{
 		PromptComponent->SetVisibility(true);
 	}
@@ -168,6 +168,7 @@ void AChest::Dissolve_Implementation()
 	
 	Collision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	InteractionCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	if (!GetWorldTimerManager().IsTimerActive(DissolveTimerHandle))
 	{

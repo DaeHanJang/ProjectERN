@@ -9,6 +9,13 @@ void UAnimNotifyState_EnemyMeleeHitbox::NotifyBegin(USkeletalMeshComponent* Mesh
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 	SetHitboxEnabled(MeshComp, true);
+
+	// 이 활성화 구간 동안 사용할 데미지/경직력 오버라이드를 캐릭터에 설정 (오버랩 시 참조)
+	AERNEnemyCharacter* Enemy = MeshComp ? Cast<AERNEnemyCharacter>(MeshComp->GetOwner()) : nullptr;
+	if (Enemy && Enemy->HasAuthority())
+	{
+		Enemy->SetHitboxOverride(bOverrideDamage, DamageOverride, bOverrideStaggerPower, StaggerPowerOverride);
+	}
 }
 
 void UAnimNotifyState_EnemyMeleeHitbox::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
@@ -22,6 +29,7 @@ void UAnimNotifyState_EnemyMeleeHitbox::NotifyEnd(USkeletalMeshComponent* MeshCo
 	if (Enemy)
 	{
 		Enemy->ClearHitActors();
+		Enemy->ClearHitboxOverride();
 	}
 }
 

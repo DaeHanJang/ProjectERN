@@ -18,6 +18,7 @@ enum class EERNUIType : uint8
 	LevelUp		UMETA(DisplayName = "LevelUp"),
 	Upgrade		UMETA(DisplayName = "Upgrade"),
 	Minimap		UMETA(DisplayName = "Minimap"),
+	PauseMenu	UMETA(DisplayName = "PauseMenu"),
 };
 
 /**

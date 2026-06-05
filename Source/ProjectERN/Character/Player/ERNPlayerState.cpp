@@ -66,6 +66,9 @@ void AERNPlayerState::CopyProperties(APlayerState* PlayerState)
 		NewPS->SavedConsumableState = SavedConsumableState;
 		NewPS->KillCount = KillCount;
 		NewPS->TotalDamageDealt = TotalDamageDealt;
+		
+		// 미니맵에 사용될 플레이어 번호
+		NewPS->PlayerNumber = PlayerNumber;
 	}
 }
 

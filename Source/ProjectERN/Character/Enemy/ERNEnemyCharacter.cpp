@@ -169,6 +169,19 @@ void AERNEnemyCharacter::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AA
 		}
 	}
 
+	// NotifyState가 설정한 스테이트별 오버라이드가 있으면 Config 값을 덮어씀
+	if (bActiveDamageOverride)
+	{
+		DamageToApply = ActiveDamageOverride;
+	}
+	if (bActiveStaggerOverride)
+	{
+		StaggerPowerToApply = ActiveStaggerOverride;
+	}
+
+	// 동적 난이도 출력 배율 적용 (잡몹은 1.0이라 무영향)
+	DamageToApply *= OutgoingDamageMultiplier;
+
 	FDamageEvent DamageEvent;
 	const float ActualDamage = Player->TakeDamage(DamageToApply, DamageEvent, GetController(), this);
 	// 적 본체 위치를 HitOrigin으로 전달 → 플레이어가 적 방향 기준 4방향 경직 재생
@@ -179,6 +192,22 @@ void AERNEnemyCharacter::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AA
 	{
 		Multicast_PlayHitSound(HitSoundToPlay, Player->GetActorLocation());
 	}
+}
+
+void AERNEnemyCharacter::SetHitboxOverride(bool bDamage, float Damage, bool bStagger, float StaggerPower)
+{
+	bActiveDamageOverride = bDamage;
+	ActiveDamageOverride = Damage;
+	bActiveStaggerOverride = bStagger;
+	ActiveStaggerOverride = StaggerPower;
+}
+
+void AERNEnemyCharacter::ClearHitboxOverride()
+{
+	bActiveDamageOverride = false;
+	ActiveDamageOverride = 0.f;
+	bActiveStaggerOverride = false;
+	ActiveStaggerOverride = 0.f;
 }
 
 void AERNEnemyCharacter::Multicast_PlayHitSound_Implementation(USoundBase* Sound, FVector Location)

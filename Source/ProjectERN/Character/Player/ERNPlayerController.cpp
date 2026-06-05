@@ -715,6 +715,28 @@ void AERNPlayerController::TogglePauseMenu()
 		return;
 	}
 
+	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
+
+	// 만약 일시정지 메뉴가 이미 열려있다면 닫기
+	if (UIManager && UIManager->GetActiveUIType() == EERNUIType::PauseMenu)
+	{
+		ClosePauseMenu();
+		return;
+	}
+
+	// 만약 다른 UI가 열려있다면 (인벤토리 등), 아무 동작도 하지 않음
+	// 열려있는 해당 UI의 NativeOnKeyDown에서 Esc 입력을 가로채어 닫기 애니메이션을 재생하게 됨
+	if (UIManager && UIManager->GetActiveUIType() != EERNUIType::None)
+	{
+		return;
+	}
+
+	// 일시정지 메뉴 열기를 UI 매니저에 요청 (실패 시 반환)
+	if (UIManager && !UIManager->RequestOpenUI(EERNUIType::PauseMenu))
+	{
+		return;
+	}
+
 	if (!PausedWidget && PausedWidgetClass)
 	{
 		PausedWidget = CreateWidget<UUserWidget>(this, PausedWidgetClass);
@@ -722,6 +744,7 @@ void AERNPlayerController::TogglePauseMenu()
 
 	if (!PausedWidget)
 	{
+		if (UIManager) UIManager->CloseActiveUI();
 		return;
 	}
 
@@ -735,10 +758,6 @@ void AERNPlayerController::TogglePauseMenu()
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
 	}
-	else
-	{
-		ClosePauseMenu();
-	}
 }
 
 void AERNPlayerController::ClosePauseMenu()
@@ -750,6 +769,12 @@ void AERNPlayerController::ClosePauseMenu()
 		FInputModeGameOnly InputMode;
 		SetInputMode(InputMode);
 		bShowMouseCursor = false;
+	}
+
+	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
+	if (UIManager && UIManager->GetActiveUIType() == EERNUIType::PauseMenu)
+	{
+		UIManager->CloseActiveUI();
 	}
 }
 

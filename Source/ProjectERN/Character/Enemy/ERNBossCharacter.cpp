@@ -14,6 +14,7 @@
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
 #include "LevelSequence.h"
@@ -24,6 +25,8 @@
 #include "Subsystem/ERNSoundSubsystem.h"
 #include "Core/ERNGameState.h"
 #include "Actors/Portal/ERNBossPortal.h"
+#include "Inventory/Components/ERNEquipmentComponent.h"
+#include "Combat/Weapons/ERNWeaponBase.h"
 
 AERNBossCharacter::AERNBossCharacter()
 {
@@ -71,6 +74,16 @@ float AERNBossCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 
 	if (ActualDamage > 0.0f && HasAuthority())
 	{
+		// 피격 시 보스 남은 체력 + 출력 공격력 배수 로그
+		if (AttributeSet)
+		{
+			UE_LOG(LogTemp, Log, TEXT("[Boss %s] Hit for %.1f -> Health %.1f / %.1f (%.1f%%) | DmgMul x%.2f"),
+				*GetName(), ActualDamage,
+				AttributeSet->GetHealth(), AttributeSet->GetMaxHealth(),
+				AttributeSet->GetMaxHealth() > 0.f ? AttributeSet->GetHealth() / AttributeSet->GetMaxHealth() * 100.f : 0.f,
+				OutgoingDamageMultiplier);
+		}
+
 		// 데미지 어그로 추가
 		if (AERNBossAIController* BossAIC = Cast<AERNBossAIController>(GetController()))
 		{
@@ -327,6 +340,84 @@ void AERNBossCharacter::PlayIntro()
 	}
 }
 
+void AERNBossCharacter::ApplyDynamicDifficulty()
+{
+	if (!HasAuthority() || !AttributeSet || bDynamicDifficultyApplied)
+	{
+		return;
+	}
+
+	AERNGameState* GS = GetWorld() ? GetWorld()->GetGameState<AERNGameState>() : nullptr;
+	if (!GS)
+	{
+		return;
+	}
+
+	// 파티 평균 공격력(캐릭터 공격력 + 무기 보너스) / 평균 레벨 집계
+	float SumAttack = 0.f;
+	float SumLevel = 0.f;
+	int32 Count = 0;
+
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		AProjectERNCharacter* Player = PS ? Cast<AProjectERNCharacter>(PS->GetPawn()) : nullptr;
+		if (!Player)
+		{
+			continue;
+		}
+
+		UERNAttributeSet* PlayerAttr = Player->GetAttributeSet();
+		if (!PlayerAttr)
+		{
+			continue;
+		}
+
+		// 현재 장착 무기 공격력 (장착 무기 없으면 0)
+		float WeaponDamage = 0.f;
+		if (UERNEquipmentComponent* Equip = Player->GetEquipmentComponent())
+		{
+			if (AERNWeaponBase* Weapon = Equip->CurrentWeapon)
+			{
+				WeaponDamage = Weapon->LightAttackDamage;
+			}
+		}
+
+		SumAttack += PlayerAttr->GetAttackPower() + WeaponDamage;
+		SumLevel += PlayerAttr->GetLevel();
+		++Count;
+	}
+
+	if (Count == 0)
+	{
+		return;
+	}
+
+	bDynamicDifficultyApplied = true;
+
+	const float AvgAttack = SumAttack / Count;
+	const float AvgLevel = SumLevel / Count;
+
+	// 체력 배율 = 1 + 계수 * (평균 공격력 - 기준치), 클램프
+	const float HealthMul = FMath::Clamp(
+		1.f + HealthScalePerAttack * (AvgAttack - AttackBaseline),
+		1.f, MaxHealthMultiplier);
+
+	// 인원수 배율 = Count / FullPartySize (풀파티=1.0, 인원 적을수록 감소). 풀파티 초과 시 1.0로 캡
+	const float PartyScale = FMath::Min(static_cast<float>(Count) / FMath::Max(1, FullPartySize), 1.f);
+
+	const float NewMaxHealth = InitialMaxHealth * HealthMul * PartyScale;
+	AttributeSet->SetMaxHealth(NewMaxHealth);
+	AttributeSet->SetHealth(NewMaxHealth);   // 조우 시점이므로 풀피로 시작
+
+	// 공격 배율 = 1 + 계수 * (평균 레벨 - 기준치), 클램프 → 보스 출력 데미지에 곱해짐
+	OutgoingDamageMultiplier = FMath::Clamp(
+		1.f + AttackScalePerLevel * (AvgLevel - LevelBaseline),
+		1.f, MaxAttackMultiplier);
+
+	UE_LOG(LogTemp, Log, TEXT("[Boss %s] DynamicDifficulty: Players=%d AvgAtk=%.1f AvgLv=%.1f -> MaxHP=%.0f(HMul x%.2f, Party x%.2f) DmgMul=%.2f"),
+		*GetName(), Count, AvgAttack, AvgLevel, NewMaxHealth, HealthMul, PartyScale, OutgoingDamageMultiplier);
+}
+
 void AERNBossCharacter::ShowHealthBarToAllPlayers()
 {
 	if (!HasAuthority() || bHealthBarShown)
@@ -335,6 +426,9 @@ void AERNBossCharacter::ShowHealthBarToAllPlayers()
 	}
 
 	bHealthBarShown = true;
+
+	// 체력바 표시 전에 파티 스탯 기반으로 보스 체력/공격력 조정
+	ApplyDynamicDifficulty();
 
 	// 체력 퍼센트 계산
 	const float HealthPercent = AttributeSet && AttributeSet->GetMaxHealth() > 0.f
