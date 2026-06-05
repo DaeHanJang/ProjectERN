@@ -436,6 +436,11 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		{
 			continue;
 		}
+		
+		if (!IInteractable::Execute_CanInteract(Actor))
+		{
+			continue;
+		}
 
 		if (const AERNItemActor* ItemActor = Cast<AERNItemActor>(Actor))
 		{
