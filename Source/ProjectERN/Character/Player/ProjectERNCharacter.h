@@ -266,6 +266,27 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn")
 	bool bUseCameraYawOnLockOn = true;
 
+	// 락온 카메라 피치 보정 — 먼 적일수록 카메라가 수평이 되어 캐릭터-적이 겹치는 문제 방지
+	// 이 거리(2D) 이하면 기존처럼 자유로운 상한 피치 사용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn|Pitch")
+	float LockOnPitchNearDistance = 300.f;
+
+	// 이 거리(2D) 이상이면 상한 피치를 LockOnPitchMaxFar까지 낮춰 강제로 내려다봄
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn|Pitch")
+	float LockOnPitchFarDistance = 300.f;
+
+	// 가까울 때 상한 피치(위로 허용하는 각도)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn|Pitch")
+	float LockOnPitchMaxNear = 15.f;
+
+	// 멀 때 상한 피치(음수 = 강제로 아래를 보게 함)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn|Pitch")
+	float LockOnPitchMaxFar = -20.f;
+
+	// 하한 피치(너무 가파르게 내려다보지 않도록 제한)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LockOn|Pitch")
+	float LockOnPitchMin = -35.f;
+
 	// 서버의 값을 클라이언트로 복제할 멤버 변수 목록을 등록하는 함수
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	
