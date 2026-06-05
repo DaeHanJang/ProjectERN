@@ -1070,6 +1070,24 @@ void AProjectERNCharacter::ExecuteJumpLaunch()
 	Jump();
 }
 
+void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
+{
+	// 서버 권위에서만, 라이프스틸 비율이 설정된 캐릭터(Warrior BP)만 회복
+	if (!HasAuthority() || DamageDealt <= 0.f || LifestealFraction <= 0.f || !AttributeSet)
+	{
+		return;
+	}
+
+	if (bIsDead)
+	{
+		return;
+	}
+
+	const float Heal = DamageDealt * LifestealFraction;
+	const float NewHealth = FMath::Min(AttributeSet->GetMaxHealth(), AttributeSet->GetHealth() + Heal);
+	AttributeSet->SetHealth(NewHealth); // 서버에서 적용 → Health 리플리케이트
+}
+
 void AProjectERNCharacter::LockOn()
 {
 	if (bIsHangingFromBird || !LockOnComponent)
