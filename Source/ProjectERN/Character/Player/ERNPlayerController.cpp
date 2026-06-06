@@ -31,6 +31,7 @@
 #include "World/ERNMinimapPinPoint.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
 #include "UI/ERNSkillCoolPanel.h"
+#include "UI/ERNQuickSlotWidget.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -259,6 +260,33 @@ void AERNPlayerController::BeginPlay()
 		}
 	}
 
+	// 퀵슬롯 패널 생성 (로컬 플레이어만)
+	if (IsLocalPlayerController() && QuickSlotWidgetClass)
+	{
+		// 숨겨야 할 맵인지 확인 (메인 메뉴 등)
+		bool bShouldHide = false;
+		for (const FString& MapName : HideQuickSlotMapNames)
+		{
+			if (CurrentMapName.Contains(MapName))
+			{
+				bShouldHide = true;
+				break;
+			}
+		}
+
+		if (!bShouldHide)
+		{
+			QuickSlotWidget = CreateWidget<UERNQuickSlotWidget>(this, QuickSlotWidgetClass);
+
+			if (QuickSlotWidget)
+			{
+				QuickSlotWidget->AddToViewport(50);
+				// 컷신 시작 시 함께 숨겨지도록 등록한다.
+				RegisterHUDWidget(QuickSlotWidget);
+			}
+		}
+	}
+
 	// 닉네임 전송 (로컬 플레이어만) - 타이머로 재시도
 	if (IsLocalPlayerController())
 	{
@@ -384,6 +412,7 @@ void AERNPlayerController::AcknowledgePossession(class APawn* P)
 
 	RefreshInventoryWidget();
 	RefreshSkillCoolPanel();
+	RefreshQuickSlotWidget();
 }
 
 void AERNPlayerController::RefreshInventoryWidget() const
@@ -396,6 +425,19 @@ void AERNPlayerController::RefreshInventoryWidget() const
 	if (UERNInventoryWidget* ERNInventoryWidget = Cast<UERNInventoryWidget>(InventoryWidget))
 	{
 		ERNInventoryWidget->RefreshFromCurrentCharacter();
+	}
+}
+
+void AERNPlayerController::RefreshQuickSlotWidget() const
+{
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+	
+	if (QuickSlotWidget)
+	{
+		QuickSlotWidget->RefreshFromCurrentCharacter();
 	}
 }
 
@@ -629,6 +671,23 @@ void AERNPlayerController::TryInteract()
 			}
 		}
 	}
+}
+
+void AERNPlayerController::Client_ResetInteractionInputState_Implementation()
+{
+	ClearCurrentInteractable();
+	
+	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			UIManager->ResetUIState();
+		}
+	}
+	
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+	bShowMouseCursor  = false;
 }
 
 void AERNPlayerController::Server_TryInteract_Implementation(AActor* InteractableActor)

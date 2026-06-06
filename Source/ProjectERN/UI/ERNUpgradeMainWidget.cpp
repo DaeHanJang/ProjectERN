@@ -391,7 +391,8 @@ void UERNUpgradeMainWidget::OnSlotDoubleClickedCallback(const int32 Index)
 {
     FocusSlotIndex = Index;
     UpdateVisuals();
-    OnUpgradeConfirmed();
+    // 인벤토리와 달리, 더블클릭만으로 자동 강화가 되지 않도록 방지합니다.
+    // OnUpgradeConfirmed(); 
 }
 
 void UERNUpgradeMainWidget::ClearSelection()

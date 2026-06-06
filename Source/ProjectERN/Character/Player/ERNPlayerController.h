@@ -145,6 +145,9 @@ public:
 	// ServerSide 상호작용 시도
 	UFUNCTION(Server, Reliable)
 	void Server_TryInteract(AActor* InteractableActor);
+	
+	UFUNCTION(Client, Reliable)
+	void Client_ResetInteractionInputState();
 
 	// Pedestal(상호작용가능한액터)에서 호출용
 	AActor* GetCurrentInteractable() const { return CurrentInteractableActor.Get(); }
@@ -425,6 +428,26 @@ private:
 	
 #pragma endregion
 	
+#pragma region QuickSlot
+	// ===== 퀵슬롯 UI =====
+protected:
+	// 퀵슬롯 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, Category="UI|QuickSlot")
+	TSubclassOf<class UERNQuickSlotWidget> QuickSlotWidgetClass;
+
+	// 퀵슬롯 UI를 숨길 맵 이름 목록
+	UPROPERTY(EditAnywhere, Category="UI|QuickSlot")
+	TArray<FString> HideQuickSlotMapNames;
+
+	// 현재 생성된 퀵슬롯 위젯
+	UPROPERTY(Transient)
+	TObjectPtr<class UERNQuickSlotWidget> QuickSlotWidget;
+
+private:
+	// 캐릭터 변경 시 퀵슬롯 연동 갱신
+	void RefreshQuickSlotWidget() const;
+#pragma endregion QuickSlot
+
 #pragma region SkillPanel
 	// ===== 스킬 쿨타임 UI =====
 protected:

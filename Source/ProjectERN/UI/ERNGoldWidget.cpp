@@ -42,19 +42,41 @@ void UERNGoldWidget::RefreshFromCurrentCharacter()
 	{
 		if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(PC->GetPawn()))
 		{
-			if (UAbilitySystemComponent* ASC = PlayerCharacter->GetAbilitySystemComponent())
+			UAbilitySystemComponent* NewASC = PlayerCharacter->GetAbilitySystemComponent();
+			UERNAttributeSet* AttributeSet = PlayerCharacter->GetAttributeSet();
+			if (!IsValid(NewASC) || !IsValid(AttributeSet))
+			{
+				return;
+			}
+			
+			if (UAbilitySystemComponent* OldASC = BoundAbilitySystemComponent.Get())
+			{
+				if (OldASC != NewASC && GoldChangedHandle.IsValid())
+				{
+					OldASC->GetGameplayAttributeValueChangeDelegate(UERNAttributeSet::GetGoldAttribute()).Remove(GoldChangedHandle);
+					GoldChangedHandle.Reset();
+				}
+			}
+			
+			if (BoundAbilitySystemComponent.Get() != NewASC || !GoldChangedHandle.IsValid())
 			{
 				// 바인딩 및 ASC 캐싱
-				GoldChangedHandle = ASC->GetGameplayAttributeValueChangeDelegate(UERNAttributeSet::GetGoldAttribute()).AddUObject(this, &UERNGoldWidget::OnGoldChanged);
+				GoldChangedHandle = NewASC->GetGameplayAttributeValueChangeDelegate(UERNAttributeSet::GetGoldAttribute()).AddUObject(this, &UERNGoldWidget::OnGoldChanged);
 								
-				BoundAbilitySystemComponent = ASC;
-				
-				// 바인딩 후 골드 동기화
-				TargetGold = PlayerCharacter->GetAttributeSet()->GetGold();	
-				CurrentGold = PlayerCharacter->GetAttributeSet()->GetGold();
-				
-				UpdateGoldText();
+				BoundAbilitySystemComponent = NewASC;
 			}
+			
+			// 바인딩 후 골드 동기화
+			TargetGold = FMath::FloorToInt(AttributeSet->GetGold());
+			CurrentGold = TargetGold;
+			GoldStep = 0;
+			
+			if (GetWorld())
+			{
+				GetWorld()->GetTimerManager().ClearTimer(GoldChangedTimer);
+			}
+			
+			UpdateGoldText();
 		}
 	}
 }
@@ -70,20 +92,21 @@ void UERNGoldWidget::OnGoldChanged(const FOnAttributeChangeData& Data)
 	if (GetWorld()->GetTimerManager().IsTimerActive(GoldChangedTimer))
 	{
 		GetWorld()->GetTimerManager().ClearTimer(GoldChangedTimer);
-		
-		if (!LexTryParseString(CurrentGold, *GoldTextBlock->GetText().ToString()))
-		{
-			return;
-		}
 	}
 	else
 	{
-		CurrentGold = static_cast<int32>(Data.OldValue);
+		CurrentGold = FMath::FloorToInt(Data.OldValue);
 	}
 	
 	// 목표 골드, 골드 폭 설정
-	TargetGold = static_cast<int32>(Data.NewValue);
+	TargetGold = FMath::FloorToInt(Data.NewValue);
 	const int32 Delta = TargetGold - CurrentGold;
+	if (Delta == 0)
+	{
+		UpdateGoldText();
+		return;
+	}
+	
 	GoldStep = Delta / 20;
 	if (GoldStep == 0 && Delta != 0)
 	{

@@ -40,6 +40,9 @@ class PROJECTERN_API UERNUIManagerSubsystem : public ULocalPlayerSubsystem
 
 public:
 	// ── 핵심 API ──
+	
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ResetUIState();
 
 	/** UI 열기 요청. 다른 UI가 이미 열려있으면 false 반환 */
 	UFUNCTION(BlueprintCallable, Category = "UI")
@@ -60,6 +63,10 @@ public:
 	/** 현재 열려있는 구매 확인 팝업 닫기 */
 	UFUNCTION(BlueprintCallable, Category = "UI|Popup")
 	void CloseConfirmPurchasePopup();
+
+	/** UI 상태 변경 시 호출되는 이벤트 */
+	UPROPERTY(BlueprintAssignable, Category = "UI|Events")
+	FOnUIStateChanged OnUIStateChanged;
 
 private:
 	/** 현재 활성화된 UI 타입 */

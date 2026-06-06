@@ -5,6 +5,7 @@
 #include "GAS/ERNAttributeSet.h"
 #include "GAS/ERNGameplayTags.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/Controller.h"
 #include "Components/CapsuleComponent.h"
 #include "Abilities/GameplayAbility.h"
 #include "GameplayEffect.h"
@@ -260,6 +261,24 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 
 		// 막타 크레딧용 — 마지막 유효타를 넣은 컨트롤러 캐싱
 		LastHitInstigator = EventInstigator;
+
+		// 라이프스틸: 피해자가 플레이어가 아닐 때(적/더미), 공격자가 플레이어면 가한 데미지의 일부 회복
+		if (HasAuthority() && Cast<AProjectERNCharacter>(this) == nullptr)
+		{
+			AProjectERNCharacter* Attacker = EventInstigator ? Cast<AProjectERNCharacter>(EventInstigator->GetPawn()) : nullptr;
+			if (!Attacker)
+			{
+				Attacker = Cast<AProjectERNCharacter>(DamageCauser);
+			}
+			if (!Attacker && DamageCauser)
+			{
+				Attacker = Cast<AProjectERNCharacter>(DamageCauser->GetInstigator());
+			}
+			if (Attacker)
+			{
+				Attacker->ApplyLifesteal(ActualDamage);
+			}
+		}
 
 		// 사망 체크
 		if (NewHealth <= 0.0f)

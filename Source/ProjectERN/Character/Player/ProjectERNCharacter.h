@@ -130,9 +130,44 @@ protected:
 	// 회전 보간을 위해 사용
 	virtual void Tick(float DeltaSeconds) override;
 
+	// 코요테 타임 처리 — 낙하 진입/착지 감지
+	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;
+
+	// 코요테 타임 동안 공중에서도 일반 점프 허용
+	virtual bool CanJumpInternal_Implementation() const override;
+
+	// 점프 성공 시 코요테 타임 소비 (중복 점프 방지)
+	virtual void OnJumped_Implementation() override;
+
+	// 점프 버퍼 처리 — 착지 시 미리 누른 점프 실행
+	virtual void Landed(const FHitResult& Hit) override;
+
 	// 태그 기반 입력을 위한 InputConfig 부여
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Input")
 	TObjectPtr<UERNInputConfig> InputConfig;
+
+	// 코요테 타임 — 발판에서 걸어 떨어진 직후 이 시간(초) 동안은 일반 점프 허용. 0이면 비활성
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Movement")
+	float CoyoteTime = 0.3f;
+
+	// 점프 버퍼 — 착지 전에 미리 누른 점프를 이 시간(초) 안이면 착지 시 실행. 0이면 비활성
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Movement")
+	float JumpBufferTime = 0.15f;
+
+private:
+	// 현재 코요테 점프가 가능한 상태인지
+	bool bCoyoteJumpAvailable = false;
+
+	// 코요테 타임 만료 타이머
+	FTimerHandle CoyoteTimerHandle;
+
+	// 코요테 타임 종료 (착지/소비/만료 시)
+	void EndCoyoteTime();
+
+	// 공중에서 점프를 누른 시각 (점프 버퍼 판정용)
+	float JumpBufferedPressTime = -100.f;
+
+protected:
 
 public:
 	/** Constructor */
@@ -295,6 +330,13 @@ public:
 	// 공격 중 움직일 수 있게 하기 위함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
 	bool bCanMoveWhileAttacking = false;
+
+	// 라이프스틸 — 적에게 준 데미지 중 회복할 비율 (0.15 = 15%). 0이면 비활성 (Warrior BP에만 설정)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
+	float LifestealFraction = 0.f;
+
+	// 가한 데미지 기반 자가 회복 (서버 권위). 적 TakeDamage에서 공격자로 호출됨
+	void ApplyLifesteal(float DamageDealt);
 
 	// 피격 시 카메라 흔들림 (데미지/MaxHealth 비율로 강도 분기)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake")
