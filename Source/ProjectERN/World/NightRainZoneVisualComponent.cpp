@@ -115,6 +115,16 @@ bool UNightRainZoneVisualComponent::UpdateVisual()
 
 	const FVector ZoneCenter = CachedState.GetCenterAtTime(ServerTime);
 	const float ZoneRadius = CachedState.GetRadiusAtTime(ServerTime);
+	
+
+	/*
+	const float SafeTextureAspect = FMath::Max(1.f, 0.001f);
+	const float DynamicTileWorldSizeU = TileWorldSizeV * SafeTextureAspect;
+
+	ZoneNiagaraComponent->SetVariableVec3(TEXT("User.ZoneCenter"), MaterialZoneCenter);
+	ZoneNiagaraComponent->SetVariableFloat(TEXT("User.TileWorldSizeU"), DynamicTileWorldSizeU);
+	ZoneNiagaraComponent->SetVariableFloat(TEXT("User.TileWorldSizeV"), TileWorldSizeV);
+	*/
 
 	if (ZoneRadius <= KINDA_SMALL_NUMBER)
 	{
@@ -123,9 +133,6 @@ bool UNightRainZoneVisualComponent::UpdateVisual()
 
 	constexpr float MeshBaseRadius = 100.f;
 	constexpr float MeshBaseHeight = 100.f;
-
-	constexpr float ZoneVisualCenterZ = 7000.f;
-	constexpr float ZoneVisualHeight = 12000.f;
 
 	FVector VisualLocation = ZoneCenter;
 	VisualLocation.Z = ZoneVisualCenterZ - ZoneVisualHeight * 0.5f;
@@ -136,8 +143,12 @@ bool UNightRainZoneVisualComponent::UpdateVisual()
 		ZoneVisualHeight / MeshBaseHeight
 	);
 	
+	//나이아가라에 넘겨줄 변수
 	ZoneNiagaraComponent->SetWorldLocation(VisualLocation);
 	ZoneNiagaraComponent->SetWorldScale3D(VisualScale);
+	
+	ZoneNiagaraComponent->SetVariableFloat(TEXT("User.ZoneBottomZ"), VisualLocation.Z);
+	ZoneNiagaraComponent->SetVariableFloat(TEXT("User.ZoneHeight"), ZoneVisualHeight);
 	
 	return true;
 }
