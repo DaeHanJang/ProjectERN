@@ -25,4 +25,12 @@ public:
 	// Brightness (UGameUserSettings에 없어서 별도 저장, 0 ~ 100)
 	UPROPERTY(BlueprintReadWrite, Category = "Video")
 	float Brightness = 50.0f;
+
+	// DLSS 사용 여부 (체크박스)
+	UPROPERTY(BlueprintReadWrite, Category = "Video")
+	bool bDLSSEnabled = false;
+
+	// DLSS 품질 모드 (UDLSSMode 값, 4 = Quality) — 플러그인 의존 피하려고 int32로 저장
+	UPROPERTY(BlueprintReadWrite, Category = "Video")
+	int32 DLSSMode = 4;
 };

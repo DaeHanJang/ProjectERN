@@ -121,6 +121,9 @@ public:
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayImpactEffect(FVector Location, FRotator Rotation);
 
+	// 지정 액터를 유도 타겟으로 가진 모든 투사체의 유도를 해제 (대상이 무형/사라질 때 호출)
+	static void ClearHomingTargetingActor(UWorld* World, AActor* TargetActor);
+
 	// 데미지 (플레이어 owner인 경우 BeginPlay에서 AttackPowerScale/WeaponDamageScale로 덮어씀)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile")
 	float Damage = 20.0f;

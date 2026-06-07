@@ -39,6 +39,7 @@
 #include "Components/ERNDownedComponent.h"
 #include "Components/ERNLockOnComponent.h"
 #include "Components/PostProcessComponent.h"
+#include "Character/Player/ERNPlayerController.h"
 #include "Inventory/Item/ERNItemActor.h"
 #include "World/NightRainZoneManager.h"
 
@@ -324,6 +325,11 @@ void AProjectERNCharacter::BeginPlay()
 	if (HasAuthority())
 	{
 		EnterOutOfCombat();
+
+		// 거리 기반 전투 해제 주기 체크 (감지 경로 무관하게 4000 넘으면 풀림)
+		GetWorldTimerManager().SetTimer(
+			CombatLeashTimerHandle, this,
+			&AProjectERNCharacter::CheckCombatLeash, 0.5f, true);
 	}
 	
 	// 부활 완료 바인딩
@@ -561,6 +567,9 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 			bAscentCameraLagActive = bShouldUseAscentLag;
 		}
 	}
+
+	// 락온 마커(흰 점) 갱신 — 로컬 전용, 락온 상태에 따라 표시/숨김 (분기 전에 매 프레임 호출)
+	UpdateLockOnMarker();
 
 	// 매달림 중: 매 frame 새의 HangPoint World로 위치 강제 + 새 진행 방향으로 회전 동기화 (모든 머신)
 	// → attach 없이 deterministic 추적 → RepMovement/BasedMovement/NetSmoothing 경로 우회
@@ -1239,6 +1248,16 @@ void AProjectERNCharacter::Bird()
 	Server_SpawnRideBird();
 }
 
+void AProjectERNCharacter::Gold(int32 Amount)
+{
+	Server_GiveGold(Amount);	// 골드는 서버 권한 → 서버로 라우팅
+}
+
+void AProjectERNCharacter::Server_GiveGold_Implementation(int32 Amount)
+{
+	AddGold(Amount);			// 베이스의 서버측 골드 가산
+}
+
 void AProjectERNCharacter::SummonRideBird()
 {
 	Server_SpawnRideBird();
@@ -1755,6 +1774,37 @@ FRotator AProjectERNCharacter::GetAttackDesiredRotation() const
 	return FRotator(0.f, TargetRotation.Yaw, 0.f);
 }
 
+void AProjectERNCharacter::UpdateLockOnMarker()
+{
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	AERNPlayerController* PC = Cast<AERNPlayerController>(GetController());
+	if (!PC)
+	{
+		return;
+	}
+
+	// 락온 활성 + 타겟 유효 → 카메라 고정점(타겟 액터 중심)을 화면 좌표로 투영
+	if (LockOnComponent && LockOnComponent->IsLockOnActive())
+	{
+		if (AActor* Target = LockOnComponent->GetCurrentTarget())
+		{
+			FVector2D ScreenPos;
+			if (PC->ProjectWorldLocationToScreen(Target->GetActorLocation(), ScreenPos))
+			{
+				PC->UpdateLockOnMarker(true, ScreenPos);
+				return;
+			}
+		}
+	}
+
+	// 락온 아님/타겟 무효/화면 밖 → 숨김
+	PC->UpdateLockOnMarker(false, FVector2D::ZeroVector);
+}
+
 void AProjectERNCharacter::InterpActorRotation(float DeltaSeconds)
 {
 	const FRotator CurrentRotation = GetActorRotation();
@@ -2101,6 +2151,38 @@ void AProjectERNCharacter::NotifyLostBy(AERNEnemyCharacter* Enemy)
 	}
 
 	if (DetectingEnemies.Num() == 0)
+	{
+		GetWorldTimerManager().SetTimer(
+			OutOfCombatTimerHandle, this,
+			&AProjectERNCharacter::EnterOutOfCombat,
+			OutOfCombatGraceTime, false);
+	}
+}
+
+void AProjectERNCharacter::CheckCombatLeash()
+{
+	if (!HasAuthority() || DetectingEnemies.Num() == 0)
+	{
+		return;
+	}
+
+	const FVector MyLocation = GetActorLocation();
+	const float ReleaseDistSq = CombatReleaseDistance * CombatReleaseDistance;
+
+	// 무효(소멸)했거나 해제 거리보다 먼 적은 직접 제거
+	bool bRemovedAny = false;
+	for (auto It = DetectingEnemies.CreateIterator(); It; ++It)
+	{
+		AERNEnemyCharacter* Enemy = It->Get();
+		if (!Enemy || FVector::DistSquared(MyLocation, Enemy->GetActorLocation()) > ReleaseDistSq)
+		{
+			It.RemoveCurrent();
+			bRemovedAny = true;
+		}
+	}
+
+	// 전부 빠졌으면 그레이스 타이머 시작 (NotifyLostBy와 동일 경로)
+	if (bRemovedAny && DetectingEnemies.Num() == 0)
 	{
 		GetWorldTimerManager().SetTimer(
 			OutOfCombatTimerHandle, this,
