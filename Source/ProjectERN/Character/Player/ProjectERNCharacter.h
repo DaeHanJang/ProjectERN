@@ -32,6 +32,7 @@ class UNiagaraComponent;
 class UNiagaraSystem;
 class UERNDownedComponent;
 class ANightRainZoneManager;
+class UWidgetComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -770,6 +771,9 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayReviveMontage();
 
+	// UI 초기화
+	void InitializeDownedStatusWidget();
+	
 	// 부활 몽타주
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Revive")
 	TObjectPtr<UAnimMontage> ReviveMontage;
@@ -784,6 +788,11 @@ protected:
 	// 부활 시 적용할 체력 비율
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState", meta=(ClampMin="0.0", ClampMax="1.0"))
 	float ReviveHealthRatio = 0.5f;
+	
+	// 기절 UI
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ERN|UI", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UWidgetComponent> DownedStatusWidgetComponent;
+	
 #pragma endregion PlayerRevive
 	
 #pragma region PlayerRespawn
@@ -793,6 +802,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ERN|Respawn")
 	void CompleteDownedCountdown();
 
+	// 남은 리스폰 시간을 초 단위로 반환하는 함수
+	UFUNCTION(BlueprintPure, Category="ERN|Respawn")
+	float GetDownedRespawnRemainingTime() const;
+
+	// UI용 비율
+	UFUNCTION(BlueprintPure, Category="ERN|Respawn")
+	float GetDownedRespawnRemainingPercent() const;
+	
+	// RespawnCountDown을 보여줄지 여부 확인 UI에서 활용
+	UFUNCTION(BlueprintPure, Category = "ERN|Respawn")
+	bool ShouldShowDownedRespawnCountdown() const;
+	
 protected:
 	// 죽음 몽타주 끝난 후 실행
 	void FinishRespawnDeathMontage();
@@ -854,6 +875,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="0.0", ClampMax="1.0"))
 	float RespawnHealthRatio = 1.f;
 
+	// 리스폰 가능 여부 확인 함수
+	UFUNCTION(BlueprintPure, Category = "ERN|Respawn")
+	bool CanAutoRespawnFromDowned() const;
+	
 	// 죽음 몽타주 적용 타이머
 	FTimerHandle RespawnDeathMontageTimerHandle;
 	// Downed 상태에서 리스폰 카운트다운 타이머
@@ -867,6 +892,13 @@ protected:
 	FTransform PendingRespawnTransform;
 	// 프리로드 대기 시간이 얼마나 지났는지 기록하는 값
 	float RespawnPreloadElapsedTime = 0.f;
+	
+	// 리스폰이 실행될 서버 기준 종료 시간
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="ERN|LifeState|Respawn")
+	float DownedRespawnEndServerTime = 0.f;
+
+	// 클라이언트에서도 서버 기준 현재 시간을 얻기 위한 helper
+	float GetSyncedServerWorldTimeSeconds() const;
 	
 #pragma endregion PlayerRespawn
 };

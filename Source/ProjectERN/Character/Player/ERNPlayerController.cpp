@@ -37,9 +37,7 @@
 void AERNPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-
-
-
+	
 	// 컷신 동안 HUD 일괄 숨김 (로컬 컨트롤러 전용)
 	BindCutsceneEvents();
 
@@ -287,7 +285,7 @@ void AERNPlayerController::BeginPlay()
 			}
 		}
 	}
-
+	
 	// 닉네임 전송 (로컬 플레이어만) - 타이머로 재시도
 	if (IsLocalPlayerController())
 	{
@@ -1339,7 +1337,6 @@ void AERNPlayerController::RefreshSkillCoolPanel() const
 }
 
 #pragma region PlayerRespawn
-
 // ===== Player Respawn =====
 bool AERNPlayerController::GetStreamingSourcesInternal(TArray<FWorldPartitionStreamingSource>& OutStreamingSources) const
 {
