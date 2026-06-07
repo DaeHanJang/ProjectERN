@@ -53,6 +53,10 @@
 		{
 			"Name": "PCG",
 			"Enabled": true
+		},
+		{
+			"Name": "DLSS",
+			"Enabled": true
 		}
 	]
 }
