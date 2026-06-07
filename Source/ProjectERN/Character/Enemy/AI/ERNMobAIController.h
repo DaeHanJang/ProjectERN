@@ -56,6 +56,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Perception")
 	float CombatVisionAngle = 180.0f;
 
+	// 전투 모드 시야 거리 (타겟 추적 중) — 타겟 잡히면 넓어짐. LoseSightRadius >= SightRadius 유지할 것
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Perception")
+	float CombatSightRadius = 10000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Perception")
+	float CombatLoseSightRadius = 11000.0f;
+
 	// 현재 전투 모드 여부
 	bool bIsInCombatMode = false;
 

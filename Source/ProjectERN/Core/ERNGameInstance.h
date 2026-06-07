@@ -8,6 +8,7 @@
 #include "Character/Player/ERNPlayerState.h"
 #include "Shop/Provider/ERNShopDataProvider.h"
 #include "Enhancement/Provider/ERNUpgradeDataProvider.h"
+#include "DLSSLibrary.h"
 #include "ERNGameInstance.generated.h"
 
 class UERNDummyShopProvider;
@@ -115,6 +116,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 	UERNSaveSettings* CachedSettings = nullptr;
 
+private:
+	// 저장된 DLSS 상태(켜짐/모드)를 실제 적용 (EnableDLSS + 스크린퍼센트). 설정/해상도 적용 후 마지막에 호출
+	void ApplyDLSS();
+
+public:
 	// ===== 설정: 오디오 =====
 
 	UFUNCTION(BlueprintCallable, Category = "Settings|Audio")
@@ -192,6 +198,27 @@ public:
 	// 설정 적용 + 저장 (GameUserSettings.ini)
 	UFUNCTION(BlueprintCallable, Category = "Settings|Video")
 	void ApplyVideoSettings();
+
+	// ===== DLSS =====
+	// RTX+드라이버 지원 여부 (false면 위젯에서 DLSS 섹션 숨김)
+	UFUNCTION(BlueprintPure, Category = "Settings|DLSS")
+	bool IsDLSSAvailable() const;
+
+	// 체크박스: DLSS 켜기/끄기
+	UFUNCTION(BlueprintCallable, Category = "Settings|DLSS")
+	void SetDLSSEnabled(bool bEnabled);
+	UFUNCTION(BlueprintPure, Category = "Settings|DLSS")
+	bool IsDLSSEnabled() const;
+
+	// 드롭다운: GPU+해상도 지원 모드만 (Off/Auto 제외)
+	UFUNCTION(BlueprintPure, Category = "Settings|DLSS")
+	TArray<UDLSSMode> GetSupportedDLSSModes() const;
+
+	// 품질 모드 설정/조회
+	UFUNCTION(BlueprintCallable, Category = "Settings|DLSS")
+	void SetDLSSMode(UDLSSMode Mode);
+	UFUNCTION(BlueprintPure, Category = "Settings|DLSS")
+	UDLSSMode GetDLSSMode() const;
 
 protected:
 	// 세션 인터페이스

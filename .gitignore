@@ -49,6 +49,10 @@ SourceArt/**/*.tga
 Binaries/*
 Plugins/**/Binaries/*
 
+# 플러그인 전체 (repo 제외 — 팀원 각자 설치: DLSS 등)
+# 자체 제작 플러그인을 올리려면 아래에 예외 추가: !/Plugins/MyPlugin/
+/Plugins/
+
 # Builds
 Build/*
 
@@ -92,3 +96,6 @@ Plugins/Developer/
 # Assistive tools
 .Tools/
 /Tools
+
+# Plugins
+Plugins/*

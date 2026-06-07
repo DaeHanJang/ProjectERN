@@ -284,6 +284,9 @@ public:
 
 	void ApplyLockOnState(bool bNewLockOn, const FRotator& TargetRotation);
 
+	// 락온 마커(흰 점) 화면 위치 갱신 — 로컬 전용, Tick에서 매 프레임 호출
+	void UpdateLockOnMarker();
+
 protected:
 	float DesiredLockOnYaw = 0.f;
 
@@ -383,6 +386,14 @@ public:
 	// 콘솔 명령: ~ 키 → bird 입력. 플레이어 뒤+위에서 새가 swoop으로 내려와 태우고 빠르게 전진.
 	UFUNCTION(Exec)
 	void Bird();
+
+	// ===== 치트: 골드 지급 (콘솔 명령 gold) =====
+	// 콘솔 명령: gold → 100만 골드 지급 (인자 주면 그 액수)
+	UFUNCTION(Exec)
+	void Gold(int32 Amount = 1000000);
+
+	UFUNCTION(Server, Reliable)
+	void Server_GiveGold(int32 Amount);
 
 	// 시퀀서 이벤트 → 이 노드 호출. 내부에서 서버로 라우팅되어 자기 새 1마리 스폰.
 	// (각 클라가 Get Player Character(0) 로컬 캐릭터에 대해 호출 → 플레이어당 1마리)
@@ -662,6 +673,15 @@ protected:
 	TSet<TWeakObjectPtr<AERNEnemyCharacter>> DetectingEnemies;
 
 	FTimerHandle OutOfCombatTimerHandle;
+
+	// 전투 해제 거리 — 감지 중인 모든 적이 이 거리보다 멀면 전투 해제 (피격으로만 감지된 원거리 케이스 대응)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat", meta = (ClampMin = "0.0"))
+	float CombatReleaseDistance = 4000.f;
+
+	FTimerHandle CombatLeashTimerHandle;
+
+	// 주기적으로 호출 - 너무 멀어진(또는 무효) 적을 DetectingEnemies에서 제거 (서버)
+	void CheckCombatLeash();
 
 	// 그레이스 타이머 만료 시 호출 - OutOfCombat 태그 부여
 	void EnterOutOfCombat();

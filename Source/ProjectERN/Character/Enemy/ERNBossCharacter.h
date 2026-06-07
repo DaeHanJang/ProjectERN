@@ -10,6 +10,7 @@ class ULevelSequence;
 class UBehaviorTree;
 class UAnimMontage;
 class USoundBase;
+class UNiagaraSystem;
 
 // 보스 페이즈 정보
 USTRUCT(BlueprintType)
@@ -170,6 +171,15 @@ public:
 	// 모든 머신에서 보스 BGM 정지 (사망 시 호출)
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_StopBossBGM();
+
+	// === 순간이동 번개 잔상 ===
+	// 시작점~도착점을 잇는 번개 빔 Niagara (BeamStart/BeamEnd User 파라미터 필요)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|VFX")
+	TObjectPtr<UNiagaraSystem> TeleportTrailFX = nullptr;
+
+	// 순간이동 시 모든 머신에서 시작→도착 번개 빔 스폰 (BTTask가 서버에서 호출)
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlayTeleportTrail(FVector StartLocation, FVector EndLocation);
 
 protected:
 	virtual void BeginPlay() override;

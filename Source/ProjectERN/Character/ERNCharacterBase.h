@@ -94,6 +94,28 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Character")
 	bool IsDead() const { return bIsDead; }
 
+	// 타겟팅 가능 여부 (락온/유도 검색에서 사용) — 죽었거나 무형 상태면 불가
+	UFUNCTION(BlueprintPure, Category = "Character")
+	bool IsTargetable() const { return !bIsDead && !bIsIntangible; }
+
+	// 무형(사라짐) 상태 설정 — 충돌 끄기 + 추적 중인 투사체 유도 해제
+	// (서버에서 호출, 클라는 OnRep로 동기화)
+	UFUNCTION(BlueprintCallable, Category = "Character")
+	void SetIntangible(bool bNewIntangible);
+
+protected:
+	// 무형 상태 (충돌/락온/유도 전부 무시되는 "그 자리에 없는" 상태)
+	UPROPERTY(ReplicatedUsing = OnRep_Intangible, BlueprintReadOnly, Category = "Character")
+	bool bIsIntangible = false;
+
+	UFUNCTION()
+	void OnRep_Intangible();
+
+	// 무형 상태 적용 (충돌 토글 + 유도 해제) — 서버/클라 양쪽에서 실행
+	void ApplyIntangible();
+
+public:
+
 	// 경직 시스템 — HitOrigin은 공격자/투사체/폭발 중심 등 데미지 발원 위치 (ZeroVector면 방향 계산 스킵하고 Front fallback)
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void TryApplyStagger(float IncomingStaggerPower, const FVector& HitOrigin = FVector::ZeroVector);

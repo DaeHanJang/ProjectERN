@@ -28,8 +28,14 @@ public:
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 	
 public:
+	// 몹 스포너
 	bool TryGetMobStates(FName SpawnerId, TArray<FMobRuntimeState>& OutSavedStates) const;
 	void SaveMobStates(FName SpawnerId, const TArray<FMobRuntimeState>& InStates);
+	
+	// 아이템 스포너
+	void RegisterItemChestSpawner(FName ChestSpawnerID);
+	bool IsItemChestOpened(FName ChestSpawnerID) const;
+	void SetItemChestActive(FName ChestSpawnerID, bool bActive);
 	
 private:
 	bool TryFindWorldRow(const UWorld* World, FERNWorldTableRow& OutWorldRow, FString* OutWorldPath) const;
@@ -55,4 +61,8 @@ private:
 	// 몹 스포너 데이터 저장소
 	UPROPERTY()
 	TMap<FName, FSpawnerMobRuntimeStates> SpawnerMobStates;
+	
+	// 아이템 스포너 데이터 저장소
+	UPROPERTY()
+	TMap<FName, bool> ItemSpawners;
 };
