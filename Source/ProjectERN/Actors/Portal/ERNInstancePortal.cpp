@@ -18,6 +18,7 @@
 #include "World/NightRainZoneManager.h"
 #include "Actors/Portal/ERNPortalDestinationPoint.h"
 #include "EngineUtils.h"
+#include "WorldPartition/DataLayer/DataLayerManager.h"
 
 AERNInstancePortal::AERNInstancePortal()
 {
@@ -132,6 +133,13 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 		FTransform Dest;
 		if (bEntering)
 		{
+			// 입장 - 데이터 레이어 활성화
+			if (SetDungeonDataLayerActive(true) == false)
+			{
+				UE_LOG(LogTemp,Warning, TEXT("던전 활성화 실패. 텔레포트를 시작하지 않습니다."));
+				return;
+			}
+			
 			// 입장 — 현재 필드 위치를 각자 저장한 뒤 도착 지점으로 이동
 			ERNPlayerState->SavedFieldTransform = Pawn->GetActorTransform();
 			Dest = ResolveDestination(Index++);
@@ -140,6 +148,13 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 		{
 			// 복귀 — 저장해둔 필드 위치로 순간이동 (저장하지 않음)
 			Dest = ERNPlayerState->SavedFieldTransform;
+			
+			// 복귀 - 데이터 레이어 비활성화
+			if (SetDungeonDataLayerActive(false) == false)
+			{
+				// 복귀는 데이터 레이어 관리와 상관없이 가능하도록
+				UE_LOG(LogTemp, Warning, TEXT("던전 비활성화 실패"));
+			}
 		}
 
 		// 서버에서 옮기면 RepMovement로 모든 클라에 복제
@@ -255,6 +270,7 @@ ANightRainZoneManager* AERNInstancePortal::ResolveNightRainZoneManager()
 	return nullptr;
 }
 
+
 void AERNInstancePortal::BroadcastPortalChat(bool bEntering) const
 {
 	// 입장/복귀에 따라 다른 문구 선택
@@ -322,5 +338,37 @@ void AERNInstancePortal::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComp,
 				InteractionPromptWidget->SetVisibility(false);
 			}
 		}
+	}
+}
+
+
+bool AERNInstancePortal::SetDungeonDataLayerActive(bool bActive) const
+{
+	if (HasAuthority() == false || DungeonDataLayerAsset == nullptr)
+	{
+		return false;
+	}
+	
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return false;
+	}
+	
+	UDataLayerManager* DataLayerManager = World->GetDataLayerManager();
+	if (DataLayerManager == nullptr)
+	{
+		return false;
+	}
+	
+	// 런타임 중 데이터 레이어 활성화
+	if (bActive)
+	{
+		return DataLayerManager->SetDataLayerRuntimeState(DungeonDataLayerAsset, EDataLayerRuntimeState::Activated, true);
+	}
+	// 런타임 중 데이터 레이어 비활성화
+	else
+	{
+		return DataLayerManager->SetDataLayerRuntimeState(DungeonDataLayerAsset, EDataLayerRuntimeState::Unloaded, true);
 	}
 }
