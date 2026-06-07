@@ -92,3 +92,6 @@ Plugins/Developer/
 # Assistive tools
 .Tools/
 /Tools
+
+# Plugins
+Plugins/*
