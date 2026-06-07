@@ -116,6 +116,55 @@ void UERNWorldManagerSubsystem::SaveMobStates(FName SpawnerId, const TArray<FMob
 	SaveStates.MobStates = InStates;
 }
 
+void UERNWorldManagerSubsystem::RegisterItemChestSpawner(FName ChestSpawnerID)
+{
+	if (ChestSpawnerID.IsNone())
+	{
+		return;
+	}
+	
+	ItemSpawners.FindOrAdd(ChestSpawnerID, false);
+}
+
+bool UERNWorldManagerSubsystem::IsItemChestOpened(FName ChestSpawnerID) const
+{
+	if (ChestSpawnerID.IsNone())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ChestSpawnerID is null"));
+		return false;
+	}
+	
+	const bool* bSavedActive = ItemSpawners.Find(ChestSpawnerID);
+	if (bSavedActive == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Find ID is nullptr"));
+		return false; 	
+	}
+	else
+	{
+		return *bSavedActive;
+	}
+}
+
+void UERNWorldManagerSubsystem::SetItemChestActive(FName ChestSpawnerID, bool bActive)
+{
+	if (ChestSpawnerID.IsNone())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ChestSpawnerID is null"));
+		return;
+	}
+	
+	// ID로 검색하고 활성화 여부 동기화
+	bool* bSavedActive = ItemSpawners.Find(ChestSpawnerID);
+	if (bSavedActive == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ItemSpawners.Find is null. ChestSpawnerID : %s"), *ChestSpawnerID.ToString());
+		return;
+	}
+	
+	*bSavedActive = bActive;
+}
+
 
 // 현재 맵을 월드 세팅 매니저의 데이터 테이블에서 찾아내는 공용 함수
 bool UERNWorldManagerSubsystem::TryFindWorldRow(const UWorld* World, FERNWorldTableRow& OutWorldRow, FString* OutWorldPath) const
