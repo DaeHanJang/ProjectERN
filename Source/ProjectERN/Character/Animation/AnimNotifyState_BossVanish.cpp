@@ -41,10 +41,19 @@ void UAnimNotifyState_BossVanish::NotifyEnd(USkeletalMeshComponent* MeshComp, UA
 {
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
 
-	// BGM 페이드 인 재개 (각 클라 로컬)
+	// BGM 처리 (각 클라 로컬)
 	if (UERNSoundSubsystem* SoundSubsystem = GetSoundSubsystem(MeshComp))
 	{
-		SoundSubsystem->PauseBGM(false, BGMFadeInTime);
+		if (VanishEndBGM)
+		{
+			// 변수에 등록된 BGM을 처음부터 새로 재생 (기존 BGM 자동 정지)
+			SoundSubsystem->PlayBGM(VanishEndBGM, BGMFadeInTime);
+		}
+		else
+		{
+			// 등록된 사운드가 없으면 멈췄던 BGM을 이어서 재개
+			SoundSubsystem->PauseBGM(false, BGMFadeInTime);
+		}
 	}
 
 	// 무형 상태 해제 (몽타주 중단 시에도 호출 → 복구 보장)

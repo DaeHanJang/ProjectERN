@@ -50,8 +50,10 @@ AERNMeleeWeapon* UAnimNotifyState_MeleeTrace::GetEquippedMeleeWeapon(USkeletalMe
 
 	ACharacter* Character = Cast<ACharacter>(MeshComp->GetOwner());
 
-	// 실제 판정은 서버에서만 처리한다.
-	if (!Character || !Character->HasAuthority())
+	// 트레일(코스메틱)은 모든 클라에서 재생해야 하므로 여기서 권한 게이트를 두지 않는다.
+	// 실제 히트 판정은 BeginAttackTrace/TickAttackTrace/EndAttackTrace 내부의
+	// HasAuthority() 체크로 서버 전용 유지된다.
+	if (!Character)
 	{
 		return nullptr;
 	}

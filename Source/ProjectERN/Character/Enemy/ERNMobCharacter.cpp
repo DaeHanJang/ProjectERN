@@ -5,6 +5,9 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Core/ERNGameState.h"
+#include "GAS/ERNAttributeSet.h"
+#include "GameFramework/PlayerState.h"
 
 AERNMobCharacter::AERNMobCharacter()
 {
@@ -18,6 +21,49 @@ void AERNMobCharacter::BeginPlay()
 
 	// 스폰 위치 저장 (귀환용)
 	SpawnLocation = GetActorLocation();
+
+	// 파티 인원수에 따라 체력 조절 (서버 권위). 보스 PartyScale과 동일 방식.
+	ScaleHealthByPlayerCount();
+}
+
+void AERNMobCharacter::ScaleHealthByPlayerCount()
+{
+	if (!HasAuthority() || !AttributeSet)
+	{
+		return;
+	}
+
+	AERNGameState* GS = GetWorld() ? GetWorld()->GetGameState<AERNGameState>() : nullptr;
+	if (!GS)
+	{
+		return;
+	}
+
+	// 유효한 플레이어 폰 수 집계
+	int32 Count = 0;
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		if (PS && Cast<AProjectERNCharacter>(PS->GetPawn()))
+		{
+			++Count;
+		}
+	}
+
+	// 플레이어를 못 찾으면 체력 그대로 유지
+	if (Count == 0)
+	{
+		return;
+	}
+
+	// 인원수 배율 = Count / FullPartySize (풀파티=1.0, 적을수록 감소), 1.0 캡
+	const float PartyScale = FMath::Min(static_cast<float>(Count) / FMath::Max(1, FullPartySize), 1.f);
+	const float NewMaxHealth = InitialMaxHealth * PartyScale;
+
+	AttributeSet->SetMaxHealth(NewMaxHealth);
+	AttributeSet->SetHealth(NewMaxHealth);
+
+	UE_LOG(LogTemp, Log, TEXT("[Mob %s] HealthScale: Players=%d Party x%.2f -> MaxHP=%.0f"),
+		*GetName(), Count, PartyScale, NewMaxHealth);
 }
 
 float AERNMobCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)

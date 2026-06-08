@@ -48,8 +48,17 @@ public:
 		meta = (EditCondition = "bAlertNearbyMobs"))
 	bool bAlertOnlySameType = false;
 
+	// 풀파티 인원수 — 이 인원이면 체력 100%. 인원이 적을수록 Count/FullPartySize 비율로 체력 감소
+	// (예: 3명 기준 2명=0.66, 1명=0.33)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Difficulty",
+		meta = (ClampMin = "1"))
+	int32 FullPartySize = 3;
+
 protected:
 	virtual void BeginPlay() override;
+
+	// 파티 인원수에 따라 MaxHealth/Health 조절 (서버 권위)
+	void ScaleHealthByPlayerCount();
 
 	// 반경 내 다른 일반 몹들의 어그로를 Attacker로 잡아줌
 	void AlertNearbyMobs(AActor* Attacker);

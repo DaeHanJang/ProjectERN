@@ -51,4 +51,8 @@ private:
 	// 현재 재생 중인 BGM AudioComponent
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> CurrentBGM;
+
+	// CurrentBGM이 일시정지(SetPaused) 상태인지. 일시정지된 소스는 FadeOut이 진행되지 않아
+	// 보이스를 계속 점유하므로, 교체 시 즉시 Stop 해야 새 BGM이 컬링되지 않는다.
+	bool bBGMPaused = false;
 };

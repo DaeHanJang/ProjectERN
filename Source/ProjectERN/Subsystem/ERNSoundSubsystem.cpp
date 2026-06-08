@@ -75,7 +75,9 @@ void UERNSoundSubsystem::PlayBGM(USoundBase* BGM, float FadeInTime)
 	// 기존 BGM 정지 (AutoDestroy=false라 컴포넌트는 살아있음 → nullptr 처리로 GC)
 	if (CurrentBGM)
 	{
-		if (FadeInTime > 0.f)
+		// 일시정지된 소스는 FadeOut이 진행되지 않아 보이스를 계속 점유 → 새 BGM이 컬링됨.
+		// 따라서 일시정지 상태면 즉시 Stop으로 소스를 해제한다.
+		if (FadeInTime > 0.f && !bBGMPaused)
 		{
 			CurrentBGM->FadeOut(FadeInTime, 0.f);
 		}
@@ -85,6 +87,7 @@ void UERNSoundSubsystem::PlayBGM(USoundBase* BGM, float FadeInTime)
 		}
 		CurrentBGM = nullptr;
 	}
+	bBGMPaused = false;
 
 	// 새 BGM AudioComponent 생성 (Play는 아직 안 함)
 	CurrentBGM = UGameplayStatics::CreateSound2D(
@@ -127,6 +130,7 @@ void UERNSoundSubsystem::StopBGM(float FadeOutTime)
 		CurrentBGM->Stop();
 	}
 	CurrentBGM = nullptr;
+	bBGMPaused = false;
 }
 
 bool UERNSoundSubsystem::IsBGMPlaying() const
@@ -137,6 +141,8 @@ bool UERNSoundSubsystem::IsBGMPlaying() const
 void UERNSoundSubsystem::PauseBGM(bool bPause, float FadeTime)
 {
 	if (!CurrentBGM) return;
+
+	bBGMPaused = bPause;
 
 	if (bPause)
 	{
