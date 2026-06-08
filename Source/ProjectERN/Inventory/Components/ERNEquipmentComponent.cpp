@@ -15,6 +15,7 @@
 #include "Inventory/Item/Data/ConsumableItemDataAsset.h"
 #include "Inventory/Item/Data/EquipableItemDataAsset.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
+#include "Kismet/GameplayStatics.h"
 
 UERNEquipmentComponent::UERNEquipmentComponent()
 {
@@ -383,6 +384,8 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 		EquipableSlot = ItemEntry;
 		OnEquipmentSlotChanged.Broadcast(EquipableSlot);
 		
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), Cast<UItemDataAssetBase>(DA)->Sound.Get(), Character->GetActorLocation());
+		
 		UE_LOG(LogTemp, Warning, TEXT("OldWeapon: %s"), *InventoryReplacementState.GetItemID().ToString());
 		UE_LOG(LogTemp, Warning, TEXT("NewWeapon: %s"), *NewWeaponRuntimeState.GetItemID().ToString());
 	}
@@ -430,6 +433,8 @@ void UERNEquipmentComponent::Server_EquipItem_Implementation(const int32 SlotInd
 			
 			// 장착했던 아이템의 런타임 상태 인벤토리 슬롯에 갱신
 			Inventory.ChangeItem(SlotIndex, InventoryReplacementState);
+			
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), Cast<UItemDataAssetBase>(DA)->Sound.Get(), Character->GetActorLocation());
 			
 			UE_LOG(LogTemp, Warning, TEXT("OldConsumable: %s, Quantity: %d"), *InventoryReplacementState.GetItemID().ToString(), InventoryReplacementState.GetQuantity());
 		}
