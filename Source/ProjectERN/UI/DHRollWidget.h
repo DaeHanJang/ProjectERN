@@ -23,7 +23,9 @@ class PROJECTERN_API UDHRollWidget : public UERNInteractableWidget
 public:
 	UDHRollWidget(const FObjectInitializer& ObjectInitializer);
 	
-	void SetText(const FString& Text) const;
+	void SetText(const int32 Grade) const;
+	void SetVisibilityRollButton(const bool bVisibility) const;
+	void SetVisibilityRewardButton(const bool bVisibility) const;
 	
 protected:
 	virtual void NativeConstruct() override;

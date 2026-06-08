@@ -39,14 +39,21 @@ ADHRollActor::ADHRollActor()
 	Prompt->SetVisibility(false);	
 }
 
+void ADHRollActor::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	InitRoll();
+}
+
 EInteractionExecutionPolicy ADHRollActor::GetInteractionExecutionPolicy_Implementation() const
 {
-	return EInteractionExecutionPolicy::ServerAuthority;
+	return EInteractionExecutionPolicy::LocalOnly;
 }
 
 void ADHRollActor::ActivateInteract_Implementation() const
 {
-	if (Prompt)
+	if (Prompt && CanInteract_Implementation())
 	{
 		Prompt->SetVisibility(true);
 	}
@@ -54,7 +61,7 @@ void ADHRollActor::ActivateInteract_Implementation() const
 
 bool ADHRollActor::CanInteract_Implementation() const
 {
-	return !IsActorBeingDestroyed();
+	return !IsActorBeingDestroyed() && !PlayerControllersOverFlag.Contains(GetWorld()->GetFirstPlayerController()) && !PlayerControllersRewordFlag.Contains(GetWorld()->GetFirstPlayerController());
 }
 
 void ADHRollActor::Interact_Implementation(APlayerController* PlayerController)
@@ -92,6 +99,14 @@ void ADHRollActor::Interact_Implementation(APlayerController* PlayerController)
 				Widget->OnRollClicked.AddUniqueDynamic(this, &ADHRollActor::Roll);
 				Widget->OnRewardClicked.RemoveDynamic(this, &ADHRollActor::Reward);
 				Widget->OnRewardClicked.AddUniqueDynamic(this, &ADHRollActor::Reward);
+				if (PlayerControllersRewordGrade.Contains(PlayerController))
+				{
+					Widget->SetText(*PlayerControllersRewordGrade.Find(PlayerController));
+				}
+				else
+				{
+					Widget->SetText(0);
+				}
 			}
 		}
 		
@@ -120,7 +135,7 @@ void ADHRollActor::EndInteract_Implementation(APlayerController* PlayerControlle
 	}
 }
 
-void ADHRollActor::Init()
+void ADHRollActor::InitRoll()
 {
 	PlayerControllersRewordGrade.Empty();
 	PlayerControllersOverFlag.Empty();
@@ -149,16 +164,22 @@ void ADHRollActor::Roll(APlayerController* PlayerController)
 	const int32 Value = FMath::RandRange(0, 100);
 	if (Grade == 0)
 	{
-		if (Value >= 50)
+		if (Value >= 30)
 		{
 			if (UDHRollWidget* Widget = Cast<UDHRollWidget>(RollWidget))
 			{
-				Widget->SetText(TEXT("50%의 확률로 5000골드를 획득합니다.\n실패 시 5000골드를 회수합니다."));
+				Widget->SetText(1);
 			}
 			PlayerControllersRewordGrade[PlayerController] = 1;
 		}
 		else
 		{
+			if (UDHRollWidget* Widget = Cast<UDHRollWidget>(RollWidget))
+			{
+				Widget->SetText(-1);
+				Widget->SetVisibilityRollButton(false);
+				Widget->SetVisibilityRewardButton(false);
+			}
 			PlayerControllersOverFlag.Add(PlayerController, 0);
 			const float NewGold = FMath::Max(Attributes->GetGold() - 5000.0f, 0.0f);
 			Attributes->SetGold(NewGold);
@@ -170,12 +191,18 @@ void ADHRollActor::Roll(APlayerController* PlayerController)
 		{
 			if (UDHRollWidget* Widget = Cast<UDHRollWidget>(RollWidget))
 			{
-				Widget->SetText(TEXT("50%의 확률로 20000골드를 획득합니다.\n실패 시 20000골드를 회수합니다."));
+				Widget->SetText(2);
 			}
 			PlayerControllersRewordGrade[PlayerController] = 2;
 		}
 		else
 		{
+			if (UDHRollWidget* Widget = Cast<UDHRollWidget>(RollWidget))
+			{
+				Widget->SetText(-2);
+				Widget->SetVisibilityRollButton(false);
+				Widget->SetVisibilityRewardButton(false);
+			}
 			PlayerControllersOverFlag.Add(PlayerController, 1);
 			const float NewGold = FMath::Max(Attributes->GetGold() - 20000.0f, 0.0f);
 			Attributes->SetGold(NewGold);
@@ -183,16 +210,23 @@ void ADHRollActor::Roll(APlayerController* PlayerController)
 	}
 	else if (Grade == 2)
 	{
-		if (Value >= 80)
+		if (Value >= 75)
 		{
 			if (UDHRollWidget* Widget = Cast<UDHRollWidget>(RollWidget))
 			{
-				Widget->SetText(TEXT("20%의 확률로 전설 등급 무기를 획득합니다.\n실패 시 모든 골드를 회수합니다."));
+				Widget->SetText(3);
+				Widget->SetVisibilityRollButton(false);
 			}
-			PlayerControllersRewordGrade[PlayerController] = 2;
+			PlayerControllersRewordGrade[PlayerController] = 3;
 		}
 		else
 		{
+			if (UDHRollWidget* Widget = Cast<UDHRollWidget>(RollWidget))
+			{
+				Widget->SetText(-3);
+				Widget->SetVisibilityRollButton(false);
+				Widget->SetVisibilityRewardButton(false);
+			}
 			PlayerControllersOverFlag.Add(PlayerController, 2);
 			Attributes->SetGold(0.0f);
 		}
@@ -225,50 +259,92 @@ void ADHRollActor::Reward(APlayerController* PlayerController)
 	}
 	
 	const int32* Grade = PlayerControllersRewordGrade.Find(PlayerController);
-	if (*Grade == 1)
+	if (*Grade == 0)
 	{
+		if (UDHRollWidget* Widget = Cast<UDHRollWidget>(RollWidget))
+		{
+			Widget->SetText(4);
+			Widget->SetVisibilityRollButton(false);
+			Widget->SetVisibilityRewardButton(false);
+		}
+	}
+	else if (*Grade == 1)
+	{
+		if (UDHRollWidget* Widget = Cast<UDHRollWidget>(RollWidget))
+		{
+			Widget->SetText(5);
+			Widget->SetVisibilityRollButton(false);
+			Widget->SetVisibilityRewardButton(false);
+		}
 		Attributes->SetGold(Attributes->GetGold() + 5000.0f);
 	}
 	else if (*Grade == 2)
 	{
+		if (UDHRollWidget* Widget = Cast<UDHRollWidget>(RollWidget))
+		{
+			Widget->SetText(6);
+			Widget->SetVisibilityRollButton(false);
+			Widget->SetVisibilityRewardButton(false);
+		}
 		Attributes->SetGold(Attributes->GetGold() + 20000.0f);
 	}
 	else if (*Grade == 3)
 	{
-		if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
+		if (UDHRollWidget* Widget = Cast<UDHRollWidget>(RollWidget))
 		{
-			if (const AERNPlayerState* PS = PlayerController->GetPlayerState<AERNPlayerState>())
+			Widget->SetVisibilityRollButton(false);
+			Widget->SetVisibilityRewardButton(false);
+		}
+		if (AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PlayerController))
+		{
+			ERNPC->Server_RequestDHRollReward(this);
+		}
+	}
+}
+
+void ADHRollActor::SpawnRewardForPlayer(APlayerController* PlayerController)
+{
+	if (!HasAuthority() || !PlayerController)
+	{
+		return;
+	}
+	
+	if (UItemManagerSubsystem* ItemManager = GetGameInstance()->GetSubsystem<UItemManagerSubsystem>())
+	{
+		if (const AERNPlayerState* PS = PlayerController->GetPlayerState<AERNPlayerState>())
+		{
+			FItemRuntimeState ItemRuntimeState;
+			AActor* Item = nullptr;
+				
+			switch (PS->CharacterType)
 			{
-				FItemRuntimeState ItemRuntimeState;
-				AActor* Item = nullptr;
+			case ECharacterType::Warrior:
+				ItemRuntimeState.SetItemID(FName("SWORD_FROSTBANE_LEGENDARY"));
+				ItemRuntimeState.SetQuantity(1);
+				Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorUpVector() * 250.0f, GetActorForwardVector().Rotation());
+				break;
+			case ECharacterType::Mage:
+				ItemRuntimeState.SetItemID(FName("STAFF_SIVERSTAR_LEGENDARY"));
+				ItemRuntimeState.SetQuantity(1);
+				Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorUpVector() * 250.0f, GetActorForwardVector().Rotation());
+				break;
+			case ECharacterType::Support:
+				ItemRuntimeState.SetItemID(FName("POLEARM_HEAVENSHAKER_LEGENDARY"));
+				ItemRuntimeState.SetQuantity(1);
+				Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorUpVector() * 250.0f, GetActorForwardVector().Rotation());
+				break;
+			default:
+				break;
+			}
 				
-				switch (PS->CharacterType)
+			if (Item)
+			{
+				Item->SetOwner(Cast<AActor>(PlayerController));
+				Item->bOnlyRelevantToOwner = true;
+				if (AERNItemActor* ERNItem = Cast<AERNItemActor>(Item))
 				{
-				case ECharacterType::Warrior:
-					ItemRuntimeState.SetItemID(FName("SWORD_FROSTBANE_LEGENDARY"));
-					Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorForwardVector() * 50.0f, GetActorForwardVector().Rotation());
-					break;
-				case ECharacterType::Mage:
-					ItemRuntimeState.SetItemID(FName("STAFF_SIVERSTAR_LEGENDARY"));
-					Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorForwardVector() * 50.0f, GetActorForwardVector().Rotation());
-					break;
-				case ECharacterType::Support:
-					ItemRuntimeState.SetItemID(FName("POLEARM_HEAVENSHAKER_LEGENDARY"));
-					Item = ItemManager->SpawnItem(ItemRuntimeState, GetActorForwardVector() * 50.0f, GetActorForwardVector().Rotation());
-					break;
-				default:
-					break;
-				}
-				
-				if (Item)
-				{
-					Item->SetOwner(Cast<AActor>(PlayerController));
-					Item->bOnlyRelevantToOwner = true;
-					if (AERNItemActor* ERNItem = Cast<AERNItemActor>(Item))
-					{
-						ERNItem->Launch(GetActorForwardVector());
-						ERNItem->UpdateOwnerOnlyVisibility();
-					}
+					ERNItem->Launch(GetActorForwardVector());
+					ERNItem->UpdateOwnerOnlyVisibility();
 				}
 			}
 		}

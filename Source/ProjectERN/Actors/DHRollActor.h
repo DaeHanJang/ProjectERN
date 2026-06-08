@@ -25,7 +25,7 @@ public:
 	virtual void Interact_Implementation(APlayerController* PlayerController) override;
 	virtual void EndInteract_Implementation(APlayerController* PlayerController) override;
 	
-	void Init();
+	void InitRoll();
 	
 	UFUNCTION()
 	void Roll(APlayerController* PlayerController);
@@ -33,8 +33,13 @@ public:
 	UFUNCTION()
 	void Reward(APlayerController* PlayerController);
 	
+	void SpawnRewardForPlayer(APlayerController* PlayerController);
+	
 	UFUNCTION()
 	void Close();
+	
+protected:
+	virtual void BeginPlay() override;
 	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Collision", meta=(AllowPrivateAccess=true))

@@ -7,6 +7,7 @@
 #include "Components/SlateWrapperTypes.h"
 #include "ERNPlayerController.generated.h"
 
+class ADHRollActor;
 class AERNMinimapPinPoint;
 class AChurch;
 class IInteractable;
@@ -148,6 +149,9 @@ public:
 	
 	UFUNCTION(Client, Reliable)
 	void Client_ResetInteractionInputState();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_RequestDHRollReward(ADHRollActor* RollActor);
 
 	// Pedestal(상호작용가능한액터)에서 호출용
 	AActor* GetCurrentInteractable() const { return CurrentInteractableActor.Get(); }
