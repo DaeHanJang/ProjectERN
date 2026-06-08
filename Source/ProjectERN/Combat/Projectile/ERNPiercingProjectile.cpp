@@ -111,7 +111,8 @@ void AERNPiercingProjectile::OnPierceOverlap(UPrimitiveComponent* OverlappedComp
 	if (OtherEnemy)
 	{
 		OtherEnemy->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), OwnerActor);
-		OtherEnemy->TryApplyStagger(StaggerPower);
+		// 투사체 충돌 지점을 HitOrigin으로 전달 → 적이 투사체 방향 기준 4방향 경직
+		OtherEnemy->TryApplyStagger(StaggerPower, ImpactPoint);
 	}
 	else if (OtherPlayer)
 	{

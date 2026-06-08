@@ -97,7 +97,9 @@ void AERNMeleeWeapon::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActo
 
 	if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(OtherActor))
 	{
-		Enemy->TryApplyStagger(StaggerPower);
+		// 공격자(무기 소유자) 위치를 HitOrigin으로 전달 → 적이 4방향 경직
+		const FVector HitOrigin = OwnerCharacter ? OwnerCharacter->GetActorLocation() : FVector(SweepResult.ImpactPoint);
+		Enemy->TryApplyStagger(StaggerPower, HitOrigin);
 	}
 
 	// 히트 이펙트 - 모든 클라이언트에 멀티캐스트
@@ -362,8 +364,9 @@ void AERNMeleeWeapon::HandleTraceHit(const FHitResult& HitResult)
 		InstigatorController,
 		OwnerCharacter);
 
-	Enemy->TryApplyStagger(StaggerPower);
-	
+	// 공격자(무기 소유자) 위치를 HitOrigin으로 전달 → 적이 4방향 경직
+	Enemy->TryApplyStagger(StaggerPower, OwnerCharacter->GetActorLocation());
+
 	// Sweep 결과의 ImpactPoint를 사용하므로 기존 Overlap 방식보다
 	// 실제 검 궤적에 가까운 위치에 이펙트를 재생할 수 있다.
 	if (HitEffect)

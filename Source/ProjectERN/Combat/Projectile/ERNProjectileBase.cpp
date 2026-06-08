@@ -327,7 +327,8 @@ void AERNProjectileBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AAc
 	if (OtherEnemy)
 	{
 		OtherEnemy->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), OwnerActor);
-		OtherEnemy->TryApplyStagger(StaggerPower);
+		// 투사체 충돌 지점을 HitOrigin으로 전달 → 적이 투사체 방향 기준 4방향 경직
+		OtherEnemy->TryApplyStagger(StaggerPower, ImpactPoint);
 	}
 	else if (OtherPlayer)
 	{
@@ -562,7 +563,8 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 			if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(HitActor))
 			{
 				Enemy->TakeDamage(ExplosionDamage, FDamageEvent(), GetInstigatorController(), OwnerActor);
-				Enemy->TryApplyStagger(ExplosionStaggerPower);
+				// 폭발 중심을 HitOrigin으로 전달 → 적이 폭발 방향 기준 4방향 경직
+				Enemy->TryApplyStagger(ExplosionStaggerPower, ExplosionCenter);
 
 				// 폭발 넉백 - 폭발 중심에서 바깥(방사형)으로 밀어냄
 				if (bKnockbackEnabled)
