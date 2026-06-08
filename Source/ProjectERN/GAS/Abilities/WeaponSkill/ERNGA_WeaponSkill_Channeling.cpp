@@ -268,7 +268,8 @@ void UERNGA_WeaponSkill_Channeling::ApplyChannelDamage(USkeletalMeshComponent* M
 
 		if (ChannelingData.StaggerPower > 0.f)
 		{
-			Enemy->TryApplyStagger(ChannelingData.StaggerPower);
+			// 채널 발원점(Origin)을 HitOrigin으로 전달 → 적이 4방향 경직
+			Enemy->TryApplyStagger(ChannelingData.StaggerPower, Origin);
 		}
 	}
 }

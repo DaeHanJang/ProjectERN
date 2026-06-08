@@ -520,7 +520,8 @@ void UERNGA_WeaponSkill_Instant::ApplyExplosionDamage(USkeletalMeshComponent* Me
 
 		if (ExplosionData.StaggerPower > 0.f)
 		{
-			Enemy->TryApplyStagger(ExplosionData.StaggerPower);
+			// 폭발 중심(Origin)을 HitOrigin으로 전달 → 적이 4방향 경직
+			Enemy->TryApplyStagger(ExplosionData.StaggerPower, Origin);
 		}
 	}
 }
@@ -608,7 +609,8 @@ void UERNGA_WeaponSkill_Instant::ApplyAreaDamage(USkeletalMeshComponent* MeshCom
 
 		if (AreaDamageData.StaggerPower > 0.f)
 		{
-			Enemy->TryApplyStagger(AreaDamageData.StaggerPower);
+			// 범위 중심(Origin)을 HitOrigin으로 전달 → 적이 4방향 경직
+			Enemy->TryApplyStagger(AreaDamageData.StaggerPower, Origin);
 		}
 	}
 }
