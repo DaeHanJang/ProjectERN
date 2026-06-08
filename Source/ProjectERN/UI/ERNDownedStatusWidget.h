@@ -24,6 +24,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="ERN|Downed")
 	void SetObservedCharacter(AProjectERNCharacter* InCharacter);
 	
+	// 본인의 위젯은 숨김
+	UFUNCTION(BlueprintCallable, Category="ERN|Downed")
+	void HideWidgetForLocal(bool bInHide);
+	
 protected:
 	// 위젯이 생성될 때 호출
 	virtual void NativeConstruct() override;
@@ -81,4 +85,6 @@ private:
 	// 직전 프레임에 UI가 보이는 상태였는지 기록한다.
 	// Hidden 이벤트를 매 프레임 반복 호출하지 않기 위한 플래그
 	bool bWasVisible = false;
+	
+	bool bHideWidgetForLocal = false;
 };

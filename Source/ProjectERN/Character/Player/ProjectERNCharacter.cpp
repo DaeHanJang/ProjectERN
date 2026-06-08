@@ -40,6 +40,8 @@
 #include "Components/ERNLockOnComponent.h"
 #include "Components/PostProcessComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Core/ERNGameState.h"
+#include "Engine/DamageEvents.h"
 #include "GameFramework/GameStateBase.h"
 #include "Inventory/Item/ERNItemActor.h"
 #include "UI/ERNDownedStatusWidget.h"
@@ -2176,6 +2178,22 @@ void AProjectERNCharacter::ExitOutOfCombat()
 	}
 }
 
+void AProjectERNCharacter::KillSelf()
+{
+	Server_DebugKillSelf();
+}
+
+void AProjectERNCharacter::Server_DebugKillSelf_Implementation()
+{
+	if (!IsAlive())
+	{
+		return;
+	}
+
+	FDamageEvent DamageEvent;
+	TakeDamage(999999.f, DamageEvent, GetController(), this);
+}
+
 void AProjectERNCharacter::OnRep_LifeState()
 {
 	// 태그 갱신
@@ -2314,6 +2332,7 @@ void AProjectERNCharacter::EnterDownedState()
 	// 리스폰 가능 여부 확인
 	if (!CanAutoRespawnFromDowned())
 	{
+		RequestGameOverCheck();
 		ForceNetUpdate();
 		return;
 	}
@@ -2336,6 +2355,22 @@ void AProjectERNCharacter::EnterDownedState()
 		&AProjectERNCharacter::CompleteDownedCountdown,
 		DownedRespawnCountdownDuration,
 		false);
+}
+
+void AProjectERNCharacter::RequestGameOverCheck() const
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (AERNGameState* ERNGameState = World->GetGameState<AERNGameState>())
+		{
+			ERNGameState->TryHandleFinalZoneGameOver();
+		}
+	}
 }
 
 bool AProjectERNCharacter::bApplyReviveHit(AController* Reviver)
@@ -2483,6 +2518,8 @@ void AProjectERNCharacter::InitializeDownedStatusWidget()
 	// Widget이 캐릭터를 관찰하도록 설정
 	if (UERNDownedStatusWidget* DownedWidget = Cast<UERNDownedStatusWidget>(DownedStatusWidgetComponent->GetUserWidgetObject()))
 	{
+		// 자기 자신에게는 Widget을 숨김
+		DownedWidget->HideWidgetForLocal(true);
 		DownedWidget->SetObservedCharacter(this);
 	}
 }
@@ -2508,36 +2545,13 @@ void AProjectERNCharacter::CompleteDownedCountdown()
 	{
 		return;
 	}
-
-	// NightRainZone을 찾음
-	if (const ANightRainZoneManager* ZoneManager = FindNightRainZoneManager())
-	{
-		const FNightRainZoneState& ZoneState = ZoneManager->GetZoneState();
-
-		// 컴파일 타임에 계산
-		constexpr int32 FinalShrinkFinishedPhaseIndex = 2;
-		// 자기장 수렴 완료 검사
-		const bool bFinalShrinkFinished = ZoneState.PhaseIndex >= FinalShrinkFinishedPhaseIndex &&
-			!ZoneState.bShrinking;
-
-		// 수렴완료 시
-		if (bFinalShrinkFinished)
-		{
-			GetWorldTimerManager().ClearTimer(DownedRespawnTimerHandle);
-			DownedRespawnEndServerTime = 0.f;
-
-			// 최종 자기장 수렴 이후에는 자동 리스폰하지 않는다.
-			// 이후 전원 사망 여부 확인 후 GameOver 처리로 연결.
-			ForceNetUpdate();
-			return;
-		}
-	}
 	
 	// 리스폰 불가 상태에서 안전장치
 	if (!CanAutoRespawnFromDowned())
 	{
 		GetWorldTimerManager().ClearTimer(DownedRespawnTimerHandle);
 		DownedRespawnEndServerTime = 0.f;
+		RequestGameOverCheck();
 		ForceNetUpdate();
 		return;
 	}
@@ -2849,17 +2863,34 @@ ANightRainZoneManager* AProjectERNCharacter::FindNightRainZoneManager() const
 
 bool AProjectERNCharacter::CanAutoRespawnFromDowned() const
 {
+	/*
+	// NightRainZone(자기장 지역) 매니저를 찾음
 	const ANightRainZoneManager* ZoneManager = FindNightRainZoneManager();
 	if (!ZoneManager)
 	{
 		return true;
 	}
 
+	// 현재 ZoneState를 받아옴
+	const FNightRainZoneState& ZoneState = ZoneManager->GetZoneState();
+	
+	constexpr int32 FinalShrinkFinishedPhaseIndex = 2;
+	const bool bFinalShrinkFinished = ZoneState.PhaseIndex >= FinalShrinkFinishedPhaseIndex &&
+		!ZoneState.bShrinking;
+
+	return !bFinalShrinkFinished;
+	*/
+	const ANightRainZoneManager* ZoneManager = FindNightRainZoneManager();
+	if (!ZoneManager)
+	{
+		// NightRainZoneManager가 없는 레벨에서는 안전 리스폰 위치를 판단할 수 없으므로 자동 리스폰하지 않는다.
+		return false;
+	}
+
 	const FNightRainZoneState& ZoneState = ZoneManager->GetZoneState();
 
 	constexpr int32 FinalShrinkFinishedPhaseIndex = 2;
-	const bool bFinalShrinkFinished =
-		ZoneState.PhaseIndex >= FinalShrinkFinishedPhaseIndex &&
+	const bool bFinalShrinkFinished = ZoneState.PhaseIndex >= FinalShrinkFinishedPhaseIndex &&
 		!ZoneState.bShrinking;
 
 	return !bFinalShrinkFinished;

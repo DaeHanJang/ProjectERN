@@ -22,6 +22,20 @@ void UERNDownedStatusWidget::SetObservedCharacter(AProjectERNCharacter* InCharac
 	UpdateDownedVisual();
 }
 
+void UERNDownedStatusWidget::HideWidgetForLocal(bool bInHide)
+{
+	bHideWidgetForLocal = bInHide;
+	
+	if (CachedCharacter.IsValid())
+	{
+		UpdateDownedVisual();
+	}
+	else
+	{
+		SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
 void UERNDownedStatusWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -93,7 +107,19 @@ void UERNDownedStatusWidget::UpdateDownedVisual()
 		return;
 	}
 
-	const bool bShouldShow = CachedCharacter.IsValid() && CachedCharacter->IsDowned();
+	if (bHideWidgetForLocal && CachedCharacter->IsLocallyControlled())
+	{
+		if (bWasVisible)
+		{
+			OnDownedVisualHidden();
+			bWasVisible = false;
+		}
+
+		SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
+	const bool bShouldShow = CachedCharacter->IsDowned();
 
 	if (!bShouldShow)
 	{
@@ -111,7 +137,7 @@ void UERNDownedStatusWidget::UpdateDownedVisual()
 	bWasVisible = true;
 
 	const UERNDownedComponent* DownedComponent = CachedCharacter->GetDownedComponent();
-
+	
 	OnDownedVisualUpdated(
 		DownedComponent ? DownedComponent->GetDownedHealthGlobalPercent() : 0.f,
 		DownedComponent ? DownedComponent->GetActiveDownedMaxGlobalPercent() : 0.f,

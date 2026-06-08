@@ -715,6 +715,14 @@ public:
 	{
 		return DownedComponent;
 	}
+	
+	// 플레이어 자살 명령어
+	UFUNCTION(Exec)
+	void KillSelf();
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugKillSelf();
+	
 protected:
 	UPROPERTY(ReplicatedUsing = OnRep_LifeState, BlueprintReadOnly, Category = "ERN|LifeState")
 	EERNPlayerLifeState LifeState = EERNPlayerLifeState::Alive;
@@ -743,6 +751,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState")
 	float CollapseFallbackDuration = 1.f;
 
+	// 최종 자기장 수렴 이후 GameOver 판정을 GameState에 요청
+	void RequestGameOverCheck() const;
+	
 #pragma endregion PlayerLifeState
 	
 #pragma region PlayerRevive

@@ -15,7 +15,7 @@ class UNightRainZoneVisualComponent;
 // 자기장 밤의비 상태가 변할 때 호출되는 델리게이트
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnNightRainZoneStateChanged, const FNightRainZoneState&);
 // 자기장 수렴 후 호출되는 델리게이트
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnNightRainZoneShrinkFinished, const float);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnNightRainZoneShrinkFinished, int32);
 
 // Is Spatially Loaded = false 를 전제로 만들어진 매니저 엑터입니다. 월드 파티션에서 배치할 때, 꼭 Is Spatially Loaded = false 를 설정해주세요.
 UCLASS()

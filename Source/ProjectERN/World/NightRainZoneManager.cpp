@@ -10,6 +10,7 @@
 #include "NightRainZoneCenterPoint.h"
 #include "NightRainZoneVisualComponent.h"
 #include "Character/Player/ERNPlayerController.h"
+#include "Core/ERNGameState.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
@@ -264,6 +265,18 @@ void ANightRainZoneManager::BroadcastZoneStateChanged()
 void ANightRainZoneManager::BroadcastZoneShrinkFinished()
 {
 	OnZoneShrinkFinished.Broadcast(ZoneState.PhaseIndex);
+	
+	constexpr int32 FinalShrinkFinishedPhaseIndex = 2;
+	if (HasAuthority() && ZoneState.PhaseIndex >= FinalShrinkFinishedPhaseIndex)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (AERNGameState* ERNGameState = World->GetGameState<AERNGameState>())
+			{
+				ERNGameState->TryHandleFinalZoneGameOver();
+			}
+		}
+	}
 }
 
 void ANightRainZoneManager::StartPhase(const FNightRainZonePhaseConfig& PhaseConfig, const FVector& TargetCenterLocation)

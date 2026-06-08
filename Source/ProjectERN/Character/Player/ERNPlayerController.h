@@ -22,6 +22,7 @@ class UCameraShakeBase;
 class UPostProcessComponent;
 class UERNCompassWidget;
 class UERNSkillCoolPanel;
+class UERNDownedStatusWidget;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -99,6 +100,8 @@ protected:
 
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	virtual void OnPossess(APawn* InPawn) override;
+	
 	virtual void AcknowledgePossession(class APawn* P) override;
 
 	// UI 생성 (약간 지연)
@@ -517,4 +520,18 @@ private:
 	FTimerHandle RespawnPreloadReadyCheckTimerHandle;
 	
 #pragma endregion PlayerRespawn
+	
+#pragma region DownedUI
+	
+protected:
+	UPROPERTY(EditDefaultsOnly, Category="UI|Downed")
+	TSubclassOf<UERNDownedStatusWidget> SelfDownedStatusWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UERNDownedStatusWidget> SelfDownedStatusWidget;
+
+	void InitializeSelfDownedStatusWidget();
+	void RefreshSelfDownedStatusWidget();
+	
+#pragma endregion DownedUI
 };

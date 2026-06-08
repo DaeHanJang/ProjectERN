@@ -30,6 +30,7 @@
 #include "UI/World/ERNCompassWidget.h"
 #include "World/ERNMinimapPinPoint.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
+#include "UI/ERNDownedStatusWidget.h"
 #include "UI/ERNSkillCoolPanel.h"
 #include "WorldPartition/WorldPartitionSubsystem.h"
 #include "UI/ERNQuickSlotWidget.h"
@@ -286,6 +287,10 @@ void AERNPlayerController::BeginPlay()
 		}
 	}
 	
+	// 기절 상태 UI 생성
+	InitializeSelfDownedStatusWidget();
+	RefreshSelfDownedStatusWidget();
+	
 	// 닉네임 전송 (로컬 플레이어만) - 타이머로 재시도
 	if (IsLocalPlayerController())
 	{
@@ -317,8 +322,15 @@ void AERNPlayerController::BeginPlay()
 
 void AERNPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (SelfDownedStatusWidget)
+	{
+		UnregisterHUDWidget(SelfDownedStatusWidget);
+		SelfDownedStatusWidget->SetObservedCharacter(nullptr);
+		SelfDownedStatusWidget->RemoveFromParent();
+		SelfDownedStatusWidget = nullptr;
+	}
+	
 	UnbindCutsceneEvents();
-
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -405,6 +417,13 @@ void AERNPlayerController::HandleCutsceneFinished()
 	CachedHUDVisibilities.Reset();
 }
 
+void AERNPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	RefreshSelfDownedStatusWidget();
+}
+
 void AERNPlayerController::AcknowledgePossession(class APawn* P)
 {
 	Super::AcknowledgePossession(P);
@@ -412,6 +431,7 @@ void AERNPlayerController::AcknowledgePossession(class APawn* P)
 	RefreshInventoryWidget();
 	RefreshSkillCoolPanel();
 	RefreshQuickSlotWidget();
+	RefreshSelfDownedStatusWidget();
 }
 
 void AERNPlayerController::RefreshInventoryWidget() const
@@ -495,6 +515,9 @@ void AERNPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
+	// 이 시점에서는 LocalPlayer가 확실히 할당되어 있으므로 IsLocalPlayerController()가 true를 반환합니다.
+	RefreshSelfDownedStatusWidget();
+	
 	// only add IMCs for local player controllers
 	if (IsLocalPlayerController())
 	{
@@ -1453,4 +1476,40 @@ void AERNPlayerController::Server_NotifyRespawnPreloadStreamingReady_Implementat
 	bRespawnClientPreloadReady_Server = true;
 }
 
-#pragma endregion
+#pragma endregion PlayerRespawn
+
+#pragma region SelfDownedStatusWidget
+
+void AERNPlayerController::InitializeSelfDownedStatusWidget()
+{
+	if (!IsLocalPlayerController() || SelfDownedStatusWidget || !SelfDownedStatusWidgetClass)
+	{
+		return;
+	}
+
+	SelfDownedStatusWidget = CreateWidget<UERNDownedStatusWidget>(this, SelfDownedStatusWidgetClass);
+	if (!SelfDownedStatusWidget)
+	{
+		return;
+	}
+
+	SelfDownedStatusWidget->AddToViewport(150);
+	RegisterHUDWidget(SelfDownedStatusWidget);
+}
+
+void AERNPlayerController::RefreshSelfDownedStatusWidget()
+{
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
+	InitializeSelfDownedStatusWidget();
+
+	if (SelfDownedStatusWidget)
+	{
+		SelfDownedStatusWidget->SetObservedCharacter(Cast<AProjectERNCharacter>(GetPawn()));
+	}
+}
+
+#pragma endregion SelfDownedStatusWidget
