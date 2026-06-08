@@ -8,6 +8,7 @@
 
 class UBoxComponent;
 class UNiagaraSystem;
+class UNiagaraComponent;
 class UCameraShakeBase;
 
 /**
@@ -68,6 +69,15 @@ public:
 	void BeginAttackTrace();
 	void TickAttackTrace();
 	void EndAttackTrace();
+
+	// ===== 검 트레일 =====
+	// 무기별로 BP에서 할당하는 트레일 나이아가라
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Trail")
+	TObjectPtr<UNiagaraSystem> TrailEffect;
+
+	// 나이아가라에서 검 끝점을 받는 User 파라미터 이름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Trail")
+	FName TrailTipParamName = TEXT("SwordTip");
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Weapon|Trace")
@@ -88,6 +98,15 @@ protected:
 
 	TArray<FVector> GetCurrentTracePoints() const;
 	void HandleTraceHit(const FHitResult& HitResult);
+
+	// 트레일 시각효과 (모든 클라이언트에서 로컬 재생)
+	void StartTrail();
+	void UpdateTrail();
+	void StopTrail();
+
+	// 런타임 트레일 인스턴스 (TraceStart에 1회 부착 후 재사용)
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraComponent> TrailComp;
 	
 	// 디버그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Trace|Debug")
