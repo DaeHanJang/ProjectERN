@@ -35,11 +35,17 @@ private:
 	
 	double GetSyncedServerTimeSeconds() const;
 	
-	
 private:
 	UPROPERTY()
 	TObjectPtr<UNiagaraComponent> ZoneNiagaraComponent;
 	
 	FNightRainZoneState CachedState;
 	bool bHasState = false;
+	
+	// 자기장 비쥬얼 시작 높이, 실제 높이 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
+	float ZoneVisualCenterZ = 7000.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
+	float ZoneVisualHeight = 48000.f;
 };

@@ -40,6 +40,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Behavior")
 	TArray<FWeightedMontage> WeightedMontages;
 
+	// 블랙보드 MontageDuration에 저장할 때 몽타주 길이에서 뺄 값(초)
+	UPROPERTY(EditAnywhere, Category = "Behavior", meta = (ClampMin = "0.0"))
+	float MontageDurationOffset = 0.15f;
+
 private:
 	// 가중치 기반 랜덤 선택
 	UAnimMontage* SelectRandomMontage() const;

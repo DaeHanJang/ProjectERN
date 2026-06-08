@@ -31,6 +31,9 @@ public:
 	virtual FText GetInteractionText_Implementation() const override;
 	virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
 	
+	// ItemChestSpawner에서 아이템 테이블 전달
+	void SetDropTable(UDataTable* InDropTable) { DropTable = InDropTable; }
+	
 private:
     // Get ItemManager
 	UItemManagerSubsystem* GetItemManager() const;

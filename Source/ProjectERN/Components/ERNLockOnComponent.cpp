@@ -293,7 +293,7 @@ bool UERNLockOnComponent::IsValidTarget(AActor* Target) const
 	}
 	if (const AERNCharacterBase* Character = Cast<AERNCharacterBase>(Target))
 	{
-		if (Character->IsDead())
+		if (!Character->IsTargetable())
 		{
 			return false;
 		}

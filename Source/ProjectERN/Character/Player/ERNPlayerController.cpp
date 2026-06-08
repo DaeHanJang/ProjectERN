@@ -13,6 +13,7 @@
 #include "ProjectERN.h"
 #include "ProjectERNCharacter.h"
 #include "Actors/Church.h"
+#include "Actors/DHRollActor.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Core/ERNGameInstance.h"
@@ -695,6 +696,16 @@ void AERNPlayerController::TryInteract()
 	}
 }
 
+void AERNPlayerController::Server_RequestDHRollReward_Implementation(ADHRollActor* RollActor)
+{
+	if (!IsValid(RollActor))
+	{
+		return;
+	}
+	
+	RollActor->SpawnRewardForPlayer(this);
+}
+
 void AERNPlayerController::Client_ResetInteractionInputState_Implementation()
 {
 	ClearCurrentInteractable();
@@ -926,6 +937,42 @@ void AERNPlayerController::Client_ShowIntroTitleWidget_Implementation()
 	if (IntroTitleWidget)
 	{
 		IntroTitleWidget->AddToViewport(100);
+	}
+}
+
+void AERNPlayerController::UpdateLockOnMarker(bool bVisible, FVector2D ScreenPosition)
+{
+	if (!bVisible)
+	{
+		if (LockOnMarkerWidget)
+		{
+			LockOnMarkerWidget->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		return;
+	}
+
+	if (!LockOnMarkerWidgetClass)
+	{
+		return;
+	}
+
+	// 최초 1회 lazy 생성
+	if (!LockOnMarkerWidget)
+	{
+		LockOnMarkerWidget = CreateWidget<UUserWidget>(this, LockOnMarkerWidgetClass);
+		if (LockOnMarkerWidget)
+		{
+			LockOnMarkerWidget->AddToViewport(40); // HUD 군 안쪽 ZOrder
+			// 피벗을 중앙으로 → 좌표가 점의 중심을 가리킴 (거리 무관 정확)
+			LockOnMarkerWidget->SetAlignmentInViewport(FVector2D(0.5f, 0.5f));
+		}
+	}
+
+	if (LockOnMarkerWidget)
+	{
+		LockOnMarkerWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+		// 픽셀 좌표 → DPI 스케일 제거(true)해야 뷰포트 레이아웃 공간과 일치
+		LockOnMarkerWidget->SetPositionInViewport(ScreenPosition, true);
 	}
 }
 

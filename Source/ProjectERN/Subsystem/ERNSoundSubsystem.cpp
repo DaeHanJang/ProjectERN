@@ -134,6 +134,24 @@ bool UERNSoundSubsystem::IsBGMPlaying() const
 	return CurrentBGM && CurrentBGM->IsPlaying();
 }
 
+void UERNSoundSubsystem::PauseBGM(bool bPause, float FadeTime)
+{
+	if (!CurrentBGM) return;
+
+	if (bPause)
+	{
+		// 즉시 일시정지 — 풀볼륨에서 멈춰 소스가 살아있음(위치 보존). 페이드아웃→0은 컬링되어 재개 불가
+		CurrentBGM->SetPaused(true);
+	}
+	else
+	{
+		// 즉시 풀볼륨 재개. 페이드인을 위해 볼륨을 0으로 떨어뜨리면 그 순간 무음 컬링으로
+		// 소스가 죽어 재개에 실패하므로, 안정적 재개를 위해 즉시 1로 복원
+		CurrentBGM->SetPaused(false);
+		CurrentBGM->SetVolumeMultiplier(1.f);
+	}
+}
+
 void UERNSoundSubsystem::OnPostLoadMapWithWorld(UWorld* LoadedWorld)
 {
 	if (!LoadedWorld)

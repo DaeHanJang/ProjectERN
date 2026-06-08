@@ -8,6 +8,7 @@
 #include "WorldPartition/WorldPartitionStreamingSource.h"
 #include "ERNPlayerController.generated.h"
 
+class ADHRollActor;
 class AERNMinimapPinPoint;
 class AChurch;
 class IInteractable;
@@ -152,6 +153,9 @@ public:
 	
 	UFUNCTION(Client, Reliable)
 	void Client_ResetInteractionInputState();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_RequestDHRollReward(ADHRollActor* RollActor);
 
 	// Pedestal(상호작용가능한액터)에서 호출용
 	AActor* GetCurrentInteractable() const { return CurrentInteractableActor.Get(); }
@@ -181,6 +185,13 @@ public:
 	// 보스 체력바 위젯 클래스 (BP에서 설정)
 	UPROPERTY(EditDefaultsOnly, Category = "UI|BossHealthBar")
 	TSubclassOf<UERNBossHealthBarWidget> BossHealthBarWidgetClass;
+
+	// 락온 마커(흰 점) 위젯 클래스 (BP에서 설정)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|LockOn")
+	TSubclassOf<UUserWidget> LockOnMarkerWidgetClass;
+
+	// 락온 마커 표시/숨김 + 화면 위치 갱신 (로컬, 캐릭터 Tick에서 호출)
+	void UpdateLockOnMarker(bool bVisible, FVector2D ScreenPosition);
 
 	// 보스 체력바 표시 (보스 조우 시)
 	UFUNCTION(Client, Reliable)
@@ -340,6 +351,10 @@ protected:
 	// 나침반 위젯
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> CompassWidget;
+
+	// 락온 마커 위젯 인스턴스
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> LockOnMarkerWidget;
 
 #pragma region CutsceneHUD
 protected:

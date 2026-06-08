@@ -31,7 +31,8 @@ public class ProjectERN : ModuleRules
 			"MotionWarping",
 			"NetCore",
 			"LevelSequence",
-			"MovieScene"
+			"MovieScene",
+			"DLSSBlueprint"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

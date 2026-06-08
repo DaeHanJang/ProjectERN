@@ -67,7 +67,7 @@ EBTNodeResult::Type UBTTask_Attack::ExecuteTask(UBehaviorTreeComponent& OwnerCom
 	if (AttackMontage)
 	{
 		// 몽타주 길이를 블랙보드에 저장
-		float MontageLength = AttackMontage->GetPlayLength() - 0.15f;
+		float MontageLength = AttackMontage->GetPlayLength() - MontageDurationOffset;
 		OwnerComp.GetBlackboardComponent()->SetValueAsFloat(TEXT("MontageDuration"), MontageLength);
 
 		Enemy->Multicast_PlayAttackMontage(AttackMontage);

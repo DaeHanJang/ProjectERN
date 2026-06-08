@@ -11,6 +11,7 @@
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "World/ItemChestSpawner.h"
 
 // Sets default values
 AChest::AChest()
@@ -78,6 +79,12 @@ void AChest::Interact_Implementation(APlayerController* PlayerController)
 	}
 	
 	Dissolve();
+	
+	//상자 열림에 따른 상자 스포너에 대한 처리
+	if (AItemChestSpawner* Spawner = Cast<AItemChestSpawner>(GetOwner()))
+	{
+		Spawner->HandleChestActivated();
+	}
 }
 
 bool AChest::CanInteract_Implementation() const

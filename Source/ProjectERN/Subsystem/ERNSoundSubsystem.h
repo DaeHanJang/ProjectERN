@@ -31,6 +31,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Sound|BGM")
 	void StopBGM(float FadeOutTime = 0.f);
 
+	// 현재 BGM 일시정지/재개 (재생 위치 보존). 볼륨 페이드 후 SetPaused
+	UFUNCTION(BlueprintCallable, Category = "Sound|BGM")
+	void PauseBGM(bool bPause, float FadeTime = 0.5f);
+
 	// 현재 BGM 재생 중인지
 	UFUNCTION(BlueprintPure, Category = "Sound|BGM")
 	bool IsBGMPlaying() const;

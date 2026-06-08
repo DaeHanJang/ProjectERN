@@ -15,6 +15,8 @@
 #include "Core/ERNSaveSettings.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Sound/SoundMix.h"
+#include "DLSSLibrary.h"
+#include "HAL/IConsoleManager.h"
 #include "Sound/SoundClass.h"
 
 static const FString ERNSettingsSlotName = TEXT("ERNSettings");
@@ -580,6 +582,9 @@ void UERNGameInstance::LoadAndApplySettings()
 			FVector2D(0.0f, 100.0f), FVector2D(1.5f, 3.0f), CachedSettings->Brightness);
 		GEngine->DisplayGamma = Gamma;
 	}
+
+	// DLSS 복원 (저장된 켜짐/모드 적용)
+	ApplyDLSS();
 }
 
 // ===== 설정: 오디오 =====
@@ -807,4 +812,86 @@ void UERNGameInstance::ApplyVideoSettings()
 
 	Settings->ApplySettings(false);
 	Settings->SaveSettings();
+
+	// 해상도/스케일러빌리티가 스크린퍼센트를 건드리므로 DLSS를 마지막에 재적용 (DLSS가 최종 결정)
+	ApplyDLSS();
+}
+
+// ===== 설정: DLSS =====
+
+bool UERNGameInstance::IsDLSSAvailable() const
+{
+	return UDLSSLibrary::IsDLSSSupported();
+}
+
+void UERNGameInstance::SetDLSSEnabled(bool bEnabled)
+{
+	if (CachedSettings) CachedSettings->bDLSSEnabled = bEnabled;
+	ApplyDLSS();
+	SaveSettings();
+}
+
+bool UERNGameInstance::IsDLSSEnabled() const
+{
+	return CachedSettings ? CachedSettings->bDLSSEnabled : false;
+}
+
+TArray<UDLSSMode> UERNGameInstance::GetSupportedDLSSModes() const
+{
+	TArray<UDLSSMode> Modes = UDLSSLibrary::GetSupportedDLSSModes();
+	// 체크박스가 on/off 담당하므로 드롭다운에선 Off/Auto 제외
+	Modes.Remove(UDLSSMode::Off);
+	Modes.Remove(UDLSSMode::Auto);
+	return Modes;
+}
+
+void UERNGameInstance::SetDLSSMode(UDLSSMode Mode)
+{
+	if (CachedSettings) CachedSettings->DLSSMode = static_cast<int32>(Mode);
+	ApplyDLSS();
+	SaveSettings();
+}
+
+UDLSSMode UERNGameInstance::GetDLSSMode() const
+{
+	return CachedSettings ? static_cast<UDLSSMode>(CachedSettings->DLSSMode) : UDLSSMode::Quality;
+}
+
+void UERNGameInstance::ApplyDLSS()
+{
+	if (!UDLSSLibrary::IsDLSSSupported())
+	{
+		return;
+	}
+
+	static IConsoleVariable* CVarScreenPercentage = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage"));
+
+	// 꺼짐 → DLSS off + 스크린퍼센트 100 복원
+	const bool bEnabled = CachedSettings && CachedSettings->bDLSSEnabled;
+	if (!bEnabled)
+	{
+		UDLSSLibrary::EnableDLSS(false);
+		if (CVarScreenPercentage) CVarScreenPercentage->Set(100.f, ECVF_SetByGameSetting);
+		return;
+	}
+
+	// 켜짐 → DLSS on + 모드별 최적 스크린퍼센트 적용
+	UDLSSLibrary::EnableDLSS(true);
+
+	const UDLSSMode Mode = CachedSettings ? static_cast<UDLSSMode>(CachedSettings->DLSSMode) : UDLSSMode::Quality;
+
+	const FIntPoint Res = GetCurrentResolution();
+	bool bModeSupported = false;
+	bool bFixedScreenPercentage = false;
+	float OptimalScreenPercentage = 100.f;
+	float MinScreenPercentage = 100.f;
+	float MaxScreenPercentage = 100.f;
+	float OptimalSharpness = 0.f;
+	UDLSSLibrary::GetDLSSModeInformation(
+		Mode, FVector2D(Res.X, Res.Y),
+		bModeSupported, OptimalScreenPercentage, bFixedScreenPercentage,
+		MinScreenPercentage, MaxScreenPercentage, OptimalSharpness);
+
+	const float ScreenPercentage = (bModeSupported && OptimalScreenPercentage > 0.f) ? OptimalScreenPercentage : 100.f;
+	if (CVarScreenPercentage) CVarScreenPercentage->Set(ScreenPercentage, ECVF_SetByGameSetting);
 }

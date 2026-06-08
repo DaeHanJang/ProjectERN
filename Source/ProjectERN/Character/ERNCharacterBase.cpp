@@ -14,6 +14,7 @@
 #include "Subsystem/ERNCutsceneSubsystem.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Kismet/GameplayStatics.h"
+#include "Combat/Projectile/ERNProjectileBase.h"
 
 AERNCharacterBase::AERNCharacterBase()
 {
@@ -36,6 +37,35 @@ void AERNCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AERNCharacterBase, CutsceneSpeed);
+	DOREPLIFETIME(AERNCharacterBase, bIsIntangible);
+}
+
+void AERNCharacterBase::SetIntangible(bool bNewIntangible)
+{
+	if (bIsIntangible == bNewIntangible)
+	{
+		return;
+	}
+
+	bIsIntangible = bNewIntangible;
+	ApplyIntangible();	// 서버 즉시 적용 (클라는 OnRep)
+}
+
+void AERNCharacterBase::OnRep_Intangible()
+{
+	ApplyIntangible();
+}
+
+void AERNCharacterBase::ApplyIntangible()
+{
+	// 충돌 완전 토글 (무형이면 끔 → 투사체/락온 트레이스 다 통과)
+	SetActorEnableCollision(!bIsIntangible);
+
+	// 무형 진입 시, 이 캐릭터를 유도 타겟으로 가진 투사체들 추적 해제
+	if (bIsIntangible)
+	{
+		AERNProjectileBase::ClearHomingTargetingActor(GetWorld(), this);
+	}
 }
 
 void AERNCharacterBase::Tick(float DeltaTime)

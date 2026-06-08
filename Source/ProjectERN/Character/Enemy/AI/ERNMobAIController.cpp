@@ -210,10 +210,14 @@ void AERNMobAIController::SetCombatVision(bool bInCombat)
 	if (SightConfig)
 	{
 		SightConfig->PeripheralVisionAngleDegrees = bInCombat ? CombatVisionAngle : DefaultVisionAngle;
+		// 타겟 잡히면 시야 거리도 전환 (각도만이 아니라 거리도 넓힘)
+		SightConfig->SightRadius = bInCombat ? CombatSightRadius : SightRadius;
+		SightConfig->LoseSightRadius = bInCombat ? CombatLoseSightRadius : LoseSightRadius;
 		PerceptionComp->RequestStimuliListenerUpdate();
 
-		UE_LOG(LogTemp, Log, TEXT("[%s] Vision changed to %.1f degrees"),
-			*GetName(), SightConfig->PeripheralVisionAngleDegrees);
+		UE_LOG(LogTemp, Log, TEXT("[%s] Vision changed - Angle %.1f, Sight %.0f, Lose %.0f"),
+			*GetName(), SightConfig->PeripheralVisionAngleDegrees,
+			SightConfig->SightRadius, SightConfig->LoseSightRadius);
 	}
 }
 

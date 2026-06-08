@@ -27,6 +27,8 @@
 #include "Actors/Portal/ERNBossPortal.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
 #include "Combat/Weapons/ERNWeaponBase.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
 
 AERNBossCharacter::AERNBossCharacter()
 {
@@ -64,10 +66,16 @@ void AERNBossCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 float AERNBossCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	// 페이즈 전환 중에는 데미지 무시 (선택적)
+	// 페이즈 전환 중에는 데미지 무시
 	if (bIsTransitioningPhase)
 	{
 		return 0.0f;
+	}
+	
+	// 3페이즈면 받는 데미지 절반
+	if (CurrentPhaseIndex == 2)
+	{
+		DamageAmount *= 0.7f;
 	}
 
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
@@ -477,6 +485,24 @@ void AERNBossCharacter::Multicast_StopBossBGM_Implementation()
 		{
 			SS->StopBGM(BGMFadeOutTime);
 		}
+	}
+}
+
+void AERNBossCharacter::Multicast_PlayTeleportTrail_Implementation(FVector StartLocation, FVector EndLocation)
+{
+	if (!TeleportTrailFX)
+	{
+		return;
+	}
+
+	// 시작점에 스폰하고, 빔 양 끝 좌표를 월드 좌표로 직접 지정 (모든 클라 동일 위치)
+	UNiagaraComponent* Beam = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(), TeleportTrailFX, StartLocation);
+
+	if (Beam)
+	{
+		Beam->SetVariableVec3(FName("BeamStart"), StartLocation);
+		Beam->SetVariableVec3(FName("BeamEnd"), EndLocation);
 	}
 }
 

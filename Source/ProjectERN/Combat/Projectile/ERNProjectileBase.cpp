@@ -14,6 +14,7 @@
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "TimerManager.h"
 #include "Curves/CurveFloat.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Character/Player/ProjectERNCharacter.h"
@@ -68,7 +69,7 @@ void AERNProjectileBase::Multicast_PlayImpactEffect_Implementation(FVector Locat
 	// 착탄 스케일 조정 적용을 위해 추가 변수 적용
 	if (ImpactEffect)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		UNiagaraComponent* ImpactComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			GetWorld(),
 			ImpactEffect,
 			Location,
@@ -78,6 +79,24 @@ void AERNProjectileBase::Multicast_PlayImpactEffect_Implementation(FVector Locat
 			true,
 			ENCPoolMethod::None,
 			true);
+
+		// 루핑/무한 Lifetime 이펙트가 자동 소멸 안 돼서 누적되는 것 방지 — 5초 후 강제 정리
+		if (ImpactComp)
+		{
+			TWeakObjectPtr<UNiagaraComponent> WeakComp(ImpactComp);
+			FTimerHandle CleanupHandle;
+			GetWorld()->GetTimerManager().SetTimer(
+				CleanupHandle,
+				FTimerDelegate::CreateLambda([WeakComp]()
+				{
+					if (WeakComp.IsValid())
+					{
+						WeakComp->DestroyComponent();
+					}
+				}),
+				5.f,
+				false);
+		}
 	}
 	
 	if (ImpactSound)
@@ -85,6 +104,33 @@ void AERNProjectileBase::Multicast_PlayImpactEffect_Implementation(FVector Locat
 		UGameplayStatics::PlaySoundAtLocation(
 			this, ImpactSound, Location, Rotation,
 			1.f, 1.f, 0.f, ImpactSoundAttenuation);
+	}
+}
+
+void AERNProjectileBase::ClearHomingTargetingActor(UWorld* World, AActor* TargetActor)
+{
+	if (!World || !TargetActor)
+	{
+		return;
+	}
+
+	TArray<AActor*> Projectiles;
+	UGameplayStatics::GetAllActorsOfClass(World, AERNProjectileBase::StaticClass(), Projectiles);
+
+	for (AActor* Actor : Projectiles)
+	{
+		AERNProjectileBase* Projectile = Cast<AERNProjectileBase>(Actor);
+		if (!Projectile || Projectile->HomingTarget.Get() != TargetActor)
+		{
+			continue;
+		}
+
+		// 유도 중단 → 직선으로 빠져나감
+		if (Projectile->ProjectileMovement)
+		{
+			Projectile->ProjectileMovement->bIsHomingProjectile = false;
+		}
+		Projectile->HomingTarget.Reset();
 	}
 }
 
@@ -406,7 +452,7 @@ AActor* AERNProjectileBase::FindHomingTargetForPlayer() const
 	for (AActor* Actor : Enemies)
 	{
 		AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(Actor);
-		if (!Enemy || Enemy->IsDead())
+		if (!Enemy || !Enemy->IsTargetable())
 		{
 			continue;
 		}

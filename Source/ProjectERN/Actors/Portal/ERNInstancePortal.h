@@ -14,6 +14,7 @@ class UStaticMeshComponent;
 class USphereComponent;
 class UWidgetComponent;
 class UNiagaraComponent;
+class UDataLayerAsset;
 
 /**
  * 같은 레벨 내 이동 포탈
@@ -112,4 +113,11 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NightRainZoneManager", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<ANightRainZoneManager> NightRainZoneManager;
+	
+	// 인스턴스 던전 데이터 레이어 활성화 / 비활성화
+	bool SetDungeonDataLayerActive(bool bActive) const;
+
+	// 인스턴스 던전 데이터 레이어
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Portal|DungeonDataLayer", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<const UDataLayerAsset> DungeonDataLayerAsset;
 };
