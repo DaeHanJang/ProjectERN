@@ -25,6 +25,7 @@
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Camera/PlayerCameraManager.h"
+#include "MovieSceneObjectBindingID.h"
 #include "TimerManager.h"
 
 void UERNCutsceneSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -629,7 +630,23 @@ void UERNCutsceneSubsystem::BindPlayersToSequence(ULevelSequencePlayer* Player, 
 				// 해당 인덱스의 플레이어가 존재하면 바인딩
 				if (PlayerIndex < PlayerCount)
 				{
-					Sequence->BindPossessableObject(Possessable.GetGuid(), *PlayerCharacters[PlayerIndex], World);
+					// 기존 코드. 시퀀스에 영구적으로 추가됨.
+					//Sequence->BindPossessableObject(Possessable.GetGuid(), *PlayerCharacters[PlayerIndex], World);
+					
+					// 시퀀스에 영구적으로 추가하지 않고 일회성으로 추가
+					if (CurrentSequenceActor)
+					{
+						TArray<AActor*> BoundActors;
+						BoundActors.Add(PlayerCharacters[PlayerIndex]);
+
+						const FMovieSceneObjectBindingID BindingID(
+							UE::MovieScene::FRelativeObjectBindingID(Possessable.GetGuid())
+						);
+
+						CurrentSequenceActor->SetBinding(BindingID, BoundActors, false);
+					}
+					
+					
 					UE_LOG(LogTemp, Log, TEXT("[CutsceneSubsystem] Bound %s to %s"),
 						*ExpectedName, *PlayerCharacters[PlayerIndex]->GetName());
 				}
