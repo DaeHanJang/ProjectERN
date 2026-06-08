@@ -24,7 +24,7 @@ public:
 	// 기절 상태 진입
 	void EnterDownedState(int32 DeathPenaltyStacks);
 	// 기절 상태에서의 Hit판정 적용 (살리기)
-	void ApplyReviveHit(AController* Reviver);
+	void ApplyReviveHit(AController* Reviver, float ReviveHitScale = 1.f);
 	// 기절 상태 탈출
 	void ExitDownedState();
 

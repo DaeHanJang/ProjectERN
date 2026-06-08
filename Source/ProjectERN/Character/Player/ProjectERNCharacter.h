@@ -782,9 +782,13 @@ protected:
 public:
 	// 기절 상태 공격 처리 적용 여부
 	UFUNCTION(BlueprintCallable, Category="ERN|Downed")
-	bool bApplyReviveHit(AController* Reviver);
+	bool bApplyReviveHit(AController* Reviver, float ReviveHitScale = 1.f);
 
-	static bool TryApplyReviveHit(AActor* HitActor, AController* Reviver);
+	static bool TryApplyReviveHit(AActor* HitActor, AController* Reviver, float ReviveHitScale = 1.f);
+	
+	// 스킬로 부활 적용 (성기사 궁극기)
+	UFUNCTION(BlueprintCallable, Category="ERN|Downed")
+	bool TryReviveFromSkill(AController* Reviver);
 	
 protected:
 	// 부활 공격 조건 검사

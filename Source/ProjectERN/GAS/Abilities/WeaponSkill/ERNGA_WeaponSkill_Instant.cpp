@@ -5,20 +5,17 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
-#include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Combat/Projectile/ERNProjectileBase.h"
+#include "Combat/ERNSkillDamageLibrary.h"
 #include "Combat/Weapons/ERNMeleeWeapon.h"
 #include "Combat/Weapons/ERNRangedWeapon.h"
 #include "Components/ArrowComponent.h"
 #include "Components/BoxComponent.h"
 #include "DrawDebugHelpers.h"
-#include "Engine/DamageEvents.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Character.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
-#include "NiagaraComponent.h"
-#include "GAS/ERNAttributeSet.h"
 
 UERNGA_WeaponSkill_Instant::UERNGA_WeaponSkill_Instant()
 {
@@ -74,19 +71,6 @@ void UERNGA_WeaponSkill_Instant::EndAreaDamage(USkeletalMeshComponent* MeshComp)
 
 	// 나이아가라 이펙트 적용
 	PlayInstantNiagaraEffects(EERNWeaponSkillInstantEffectTrigger::AreaEnd, MeshComp);
-
-	// BeginAreaDamage에서 생성해 저장한 NiagaraComponent를 찾아 종료한다.
-	if (TWeakObjectPtr<UNiagaraComponent>* EffectPtr = AreaEffectsByMesh.Find(MeshComp))
-	{
-		if (EffectPtr->IsValid())
-		{
-			EffectPtr->Get()->Deactivate();
-		}
-
-		// 종료된 이펙트 참조는 더 이상 필요 없으므로 제거한다.
-		AreaEffectsByMesh.Remove(MeshComp);
-		AreaDamageElapsedTimes.Remove(MeshComp);
-	}
 
 	// 이번 AreaDamage 구간의 피격 기록도 제거한다.
 	// 다음 스킬 사용 때는 같은 적도 다시 맞을 수 있어야 한다.
@@ -434,13 +418,6 @@ bool UERNGA_WeaponSkill_Instant::GetInstantNiagaraEffectTransform(USkeletalMeshC
 	return true;
 }
 
-float UERNGA_WeaponSkill_Instant::CalculateExplosionDamage(AActor* OwnerActor) const
-{
-	const float CharacterAttackPower = GetCharacterAttackPower(OwnerActor);
-
-	return (ExplosionData.BaseDamage + CharacterAttackPower) * ExplosionData.DamageMultiplier;
-}
-
 void UERNGA_WeaponSkill_Instant::ApplyExplosionDamage(USkeletalMeshComponent* MeshComp, const FVector& Origin)
 {
 	AActor* OwnerActor = MeshComp ? MeshComp->GetOwner() : nullptr;
@@ -496,8 +473,6 @@ void UERNGA_WeaponSkill_Instant::ApplyExplosionDamage(USkeletalMeshComponent* Me
 		InstigatorController = OwnerCharacter->GetController();
 	}
 
-	const float DamageToApply = CalculateExplosionDamage(OwnerActor);
-
 	TSet<TWeakObjectPtr<AActor>> DamagedActors;
 
 	for (const FOverlapResult& Result : OverlapResults)
@@ -508,20 +483,16 @@ void UERNGA_WeaponSkill_Instant::ApplyExplosionDamage(USkeletalMeshComponent* Me
 			continue;
 		}
 
-		AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(HitActor);
-		if (!Enemy)
+		const EERNSkillHitResult HitResult = UERNSkillDamageLibrary::ApplySkillHit(
+			HitActor,
+			OwnerActor,
+			InstigatorController,
+			ExplosionData.DamageData,
+			Origin);
+
+		if (HitResult != EERNSkillHitResult::None)
 		{
-			continue;
-		}
-
-		DamagedActors.Add(HitActor);
-
-		Enemy->TakeDamage(DamageToApply, FDamageEvent(), InstigatorController, OwnerActor);
-
-		if (ExplosionData.StaggerPower > 0.f)
-		{
-			// 폭발 중심(Origin)을 HitOrigin으로 전달 → 적이 4방향 경직
-			Enemy->TryApplyStagger(ExplosionData.StaggerPower, Origin);
+			DamagedActors.Add(HitActor);
 		}
 	}
 }
@@ -575,7 +546,6 @@ void UERNGA_WeaponSkill_Instant::ApplyAreaDamage(USkeletalMeshComponent* MeshCom
 		return;
 	}
 
-	// 이 MeshComp의 현재 AreaDamage 구간에서 이미 맞은 적 목록을 가져온다. (없으면 새로 만듦)
 	TSet<TWeakObjectPtr<AActor>>& HitActors = HitActorsByMesh.FindOrAdd(MeshComp);
 
 	AController* InstigatorController = nullptr;
@@ -584,101 +554,25 @@ void UERNGA_WeaponSkill_Instant::ApplyAreaDamage(USkeletalMeshComponent* MeshCom
 		InstigatorController = OwnerCharacter->GetController();
 	}
 
-	const float DamageToApply = CalculateAreaDamage(OwnerActor);
-
 	for (const FOverlapResult& Result : OverlapResults)
 	{
 		AActor* HitActor = Result.GetActor();
 
-		// 이미 맞은 적이면 이번 AreaDamage 구간에서는 다시 데미지를 주지 않는다.
 		if (!HitActor || HitActor == OwnerActor || HitActors.Contains(HitActor))
 		{
 			continue;
 		}
 
-		AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(HitActor);
-		if (!Enemy)
+		const EERNSkillHitResult HitResult = UERNSkillDamageLibrary::ApplySkillHit(
+			HitActor,
+			OwnerActor,
+			InstigatorController,
+			AreaDamageData.DamageData,
+			Origin);
+
+		if (HitResult != EERNSkillHitResult::None)
 		{
-			continue;
-		}
-
-		// 데미지를 적용하기 전에 기록해 중복 피격을 방지한다.
-		HitActors.Add(HitActor);
-
-		Enemy->TakeDamage(DamageToApply, FDamageEvent(), InstigatorController, OwnerActor);
-
-		if (AreaDamageData.StaggerPower > 0.f)
-		{
-			// 범위 중심(Origin)을 HitOrigin으로 전달 → 적이 4방향 경직
-			Enemy->TryApplyStagger(AreaDamageData.StaggerPower, Origin);
+			HitActors.Add(HitActor);
 		}
 	}
-}
-
-float UERNGA_WeaponSkill_Instant::CalculateAreaDamage(AActor* OwnerActor) const
-{
-	const float WeaponDamage = GetWeaponBaseDamage(OwnerActor);
-	const float CharacterAttackPower = GetCharacterAttackPower(OwnerActor);
-
-	return (WeaponDamage + CharacterAttackPower) * AreaDamageData.DamageMultiplier;
-}
-
-void UERNGA_WeaponSkill_Instant::CleanupAreaDamageEffects()
-{
-	for (auto& Pair : AreaEffectsByMesh)
-	{
-		UNiagaraComponent* EffectComponent = Pair.Value.Get();
-		if (!EffectComponent)
-		{
-			continue;
-		}
-
-		EffectComponent->Deactivate();
-
-		// 바로 끊고 싶으면 Destroy까지 호출
-		// EffectComponent->DestroyComponent();
-	}
-
-	AreaEffectsByMesh.Empty();
-	HitActorsByMesh.Empty();
-}
-
-float UERNGA_WeaponSkill_Instant::GetWeaponBaseDamage(AActor* OwnerActor) const
-{
-	if (!OwnerActor)
-	{
-		return 0.f;
-	}
-
-	if (const UERNEquipmentComponent* Equipment =
-		OwnerActor->FindComponentByClass<UERNEquipmentComponent>())
-	{
-		if (const AERNWeaponBase* Weapon = Equipment->CurrentWeapon)
-		{
-			return Weapon->LightAttackDamage;
-		}
-	}
-
-	return 0.f;
-}
-
-float UERNGA_WeaponSkill_Instant::GetCharacterAttackPower(AActor* OwnerActor) const
-{
-	if (!OwnerActor)
-	{
-		return 0.f;
-	}
-
-	const UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerActor);
-
-	if (!ASC)
-	{
-		return 0.f;
-	}
-
-	const float AttackPower = ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerAttribute());
-
-	const float AttackPowerBonus = ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerBonusAttribute());
-
-	return AttackPower + AttackPowerBonus;
 }

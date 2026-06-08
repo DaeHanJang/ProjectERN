@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Combat/ERNSkillDamageTypes.h"
 #include "GAS/Abilities/CharacterSkill/ERNGA_SkillBase.h"
 #include "ERNGA_UltimateSkillBase.generated.h"
 
@@ -43,25 +44,20 @@ struct FERNUltimateExplosionData
 {
 	GENERATED_BODY()
 
+	FERNUltimateExplosionData() : DamageData(50.f, 2.f, 2.f, 100.f, 3.f)
+	{
+	}
+	
 	// 하나의 궁극기 발동 중 폭발 Notify가 여러 번 들어와도 한 번만 적용할지 여부.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion")
 	bool bApplyOnlyOncePerActivation = true;
 
-	// 고정 기본 대미지.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(ClampMin="0.0"))
-	float BaseDamage = 150.f;
-
-	// 최종 대미지 배율. 계산식: (BaseDamage + AttackPower + AttackPowerBonus) * DamageMultiplier
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(ClampMin="0.0"))
-	float DamageMultiplier = 1.f;
-
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion")
+	FERNSkillDamageData DamageData;
+	
 	// 캐릭터 중심 폭발 반경.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(ClampMin="0.0"))
 	float DamageRadius = 600.f;
-
-	// 적에게 적용할 경직 수치.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(ClampMin="0.0"))
-	float StaggerPower = 60.f;
 
 	// 폭발 중심 오프셋. X=전방, Y=우측, Z=상단.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion")
@@ -127,6 +123,4 @@ private:
 	bool CanTriggerExplosionFromNotify(USkeletalMeshComponent* MeshComp, AProjectERNCharacter*& OutCaster) const;
 	FVector GetExplosionOrigin(const AProjectERNCharacter* Caster) const;
 	void ApplyExplosionDamage(AProjectERNCharacter* Caster, const FVector& Origin) const;
-	// 폭파 대미지 계산
-	float CalculateExplosionDamage(const AProjectERNCharacter* Caster) const;
 };

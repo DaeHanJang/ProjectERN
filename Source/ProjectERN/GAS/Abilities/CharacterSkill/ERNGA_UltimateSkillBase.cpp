@@ -8,6 +8,7 @@
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Combat/ERNSkillDamageLibrary.h"
 #include "Engine/DamageEvents.h"
 #include "Engine/OverlapResult.h"
 #include "GAS/ERNAttributeSet.h"
@@ -112,8 +113,16 @@ void UERNGA_UltimateSkillBase::ApplyExplosionDamage(AProjectERNCharacter* Caster
 
 	if (ExplosionData.bDrawDebug)
 	{
-		DrawDebugSphere(World, Origin, ExplosionData.DamageRadius, 32, FColor::Red, false, ExplosionData.DebugDrawTime,
-		                0, 2.f);
+		DrawDebugSphere(
+			World,
+			Origin,
+			ExplosionData.DamageRadius,
+			32,
+			FColor::Red,
+			false,
+			ExplosionData.DebugDrawTime,
+			0,
+			2.f);
 	}
 
 	TArray<FOverlapResult> OverlapResults;
@@ -137,47 +146,29 @@ void UERNGA_UltimateSkillBase::ApplyExplosionDamage(AProjectERNCharacter* Caster
 		return;
 	}
 
-	const float DamageToApply = CalculateExplosionDamage(Caster);
-	TSet<AActor*> DamagedActors;
+	TSet<TWeakObjectPtr<AActor>> DamagedActors;
 
 	for (const FOverlapResult& Result : OverlapResults)
 	{
-		AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(Result.GetActor());
-		if (!Enemy || Enemy->IsDead() || DamagedActors.Contains(Enemy))
+		AActor* HitActor = Result.GetActor();
+		if (!HitActor || HitActor == Caster || DamagedActors.Contains(HitActor))
 		{
 			continue;
 		}
 
-		DamagedActors.Add(Enemy);
-		Enemy->TakeDamage(DamageToApply, FDamageEvent(), Caster->GetController(), Caster);
+		const EERNSkillHitResult HitResult = UERNSkillDamageLibrary::ApplySkillHit(
+			HitActor,
+			Caster,
+			Caster->GetController(),
+			ExplosionData.DamageData,
+			Origin);
 
-		if (ExplosionData.StaggerPower > 0.f)
+		if (HitResult != EERNSkillHitResult::None)
 		{
-			Enemy->TryApplyStagger(ExplosionData.StaggerPower, Origin);
+			DamagedActors.Add(HitActor);
 		}
 	}
 }
-
-float UERNGA_UltimateSkillBase::CalculateExplosionDamage(const AProjectERNCharacter* Caster) const
-{
-	if (!Caster)
-	{
-		return 0.f;
-	}
-
-	const UAbilitySystemComponent* ASC = Caster->GetAbilitySystemComponent();
-
-	if (!ASC)
-	{
-		return ExplosionData.BaseDamage * ExplosionData.DamageMultiplier;
-	}
-
-	const float AttackPower = ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerAttribute());
-	const float AttackPowerBonus = ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerBonusAttribute());
-
-	return (ExplosionData.BaseDamage + AttackPower + AttackPowerBonus) * ExplosionData.DamageMultiplier;
-}
-
 
 void UERNGA_UltimateSkillBase::ExecuteCastGameplayCue()
 {

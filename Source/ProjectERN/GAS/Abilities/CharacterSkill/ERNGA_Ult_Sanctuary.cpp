@@ -54,6 +54,12 @@ void UERNGA_Ult_Sanctuary::SpawnAoEFromNotify(USkeletalMeshComponent* MeshComp)
 	AoEActor->InitializeAoE(Caster);
 	UGameplayStatics::FinishSpawningActor(AoEActor, SpawnTransform);
 
+	// 아군 부활
+	if (bReviveDownedAlliesOnAoESpawn)
+	{
+		ReviveDownedAlliesInRadius(Origin, Caster);
+	}
+	
 	// 장판 생성 VFX/SFX Cue
 	ExecuteUltimateGameplayCue(
 		AoECueData,
@@ -145,4 +151,56 @@ void UERNGA_Ult_Sanctuary::FinishSkill()
 	{
 		K2_EndAbility();
 	}
+}
+
+int32 UERNGA_Ult_Sanctuary::ReviveDownedAlliesInRadius(const FVector& Origin, AProjectERNCharacter* Caster) const
+{
+	// 서버에서 실행, 적용 범위 실수로 존재
+	if (!Caster || !Caster->HasAuthority() || ReviveRadius <= 0.f)
+	{
+		return 0;
+	}
+
+	UWorld* World = Caster->GetWorld();
+	if (!World)
+	{
+		return 0;
+	}
+
+	AController* Reviver = Caster->GetController();
+	const float ReviveRadiusSq = FMath::Square(ReviveRadius);
+
+	int32 RevivedCount = 0;
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		// PC가 소유한 Pawn이 AProjectERNCharacter일 때만 적용
+		APlayerController* PlayerController = It->Get();
+		AProjectERNCharacter* TargetCharacter = PlayerController ? Cast<AProjectERNCharacter>(PlayerController->GetPawn()) : nullptr;
+
+		// 시전자는 적용하지 않음
+		if (!TargetCharacter || TargetCharacter == Caster)
+		{
+			continue;
+		}
+
+		// 기절 상태에만 적용
+		if (!TargetCharacter->IsDowned())
+		{
+			continue;
+		}
+
+		if (FVector::DistSquared2D(TargetCharacter->GetActorLocation(), Origin) > ReviveRadiusSq)
+		{
+			continue;
+		}
+
+		// 대상에게 부활 적용
+		if (TargetCharacter->TryReviveFromSkill(Reviver))
+		{
+			++RevivedCount;
+		}
+	}
+
+	return RevivedCount;
 }

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Combat/ERNSkillDamageTypes.h"
 #include "GAS/Abilities/CharacterSkill/ERNSkillNiagaraTypes.h"
 #include "GAS/Abilities/ERNGA_WeaponSkill.h"
 #include "GAS/Abilities/WeaponSkill/ERNWeaponSkillTypes.h"
@@ -12,7 +13,7 @@ USTRUCT(BlueprintType)
 struct FERNWeaponSkillChannelOriginData
 {
 	GENERATED_BODY()
-
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Origin")
 	EWeaponSkillAreaOriginMode OriginMode = EWeaponSkillAreaOriginMode::WeaponHitbox;
 
@@ -32,6 +33,14 @@ struct FERNWeaponSkillChannelingData
 {
 	GENERATED_BODY()
 
+	FERNWeaponSkillChannelingData() : DamageData(0.f, 1.f, 1.f, 0.f, 1.f)
+	{
+	}
+
+	// 대미지 데이터
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Damage")
+	FERNSkillDamageData DamageData;
+	
 	// 피해 적용, 비용 처리 간격
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling")
 	float TickInterval = 0.25f;
@@ -43,10 +52,6 @@ struct FERNWeaponSkillChannelingData
 	// TickInterval마다 소모될 마나
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Cost")
 	float ManaCostPerTick = 0.f;
-
-	// 대미지 배수
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Damage")
-	float DamageMultiplier = 1.f;
 	
 	// 판정 길이(판정은 원기둥)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Damage")
@@ -55,10 +60,6 @@ struct FERNWeaponSkillChannelingData
 	// 판정 두께
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Damage")
 	float DamageRadius = 80.f;
-
-	// 적용 경직 수치
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Damage")
-	float StaggerPower = 0.f;
 
 	// 스킬 적용 위치
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Origin")
@@ -146,11 +147,4 @@ private:
 	USkeletalMeshComponent* MeshComp,
 	FTransform& OutTransform,
 	USceneComponent*& OutAttachComponent) const;
-	
-	// 대미지 계산
-	float CalculateDamage(AActor* OwnerActor) const;
-	// 무기 공격력 받아오기
-	float GetWeaponBaseDamage(AActor* OwnerActor) const;
-	// 캐릭터 공격력 받아오기
-	float GetCharacterAttackPower(AActor* OwnerActor) const;
 };
