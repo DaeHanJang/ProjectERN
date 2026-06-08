@@ -4,6 +4,8 @@
 #include "Components/BoxComponent.h"
 #include "GameFramework/Character.h"
 #include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
 #include "Engine/DamageEvents.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Character/Player/ERNPlayerController.h"
@@ -129,11 +131,14 @@ void AERNMeleeWeapon::Multicast_PlayHitEffect_Implementation(FVector Location, F
 
 void AERNMeleeWeapon::BeginAttackTrace()
 {
+	// 트레일은 시각효과이므로 권한과 무관하게 모든 클라이언트에서 켠다.
+	StartTrail();
+
 	if (!HasAuthority())
 	{
 		return;
 	}
-	
+
 	HitActors.Empty();
 	PreviousTracePoints = GetCurrentTracePoints();
 	bAttackTraceActive = true;
@@ -141,6 +146,9 @@ void AERNMeleeWeapon::BeginAttackTrace()
 
 void AERNMeleeWeapon::TickAttackTrace()
 {
+	// 트레일 끝점 갱신은 모든 클라이언트에서 수행한다.
+	UpdateTrail();
+
 	if (!HasAuthority() || !bAttackTraceActive || !GetWorld())
 	{
 		return;
@@ -244,6 +252,9 @@ void AERNMeleeWeapon::TickAttackTrace()
 
 void AERNMeleeWeapon::EndAttackTrace()
 {
+	// 트레일은 모든 클라이언트에서 끈다.
+	StopTrail();
+
 	// 판정은 서버에서만 처리한다.
 	if (!HasAuthority())
 	{
@@ -376,5 +387,50 @@ void AERNMeleeWeapon::HandleTraceHit(const FHitResult& HitResult)
 		{
 			PlayerController->Client_PlayCameraShake(HitConfirmShakeClass, HitConfirmShakeScale);
 		}
+	}
+}
+
+void AERNMeleeWeapon::StartTrail()
+{
+	if (!TrailEffect || !TraceStart)
+	{
+		return;
+	}
+
+	// TraceStart에 1회 부착 후 재사용
+	if (!TrailComp)
+	{
+		TrailComp = UNiagaraFunctionLibrary::SpawnSystemAttached(
+			TrailEffect,
+			TraceStart,
+			NAME_None,
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			EAttachLocation::SnapToTarget,
+			false /*bAutoDestroy*/,
+			false /*bAutoActivate*/);
+	}
+
+	if (TrailComp)
+	{
+		TrailComp->Activate(true /*bReset*/);
+	}
+}
+
+void AERNMeleeWeapon::UpdateTrail()
+{
+	// 검 끝점(TraceEnd)을 나이아가라 User 파라미터로 매 틱 전달
+	if (TrailComp && TraceEnd)
+	{
+		TrailComp->SetVariableVec3(TrailTipParamName, TraceEnd->GetComponentLocation());
+	}
+}
+
+void AERNMeleeWeapon::StopTrail()
+{
+	if (TrailComp)
+	{
+		// Deactivate
+		TrailComp->Deactivate();
 	}
 }
