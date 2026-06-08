@@ -91,5 +91,22 @@ protected:
 
 private:
 	// 기절 체력의 값이 바뀌었음을 UI에 알림
-	void BroadcastGaugeChanged();		
+	void BroadcastGaugeChanged();
+	
+public:
+	// PenaltyStacks Getter - 최대 패널티 기준 전체 바로 그리기 위한 Getter
+	UFUNCTION(BlueprintPure, Category="ERN|Downed")
+	int32 GetMaxPenaltyStacks() const { return MaxPenaltyStacks; }
+
+	// Down상태에서 가질 수 있는 최대 최대 체력
+	UFUNCTION(BlueprintPure, Category="ERN|Downed")
+	float GetMaxPossibleDownedHealth() const;
+
+	// 현재 기절 HP가 전체 최대 가능 기절 HP 기준으로 몇 % 차 있는지 반환
+	UFUNCTION(BlueprintPure, Category="ERN|Downed")
+	float GetDownedHealthGlobalPercent() const;
+
+	// 현재 패널티 스택으로 적용된 이번 기절의 최대 HP 영역이 전체 바 기준으로 어디까지인지 반환
+	UFUNCTION(BlueprintPure, Category="ERN|Downed")
+	float GetActiveDownedMaxGlobalPercent() const;
 };

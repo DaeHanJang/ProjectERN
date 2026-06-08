@@ -103,3 +103,20 @@ void UERNDownedComponent::BroadcastGaugeChanged()
 	OnDownedGaugeChanged.Broadcast(DownedHealth, MaxDownedHealth, PenaltyStacks);
 }
 
+float UERNDownedComponent::GetMaxPossibleDownedHealth() const
+{
+	return BaseDownedHealth + DownedHealthPerPenaltyStack * MaxPenaltyStacks;
+}
+
+float UERNDownedComponent::GetDownedHealthGlobalPercent() const
+{
+	const float MaxPossibleHealth = GetMaxPossibleDownedHealth();
+	return MaxPossibleHealth > 0.f ? DownedHealth / MaxPossibleHealth : 0.f;
+}
+
+float UERNDownedComponent::GetActiveDownedMaxGlobalPercent() const
+{
+	const float MaxPossibleHealth = GetMaxPossibleDownedHealth();
+	return MaxPossibleHealth > 0.f ? MaxDownedHealth / MaxPossibleHealth : 0.f;
+}
+

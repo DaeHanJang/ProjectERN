@@ -9,6 +9,7 @@
 
 class ULevelSequence;
 class AERNPlayerState;
+class AProjectERNCharacter;
 
 // 플레이어 배열 변경 시 호출되는 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerArrayChanged);
@@ -105,6 +106,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void HandleGameOver();
 
+	// 최종 자기장 수렴 이후 모든 플레이어가 탈락 상태인지 확인하고 GameOver를 실행
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void TryHandleFinalZoneGameOver();
+
+	// 최종 자기장 기준 전원 탈락 여부
+	UFUNCTION(BlueprintPure, Category = "Game")
+	bool AreAllPlayersEliminated() const;
+	
 	// 전과 위젯 "로비로" 버튼 → PC RPC가 호출 (복귀 준비 등록)
 	void MarkReturnReady(AERNPlayerState* PS);
 
@@ -159,6 +168,9 @@ protected:
 	// === 게임 종료 처리 내부 ===
 	void EndGame(bool bVictory);
 
+	// 캐릭터 상태를 확인하여 반환
+	bool IsPlayerEliminated(const AProjectERNCharacter* Character) const;
+	
 	// 전원에게 승/패 배너 표시 (배너 위젯이 일정시간 뒤 전과 위젯으로 전환)
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_ShowEndScreen(bool bVictory);

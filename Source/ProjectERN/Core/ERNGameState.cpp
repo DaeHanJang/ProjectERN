@@ -10,6 +10,7 @@
 #include "TimerManager.h"
 #include "Character/Enemy/ERNBossCharacter.h"
 #include "Character/Player/ERNPlayerController.h"
+#include "Character/Player/ProjectERNCharacter.h"
 
 AERNGameState::AERNGameState()
 {
@@ -406,6 +407,50 @@ void AERNGameState::HandleGameOver()
 	EndGame(false);
 }
 
+void AERNGameState::TryHandleFinalZoneGameOver()
+{
+	if (!HasAuthority() || bEnded)
+	{
+		return;
+	}
+
+	if (AreAllPlayersEliminated())
+	{
+		HandleGameOver();
+	}
+}
+
+bool AERNGameState::AreAllPlayersEliminated() const
+{
+	// 플레이어가 1명 이상 있을 때만
+	if (PlayerArray.Num() == 0)
+	{
+		return false;
+	}
+	
+	bool bHasValidPlayer = false;
+
+	for (APlayerState* PS : PlayerArray)
+	{
+		// 유효한 PS확인
+		if (!IsValid(PS))
+		{
+			continue;
+		}
+
+		bHasValidPlayer = true;
+
+		// 캐릭터가 죽었는지 확인
+		const AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(PS->GetPawn());
+		if (!IsPlayerEliminated(Character))
+		{
+			return false;
+		}
+	}
+
+	return bHasValidPlayer;
+}
+
 void AERNGameState::EndGame(bool bVictory)
 {
 	if (!HasAuthority() || bEnded)
@@ -429,6 +474,29 @@ void AERNGameState::EndGame(bool bVictory)
 	// 아무도 버튼을 안 누를 경우 대비 — 타임아웃 후 강제 복귀
 	GetWorldTimerManager().SetTimer(ReturnTimeoutHandle, this,
 		&AERNGameState::ReturnToLobbyNow, ReturnToLobbyTimeout, false);
+}
+
+bool AERNGameState::IsPlayerEliminated(const AProjectERNCharacter* Character) const
+{
+	// 유효한 캐릭터인지 확인
+	if (!IsValid(Character))
+	{
+		return false;
+	}
+
+	// 캐릭터 상태 체크
+	switch (Character->GetLifeState())
+	{
+	case EERNPlayerLifeState::Collapsing:
+	case EERNPlayerLifeState::Downed:
+	case EERNPlayerLifeState::Respawning:
+		return true;
+
+	case EERNPlayerLifeState::Alive:
+	case EERNPlayerLifeState::Reviving:
+	default:
+		return false;
+	}
 }
 
 void AERNGameState::Multicast_ShowEndScreen_Implementation(bool bVictory)
