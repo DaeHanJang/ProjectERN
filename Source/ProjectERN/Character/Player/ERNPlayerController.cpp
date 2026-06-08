@@ -13,6 +13,7 @@
 #include "ProjectERN.h"
 #include "ProjectERNCharacter.h"
 #include "Actors/Church.h"
+#include "Actors/DHRollActor.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Core/ERNGameInstance.h"
@@ -671,6 +672,16 @@ void AERNPlayerController::TryInteract()
 			}
 		}
 	}
+}
+
+void AERNPlayerController::Server_RequestDHRollReward_Implementation(ADHRollActor* RollActor)
+{
+	if (!IsValid(RollActor))
+	{
+		return;
+	}
+	
+	RollActor->SpawnRewardForPlayer(this);
 }
 
 void AERNPlayerController::Client_ResetInteractionInputState_Implementation()

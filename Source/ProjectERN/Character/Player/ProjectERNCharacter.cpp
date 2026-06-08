@@ -2024,7 +2024,7 @@ void AProjectERNCharacter::Server_LevelUp_Implementation()
 		return;
 	}
 
-	if (AttributeSet->GetGold() < CurrentRow->Cost)
+	if (AttributeSet->GetGold() < NewRow->Cost)
 	{
 		return;
 	}

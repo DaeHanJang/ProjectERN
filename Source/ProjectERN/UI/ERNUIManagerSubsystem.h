@@ -19,6 +19,7 @@ enum class EERNUIType : uint8
 	Upgrade		UMETA(DisplayName = "Upgrade"),
 	Minimap		UMETA(DisplayName = "Minimap"),
 	PauseMenu	UMETA(DisplayName = "PauseMenu"),
+	DHRoll      UMETA(DisplayName = "DHRoll")
 };
 
 /**
