@@ -39,8 +39,13 @@
 #include "Components/ERNDownedComponent.h"
 #include "Components/ERNLockOnComponent.h"
 #include "Components/PostProcessComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Core/ERNGameState.h"
+#include "Engine/DamageEvents.h"
+#include "GameFramework/GameStateBase.h"
 #include "Character/Player/ERNPlayerController.h"
 #include "Inventory/Item/ERNItemActor.h"
+#include "UI/ERNDownedStatusWidget.h"
 #include "World/NightRainZoneManager.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -195,6 +200,16 @@ AProjectERNCharacter::AProjectERNCharacter()
 	// Create Downed Component
 	DownedComponent = CreateDefaultSubobject<UERNDownedComponent>(TEXT("DownedComponent"));
 
+	// Crea Downed Widget Component
+	DownedStatusWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("DownedStatusWidget"));
+	DownedStatusWidgetComponent->SetupAttachment(GetCapsuleComponent());
+	DownedStatusWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
+	DownedStatusWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	DownedStatusWidgetComponent->SetDrawAtDesiredSize(true);
+	DownedStatusWidgetComponent->SetDrawSize(FVector2D(96.f, 96.f));
+	DownedStatusWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	DownedStatusWidgetComponent->SetWindowFocusable(false);
+	
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
@@ -321,6 +336,9 @@ void AProjectERNCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 기절 위젯 초기화
+	InitializeDownedStatusWidget();
+	
 	// 스폰 직후 즉시 OutOfCombat - 적이 감지하면 NotifyDetectedBy로 해제됨
 	if (HasAuthority())
 	{
@@ -1087,6 +1105,12 @@ void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
 		return;
 	}
 
+	// 살아 있을때만 적용
+	if (!IsAlive())
+	{
+		return;
+	}
+	
 	if (bIsDead)
 	{
 		return;
@@ -1190,6 +1214,7 @@ void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProp
 	DOREPLIFETIME(AProjectERNCharacter, bIsHangingFromBird);
 	DOREPLIFETIME(AProjectERNCharacter, AttachedBird);
 	DOREPLIFETIME(AProjectERNCharacter, bHeadLightOn);
+	DOREPLIFETIME(AProjectERNCharacter, DownedRespawnEndServerTime);
 }
 
 void AProjectERNCharacter::ToggleLight()
@@ -2235,6 +2260,22 @@ void AProjectERNCharacter::ExitOutOfCombat()
 	}
 }
 
+void AProjectERNCharacter::KillSelf()
+{
+	Server_DebugKillSelf();
+}
+
+void AProjectERNCharacter::Server_DebugKillSelf_Implementation()
+{
+	if (!IsAlive())
+	{
+		return;
+	}
+
+	FDamageEvent DamageEvent;
+	TakeDamage(999999.f, DamageEvent, GetController(), this);
+}
+
 void AProjectERNCharacter::OnRep_LifeState()
 {
 	// 태그 갱신
@@ -2365,6 +2406,53 @@ void AProjectERNCharacter::EnterDownedState()
 
 	// 움직임 속도 제한 적용
 	UpdateMovementSpeed();
+	
+	GetWorldTimerManager().ClearTimer(DownedRespawnTimerHandle);
+	
+	DownedRespawnEndServerTime = 0.f;
+
+	// 리스폰 가능 여부 확인
+	if (!CanAutoRespawnFromDowned())
+	{
+		RequestGameOverCheck();
+		ForceNetUpdate();
+		return;
+	}
+	
+	// 카운트 다운 시간이 정해져 있지 않으면 즉시 리스폰 시작
+	if (DownedRespawnCountdownDuration <= 0.f)
+	{
+		CompleteDownedCountdown();
+		return;
+	}
+	
+	// 서버 기준 리스폰 종료 시간 세팅
+	DownedRespawnEndServerTime = 
+		DownedRespawnCountdownDuration > 0.f ? GetSyncedServerWorldTimeSeconds() + DownedRespawnCountdownDuration : 0.f;
+	
+	// 리스폰 카운트다운 시작
+	GetWorldTimerManager().SetTimer(
+		DownedRespawnTimerHandle,
+		this,
+		&AProjectERNCharacter::CompleteDownedCountdown,
+		DownedRespawnCountdownDuration,
+		false);
+}
+
+void AProjectERNCharacter::RequestGameOverCheck() const
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (AERNGameState* ERNGameState = World->GetGameState<AERNGameState>())
+		{
+			ERNGameState->TryHandleFinalZoneGameOver();
+		}
+	}
 }
 
 bool AProjectERNCharacter::bApplyReviveHit(AController* Reviver)
@@ -2427,6 +2515,12 @@ void AProjectERNCharacter::EnterRevivingState()
 		return;
 	}
 
+	// 리스폰 타이머 정리
+	GetWorldTimerManager().ClearTimer(DownedRespawnTimerHandle);
+	
+	// 서버 리스폰 시간 정리
+	DownedRespawnEndServerTime = 0.f;
+	
 	// State 변경
 	SetLifeState(EERNPlayerLifeState::Reviving);
 
@@ -2493,6 +2587,25 @@ void AProjectERNCharacter::FinishRevivingState()
 	ForceNetUpdate();
 }
 
+void AProjectERNCharacter::InitializeDownedStatusWidget()
+{
+	if (IsNetMode(NM_DedicatedServer) || !DownedStatusWidgetComponent)
+	{
+		return;
+	}
+
+	// UI 초기화
+	DownedStatusWidgetComponent->InitWidget();
+
+	// Widget이 캐릭터를 관찰하도록 설정
+	if (UERNDownedStatusWidget* DownedWidget = Cast<UERNDownedStatusWidget>(DownedStatusWidgetComponent->GetUserWidgetObject()))
+	{
+		// 자기 자신에게는 Widget을 숨김
+		DownedWidget->HideWidgetForLocal(true);
+		DownedWidget->SetObservedCharacter(this);
+	}
+}
+
 void AProjectERNCharacter::Multicast_PlayReviveMontage_Implementation()
 {
 	if (!ReviveMontage || !GetMesh())
@@ -2505,4 +2618,380 @@ void AProjectERNCharacter::Multicast_PlayReviveMontage_Implementation()
 	{
 		AnimInstance->Montage_Play(ReviveMontage);
 	}
+}
+
+void AProjectERNCharacter::CompleteDownedCountdown()
+{
+	// 서버에서만 실행 || LifeState가 Downed일 때만 실행
+	if (!HasAuthority() || LifeState != EERNPlayerLifeState::Downed)
+	{
+		return;
+	}
+	
+	// 리스폰 불가 상태에서 안전장치
+	if (!CanAutoRespawnFromDowned())
+	{
+		GetWorldTimerManager().ClearTimer(DownedRespawnTimerHandle);
+		DownedRespawnEndServerTime = 0.f;
+		RequestGameOverCheck();
+		ForceNetUpdate();
+		return;
+	}
+	
+	// 리스폰 상태로 변경
+	EnterRespawningState();
+}
+
+float AProjectERNCharacter::GetDownedRespawnRemainingTime() const
+{
+	if (LifeState != EERNPlayerLifeState::Downed || DownedRespawnEndServerTime <= 0.f)
+	{
+		return 0.f;
+	}
+
+	// 남은 시간 계산 (리스폰 적용 시간 - 서버 기준 시간)
+	return FMath::Max(0.f, DownedRespawnEndServerTime - GetSyncedServerWorldTimeSeconds());
+}
+
+float AProjectERNCharacter::GetDownedRespawnRemainingPercent() const
+{
+	if (DownedRespawnCountdownDuration <= 0.f)
+	{
+		return 0.f;
+	}
+
+	// 비율 반환
+	return FMath::Clamp(GetDownedRespawnRemainingTime() / DownedRespawnCountdownDuration, 0.f, 1.f);
+}
+
+bool AProjectERNCharacter::ShouldShowDownedRespawnCountdown() const
+{
+	return LifeState == EERNPlayerLifeState::Downed
+		&& DownedRespawnCountdownDuration > 0.f
+		&& DownedRespawnEndServerTime > 0.f
+		&& CanAutoRespawnFromDowned();
+}
+
+void AProjectERNCharacter::FinishRespawnDeathMontage()
+{
+	if (!HasAuthority() || LifeState != EERNPlayerLifeState::Respawning)
+	{
+		return;
+	}
+	
+	// 리스폰 위치 설정
+	PendingRespawnTransform = ResolveRespawnTransform();
+	// 리스폰 지역 프리로드 시작
+	BeginRespawnPreload(PendingRespawnTransform);
+}
+
+void AProjectERNCharacter::Multicast_PlayRespawnDeathMontage_Implementation()
+{
+	if (!RespawnDeathMontage || !GetMesh())
+	{
+		return;
+	}
+
+	// 몽타주 실행
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		AnimInstance->Montage_Play(RespawnDeathMontage);
+	}
+}
+
+void AProjectERNCharacter::EnterRespawningState()
+{
+	// 서버에서만 실행 || LifeState가 Downed일 때만 실행
+	if (!HasAuthority() || LifeState != EERNPlayerLifeState::Downed)
+	{
+		return;
+	}
+
+	// 리스폰 카운트다운 정리
+	GetWorldTimerManager().ClearTimer(DownedRespawnTimerHandle);
+	DownedRespawnEndServerTime = 0.f;
+	// 부활 적용 타이머 정리
+	GetWorldTimerManager().ClearTimer(ReviveTimerHandle);
+
+
+	// 상태 변경
+	SetLifeState(EERNPlayerLifeState::Respawning);
+
+	// 기절 상태 종료
+	if (DownedComponent)
+	{
+		DownedComponent->ExitDownedState();
+	}
+
+	CachedMoveInput = FVector2D::ZeroVector;
+	StopSprint();
+
+	// ASC에서 모든 Ability 취소
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->CancelAllAbilities();
+	}
+
+	// LockOn 정리
+	if (LockOnComponent)
+	{
+		LockOnComponent->ClearLockOn();
+	}
+
+	ApplyLockOnState(false, GetActorRotation());
+
+	// 움직임 정리
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	// 죽음 몽타주 멀티캐스팅
+	Multicast_PlayRespawnDeathMontage();
+
+	// fallback 적용
+	const float MontageDuration = RespawnDeathMontage ? RespawnDeathMontage->GetPlayLength() : RespawnDeathFallbackDuration;
+
+	// 몽타주 실행
+	GetWorldTimerManager().ClearTimer(RespawnDeathMontageTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		RespawnDeathMontageTimerHandle,
+		this,
+		&AProjectERNCharacter::FinishRespawnDeathMontage,
+		FMath::Max(MontageDuration, 0.01f),
+		false);
+
+	// 즉시 리플리케이션
+	ForceNetUpdate();
+}
+
+void AProjectERNCharacter::BeginRespawnPreload(const FTransform& RespawnTransform)
+{
+	AERNPlayerController* ERNPC = Cast<AERNPlayerController>(GetController());
+	if (!ERNPC)
+	{
+		// PC가 없다면 프리로드 없이 리스폰 적용
+		FinishRespawningState();
+		return;
+	}
+
+	// 프리로드 대기 시간 기록 초기화
+	RespawnPreloadElapsedTime = 0.f;
+
+	const FVector RespawnLocation = RespawnTransform.GetLocation();
+
+	// 리스폰 목적지 프리로드
+	ERNPC->BeginRespawnPreloadStreaming(RespawnLocation, RespawnPreloadRadius);
+	// 클라이언트 프리로드
+	ERNPC->Client_BeginRespawnPreloadStreaming(RespawnLocation, RespawnPreloadRadius);
+	
+	GetWorldTimerManager().ClearTimer(RespawnPreloadCheckTimerHandle);
+	// 리스폰 위치 로딩 체크 타이머 시작
+	GetWorldTimerManager().SetTimer(
+		RespawnPreloadCheckTimerHandle,
+		this,
+		&AProjectERNCharacter::CheckRespawnPreloadReady,
+		RespawnPreloadCheckInterval,
+		true,
+		0.f);
+}
+
+void AProjectERNCharacter::CheckRespawnPreloadReady()
+{
+	// 서버에서 실행, Respawning 상태에서만 실행
+	if (!HasAuthority() || LifeState != EERNPlayerLifeState::Respawning)
+	{
+		GetWorldTimerManager().ClearTimer(RespawnPreloadCheckTimerHandle);
+		return;
+	}
+
+	AERNPlayerController* ERNPC = Cast<AERNPlayerController>(GetController());
+	if (!ERNPC)
+	{
+		// PC가 없다면 프리로드 없이 리스폰 적용
+		FinishRespawningState();
+		return;
+	}
+
+	// 대기시간 갱신
+	RespawnPreloadElapsedTime += RespawnPreloadCheckInterval;
+
+	// 월드 파티션 스트리밍 완료 확인
+	const bool bServerReady = ERNPC->IsRespawnPreloadStreamingCompleted();
+	// 클라이언트도 확인
+	const bool bClientReady = ERNPC->IsRespawnClientPreloadReadyOnServer();
+	// 대시 시간 초과
+	const bool bTimedOut = RespawnPreloadElapsedTime >= RespawnPreloadTimeout;
+
+	// 대기
+	if (!bTimedOut && (!bServerReady || !bClientReady))
+	{
+		return;
+	}
+
+	// 타임 아웃이면 로그와 함께 리스폰 강행
+	if (bTimedOut)
+	{
+		UE_LOG(LogTemplateCharacter, Warning, TEXT("Respawn preload timed out: %s"), *GetNameSafe(this));
+	}
+
+	// 리스폰 적용
+	FinishRespawningState();
+}
+
+void AProjectERNCharacter::FinishRespawningState()
+{
+	if (!HasAuthority() || LifeState != EERNPlayerLifeState::Respawning)
+	{
+		return;
+	}
+
+	// 리스폰 위치 로딩 확인용 타이머 정리
+	GetWorldTimerManager().ClearTimer(RespawnPreloadCheckTimerHandle);
+	// 몽타주 타이머 종료
+	GetWorldTimerManager().ClearTimer(RespawnDeathMontageTimerHandle);
+
+	// 스폰 위치로 텔레포트
+	SetActorLocationAndRotation(
+		PendingRespawnTransform.GetLocation(),
+		PendingRespawnTransform.Rotator(),
+		false,
+		nullptr,
+		ETeleportType::TeleportPhysics);
+
+	// 리스폰 시 체력, 스태미나, 마나 최대치 적용
+	if (AttributeSet)
+	{
+		const float RespawnHealth = FMath::Max(1.f, AttributeSet->GetMaxHealth() * RespawnHealthRatio);
+		AttributeSet->SetHealth(RespawnHealth);
+		AttributeSet->SetStamina(AttributeSet->GetMaxStamina());
+		AttributeSet->SetMana(AttributeSet->GetMaxMana());
+	}
+
+	// MovementMode 변경
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->SetMovementMode(MOVE_Walking);
+	}
+
+	// LifeState 변경
+	SetLifeState(EERNPlayerLifeState::Alive);
+	// 원래 속도 적용
+	UpdateMovementSpeed();
+
+	// 프리로드 정리까지 대기 타이머 시작
+	GetWorldTimerManager().ClearTimer(RespawnPreloadCleanupTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		RespawnPreloadCleanupTimerHandle,
+		this,
+		&AProjectERNCharacter::CleanupRespawnPreload,
+		FMath::Max(RespawnPostTeleportPreloadKeepTime, 0.01f),
+		false);
+
+	ForceNetUpdate();
+}
+
+void AProjectERNCharacter::CleanupRespawnPreload()
+{
+	// PC에 있는 함수 실행이기 때문에 확인
+	AERNPlayerController* ERNPC = Cast<AERNPlayerController>(GetController());
+	if (!ERNPC)
+	{
+		return;
+	}
+
+	// 서버와 클라이언트에서 프리로드 스트리밍 정리
+	ERNPC->EndRespawnPreloadStreaming();
+	ERNPC->Client_EndRespawnPreloadStreaming();
+}
+
+FTransform AProjectERNCharacter::ResolveRespawnTransform() const
+{
+	const FRotator RespawnRotation(0.f, GetActorRotation().Yaw, 0.f);
+	
+	// 자기장 매니저 설정
+	if (const ANightRainZoneManager* ZoneManager = FindNightRainZoneManager())
+	{
+		// 리스폰 위치 설정 (자기장 매니저에서 받아옴)
+		const FVector RespawnLocation = ZoneManager->FindNearestNightLordGraceSafeLocation(this);
+		return FTransform(RespawnRotation, RespawnLocation);
+	}
+
+	return FTransform(RespawnRotation, GetActorLocation());
+}
+
+ANightRainZoneManager* AProjectERNCharacter::FindNightRainZoneManager() const
+{
+	// 자기장 매니저 찾기
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	for (TActorIterator<ANightRainZoneManager> It(World); It; ++It)
+	{
+		ANightRainZoneManager* ZoneManager = *It;
+		if (IsValid(ZoneManager))
+		{
+			return ZoneManager;
+		}
+	}
+
+	return nullptr;
+}
+
+bool AProjectERNCharacter::CanAutoRespawnFromDowned() const
+{
+	/*
+	// NightRainZone(자기장 지역) 매니저를 찾음
+	const ANightRainZoneManager* ZoneManager = FindNightRainZoneManager();
+	if (!ZoneManager)
+	{
+		return true;
+	}
+
+	// 현재 ZoneState를 받아옴
+	const FNightRainZoneState& ZoneState = ZoneManager->GetZoneState();
+	
+	constexpr int32 FinalShrinkFinishedPhaseIndex = 2;
+	const bool bFinalShrinkFinished = ZoneState.PhaseIndex >= FinalShrinkFinishedPhaseIndex &&
+		!ZoneState.bShrinking;
+
+	return !bFinalShrinkFinished;
+	*/
+	const ANightRainZoneManager* ZoneManager = FindNightRainZoneManager();
+	if (!ZoneManager)
+	{
+		// NightRainZoneManager가 없는 레벨에서는 안전 리스폰 위치를 판단할 수 없으므로 자동 리스폰하지 않는다.
+		return false;
+	}
+
+	const FNightRainZoneState& ZoneState = ZoneManager->GetZoneState();
+
+	constexpr int32 FinalShrinkFinishedPhaseIndex = 2;
+	const bool bFinalShrinkFinished = ZoneState.PhaseIndex >= FinalShrinkFinishedPhaseIndex &&
+		!ZoneState.bShrinking;
+
+	return !bFinalShrinkFinished;
+}
+
+float AProjectERNCharacter::GetSyncedServerWorldTimeSeconds() const
+{
+	if (const UWorld* World = GetWorld())
+	{
+		if (const AGameStateBase* GameState = World->GetGameState())
+		{
+			// GameState에서 서버 기준 시간 반환
+			return GameState->GetServerWorldTimeSeconds();
+		}
+
+		// GameState가 없다면 World 시간 반환
+		return World->GetTimeSeconds();
+	}
+
+	// 둘다 없으면 0 반환
+	return 0.f;
 }

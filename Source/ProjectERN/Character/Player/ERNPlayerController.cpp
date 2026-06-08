@@ -31,15 +31,15 @@
 #include "UI/World/ERNCompassWidget.h"
 #include "World/ERNMinimapPinPoint.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
+#include "UI/ERNDownedStatusWidget.h"
 #include "UI/ERNSkillCoolPanel.h"
+#include "WorldPartition/WorldPartitionSubsystem.h"
 #include "UI/ERNQuickSlotWidget.h"
 
 void AERNPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-
-
-
+	
 	// 컷신 동안 HUD 일괄 숨김 (로컬 컨트롤러 전용)
 	BindCutsceneEvents();
 
@@ -287,7 +287,11 @@ void AERNPlayerController::BeginPlay()
 			}
 		}
 	}
-
+	
+	// 기절 상태 UI 생성
+	InitializeSelfDownedStatusWidget();
+	RefreshSelfDownedStatusWidget();
+	
 	// 닉네임 전송 (로컬 플레이어만) - 타이머로 재시도
 	if (IsLocalPlayerController())
 	{
@@ -319,8 +323,15 @@ void AERNPlayerController::BeginPlay()
 
 void AERNPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (SelfDownedStatusWidget)
+	{
+		UnregisterHUDWidget(SelfDownedStatusWidget);
+		SelfDownedStatusWidget->SetObservedCharacter(nullptr);
+		SelfDownedStatusWidget->RemoveFromParent();
+		SelfDownedStatusWidget = nullptr;
+	}
+	
 	UnbindCutsceneEvents();
-
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -407,6 +418,13 @@ void AERNPlayerController::HandleCutsceneFinished()
 	CachedHUDVisibilities.Reset();
 }
 
+void AERNPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	RefreshSelfDownedStatusWidget();
+}
+
 void AERNPlayerController::AcknowledgePossession(class APawn* P)
 {
 	Super::AcknowledgePossession(P);
@@ -414,6 +432,7 @@ void AERNPlayerController::AcknowledgePossession(class APawn* P)
 	RefreshInventoryWidget();
 	RefreshSkillCoolPanel();
 	RefreshQuickSlotWidget();
+	RefreshSelfDownedStatusWidget();
 }
 
 void AERNPlayerController::RefreshInventoryWidget() const
@@ -497,6 +516,9 @@ void AERNPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
+	// 이 시점에서는 LocalPlayer가 확실히 할당되어 있으므로 IsLocalPlayerController()가 true를 반환합니다.
+	RefreshSelfDownedStatusWidget();
+	
 	// only add IMCs for local player controllers
 	if (IsLocalPlayerController())
 	{
@@ -1281,16 +1303,6 @@ void AERNPlayerController::DestroyOwnedMinimapPins_ServerOnly()
 	}
 	
 }
-
-void AERNPlayerController::RefreshSkillCoolPanel() const
-{
-	if (!IsLocalPlayerController() || !SkillCoolPanelWidget)
-	{
-		return;
-	}
-
-	SkillCoolPanelWidget->RefreshFromCurrentCharacter();
-}
 #pragma endregion
 
 
@@ -1383,3 +1395,168 @@ void AERNPlayerController::Server_CancelReturnToLobby_Implementation()
 		GS->UnmarkReturnReady(GetPlayerState<AERNPlayerState>());
 	}
 }
+
+void AERNPlayerController::RefreshSkillCoolPanel() const
+{
+	if (!IsLocalPlayerController() || !SkillCoolPanelWidget)
+	{
+		return;
+	}
+
+	SkillCoolPanelWidget->RefreshFromCurrentCharacter();
+}
+
+#pragma region PlayerRespawn
+// ===== Player Respawn =====
+bool AERNPlayerController::GetStreamingSourcesInternal(TArray<FWorldPartitionStreamingSource>& OutStreamingSources) const
+{
+	const bool bHasDefaultSource = Super::GetStreamingSourcesInternal(OutStreamingSources);
+
+	if (bRespawnPreloadStreamingActive)
+	{
+		FWorldPartitionStreamingSource& Source = OutStreamingSources.AddDefaulted_GetRef();
+
+		Source.Name = FName(*FString::Printf(TEXT("%s_RespawnPreload"), *GetName()));
+		Source.Location = RespawnPreloadLocation;
+		Source.Rotation = FRotator::ZeroRotator;
+		Source.TargetState = EStreamingSourceTargetState::Activated;
+		Source.bBlockOnSlowLoading = true;
+		Source.Priority = EStreamingSourcePriority::Highest;
+		Source.DebugColor = FColor::Cyan;
+		Source.bRemote = !IsLocalController();
+
+		FStreamingSourceShape Shape;
+		Shape.bUseGridLoadingRange = false;
+		Shape.Radius = RespawnPreloadRadius;
+
+		Source.Shapes.Add(Shape);
+	}
+
+	return bHasDefaultSource || bRespawnPreloadStreamingActive;
+}
+
+void AERNPlayerController::BeginRespawnPreloadStreaming(const FVector& Location, float Radius)
+{
+	bRespawnPreloadStreamingActive = true;
+	RespawnPreloadLocation = Location;
+	RespawnPreloadRadius = FMath::Max(Radius, 1000.f);
+
+	if (HasAuthority())
+	{
+		bRespawnClientPreloadReady_Server = IsLocalController();
+	}
+}
+
+void AERNPlayerController::EndRespawnPreloadStreaming()
+{
+	bRespawnPreloadStreamingActive = false;
+
+	if (HasAuthority())
+	{
+		bRespawnClientPreloadReady_Server = false;
+	}
+
+	GetWorldTimerManager().ClearTimer(RespawnPreloadReadyCheckTimerHandle);
+}
+
+bool AERNPlayerController::IsRespawnPreloadStreamingCompleted() const
+{
+	if (!bRespawnPreloadStreamingActive)
+	{
+		return true;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UWorldPartitionSubsystem* WorldPartitionSubsystem = World->GetSubsystem<UWorldPartitionSubsystem>())
+		{
+			return WorldPartitionSubsystem->IsStreamingCompleted(this);
+		}
+	}
+
+	return true;
+}
+
+void AERNPlayerController::Client_BeginRespawnPreloadStreaming_Implementation(FVector Location, float Radius)
+{
+	BeginRespawnPreloadStreaming(Location, Radius);
+
+	GetWorldTimerManager().ClearTimer(RespawnPreloadReadyCheckTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		RespawnPreloadReadyCheckTimerHandle,
+		this,
+		&AERNPlayerController::CheckRespawnPreloadStreamingReady_Local,
+		0.1f,
+		true,
+		0.f);
+}
+
+void AERNPlayerController::Client_EndRespawnPreloadStreaming_Implementation()
+{
+	EndRespawnPreloadStreaming();
+}
+
+void AERNPlayerController::CheckRespawnPreloadStreamingReady_Local()
+{
+	if (!bRespawnPreloadStreamingActive)
+	{
+		GetWorldTimerManager().ClearTimer(RespawnPreloadReadyCheckTimerHandle);
+		return;
+	}
+
+	if (!IsRespawnPreloadStreamingCompleted())
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(RespawnPreloadReadyCheckTimerHandle);
+	Server_NotifyRespawnPreloadStreamingReady();
+}
+
+void AERNPlayerController::Server_NotifyRespawnPreloadStreamingReady_Implementation()
+{
+	if (!bRespawnPreloadStreamingActive)
+	{
+		return;
+	}
+
+	bRespawnClientPreloadReady_Server = true;
+}
+
+#pragma endregion PlayerRespawn
+
+#pragma region SelfDownedStatusWidget
+
+void AERNPlayerController::InitializeSelfDownedStatusWidget()
+{
+	if (!IsLocalPlayerController() || SelfDownedStatusWidget || !SelfDownedStatusWidgetClass)
+	{
+		return;
+	}
+
+	SelfDownedStatusWidget = CreateWidget<UERNDownedStatusWidget>(this, SelfDownedStatusWidgetClass);
+	if (!SelfDownedStatusWidget)
+	{
+		return;
+	}
+
+	SelfDownedStatusWidget->AddToViewport(150);
+	RegisterHUDWidget(SelfDownedStatusWidget);
+}
+
+void AERNPlayerController::RefreshSelfDownedStatusWidget()
+{
+	if (!IsLocalPlayerController())
+	{
+		return;
+	}
+
+	InitializeSelfDownedStatusWidget();
+
+	if (SelfDownedStatusWidget)
+	{
+		SelfDownedStatusWidget->SetObservedCharacter(Cast<AProjectERNCharacter>(GetPawn()));
+	}
+}
+
+#pragma endregion SelfDownedStatusWidget
