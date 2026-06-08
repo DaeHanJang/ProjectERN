@@ -39,7 +39,7 @@ void UERNDownedComponent::EnterDownedState(int32 DeathPenaltyStacks)
 	GetOwner()->ForceNetUpdate();
 }
 
-void UERNDownedComponent::ApplyReviveHit(AController* Reviver)
+void UERNDownedComponent::ApplyReviveHit(AController* Reviver, float ReviveHitScale)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority() || DownedHealth <= 0.f)
 	{
@@ -49,7 +49,8 @@ void UERNDownedComponent::ApplyReviveHit(AController* Reviver)
 	// 아군 여부 검증은 무기 타격 처리 연결 단계에서 추가한다.
 	(void)Reviver;
 
-	DownedHealth = FMath::Max(0.f, DownedHealth - ReviveHitAmount);
+	// 음수 방어
+	DownedHealth = FMath::Max(0.f, DownedHealth - (ReviveHitAmount * FMath::Max(0.f, ReviveHitScale)));
 
 	BroadcastGaugeChanged();
 	GetOwner()->ForceNetUpdate();

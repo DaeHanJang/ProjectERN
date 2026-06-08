@@ -3,18 +3,14 @@
 
 #include "GAS/Abilities/WeaponSkill/ERNGA_WeaponSkill_Channeling.h"
 
-#include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
-#include "Character/Enemy/ERNEnemyCharacter.h"
-#include "Combat/Weapons/ERNWeaponBase.h"
 #include "Combat/Weapons/ERNMeleeWeapon.h"
 #include "Components/BoxComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Character/Player/ERNSkillNiagaraComponent.h"
-#include "Engine/DamageEvents.h"
+#include "Combat/ERNSkillDamageLibrary.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Character.h"
-#include "GAS/ERNAttributeSet.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
 
 UERNGA_WeaponSkill_Channeling::UERNGA_WeaponSkill_Channeling()
@@ -251,25 +247,23 @@ void UERNGA_WeaponSkill_Channeling::ApplyChannelDamage(USkeletalMeshComponent* M
 
 	for (const FOverlapResult& Result : Results)
 	{
-		AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(Result.GetActor());
-		if (!Enemy || DamagedActors.Contains(Enemy))
+		AActor* HitActor = Result.GetActor();
+		if (!HitActor || HitActor == OwnerActor || DamagedActors.Contains(HitActor))
 		{
 			continue;
 		}
 
-		DamagedActors.Add(Enemy);
-
-		// 적에게 계산된 대미지 전달
-		Enemy->TakeDamage(
-			CalculateDamage(OwnerActor),
-			FDamageEvent(),
+		// 스킬 공격 전달
+		const EERNSkillHitResult HitResult = UERNSkillDamageLibrary::ApplySkillHit(
+			HitActor,
+			OwnerActor,
 			InstigatorController,
-			OwnerActor);
+			ChannelingData.DamageData,
+			Origin);
 
-		if (ChannelingData.StaggerPower > 0.f)
+		if (HitResult != EERNSkillHitResult::None)
 		{
-			// 채널 발원점(Origin)을 HitOrigin으로 전달 → 적이 4방향 경직
-			Enemy->TryApplyStagger(ChannelingData.StaggerPower, Origin);
+			DamagedActors.Add(HitActor);
 		}
 	}
 }
@@ -351,52 +345,4 @@ bool UERNGA_WeaponSkill_Channeling::GetChannelOriginTransform(USkeletalMeshCompo
 	OutTransform.SetLocation(OutTransform.TransformPosition(ChannelingData.OriginData.LocationOffset));
 	OutTransform.ConcatenateRotation(ChannelingData.OriginData.RotationOffset.Quaternion());
 	return true;
-}
-
-float UERNGA_WeaponSkill_Channeling::CalculateDamage(AActor* OwnerActor) const
-{
-	const float WeaponDamage = GetWeaponBaseDamage(OwnerActor);
-	const float CharacterAttackPower = GetCharacterAttackPower(OwnerActor);
-	
-	return (WeaponDamage + CharacterAttackPower) * ChannelingData.DamageMultiplier;
-}
-
-float UERNGA_WeaponSkill_Channeling::GetWeaponBaseDamage(AActor* OwnerActor) const
-{
-	if (!OwnerActor)
-	{
-		return 0.f;
-	}
-
-	if (const UERNEquipmentComponent* Equipment =
-		OwnerActor->FindComponentByClass<UERNEquipmentComponent>())
-	{
-		if (const AERNWeaponBase* Weapon = Equipment->CurrentWeapon)
-		{
-			return Weapon->LightAttackDamage;
-		}
-	}
-
-	return 0.f;
-}
-
-float UERNGA_WeaponSkill_Channeling::GetCharacterAttackPower(AActor* OwnerActor) const
-{
-	if (!OwnerActor)
-	{
-		return 0.f;
-	}
-
-	const UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerActor);
-
-	if (!ASC)
-	{
-		return 0.f;
-	}
-
-	const float AttackPower = ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerAttribute());
-
-	const float AttackPowerBonus = ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerBonusAttribute());
-
-	return AttackPower + AttackPowerBonus;
 }

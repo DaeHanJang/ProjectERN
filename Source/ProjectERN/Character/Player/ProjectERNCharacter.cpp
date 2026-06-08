@@ -2455,18 +2455,18 @@ void AProjectERNCharacter::RequestGameOverCheck() const
 	}
 }
 
-bool AProjectERNCharacter::bApplyReviveHit(AController* Reviver)
+bool AProjectERNCharacter::bApplyReviveHit(AController* Reviver, float ReviveHitScale)
 {
 	if (!CanApplyReviveHit(Reviver))
 	{
 		return false;
 	}
 
-	DownedComponent->ApplyReviveHit(Reviver);
+	DownedComponent->ApplyReviveHit(Reviver, ReviveHitScale);
 	return true;
 }
 
-bool AProjectERNCharacter::TryApplyReviveHit(AActor* HitActor, AController* Reviver)
+bool AProjectERNCharacter::TryApplyReviveHit(AActor* HitActor, AController* Reviver, float ReviveHitScale)
 {
 	AProjectERNCharacter* DownedPlayer = Cast<AProjectERNCharacter>(HitActor);
 	if (!DownedPlayer || !DownedPlayer->IsDowned())
@@ -2474,7 +2474,18 @@ bool AProjectERNCharacter::TryApplyReviveHit(AActor* HitActor, AController* Revi
 		return false;
 	}
 
-	return DownedPlayer->bApplyReviveHit(Reviver);
+	return DownedPlayer->bApplyReviveHit(Reviver, ReviveHitScale);
+}
+
+bool AProjectERNCharacter::TryReviveFromSkill(AController* Reviver)
+{
+	if (!CanApplyReviveHit(Reviver))
+	{
+		return false;
+	}
+
+	CompleteRevive();
+	return true;
 }
 
 bool AProjectERNCharacter::CanApplyReviveHit(AController* Reviver) const

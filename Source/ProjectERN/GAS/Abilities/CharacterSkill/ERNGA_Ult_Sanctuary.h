@@ -19,7 +19,7 @@ public:
 	UERNGA_Ult_Sanctuary();
 
 	void SpawnAoEFromNotify(USkeletalMeshComponent* MeshComp);
-
+	
 protected:
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
@@ -51,4 +51,20 @@ private:
 	
 	UFUNCTION()
 	void FinishSkill();
+	
+#pragma region ReviveFromSkill
+	
+protected:
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Skill|Revive")
+	bool bReviveDownedAlliesOnAoESpawn = true;
+
+	// 부활 적용 범위
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Skill|Revive", meta=(ClampMin="0.0"))
+	float ReviveRadius = 3000.f;
+
+	// 범위 내 기절한 아군 부활
+	int32 ReviveDownedAlliesInRadius(const FVector& Origin, AProjectERNCharacter* Caster) const;
+	
+#pragma endregion ReviveFromSkill 
 };

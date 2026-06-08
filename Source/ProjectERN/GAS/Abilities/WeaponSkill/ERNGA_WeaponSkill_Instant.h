@@ -3,13 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Combat/ERNSkillDamageTypes.h"
 #include "GAS/Abilities/ERNGA_WeaponSkill.h"
 #include "GAS/Abilities/WeaponSkill/ERNWeaponSkillTypes.h"
 #include "ERNGA_WeaponSkill_Instant.generated.h"
 
 class AERNProjectileBase;
 class UNiagaraSystem;
-class UNiagaraComponent;
 
 // 선택에 따라 노출될 변수 조절하기 위한 구조체(범위 공격)
 USTRUCT(BlueprintType)
@@ -17,25 +17,21 @@ struct FERNWeaponSkillAreaDamageData
 {
 	GENERATED_BODY()
 
+	FERNWeaponSkillAreaDamageData(): DamageData(0.f, 1.f, 1.f, 10.f, 1.f)
+	{
+	}
+	
 	// 범위 공격 사용 여부
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage")
 	bool bUseAreaDamage = false;
 
-	// 범위 공격 대미지
+	// 대미지 부여 로직
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
-	float BaseDamage = 30.f;
-
-	// 대미지 배수
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
-	float DamageMultiplier = 1.f;
+	FERNSkillDamageData DamageData;
 
 	// 공격 범위
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
 	float DamageRadius = 120.f;
-
-	// 경직도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
-	float StaggerPower = 0.f;
 	
 	// 실제 대미지 적용 시작 시간
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
@@ -56,14 +52,6 @@ struct FERNWeaponSkillAreaDamageData
 	// 범위 판정 오프셋
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
 	FVector OriginOffset = FVector::ZeroVector;
-
-	// 스킬 나이아가라 효과
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage|VFX", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
-	TObjectPtr<UNiagaraSystem> AreaEffect;
-
-	// 효과 오프셋
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage|VFX", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
-	FVector AreaEffectOffset = FVector(150.f, 0.f, 50.f);
 
 	// 범위 판정 디버그 스피어 사용 여부
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="AreaDamage|Debug", meta=(EditCondition="bUseAreaDamage", EditConditionHides))
@@ -118,17 +106,15 @@ struct FERNWeaponSkillExplosionData
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion")
 	bool bUseExplosion = false;
 
+	FERNWeaponSkillExplosionData() : DamageData(50.f, 1.f, 1.f, 10.f, 1.f)
+	{
+	}
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
-	float BaseDamage = 50.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
-	float DamageMultiplier = 1.f;
+	FERNSkillDamageData DamageData;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
 	float DamageRadius = 300.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
-	float StaggerPower = 0.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
 	EWeaponSkillAreaOriginMode OriginMode = EWeaponSkillAreaOriginMode::CharacterOffset;
@@ -138,12 +124,6 @@ struct FERNWeaponSkillExplosionData
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion", meta=(EditCondition="bUseExplosion", EditConditionHides))
 	FVector OriginOffset = FVector::ZeroVector;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion|VFX", meta=(EditCondition="bUseExplosion", EditConditionHides))
-	TObjectPtr<UNiagaraSystem> ExplosionEffect;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion|VFX", meta=(EditCondition="bUseExplosion", EditConditionHides))
-	FVector EffectScale = FVector::OneVector;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Explosion|Debug", meta=(EditCondition="bUseExplosion", EditConditionHides))
 	bool bDrawDebug = false;
@@ -191,7 +171,6 @@ protected:
 private:
 	// MeshComp별로 이번 AreaDamage 구간에서 이미 피격된 Actor 목록을 저장한다. (중복 타격 방지)
 	TMap<TWeakObjectPtr<USkeletalMeshComponent>, TSet<TWeakObjectPtr<AActor>>> HitActorsByMesh;
-	TMap<TWeakObjectPtr<USkeletalMeshComponent>, TWeakObjectPtr<UNiagaraComponent>> AreaEffectsByMesh;
 	// 누적 시간 저장용 Map
 	TMap<TWeakObjectPtr<USkeletalMeshComponent>, float> AreaDamageElapsedTimes;
 	
@@ -199,11 +178,6 @@ private:
 	FVector GetAreaDamageOrigin(USkeletalMeshComponent* MeshComp) const;
 	// 범위 대미지 적용
 	void ApplyAreaDamage(USkeletalMeshComponent* MeshComp, const FVector& Origin);
-	// 범위 대미지 계산
-	float CalculateAreaDamage(AActor* OwnerActor) const;
-	// 범위 대미지 이펙트 취소
-	UFUNCTION(BlueprintCallable)
-	void CleanupAreaDamageEffects();
 	
 	// 투사체 소환 위치 적용
 	bool GetProjectileSpawnTransform(USkeletalMeshComponent* MeshComp, FTransform& OutTransform) const;
@@ -219,13 +193,6 @@ private:
 	bool GetInstantNiagaraEffectTransform(USkeletalMeshComponent* MeshComp,
 	                                      const FERNWeaponSkillInstantNiagaraEffect& EffectData,
 	                                      FTransform& OutTransform) const;
-	// 폭발 대미지 계산
-	float CalculateExplosionDamage(AActor* OwnerActor) const;
 	// 폭발 대미지 적용
 	void ApplyExplosionDamage(USkeletalMeshComponent* MeshComp, const FVector& Origin);
-	
-	// 무기 공격력 받아오기
-	float GetWeaponBaseDamage(AActor* OwnerActor) const;
-	// 캐릭터 공격력 받아오기
-	float GetCharacterAttackPower(AActor* OwnerActor) const;
 };
