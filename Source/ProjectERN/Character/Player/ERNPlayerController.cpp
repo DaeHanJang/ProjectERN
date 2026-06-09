@@ -891,14 +891,31 @@ void AERNPlayerController::ShowEntranceWidget(const FText& EntranceText)
 	EntranceWidget->SetEntranceText(EntranceText);
 }
 
-void AERNPlayerController::Client_ShowDamageText_Implementation(FVector Location, float Damage)
+void AERNPlayerController::Client_ShowDamageText_Implementation(AActor* TargetActor, FVector Location, float Damage)
 {
 	if (!DamageTextActorClass || !GetWorld()) return;
 
-	// 좌우/앞뒤 랜덤 오프셋 (겹침 방지) + 위로 100 오프셋
+	const FVector AnchorLocation = Location + FVector(0.f, 0.f, 100.f);
+
+	// 같은 적에 이미 떠 있는 텍스트가 있으면 새로 만들지 않고 누적 갱신 (겹침 방지)
+	if (TargetActor)
+	{
+		if (TWeakObjectPtr<AERNDamageTextActor>* Found = ActiveDamageTexts.Find(TargetActor))
+		{
+			if (AERNDamageTextActor* Existing = Found->Get())
+			{
+				// 적 위치로 재고정 후 데미지 누적
+				Existing->SetActorLocation(AnchorLocation);
+				Existing->AddDamage(Damage);
+				return;
+			}
+		}
+	}
+
+	// 신규 스폰 — 좌우/앞뒤 랜덤 오프셋으로 적별 위치 살짝 분산
 	const float RandX = FMath::FRandRange(-DamageTextRandomOffset, DamageTextRandomOffset);
 	const float RandY = FMath::FRandRange(-DamageTextRandomOffset, DamageTextRandomOffset);
-	FVector TextSpawnLocation = Location + FVector(RandX, RandY, 100.f);
+	const FVector TextSpawnLocation = AnchorLocation + FVector(RandX, RandY, 0.f);
 
 	AERNDamageTextActor* DamageTextActor = GetWorld()->SpawnActor<AERNDamageTextActor>(
 		DamageTextActorClass, TextSpawnLocation, FRotator::ZeroRotator);
@@ -906,6 +923,12 @@ void AERNPlayerController::Client_ShowDamageText_Implementation(FVector Location
 	if (DamageTextActor)
 	{
 		DamageTextActor->Initialize(Damage);
+
+		// 적별 활성 텍스트로 등록 (무효 항목은 Add가 덮어씀)
+		if (TargetActor)
+		{
+			ActiveDamageTexts.Add(TargetActor, DamageTextActor);
+		}
 	}
 }
 
