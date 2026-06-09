@@ -178,9 +178,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI|DamageText", meta = (ClampMin = "0.0"))
 	float DamageTextRandomOffset = 10.f;
 
-	// 데미지 텍스트 표시 (공격자 클라이언트에서 호출)
+	// 데미지 텍스트 표시 (공격자 클라이언트에서 호출). 같은 적은 기존 텍스트에 누적
 	UFUNCTION(Client, Unreliable)
-	void Client_ShowDamageText(FVector Location, float Damage);
+	void Client_ShowDamageText(AActor* TargetActor, FVector Location, float Damage);
+
+	// 적별 활성 데미지 텍스트 (겹침 방지 — 같은 적은 하나만 유지하고 누적). 약참조라 액터 파괴 시 자동 무효화
+	TMap<TWeakObjectPtr<AActor>, TWeakObjectPtr<AERNDamageTextActor>> ActiveDamageTexts;
 
 	// 보스 체력바 위젯 클래스 (BP에서 설정)
 	UPROPERTY(EditDefaultsOnly, Category = "UI|BossHealthBar")
