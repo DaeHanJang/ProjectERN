@@ -44,14 +44,6 @@ void ANightRainZoneManager::BeginPlay()
 		VisualComponent->SetNiagaraComponent(NiagaraComponent);
 	}
 	
-	if (HasAuthority() == false)
-	{
-		return;
-	}
-	
-	// 월드에 배치된 NightRainZoneCenterPoint 들이 준비될때 까지 1틱 대기
-	GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &ANightRainZoneManager::InitializeZone_ServerOnly));
-	
 	// 사운드 서브 시스템 캐시
 	if (UGameInstance* GI = GetGameInstance())
 	{
@@ -62,6 +54,14 @@ void ANightRainZoneManager::BeginPlay()
 			return;
 		}
 	}
+	
+	if (HasAuthority() == false)
+	{
+		return;
+	}
+	
+	// 월드에 배치된 NightRainZoneCenterPoint 들이 준비될때 까지 1틱 대기
+	GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &ANightRainZoneManager::InitializeZone_ServerOnly));
 }
 
 void ANightRainZoneManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -789,17 +789,19 @@ void ANightRainZoneManager::UpdateZoneCenterPoints()
 
 void ANightRainZoneManager::ApplyZoneBGM()
 {
-	if (ShrinkBGMArray.IsValidIndex(ZoneState.PhaseIndex) == false)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ShrinkBGMArray[%d] is null"), ZoneState.PhaseIndex);
-		return;
-	}
-	
 	// 배경음악 변경
 	if (SoundSubsystem == nullptr)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SoundSubsystem is null"));
-		return;
+		if (UGameInstance* GI = GetGameInstance())
+		{
+			SoundSubsystem = GI->GetSubsystem<UERNSoundSubsystem>();
+		}
+		
+		if (SoundSubsystem == nullptr)
+		{		
+			UE_LOG(LogTemp, Warning, TEXT("SoundSubsystem is null"));
+			return;
+		}
 	}
 	
 	// 인스턴스 던전 진입으로 인한 자기장 정지
@@ -811,12 +813,24 @@ void ANightRainZoneManager::ApplyZoneBGM()
 	
 	if (ZoneState.bShrinking == true)
 	{
+		if (ShrinkBGMArray.IsValidIndex(ZoneState.PhaseIndex) == false)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("ShrinkBGMArray[%d] is null"), ZoneState.PhaseIndex);
+			return;
+		}
+		
 		SoundSubsystem->PauseBGM(true, 0.f);
 		SoundSubsystem->PlayBGM(ShrinkBGMArray[ZoneState.PhaseIndex], 0);
 	}
 	// 자연스러운 자기장 대기 상태인 경우
 	else
 	{
+		if (RainZonePhaseBGMArray.IsValidIndex(ZoneState.PhaseIndex) == false)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("RainZonePhaseBGMArray[%d] is null"), ZoneState.PhaseIndex);
+			return;
+		}
+		
 		SoundSubsystem->PauseBGM(true, 0.f);
 		SoundSubsystem->PlayBGM(RainZonePhaseBGMArray[ZoneState.PhaseIndex], 0);
 	}
