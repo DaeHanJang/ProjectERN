@@ -6,6 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "GAS/ERNAttributeSet.h"
 #include "GAS/ERNGameplayTags.h"
 
 bool AERNAoE_Heal::IsValidAoETarget(AActor* TargetActor, UPrimitiveComponent* OverlappedComponent) const
@@ -28,7 +29,7 @@ bool AERNAoE_Heal::IsValidAoETarget(AActor* TargetActor, UPrimitiveComponent* Ov
 		return false;
 	}
 	
-	if (!HealEffectClass || HealAmountPerTick <= 0.f)
+	if (!HealEffectClass || HealPercentPerTick <= 0.f)
 	{
 		return false;
 	}
@@ -67,7 +68,11 @@ void AERNAoE_Heal::ApplyAoEToTarget(AActor* TargetActor)
 		return;
 	}
 
-	SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Heal_Amount, HealAmountPerTick);
+	// 시전자 최대 체력 비례로 Tick당 회복량 산출
+	const float SourceMaxHealth = SourceASC->GetNumericAttribute(UERNAttributeSet::GetMaxHealthAttribute());
+	const float HealAmount = SourceMaxHealth * HealPercentPerTick;
+
+	SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Heal_Amount, HealAmount);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
