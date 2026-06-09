@@ -37,10 +37,13 @@ void AERNDamageTextActor::Tick(float DeltaTime)
 	NewLocation.Z += FloatSpeed * DeltaTime;
 	SetActorLocation(NewLocation);
 
-	// 페이드아웃
-	const float Alpha = FMath::Clamp(1.f - (ElapsedTime / Duration), 0.f, 1.f);
+	// 페이드아웃 + 스케일 축소 (처음엔 크게, 점점 작아짐)
+	const float Progress = Duration > 0.f ? FMath::Clamp(ElapsedTime / Duration, 0.f, 1.f) : 1.f;
+	const float Alpha = 1.f - Progress;
+	const float CurrentScale = FMath::Lerp(StartScale, EndScale, Progress);
 	if (UUserWidget* Widget = WidgetComponent->GetWidget())
 	{
+		Widget->SetRenderScale(FVector2D(CurrentScale, CurrentScale));
 		Widget->SetRenderOpacity(Alpha * StartOpacity);
 	}
 
@@ -51,10 +54,30 @@ void AERNDamageTextActor::Tick(float DeltaTime)
 	}
 }
 
-void AERNDamageTextActor::Initialize(float InDamage, FLinearColor InColor)
+void AERNDamageTextActor::Initialize(float InDamage)
 {
+	AccumulatedDamage = InDamage;
+	ElapsedTime = 0.f;
+	UpdateDisplay();
+}
+
+void AERNDamageTextActor::AddDamage(float InDamage)
+{
+	// 누적 + 수명/스케일 리셋 (다시 크게 떠서 떠오르고 작아짐)
+	AccumulatedDamage += InDamage;
+	ElapsedTime = 0.f;
+	UpdateDisplay();
+}
+
+void AERNDamageTextActor::UpdateDisplay()
+{
+	// 누적 데미지 크기에 따라 색상 결정 (임계값 이상 빨강, 아니면 주황)
+	const FLinearColor Color = (AccumulatedDamage >= HighDamageThreshold) ? HighDamageColor : NormalColor;
+
 	if (UERNDamageTextWidget* Widget = Cast<UERNDamageTextWidget>(WidgetComponent->GetWidget()))
 	{
-		Widget->SetDamageText(InDamage, InColor);
+		// 첫 프레임/재팝 팝핑 방지를 위해 시작 스케일 즉시 적용
+		Widget->SetRenderScale(FVector2D(StartScale, StartScale));
+		Widget->SetDamageText(AccumulatedDamage, Color);
 	}
 }
