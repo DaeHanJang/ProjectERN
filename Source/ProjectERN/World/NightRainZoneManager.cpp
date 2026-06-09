@@ -14,6 +14,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
+#include "Subsystem/ERNSoundSubsystem.h"
 
 // Sets default values
 ANightRainZoneManager::ANightRainZoneManager()
@@ -50,6 +51,17 @@ void ANightRainZoneManager::BeginPlay()
 	
 	// 월드에 배치된 NightRainZoneCenterPoint 들이 준비될때 까지 1틱 대기
 	GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &ANightRainZoneManager::InitializeZone_ServerOnly));
+	
+	// 사운드 서브 시스템 캐시
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		SoundSubsystem = GI->GetSubsystem<UERNSoundSubsystem>();
+		if (SoundSubsystem == nullptr)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("SoundSubsystem is nullptr"));
+			return;
+		}
+	}
 }
 
 void ANightRainZoneManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -260,6 +272,7 @@ void ANightRainZoneManager::OnRep_ZoneState()
 void ANightRainZoneManager::BroadcastZoneStateChanged()
 {
 	OnZoneStateChanged.Broadcast(ZoneState);
+	ApplyZoneBGM();
 }
 
 void ANightRainZoneManager::BroadcastZoneShrinkFinished()
@@ -771,5 +784,40 @@ void ANightRainZoneManager::UpdateZoneCenterPoints()
 		{
 			CenterPoint->bEnabled = false;
 		}
+	}
+}
+
+void ANightRainZoneManager::ApplyZoneBGM()
+{
+	if (ShrinkBGMArray.IsValidIndex(ZoneState.PhaseIndex) == false)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ShrinkBGMArray[%d] is null"), ZoneState.PhaseIndex);
+		return;
+	}
+	
+	// 배경음악 변경
+	if (SoundSubsystem == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SoundSubsystem is null"));
+		return;
+	}
+	
+	// 인스턴스 던전 진입으로 인한 자기장 정지
+	if (ZoneState.bProgressPaused == true)
+	{
+		SoundSubsystem->PauseBGM(true, 0.f);
+		return;
+	}
+	
+	if (ZoneState.bShrinking == true)
+	{
+		SoundSubsystem->PauseBGM(true, 0.f);
+		SoundSubsystem->PlayBGM(ShrinkBGMArray[ZoneState.PhaseIndex], 0);
+	}
+	// 자연스러운 자기장 대기 상태인 경우
+	else
+	{
+		SoundSubsystem->PauseBGM(true, 0.f);
+		SoundSubsystem->PlayBGM(RainZonePhaseBGMArray[ZoneState.PhaseIndex], 0);
 	}
 }
