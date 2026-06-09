@@ -27,6 +27,9 @@ void AERNMinimapPinPoint::InitializePin( EERNMinimapIconType InIconType, APlayer
 	OwnerPlayerState = InOwnerPlayerState;
 	bVisibleOnMinimap = true;
 
+	// 서버측 변경
+	ApplyPinColorByIconType(IconType);
+	
 	NotifyMinimapChanged();
 }
 
@@ -35,5 +38,13 @@ void AERNMinimapPinPoint::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
 	DOREPLIFETIME(AERNMinimapPinPoint, OwnerPlayerState);
+}
+
+void AERNMinimapPinPoint::OnRep_MinimapMarkerData()
+{
+	Super::OnRep_MinimapMarkerData();
+	
+	// 클라이언트측 변경
+	ApplyPinColorByIconType(IconType);
 }
 

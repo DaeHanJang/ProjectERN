@@ -23,6 +23,13 @@ public:
 	
 	APlayerState* GetOwnerPlayerState() const { return OwnerPlayerState.Get(); }
 	
+	// 아이콘 타입이 지정됨에 따라 다른 색상의 핀 컬러로 변경
+	UFUNCTION(BlueprintImplementableEvent, Category="Minimap")
+	void ApplyPinColorByIconType(EERNMinimapIconType InIconType);
+	
+protected:
+	virtual void OnRep_MinimapMarkerData() override;
+	
 private:
 	
 	UPROPERTY(Replicated)
