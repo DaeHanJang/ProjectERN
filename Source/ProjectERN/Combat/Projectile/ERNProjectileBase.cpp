@@ -151,6 +151,15 @@ void AERNProjectileBase::BeginPlay()
 		ProjectileMovement->MaxSpeed = 99999.f;
 	}
 
+	// 소환 사운드 재생
+	if (SpawnSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this, SpawnSound,
+			GetActorLocation(), GetActorRotation(),
+			1.f, 1.f,0.f, SpawnSoundAttenuation);
+	}
+	
 	// 비행 사운드 재생 (서버/클라 모두)
 	if (FlightSound)
 	{
