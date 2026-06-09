@@ -117,6 +117,14 @@ public:
 	UPROPERTY()
 	UAudioComponent* FlightAudioComponent;
 
+	// 소환 사운드
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Spawn")
+	USoundBase* SpawnSound;
+
+	// 소환 사운드 감쇠 설정
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Spawn")
+	USoundAttenuation* SpawnSoundAttenuation;
+	
 	// 착탄 이펙트 - 모든 클라이언트에서 재생
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayImpactEffect(FVector Location, FRotator Rotation);
