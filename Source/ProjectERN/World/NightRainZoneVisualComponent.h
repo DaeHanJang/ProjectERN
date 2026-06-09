@@ -48,4 +48,8 @@ private:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
 	float ZoneVisualHeight = 48000.f;
+	
+	// 자기장 비쥬얼 갱신 주기
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
+	float VisualUpdateInterval = 0.1f;
 };

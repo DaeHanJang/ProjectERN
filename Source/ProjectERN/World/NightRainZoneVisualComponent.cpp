@@ -44,6 +44,7 @@ void UNightRainZoneVisualComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SetComponentTickInterval(VisualUpdateInterval);
 	SetComponentTickEnabled(false);
 }
 
