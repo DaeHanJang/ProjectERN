@@ -70,7 +70,6 @@ struct PROJECTERN_API FNightRainZoneState
 		return FMath::Clamp(static_cast<float>((ServerTime - PhaseStartServerWorldTimeSeconds) / PhaseDuration), 0.f, 1.f);
 	}
 	
-	
 	FVector GetCenterAtTime(double ServerTime) const
 	{
 		return FMath::Lerp(StartCenter, TargetCenter, GetAlpha(ServerTime));

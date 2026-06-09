@@ -185,6 +185,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	bool bIsImmortal = false;
 
+	// 최종 데미지 랜덤 편차 (0.1 = ±10%). 0이면 편차 없음. Mob/Boss 공통 적용
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DamageVariance = 0.1f;
+
 	// 근접 히트박스 설정 (태그로 구분, 태그별 데미지 값 설정)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	TArray<FEnemyHitboxConfig> HitboxConfigs;

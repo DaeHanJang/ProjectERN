@@ -143,7 +143,7 @@ public:
 
 	// 공격력 배율 계수 — 파티 평균 레벨이 기준치를 1 넘을 때마다 출력 데미지 +이 값(비율)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "0.0"))
-	float AttackScalePerLevel = 1.2f;
+	float AttackScalePerLevel = 0.2f;
 
 	// 체력 스케일 기준치 (파티 평균 공격력)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty")
@@ -163,6 +163,14 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "1.0"))
 	float MaxAttackMultiplier = 2.f;
+
+	// 인원 부족 시 공격 배율 감소량 — 풀파티에서 1명 모자랄 때마다 이 값만큼 공격 배율 감소 (예: 0.1 → 3명=1.0, 2명=0.9, 1명=0.8)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "0.0"))
+	float AttackReductionPerMissingPlayer = 0.1f;
+
+	// 인원 부족에 따른 공격 배율 하한 (너무 약해지지 않도록 제한)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MinAttackPartyScale = 0.8f;
 
 	// 모든 머신에서 보스 BGM 재생 (AIC가 첫 감지 시 호출)
 	UFUNCTION(NetMulticast, Reliable)

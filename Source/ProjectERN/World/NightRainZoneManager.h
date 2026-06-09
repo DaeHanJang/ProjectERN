@@ -8,6 +8,7 @@
 #include "World/Data/NightRainZonePhaseConfigData.h"
 #include "NightRainZoneManager.generated.h"
 
+class UERNSoundSubsystem;
 class AERNPlayerController;
 class ANightRainZoneCenterPoint;
 class UNiagaraComponent;
@@ -126,6 +127,9 @@ private:
 	// 수렴한 원에 따라 갈 수 있는 자기장 후보 재설정
 	void UpdateZoneCenterPoints();
 	
+	// 자기장 음악 변경
+	void ApplyZoneBGM();
+	
 private:
 	// 자기장 설정 Data Asset
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Night Rain Zone", meta = (AllowPrivateAccess = "true"))
@@ -168,4 +172,14 @@ private:
 	bool bPausedDuringShrink = false;
 	// 일시정지 한 시점의 수렴 진행 시간
 	float PausedPhaseRemainingTime = 0.0f;
+	
+	// 자기장 배경음악
+	UPROPERTY()
+	UERNSoundSubsystem* SoundSubsystem;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
+	TArray<TObjectPtr<USoundBase>> ShrinkBGMArray;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
+	TArray<TObjectPtr<USoundBase>> RainZonePhaseBGMArray;
 };

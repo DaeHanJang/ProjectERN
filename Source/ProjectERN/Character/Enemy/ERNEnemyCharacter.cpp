@@ -226,6 +226,12 @@ float AERNEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 		return 0.0f;
 	}
 
+	// 최종 데미지에 ±편차 랜덤 적용 (서버 권한에서만 굴려 체력 변경값이 리플리케이션으로 동기화되도록 함)
+	if (HasAuthority() && DamageVariance > 0.f && DamageAmount > 0.f)
+	{
+		DamageAmount *= FMath::FRandRange(1.f - DamageVariance, 1.f + DamageVariance);
+	}
+
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	if (ActualDamage > 0.0f)
@@ -244,7 +250,7 @@ float AERNEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 			{
 				if (AERNPlayerController* PC = Cast<AERNPlayerController>(AttackerChar->GetController()))
 				{
-					PC->Client_ShowDamageText(GetActorLocation(), ActualDamage);
+					PC->Client_ShowDamageText(this, GetActorLocation(), ActualDamage);
 				}
 				if (!bExcludeFromCombatStats)
 				{

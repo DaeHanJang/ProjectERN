@@ -417,13 +417,22 @@ void AERNBossCharacter::ApplyDynamicDifficulty()
 	AttributeSet->SetMaxHealth(NewMaxHealth);
 	AttributeSet->SetHealth(NewMaxHealth);   // 조우 시점이므로 풀피로 시작
 
-	// 공격 배율 = 1 + 계수 * (평균 레벨 - 기준치), 클램프 → 보스 출력 데미지에 곱해짐
-	OutgoingDamageMultiplier = FMath::Clamp(
+	// 레벨 기반 공격 배율 = 1 + 계수 * (평균 레벨 - 기준치), 클램프
+	const float LevelAttackMul = FMath::Clamp(
 		1.f + AttackScalePerLevel * (AvgLevel - LevelBaseline),
 		1.f, MaxAttackMultiplier);
 
-	UE_LOG(LogTemp, Log, TEXT("[Boss %s] DynamicDifficulty: Players=%d AvgAtk=%.1f AvgLv=%.1f -> MaxHP=%.0f(HMul x%.2f, Party x%.2f) DmgMul=%.2f"),
-		*GetName(), Count, AvgAttack, AvgLevel, NewMaxHealth, HealthMul, PartyScale, OutgoingDamageMultiplier);
+	// 인원 부족 공격 배율 = 1 - 감소량 * 부족 인원수, 하한 클램프 (풀파티=1.0, 1명 모자랄 때마다 감소)
+	const int32 MissingPlayers = FMath::Max(0, FullPartySize - Count);
+	const float AttackPartyScale = FMath::Clamp(
+		1.f - AttackReductionPerMissingPlayer * MissingPlayers,
+		MinAttackPartyScale, 1.f);
+
+	// 최종 출력 데미지 배율 = 레벨 배율 * 인원 배율
+	OutgoingDamageMultiplier = LevelAttackMul * AttackPartyScale;
+
+	UE_LOG(LogTemp, Log, TEXT("[Boss %s] DynamicDifficulty: Players=%d AvgAtk=%.1f AvgLv=%.1f -> MaxHP=%.0f(HMul x%.2f, Party x%.2f) DmgMul=%.2f(Lv x%.2f, Party x%.2f)"),
+		*GetName(), Count, AvgAttack, AvgLevel, NewMaxHealth, HealthMul, PartyScale, OutgoingDamageMultiplier, LevelAttackMul, AttackPartyScale);
 }
 
 void AERNBossCharacter::ShowHealthBarToAllPlayers()
