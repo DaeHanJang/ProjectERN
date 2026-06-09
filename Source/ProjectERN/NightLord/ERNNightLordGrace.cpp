@@ -23,7 +23,7 @@ AERNNightLordGrace::AERNNightLordGrace()
 	// Collision
 	InteractionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionComponent"));
 	SetRootComponent(InteractionComponent);
-	InteractionComponent->InitSphereRadius(250.0f);
+	InteractionComponent->InitSphereRadius(550.0f);
 	InteractionComponent->SetCollisionProfileName(TEXT("OverlapAll"));
 	InteractionComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECollisionResponse::ECR_Ignore);
 	InteractionComponent->SetGenerateOverlapEvents(true);
@@ -225,9 +225,23 @@ void AERNNightLordGrace::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedCom
 	// 플레이어 캐릭터 검증 후 스테이터스 회복 
 	if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(OtherActor)) 
 	{
+		if (PlayerCharacters.Contains(PlayerCharacter))
+		{
+			return;
+		}
+		
 		if (OtherComp == PlayerCharacter->GetRootComponent())
 		{
 			RestoreAttributes(PlayerCharacter);
+			
+			PlayerCharacters.Add(PlayerCharacter);
+			FTimerHandle TimerHandle;
+			GetWorldTimerManager().SetTimer(TimerHandle, FTimerDelegate::CreateLambda([this, PlayerCharacter]
+			{
+				PlayerCharacters.Remove(PlayerCharacter);
+			}), 15.0f, false);
+			
+			Cast<AERNCharacterBase>(OtherActor)->Multicast_PlayEffectAndSound(FoundEffect, GetActorLocation() + FVector(0.0f, 0.0f, 350.0f), FoundSound, GetActorLocation());
 		}
 	}
 }
