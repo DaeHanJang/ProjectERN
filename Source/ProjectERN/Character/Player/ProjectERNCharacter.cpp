@@ -2037,11 +2037,8 @@ void AProjectERNCharacter::Server_LevelUp_Implementation()
 		return;
 	}
 
-	const FName CurrentLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel())));
 	const FName NextLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel()) + 1));;
-
-	const FERNPlayerStatusTable* CurrentRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(
-		CurrentLevel, TEXT("CurrentLevelRow"));
+	
 	const FERNPlayerStatusTable* NewRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(
 		NextLevel, TEXT("TextLevelContext"));
 	if (!NewRow)
