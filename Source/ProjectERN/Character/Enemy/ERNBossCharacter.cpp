@@ -72,10 +72,10 @@ float AERNBossCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 		return 0.0f;
 	}
 	
-	// 3페이즈면 받는 데미지 절반
+	// 3페이즈면 받는 데미지 감소
 	if (CurrentPhaseIndex == 2)
 	{
-		DamageAmount *= 0.7f;
+		DamageAmount *= 0.65f;
 	}
 
 	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);

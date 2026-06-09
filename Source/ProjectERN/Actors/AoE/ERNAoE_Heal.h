@@ -24,9 +24,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ERN|AoE|Heal")
 	TSubclassOf<UGameplayEffect> HealEffectClass;
 
-	// Tick마다 적용할 회복량
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ERN|AoE|Heal", meta=(ClampMin="0.0"))
-	float HealAmountPerTick = 20.f;
+	// Tick마다 시전자 최대 체력 대비 적용할 회복 비율 (0.05 = 최대 체력의 5%)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ERN|AoE|Heal", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float HealPercentPerTick = 0.05f;
 	
 private:
 	// 헬퍼 함수
