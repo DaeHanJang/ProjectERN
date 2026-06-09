@@ -5,15 +5,27 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Combat/ERNSkillDamageLibrary.h"
 #include "GAS/ERNAttributeSet.h"
 #include "GAS/ERNGameplayTags.h"
+#include "GameFramework/Pawn.h"
 
 bool AERNAoE_Heal::IsValidAoETarget(AActor* TargetActor, UPrimitiveComponent* OverlappedComponent) const
 {
 	if (!Super::IsValidAoETarget(TargetActor, OverlappedComponent))
 	{
 		return false;
+	}
+
+	// 살아있는 적 캐릭터는 데미지 대상으로 본다. (컴포넌트 종류 무관 — Actor 단위 중복 적용은 베이스에서 방지)
+	if (bDamageEnemiesPerTick)
+	{
+		if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(TargetActor))
+		{
+			return !Enemy->IsDead() && GetASCFromActor(SourceActor) != nullptr;
+		}
 	}
 
 	// Sanctuary 힐 장판은 죽지 않은 현재 플레이어 캐릭터만 회복 대상으로 본다.
@@ -44,6 +56,27 @@ bool AERNAoE_Heal::IsValidAoETarget(AActor* TargetActor, UPrimitiveComponent* Ov
 
 void AERNAoE_Heal::ApplyAoEToTarget(AActor* TargetActor)
 {
+	// 적이면 시전자 스탯 비례 데미지(+경직) 적용
+	if (bDamageEnemiesPerTick)
+	{
+		if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(TargetActor))
+		{
+			AController* InstigatorController = nullptr;
+			if (APawn* SourcePawn = Cast<APawn>(SourceActor))
+			{
+				InstigatorController = SourcePawn->GetController();
+			}
+
+			UERNSkillDamageLibrary::ApplySkillHit(
+				Enemy,
+				SourceActor,
+				InstigatorController,
+				DamagePerTick,
+				GetActorLocation());
+			return;
+		}
+	}
+
 	AProjectERNCharacter* TargetCharacter = Cast<AProjectERNCharacter>(TargetActor);
 	if (!TargetCharacter)
 	{
