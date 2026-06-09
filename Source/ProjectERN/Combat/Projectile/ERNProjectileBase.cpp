@@ -31,6 +31,7 @@ AERNProjectileBase::AERNProjectileBase()
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 	bReplicates = true;
+	SetReplicateMovement(false);
 
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
 	CollisionComponent->InitSphereRadius(15.0f);
