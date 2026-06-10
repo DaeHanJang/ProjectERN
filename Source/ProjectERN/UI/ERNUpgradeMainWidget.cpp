@@ -491,12 +491,6 @@ FReply UERNUpgradeMainWidget::NativeOnKeyDown(const FGeometry& InGeometry, const
     // 상호작용은 포커스 잡힌 슬롯 기준
     if (FocusSlotIndex != -1)
     {
-        if (InKeyEvent.GetKey() == EKeys::Escape)
-        {
-            ClearSelection();
-            return FReply::Handled();
-        }
-        
         if (InKeyEvent.GetKey() == EKeys::E)
         {
             OnUpgradeConfirmed();
