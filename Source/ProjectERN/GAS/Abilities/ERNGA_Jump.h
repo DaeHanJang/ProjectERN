@@ -56,4 +56,9 @@ protected:
 	void OnMontageCancelled();
 
 	void FinishJumpAbility(bool bWasCancelled);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	TObjectPtr<USoundBase> JumpSound;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	TObjectPtr<USoundBase> SuperJumpSound;
 };

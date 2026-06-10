@@ -35,6 +35,7 @@
 #include "UI/ERNSkillCoolPanel.h"
 #include "WorldPartition/WorldPartitionSubsystem.h"
 #include "UI/ERNQuickSlotWidget.h"
+#include "UI/ERNInteractableWidget.h"
 
 void AERNPlayerController::BeginPlay()
 {
@@ -816,10 +817,17 @@ void AERNPlayerController::TogglePauseMenu()
 		return;
 	}
 
-	// 만약 다른 UI가 열려있다면 (인벤토리 등), 아무 동작도 하지 않음
-	// 열려있는 해당 UI의 NativeOnKeyDown에서 Esc 입력을 가로채어 닫기 애니메이션을 재생하게 됨
+	// 만약 다른 UI가 열려있다면 (인벤토리 등), 
+	// 열려있는 해당 UI가 포커스를 잃었더라도 무조건 닫히도록 모든 InteractableWidget에 닫기 명령을 내림
 	if (UIManager && UIManager->GetActiveUIType() != EERNUIType::None)
 	{
+		for (TObjectIterator<UERNInteractableWidget> It; It; ++It)
+		{
+			if (It->GetWorld() == GetWorld() && It->IsInViewport())
+			{
+				It->BP_PlayCloseAnimation();
+			}
+		}
 		return;
 	}
 

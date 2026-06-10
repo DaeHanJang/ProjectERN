@@ -53,7 +53,11 @@ protected:
 	// 벽 충돌 채널
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|WallJump")
 	TEnumAsByte<ECollisionChannel> WallTraceChannel = ECC_Visibility;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|WallJump")
+	TObjectPtr<USoundBase> JumpSound;
 
 	// 벽 찾는 함수
 	bool FindWall(const ACharacter* Character, FHitResult& OutHit) const;
+	
 };

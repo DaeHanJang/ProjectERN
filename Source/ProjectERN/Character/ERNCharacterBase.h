@@ -158,7 +158,7 @@ public:
 	void Server_RequestEffectAndSound(UNiagaraSystem* Effect, FVector EffectLocation, USoundBase* Sound, FVector SoundLocation);
 	
 	// VFX, SFX 재생
-	UFUNCTION(NetMulticast, Unreliable)
+	UFUNCTION(NetMulticast, Unreliable, BlueprintCallable)
 	void Multicast_PlayEffectAndSound(UNiagaraSystem* Effect, FVector EffectLocation, USoundBase* Sound, FVector SoundLocation);
 
 protected:
