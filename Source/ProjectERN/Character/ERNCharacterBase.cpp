@@ -13,6 +13,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Subsystem/ERNCutsceneSubsystem.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Character/Player/ERNPlayerState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Combat/Projectile/ERNProjectileBase.h"
 
@@ -230,6 +231,11 @@ UAbilitySystemComponent* AERNCharacterBase::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
+void AERNCharacterBase::SetShieldInstigator(AProjectERNCharacter* InInstigator)
+{
+	ShieldInstigator = InInstigator;
+}
+
 float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	if (bIsDead)
@@ -262,6 +268,18 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 			// 남은 실드 적용
 			AttributeSet->SetShield(RemainingShield);
 			RemainingDamage -= AbsorbedDamage;
+
+			// 전과: 실드를 걸어준 성기사에게 막아낸 데미지 누적 (자신/아군 모두)
+			if (HasAuthority() && AbsorbedDamage > 0.f)
+			{
+				if (AProjectERNCharacter* ShieldOwner = ShieldInstigator.Get())
+				{
+					if (AERNPlayerState* ShieldOwnerPS = ShieldOwner->GetPlayerState<AERNPlayerState>())
+					{
+						ShieldOwnerPS->TotalBarrierBlocked += AbsorbedDamage;
+					}
+				}
+			}
 			
 			// 실드 모두 소진 시
 			if (RemainingShield <= 0.f && AbilitySystemComponent)

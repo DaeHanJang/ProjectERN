@@ -256,6 +256,9 @@ void UERNGA_Normal_PaladinShield::ApplyShieldToTarget(AProjectERNCharacter* Cast
 		return;
 	}
 
+	// 전과: 이 배리어로 막아낸 데미지를 시전 성기사에게 귀속하기 위해 시전자 기록
+	TargetCharacter->SetShieldInstigator(Caster);
+
 	if (FOnActiveGameplayEffectRemoved_Info* RemovedDelegate =
 		TargetASC->OnGameplayEffectRemoved_InfoDelegate(StateEffectHandle))
 	{

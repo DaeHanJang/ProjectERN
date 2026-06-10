@@ -7,6 +7,7 @@
 #include "AbilitySystemInterface.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Character/Player/ERNPlayerState.h"
 #include "Combat/ERNSkillDamageLibrary.h"
 #include "GAS/ERNAttributeSet.h"
 #include "GAS/ERNGameplayTags.h"
@@ -107,7 +108,23 @@ void AERNAoE_Heal::ApplyAoEToTarget(AActor* TargetActor)
 
 	SpecHandle.Data->SetSetByCallerMagnitude(TAG_Data_Heal_Amount, HealAmount);
 
+	// 실제 회복량(오버힐 제외)을 측정하기 위해 적용 전후 체력 비교
+	const float OldHealth = TargetASC->GetNumericAttribute(UERNAttributeSet::GetHealthAttribute());
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
+	const float NewHealth = TargetASC->GetNumericAttribute(UERNAttributeSet::GetHealthAttribute());
+
+	// 전과: 시전자(성기사)에게 실제 회복량 누적
+	const float ActualHealed = NewHealth - OldHealth;
+	if (ActualHealed > 0.f)
+	{
+		if (AProjectERNCharacter* CasterCharacter = Cast<AProjectERNCharacter>(SourceActor))
+		{
+			if (AERNPlayerState* CasterPS = CasterCharacter->GetPlayerState<AERNPlayerState>())
+			{
+				CasterPS->TotalUltimateHealed += ActualHealed;
+			}
+		}
+	}
 }
 
 UAbilitySystemComponent* AERNAoE_Heal::GetASCFromActor(AActor* Actor) const

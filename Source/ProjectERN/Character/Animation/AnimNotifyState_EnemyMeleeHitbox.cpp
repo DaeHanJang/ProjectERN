@@ -14,7 +14,7 @@ void UAnimNotifyState_EnemyMeleeHitbox::NotifyBegin(USkeletalMeshComponent* Mesh
 	AERNEnemyCharacter* Enemy = MeshComp ? Cast<AERNEnemyCharacter>(MeshComp->GetOwner()) : nullptr;
 	if (Enemy && Enemy->HasAuthority())
 	{
-		Enemy->SetHitboxOverride(bOverrideDamage, DamageOverride, bOverrideStaggerPower, StaggerPowerOverride);
+		Enemy->SetHitboxOverride(bOverrideDamage, DamageOverride, bOverrideStaggerPower, StaggerPowerOverride, bOverrideMaxHealthPercentDamage, MaxHealthPercentDamageOverride);
 	}
 }
 

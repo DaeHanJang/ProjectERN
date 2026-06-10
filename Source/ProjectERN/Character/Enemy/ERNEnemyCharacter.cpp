@@ -154,9 +154,11 @@ void AERNEnemyCharacter::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AA
 
 	HitActors.Add(OtherActor);
 
-	// 태그로 데미지/경직력/사운드 검색
+	// 태그로 데미지/경직력/사운드/체력비례 검색
 	float DamageToApply = 10.f;
 	float StaggerPowerToApply = 10.f;
+	bool bUseMaxHealthPercent = false;
+	float MaxHealthPercentToApply = 0.f;
 	USoundBase* HitSoundToPlay = nullptr;
 	for (const FEnemyHitboxConfig& Config : HitboxConfigs)
 	{
@@ -164,6 +166,8 @@ void AERNEnemyCharacter::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AA
 		{
 			DamageToApply = Config.Damage;
 			StaggerPowerToApply = Config.StaggerPower;
+			bUseMaxHealthPercent = Config.bAddMaxHealthPercentDamage;
+			MaxHealthPercentToApply = Config.MaxHealthPercentDamage;
 			HitSoundToPlay = Config.HitSound;
 			break;
 		}
@@ -178,9 +182,23 @@ void AERNEnemyCharacter::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AA
 	{
 		StaggerPowerToApply = ActiveStaggerOverride;
 	}
+	if (bActiveMaxHealthPercentOverride)
+	{
+		bUseMaxHealthPercent = true;
+		MaxHealthPercentToApply = ActiveMaxHealthPercentOverride;
+	}
 
 	// 동적 난이도 출력 배율 적용 (잡몹은 1.0이라 무영향)
 	DamageToApply *= OutgoingDamageMultiplier;
+
+	// 체력비례 추가 데미지 합산 (배율과 분리 — 대상 플레이어 최대HP 기준 고정)
+	if (bUseMaxHealthPercent && MaxHealthPercentToApply > 0.f)
+	{
+		if (const UERNAttributeSet* TargetAttr = Player->GetAttributeSet())
+		{
+			DamageToApply += TargetAttr->GetMaxHealth() * MaxHealthPercentToApply;
+		}
+	}
 
 	FDamageEvent DamageEvent;
 	const float ActualDamage = Player->TakeDamage(DamageToApply, DamageEvent, GetController(), this);
@@ -194,12 +212,14 @@ void AERNEnemyCharacter::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AA
 	}
 }
 
-void AERNEnemyCharacter::SetHitboxOverride(bool bDamage, float Damage, bool bStagger, float StaggerPower)
+void AERNEnemyCharacter::SetHitboxOverride(bool bDamage, float Damage, bool bStagger, float StaggerPower, bool bMaxHealthPercent, float MaxHealthPercent)
 {
 	bActiveDamageOverride = bDamage;
 	ActiveDamageOverride = Damage;
 	bActiveStaggerOverride = bStagger;
 	ActiveStaggerOverride = StaggerPower;
+	bActiveMaxHealthPercentOverride = bMaxHealthPercent;
+	ActiveMaxHealthPercentOverride = MaxHealthPercent;
 }
 
 void AERNEnemyCharacter::ClearHitboxOverride()
@@ -208,6 +228,8 @@ void AERNEnemyCharacter::ClearHitboxOverride()
 	ActiveDamageOverride = 0.f;
 	bActiveStaggerOverride = false;
 	ActiveStaggerOverride = 0.f;
+	bActiveMaxHealthPercentOverride = false;
+	ActiveMaxHealthPercentOverride = 0.f;
 }
 
 void AERNEnemyCharacter::Multicast_PlayHitSound_Implementation(USoundBase* Sound, FVector Location)

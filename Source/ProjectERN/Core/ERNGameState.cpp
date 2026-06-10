@@ -11,6 +11,7 @@
 #include "Character/Enemy/ERNBossCharacter.h"
 #include "Character/Player/ERNPlayerController.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Core/ERNGameInstance.h"
 
 AERNGameState::AERNGameState()
 {
@@ -414,10 +415,48 @@ void AERNGameState::TryHandleFinalZoneGameOver()
 		return;
 	}
 
-	if (AreAllPlayersEliminated())
+	if (!AreAllPlayersEliminated())
 	{
-		HandleGameOver();
+		return;
 	}
+
+	// EasyMode: 켜져 있고 이번 런에서 아직 안 썼으면, 패배 대신 전원 1회 부활
+	if (UERNGameInstance* GI = GetGameInstance<UERNGameInstance>())
+	{
+		if (GI->IsEasyModeEnabled() && !GI->IsEasyModeReviveUsed())
+		{
+			GI->MarkEasyModeReviveUsed();
+			EasyModeReviveAllPlayers();
+			return;
+		}
+	}
+
+	HandleGameOver();
+}
+
+void AERNGameState::EasyModeReviveAllPlayers()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 탈락한 모든 플레이어를 그자리 100% 체력으로 부활 + 성배병 2개 추가
+	for (APlayerState* PS : PlayerArray)
+	{
+		if (!IsValid(PS))
+		{
+			continue;
+		}
+
+		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(PS->GetPawn()))
+		{
+			Character->ReviveForEasyMode(2);
+		}
+	}
+
+	// 보스 재교전은 각 플레이어가 Alive로 복귀하는 시점(FinishRevivingState)에 트리거된다.
+	// 여기서 즉시 하면 플레이어가 아직 Reviving 상태라 IsAlive() 체크에 걸려 어그로가 안 붙음.
 }
 
 bool AERNGameState::AreAllPlayersEliminated() const
@@ -574,6 +613,12 @@ void AERNGameState::ReturnToLobbyNow()
 		return;
 	}
 	GetWorldTimerManager().ClearTimer(ReturnTimeoutHandle);
+
+	// EasyMode 1회 부활 가드 초기화 (로비 진입 = 게임 루프 종료 → 다음 런에서 다시 1회 가능)
+	if (UERNGameInstance* GI = GetGameInstance<UERNGameInstance>())
+	{
+		GI->ResetEasyModeRunGuard();
+	}
 
 	// 진행/전과 전부 초기화 → 로비 폰은 기본값으로 스폰됨
 	for (APlayerState* PS : PlayerArray)

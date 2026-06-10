@@ -14,6 +14,7 @@ class UERNAttributeSet;
 class UGameplayAbility;
 class UGameplayEffect;
 class UAnimMontage;
+class AProjectERNCharacter;
 
 // 히트 리액션 방향 (수평면 4사분면)
 UENUM(BlueprintType)
@@ -87,7 +88,13 @@ protected:
 	// 막타 크레딧용 — 마지막으로 유효타를 넣은 컨트롤러 (서버)
 	TWeakObjectPtr<AController> LastHitInstigator;
 
+	// 배리어 차단 전과 크레딧용 — 현재 실드를 걸어준 성기사 (서버). 배리어 흡수량을 이 캐릭터 전과로 가산
+	TWeakObjectPtr<AProjectERNCharacter> ShieldInstigator;
+
 public:
+	// 실드를 걸어준 시전자 설정 (PaladinShield 적용 시 호출, 서버)
+	void SetShieldInstigator(AProjectERNCharacter* InInstigator);
+
 	// 데미지 처리
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 

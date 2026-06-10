@@ -40,6 +40,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Hitbox", meta = (EditCondition = "bOverrideStaggerPower", ClampMin = "0.0"))
 	float StaggerPowerOverride = 0.f;
 
+	// 체력비례 추가 데미지 오버라이드 — true면 HitboxConfig 대신 이 비율로 맞은 플레이어 최대HP 비례 데미지 합산
+	UPROPERTY(EditAnywhere, Category = "Hitbox")
+	bool bOverrideMaxHealthPercentDamage = false;
+
+	UPROPERTY(EditAnywhere, Category = "Hitbox", meta = (EditCondition = "bOverrideMaxHealthPercentDamage", ClampMin = "0.0"))
+	float MaxHealthPercentDamageOverride = 0.f;
+
 private:
 	void SetHitboxEnabled(USkeletalMeshComponent* MeshComp, bool bEnabled);
 };

@@ -134,6 +134,13 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Result") int32 KillCount = 0;
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Result") float TotalDamageDealt = 0.f;
 
+	// 전사 피흡수로 회복한 총 HP (실제 회복량, 오버힐 제외)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Result") float TotalLifestealHealed = 0.f;
+	// 성기사 궁극기로 회복시킨 총 HP (자신+아군, 실제 회복량)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Result") float TotalUltimateHealed = 0.f;
+	// 성기사 배리어(일반 스킬)로 막아낸 총 데미지 (자신+아군에게 건 것 포함)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Result") float TotalBarrierBlocked = 0.f;
+
 	// ===== 인스턴스 포탈 =====
 	// 인스턴스 던전 안에 있는지 여부 (필드=false 기본, 포탈 사용 시 토글). 상태 주인은 PlayerState로 통일
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "InstancePortal")

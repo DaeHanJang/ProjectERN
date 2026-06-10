@@ -107,8 +107,12 @@ public:
 	void HandleGameOver();
 
 	// 최종 자기장 수렴 이후 모든 플레이어가 탈락 상태인지 확인하고 GameOver를 실행
+	// (EasyMode가 켜져 있고 미사용이면 패배 대신 전원 1회 부활)
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void TryHandleFinalZoneGameOver();
+
+	// EasyMode 전원 부활 — 탈락 플레이어 전원을 그자리 100% 체력으로 부활 + 성배병 2개 추가 (서버)
+	void EasyModeReviveAllPlayers();
 
 	// 최종 자기장 기준 전원 탈락 여부
 	UFUNCTION(BlueprintPure, Category = "Game")
