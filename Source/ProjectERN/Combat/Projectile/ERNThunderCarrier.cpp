@@ -9,7 +9,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "NiagaraComponent.h"
 #include "TimerManager.h"
+#include "Engine/World.h"
+#include "CollisionQueryParams.h"
 
 AERNThunderCarrier::AERNThunderCarrier()
 {
@@ -125,35 +128,85 @@ void AERNThunderCarrier::Tick(float DeltaSeconds)
 
 void AERNThunderCarrier::OnFireTick()
 {
-	if (!HasAuthority() || !StrikeProjectileClass) return;
+	if (!HasAuthority()) return;
 
 	// 추적 모드에서 타겟이 사라지면 발사 중단 (직진 모드는 타겟 무관하게 계속)
 	if (bFollowTarget && !HomingTarget.IsValid()) return;
 
-	FActorSpawnParameters Params;
-	Params.Owner = GetOwner();			// 보스 (팀/데미지 판정용)
-	Params.Instigator = GetInstigator();
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	UWorld* World = GetWorld();
+	if (!World) return;
 
-	// 부모(캐리어) 위치에서 아래로 떨어뜨림 - 속도는 자식 BP가 결정 (전방 = 아래)
 	const FVector SpawnLoc = GetActorLocation();
-	const FRotator SpawnRot(-90.f, 0.f, 0.f);
 
-	AERNProjectileBase* Strike = GetWorld()->SpawnActor<AERNProjectileBase>(
-		StrikeProjectileClass, SpawnLoc, SpawnRot, Params);
-
-	if (Strike)
+	// StrikeProjectileClass가 할당돼 있으면 기존 액터 스폰 방식 (비교용)
+	if (StrikeProjectileClass)
 	{
-		// 동적 난이도 출력 배율 적용 (보스 owner의 BP Damage에 곱함)
-		AERNEnemyCharacter* BossOwner = Cast<AERNEnemyCharacter>(GetOwner());
-		if (BossOwner)
+		FActorSpawnParameters Params;
+		Params.Owner = GetOwner();			// 보스 (팀/데미지 판정용)
+		Params.Instigator = GetInstigator();
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+		// 부모(캐리어) 위치에서 아래로 떨어뜨림 - 속도는 자식 BP가 결정 (전방 = 아래)
+		const FRotator SpawnRot(-90.f, 0.f, 0.f);
+
+		AERNProjectileBase* Strike = World->SpawnActor<AERNProjectileBase>(
+			StrikeProjectileClass, SpawnLoc, SpawnRot, Params);
+
+		if (Strike)
 		{
-			Strike->Damage *= BossOwner->OutgoingDamageMultiplier;
-			Strike->ExplosionDamage *= BossOwner->OutgoingDamageMultiplier;
+			// 동적 난이도 출력 배율 적용 (보스 owner의 BP Damage에 곱함)
+			if (AERNEnemyCharacter* BossOwner = Cast<AERNEnemyCharacter>(GetOwner()))
+			{
+				Strike->Damage *= BossOwner->OutgoingDamageMultiplier;
+				Strike->ExplosionDamage *= BossOwner->OutgoingDamageMultiplier;
+			}
+		}
+
+		Multicast_PlayFireEffect(SpawnLoc);
+		return;
+	}
+
+	// StrikeProjectileClass가 비어 있으면 히트스캔 폭발 방식 (액터 스폰 없음)
+	// 트레이스 방향: 기본은 정직하게 아래, 옵션 켜지면 월드 범위에서 랜덤
+	FVector TraceDir(0.f, 0.f, -1.f);
+	if (bRandomizeStrikeDirection)
+	{
+		const FVector RawDir(
+			FMath::RandRange(MinStrikeDirection.X, MaxStrikeDirection.X),
+			FMath::RandRange(MinStrikeDirection.Y, MaxStrikeDirection.Y),
+			FMath::RandRange(MinStrikeDirection.Z, MaxStrikeDirection.Z));
+		TraceDir = RawDir.GetSafeNormal();
+		if (TraceDir.IsNearlyZero())
+		{
+			TraceDir = FVector(0.f, 0.f, -1.f);
 		}
 	}
 
+	// 라인 트레이스 → 충돌 지점(없으면 끝점)을 폭발 중심으로
+	const FVector TraceEnd = SpawnLoc + TraceDir * StrikeTraceDistance;
+	FHitResult Hit;
+	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(ThunderStrikeTrace), false, this);
+	if (GetOwner()) TraceParams.AddIgnoredActor(GetOwner());
+	const bool bHit = World->LineTraceSingleByChannel(Hit, SpawnLoc, TraceEnd, ECC_Visibility, TraceParams);
+	const FVector ImpactPoint = bHit ? Hit.ImpactPoint : TraceEnd;
+
+	// 동적 난이도 출력 배율 적용 (보스 owner)
+	float FinalDamage = StrikeExplosionDamage;
+	if (AERNEnemyCharacter* BossOwner = Cast<AERNEnemyCharacter>(GetOwner()))
+	{
+		FinalDamage *= BossOwner->OutgoingDamageMultiplier;
+	}
+
+	// 기존 projectilebase와 동일한 폭발 공식 (공유 정적 헬퍼)
+	ApplyRadialExplosion(
+		this, GetOwner(), GetInstigatorController(), ImpactPoint,
+		StrikeExplosionRadius, FinalDamage, StrikeStaggerPower,
+		bStrikeAddMaxHealthPercentDamage, StrikeMaxHealthPercentDamage,
+		bStrikeKnockback, StrikeKnockbackForce);
+
+	// 비주얼: 발사(머즐, 캐리어 위치) + 임팩트(번개, 충돌 지점)
 	Multicast_PlayFireEffect(SpawnLoc);
+	Multicast_PlayStrikeImpact(ImpactPoint);
 }
 
 void AERNThunderCarrier::Multicast_PlayFireEffect_Implementation(FVector Location)
@@ -167,6 +220,47 @@ void AERNThunderCarrier::Multicast_PlayFireEffect_Implementation(FVector Locatio
 	{
 		UGameplayStatics::PlaySoundAtLocation(
 			this, FireSound, Location, FRotator::ZeroRotator,
+			1.f, 1.f, 0.f, FireSoundAttenuation);
+	}
+}
+
+void AERNThunderCarrier::Multicast_PlayStrikeImpact_Implementation(FVector Location)
+{
+	if (StrikeImpactEffect)
+	{
+		UNiagaraComponent* ImpactComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			StrikeImpactEffect,
+			Location,
+			FRotator::ZeroRotator,
+			FVector(1.f),
+			true,
+			true,
+			ENCPoolMethod::None,
+			true);
+
+		// 루핑/무한 Lifetime 이펙트가 자동 소멸 안 돼서 누적되는 것 방지 — 일정 시간 후 강제 정리
+		if (ImpactComp)
+		{
+			TWeakObjectPtr<UNiagaraComponent> WeakComp(ImpactComp);
+			FTimerHandle CleanupHandle;
+			GetWorld()->GetTimerManager().SetTimer(
+				CleanupHandle,
+				FTimerDelegate::CreateLambda([WeakComp]()
+				{
+					if (WeakComp.IsValid())
+					{
+						WeakComp->DestroyComponent();
+					}
+				}),
+				StrikeImpactLifetime,
+				false);
+		}
+	}
+	if (StrikeImpactSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this, StrikeImpactSound, Location, FRotator::ZeroRotator,
 			1.f, 1.f, 0.f, FireSoundAttenuation);
 	}
 }

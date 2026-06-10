@@ -567,19 +567,84 @@ float AERNProjectileBase::GetMaxHealthBonusDamage(AActor* TargetActor) const
 // 폭발 범위 데미지 적용
 void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 {
-	AActor* OwnerActor = GetOwner();
+	// 공유 정적 헬퍼로 폭발 데미지(+체력비례)/경직/넉백 적용 (ThunderCarrier와 동일 공식)
+	ApplyRadialExplosion(
+		this,
+		GetOwner(),
+		GetInstigatorController(),
+		ExplosionCenter,
+		ExplosionRadius,
+		ExplosionDamage,
+		ExplosionStaggerPower,
+		bAddMaxHealthPercentDamage,
+		MaxHealthPercentDamage,
+		bKnockbackEnabled,
+		ExplosionKnockbackForce);
+
+	// 폭발 카메라 흔들림 (반경 내 모든 플레이어, 거리 감쇠) — 투사체 전용
+	if (ExplosionShakeClass)
+	{
+		Multicast_PlayExplosionShake(ExplosionCenter);
+	}
+}
+
+void AERNProjectileBase::ApplyRadialExplosion(
+	AActor* Source,
+	AActor* OwnerActor,
+	AController* InstigatorController,
+	const FVector& Center,
+	float Radius,
+	float Damage,
+	float StaggerPower,
+	bool bAddMaxHealthPercentDamage,
+	float MaxHealthPercentDamage,
+	bool bKnockback,
+	float KnockbackForce)
+{
+	if (!Source || Radius <= 0.f)
+	{
+		return;
+	}
+
 	AProjectERNCharacter* PlayerShooter = Cast<AProjectERNCharacter>(OwnerActor);
 	AERNEnemyCharacter* EnemyShooter = Cast<AERNEnemyCharacter>(OwnerActor);
 
 	TArray<AActor*> IgnoreActors;
-	IgnoreActors.Add(this);
+	IgnoreActors.Add(Source);
 	if (OwnerActor) IgnoreActors.Add(OwnerActor);
 
 	TArray<AActor*> OverlappedActors;
 	UKismetSystemLibrary::SphereOverlapActors(
-		this, ExplosionCenter, ExplosionRadius,
+		Source, Center, Radius,
 		TArray<TEnumAsByte<EObjectTypeQuery>>(), APawn::StaticClass(),
 		IgnoreActors, OverlappedActors);
+
+	// 대상 최대HP 비례 추가 데미지
+	auto MaxHealthBonus = [&](AActor* Target) -> float
+	{
+		if (!bAddMaxHealthPercentDamage || MaxHealthPercentDamage <= 0.f || !Target)
+		{
+			return 0.f;
+		}
+		const IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(Target);
+		UAbilitySystemComponent* ASC = ASI ? ASI->GetAbilitySystemComponent() : nullptr;
+		return ASC ? ASC->GetNumericAttribute(UERNAttributeSet::GetMaxHealthAttribute()) * MaxHealthPercentDamage : 0.f;
+	};
+
+	// 폭발 중심에서 바깥(방사형)으로 넉백
+	auto DoKnockback = [&](ACharacter* Target, const FVector& Dir)
+	{
+		if (!bKnockback || !Target || KnockbackForce <= 0.f)
+		{
+			return;
+		}
+		const FVector LaunchDir = Dir.GetSafeNormal();
+		if (LaunchDir.IsNearlyZero())
+		{
+			return;
+		}
+		Target->LaunchCharacter(LaunchDir * KnockbackForce, true, true);
+	};
 
 	for (AActor* HitActor : OverlappedActors)
 	{
@@ -588,7 +653,7 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 		// 플레이어가 쏜 폭발 - 적에게만 데미지
 		if (PlayerShooter)
 		{
-			// 기절한 아군에게도 적용
+			// 기절한 아군에게도 부활 적용
 			if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(HitActor))
 			{
 				if (AProjectERNCharacter::TryApplyReviveHit(Player, PlayerShooter->GetController()))
@@ -596,18 +661,12 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 					continue;
 				}
 			}
-			
+
 			if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(HitActor))
 			{
-				Enemy->TakeDamage(ExplosionDamage + GetMaxHealthBonusDamage(Enemy), FDamageEvent(), GetInstigatorController(), OwnerActor);
-				// 폭발 중심을 HitOrigin으로 전달 → 적이 폭발 방향 기준 4방향 경직
-				Enemy->TryApplyStagger(ExplosionStaggerPower, ExplosionCenter);
-
-				// 폭발 넉백 - 폭발 중심에서 바깥(방사형)으로 밀어냄
-				if (bKnockbackEnabled)
-				{
-					ApplyKnockback(Enemy, HitActor->GetActorLocation() - ExplosionCenter, ExplosionKnockbackForce);
-				}
+				Enemy->TakeDamage(Damage + MaxHealthBonus(Enemy), FDamageEvent(), InstigatorController, OwnerActor);
+				Enemy->TryApplyStagger(StaggerPower, Center);
+				DoKnockback(Enemy, HitActor->GetActorLocation() - Center);
 			}
 		}
 		// 적이 쏜 폭발 - 플레이어에게만 데미지
@@ -615,23 +674,11 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 		{
 			if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(HitActor))
 			{
-				Player->TakeDamage(ExplosionDamage + GetMaxHealthBonusDamage(Player), FDamageEvent(), GetInstigatorController(), OwnerActor);
-				// 폭발 중심을 HitOrigin으로 전달 → 플레이어가 폭발 방향 기준 4방향 경직
-				Player->TryApplyStagger(ExplosionStaggerPower, ExplosionCenter);
-
-				// 폭발 넉백 - 폭발 중심에서 바깥(방사형)으로 밀어냄
-				if (bKnockbackEnabled)
-				{
-					ApplyKnockback(Player, HitActor->GetActorLocation() - ExplosionCenter, ExplosionKnockbackForce);
-				}
+				Player->TakeDamage(Damage + MaxHealthBonus(Player), FDamageEvent(), InstigatorController, OwnerActor);
+				Player->TryApplyStagger(StaggerPower, Center);
+				DoKnockback(Player, HitActor->GetActorLocation() - Center);
 			}
 		}
-	}
-
-	// 폭발 카메라 흔들림 (반경 내 모든 플레이어, 거리 감쇠)
-	if (ExplosionShakeClass)
-	{
-		Multicast_PlayExplosionShake(ExplosionCenter);
 	}
 }
 

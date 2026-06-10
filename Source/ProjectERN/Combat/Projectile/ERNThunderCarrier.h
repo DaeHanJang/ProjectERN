@@ -48,6 +48,10 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayFireEffect(FVector Location);
 
+	// 히트스캔 임팩트(번개) 이펙트/사운드 모든 클라이언트 재생 (충돌 지점)
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlayStrikeImpact(FVector Location);
+
 public:
 	// 타겟이 추적할 더미 (플레이어 위로 매 틱 위치 갱신)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Thunder")
@@ -81,9 +85,70 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Thunder|Split")
 	int32 SplitGeneration = 0;
 
-	// 떨어뜨릴 자식 투사체(벼락) 클래스
+	// 떨어뜨릴 자식 투사체(벼락) 클래스.
+	// 할당되면 기존 액터 스폰 방식, 비어 있으면 아래 히트스캔 폭발 방식 사용 (두 방식 비교용)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder")
 	TSubclassOf<AERNProjectileBase> StrikeProjectileClass;
+
+	// === 히트스캔 폭발 (StrikeProjectileClass가 비어 있을 때 사용) ===
+	// 아래로 트레이스할 최대 거리 (충돌 지점이 폭발 중심)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan", meta = (ClampMin = "0.0"))
+	float StrikeTraceDistance = 2000.f;
+
+	// true면 정직하게 아래(0,0,-1) 대신 아래 범위에서 랜덤 방향(월드 스페이스)으로 트레이스 → 바닥 착탄 지점이 약간씩 흩어짐
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan")
+	bool bRandomizeStrikeDirection = false;
+
+	// 랜덤 트레이스 방향 범위(월드, 컴포넌트별 RandRange 후 정규화). 기본값은 아래쪽으로 약간 퍼짐
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan",
+		meta = (EditCondition = "bRandomizeStrikeDirection"))
+	FVector MinStrikeDirection = FVector(-0.3f, -0.3f, -1.f);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan",
+		meta = (EditCondition = "bRandomizeStrikeDirection"))
+	FVector MaxStrikeDirection = FVector(0.3f, 0.3f, -1.f);
+
+	// 폭발 반경
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan", meta = (ClampMin = "0.0"))
+	float StrikeExplosionRadius = 200.f;
+
+	// 폭발 데미지 (보스 OutgoingDamageMultiplier 곱해짐)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan", meta = (ClampMin = "0.0"))
+	float StrikeExplosionDamage = 0.f;
+
+	// 폭발 경직력
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan", meta = (ClampMin = "0.0"))
+	float StrikeStaggerPower = 10.f;
+
+	// 체력비례 추가 데미지 사용 여부 (맞은 플레이어 최대HP 비율 합산)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan")
+	bool bStrikeAddMaxHealthPercentDamage = false;
+
+	// 체력비례 데미지 비율 (0.05 = 최대HP의 5%)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan",
+		meta = (EditCondition = "bStrikeAddMaxHealthPercentDamage", ClampMin = "0.0"))
+	float StrikeMaxHealthPercentDamage = 0.1f;
+
+	// 폭발 넉백 사용 여부
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan")
+	bool bStrikeKnockback = false;
+
+	// 넉백 세기
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan",
+		meta = (EditCondition = "bStrikeKnockback", ClampMin = "0.0"))
+	float StrikeKnockbackForce = 800.f;
+
+	// 임팩트(번개) 나이아가라 — 충돌 지점에 재생
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Thunder|Hitscan|FX")
+	UNiagaraSystem* StrikeImpactEffect;
+
+	// 임팩트 이펙트 강제 정리 시간 (초) — 루핑/무한 Lifetime 이펙트가 안 사라지고 누적되는 것 방지
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Thunder|Hitscan|FX", meta = (ClampMin = "0.1"))
+	float StrikeImpactLifetime = 2.f;
+
+	// 임팩트 사운드
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Thunder|Hitscan|FX")
+	USoundBase* StrikeImpactSound;
 
 	// 자식 투사체 발사 간격 (초)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder",

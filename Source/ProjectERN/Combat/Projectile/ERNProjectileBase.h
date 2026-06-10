@@ -63,6 +63,22 @@ protected:
 	// 폭발 범위 데미지 적용
 	void ApplyExplosionDamage(const FVector& ExplosionCenter);
 
+	// 범위 폭발 데미지 적용 (정적, 공유) — 구체 오버랩 → 적/아군 판정 → Damage(+체력비례) + 경직 + 넉백
+	// Source: 폭발 발원 액터(WorldContext/자기 무시), OwnerActor: 시전자(적/아군 판정 + 무시).
+	// 투사체/ThunderCarrier가 동일 공식으로 호출
+	static void ApplyRadialExplosion(
+		AActor* Source,
+		AActor* OwnerActor,
+		AController* InstigatorController,
+		const FVector& Center,
+		float Radius,
+		float Damage,
+		float StaggerPower,
+		bool bAddMaxHealthPercentDamage,
+		float MaxHealthPercentDamage,
+		bool bKnockback,
+		float KnockbackForce);
+
 	// 대상 캐릭터를 지정 방향으로 밀어냄 (서버 권위, Direction은 내부에서 정규화)
 	void ApplyKnockback(ACharacter* TargetCharacter, const FVector& Direction, float Force);
 
