@@ -107,5 +107,4 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop", meta = (EditCondition = "bIsFixedShop"))
     class UDataTable* FixedShopDataTable = nullptr;
 
-
 };

@@ -95,6 +95,8 @@ void UERNGA_WallJump::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	Character->LaunchCharacter(LaunchVelocity, true, true);
 
 	ASC->SetLooseGameplayTagCount(TAG_State_Movement_WallJumpUsed, 1);
+	
+	Cast<AERNCharacterBase>(ActorInfo->AvatarActor.Get())->Multicast_PlayEffectAndSound(nullptr, FVector::ZeroVector, JumpSound, Character->GetActorLocation());
 
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }

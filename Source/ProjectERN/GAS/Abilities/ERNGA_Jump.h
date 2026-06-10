@@ -33,4 +33,10 @@ protected:
 	/** 사용할 점프 몽타주 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Animation")
 	TObjectPtr<UAnimMontage> JumpMontage;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	TObjectPtr<USoundBase> JumpSound;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	TObjectPtr<USoundBase> SuperJumpSound;
 };
