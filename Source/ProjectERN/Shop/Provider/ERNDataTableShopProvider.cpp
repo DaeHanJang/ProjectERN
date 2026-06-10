@@ -512,6 +512,12 @@ FERNShopInventory UERNDataTableShopProvider::GetCachedShopData_Implementation(ES
     return FERNShopInventory();
 }
 
+void UERNDataTableShopProvider::ClearCache_Implementation()
+{
+    CachedShopData.Empty();
+    UE_LOG(LogShopProvider, Warning, TEXT("[DataTableProvider] 상점 캐시가 초기화되었습니다. (다음 상점 열기 시 새 품목 생성)"));
+}
+
 bool UERNDataTableShopProvider::IsDataReady_Implementation()
 {
     return bIsDataCached;

@@ -5,6 +5,8 @@
 #include "Components/TextBlock.h"
 #include "GameFramework/PlayerController.h"
 #include "Character/Player/ERNPlayerState.h"
+#include "UI/ERNBuffListWidget.h"
+#include "AbilitySystemComponent.h"
 
 void UMyStatusWidget::NativeConstruct()
 {
@@ -14,6 +16,27 @@ void UMyStatusWidget::NativeConstruct()
 	if (APlayerController* PC = GetOwningPlayer())
 	{
 		CachedPlayerState = PC->GetPlayerState<AERNPlayerState>();
+		if (CachedPlayerState)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[BuffUI] MyStatusWidget::NativeConstruct - CachedPlayerState successfully grabbed. PS Name: %s"), *CachedPlayerState->GetName());
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[BuffUI] MyStatusWidget::NativeConstruct - PC exists, but PlayerState is NULL!"));
+		}
+	}
+}
+
+void UMyStatusWidget::SetTargetPlayerState(AERNPlayerState* NewPlayerState)
+{
+	if (CachedPlayerState != NewPlayerState)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BuffUI] MyStatusWidget::SetTargetPlayerState called! Old: %s, New: %s"), 
+			CachedPlayerState ? *CachedPlayerState->GetName() : TEXT("NULL"),
+			NewPlayerState ? *NewPlayerState->GetName() : TEXT("NULL"));
+			
+		CachedPlayerState = NewPlayerState;
+		bIsBuffListInitialized = false; // 새 타겟으로 버프 리스트 초기화 필요
 	}
 }
 
@@ -23,6 +46,35 @@ void UMyStatusWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 	if (CachedPlayerState)
 	{
+		if (!bIsBuffListInitialized)
+		{
+			if (BuffList)
+			{
+				BuffList->InitializeWithPlayerState(CachedPlayerState);
+				bIsBuffListInitialized = true;
+				UE_LOG(LogTemp, Warning, TEXT("[BuffUI] MyStatusWidget::NativeTick - successfully initialized BuffList with PS: %s"), *CachedPlayerState->GetName());
+			}
+			else
+			{
+				static float LogTimer = 0.f;
+				LogTimer -= InDeltaTime;
+				if (LogTimer <= 0.f)
+				{
+					UE_LOG(LogTemp, Error, TEXT("[BuffUI] MyStatusWidget::NativeTick - BuffList is NULL!"));
+					LogTimer = 1.0f;
+				}
+			}
+		}
+		
+		static float TickLogTimer = 0.f;
+		TickLogTimer -= InDeltaTime;
+		if (TickLogTimer <= 0.f)
+		{
+			// 너무 많이 뜨면 안 되니 5초에 한 번만 로그 확인
+			// UE_LOG(LogTemp, Log, TEXT("[BuffUI] MyStatusWidget is ticking with PS: %s"), *CachedPlayerState->GetName());
+			TickLogTimer = 5.0f;
+		}
+
 		UpdateHealth();
 		UpdateMana();
 		UpdateStamina();

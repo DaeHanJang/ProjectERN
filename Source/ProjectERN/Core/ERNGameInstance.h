@@ -26,6 +26,11 @@ public:
 	UERNGameInstance();
 
 	virtual void Init() override;
+	virtual void LoadComplete(const float LoadTime, const FString& MapName) override;
+
+protected:
+	void OnPostLoadMap(UWorld* LoadedWorld);
+public:
 
 	// Steam 모드 사용 여부 (false=LAN, true=Steam) - BP 메뉴 체크박스로 토글
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Network")

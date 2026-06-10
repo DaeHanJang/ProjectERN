@@ -43,8 +43,33 @@ void UERNGameInstance::Init()
 	// 강화 시스템 초기화
 	InitializeUpgradeSystem();
 
+	// 설정 시스템 (해상도/DLSS 등) 준비
 	// 저장된 설정 로드 + 적용
 	LoadAndApplySettings();
+
+	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UERNGameInstance::OnPostLoadMap);
+}
+
+void UERNGameInstance::OnPostLoadMap(UWorld* LoadedWorld)
+{
+	// 맵(레벨) 이동 시 상점 캐시 초기화 -> 다음 상점 오픈 시 새로운 품목 생성 유도
+	if (ShopDataProvider)
+	{
+		IERNShopDataProvider::Execute_ClearCache(ShopDataProvider);
+		UE_LOG(LogTemp, Log, TEXT("[ERNGameInstance] OnPostLoadMap 완료 - 상점 캐시 초기화"));
+	}
+}
+
+void UERNGameInstance::LoadComplete(const float LoadTime, const FString& MapName)
+{
+	Super::LoadComplete(LoadTime, MapName);
+
+	// 맵(레벨) 이동 시 상점 캐시 초기화 -> 다음 상점 오픈 시 새로운 품목 생성 유도
+	if (ShopDataProvider)
+	{
+		IERNShopDataProvider::Execute_ClearCache(ShopDataProvider);
+		UE_LOG(LogTemp, Log, TEXT("[ERNGameInstance] 맵 로드 완료(%s) - 상점 캐시 초기화"), *MapName);
+	}
 }
 
 void UERNGameInstance::HostSession(FString ServerName, int32 MaxPlayers)

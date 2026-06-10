@@ -14,6 +14,7 @@
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
+#include "UI/ERNPlayerDetailStatusWidget.h"
 
 UERNInventoryWidget::UERNInventoryWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -630,6 +631,14 @@ void UERNInventoryWidget::UpdateVisuals()
 		if (DisplayIndex == -1)
 		{
 			WBP_ItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+			if (WBP_PlayerDetailStatus) 
+			{
+				WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::HitTestInvisible);
+				if (UERNPlayerDetailStatusWidget* StatusWidget = Cast<UERNPlayerDetailStatusWidget>(WBP_PlayerDetailStatus))
+				{
+					StatusWidget->RefreshAllAttributes();
+				}
+			}
 		}
 		else
 		{
@@ -663,10 +672,19 @@ void UERNInventoryWidget::UpdateVisuals()
 			{
 				WBP_ItemToolTip->UpdateTooltip(ItemID, 0); // 가격 0으로 표시
 				WBP_ItemToolTip->SetVisibility(ESlateVisibility::HitTestInvisible);
+				if (WBP_PlayerDetailStatus) WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::Hidden);
 			}
 			else
 			{
 				WBP_ItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+				if (WBP_PlayerDetailStatus) 
+				{
+					WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::HitTestInvisible);
+					if (UERNPlayerDetailStatusWidget* StatusWidget = Cast<UERNPlayerDetailStatusWidget>(WBP_PlayerDetailStatus))
+					{
+						StatusWidget->RefreshAllAttributes();
+					}
+				}
 			}
 		}
 	}

@@ -11,6 +11,7 @@
 #include "Shop/Provider/ERNDummyShopProvider.h"
 #include "UI/ERNInteractableWidget.h"
 #include "UI/ERNUIManagerSubsystem.h"
+#include "Core/ERNGameInstance.h"
 
 AERNShopActor::AERNShopActor()
 {
@@ -43,6 +44,23 @@ void AERNShopActor::BeginPlay()
     if (ShopID.IsNone())
     {
         ShopID = GetFName();
+    }
+
+    // 맵 이동/재시작 시 액터가 새로 생성될 때 캐시를 초기화합니다.
+    // 이는 이전에 소진되었거나 생성된 동일 상점의 캐시를 비우고 새 품목을 구성하기 위함입니다.
+    if (HasAuthority())
+    {
+        if (UGameInstance* GI = GetGameInstance())
+        {
+            if (UERNGameInstance* ERNGI = Cast<UERNGameInstance>(GI))
+            {
+                if (UObject* ProviderObj = ERNGI->GetShopDataProviderObject())
+                {
+                    IERNShopDataProvider::Execute_ClearCache(ProviderObj);
+                    UE_LOG(LogTemp, Warning, TEXT("[ShopActor] 상점 액터(%s) 생성됨. 상점 캐시를 초기화합니다."), *ShopID.ToString());
+                }
+            }
+        }
     }
 }
 

@@ -123,6 +123,10 @@ private:
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UERNItemToolTipWidget> WBP_ItemToolTip;
 	
+	// 플레이어 스탯 상세창 위젯 (툴팁이 없을 때 기본 표시)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UUserWidget> WBP_PlayerDetailStatus;
+	
 	// 열기 애니메이션
 	UPROPERTY(meta=(BindWidgetAnim), Transient)
 	TObjectPtr<UWidgetAnimation> FadeIn;

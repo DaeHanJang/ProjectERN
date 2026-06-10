@@ -20,6 +20,9 @@ enum class ECharacterType : uint8
 // 준비 상태 변경 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReadyStateChanged, bool, bIsReady);
 
+// 소모품 버프 UI 추가 델리게이트 (로컬 연출용)
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnConsumableBuffAdded, const FName&, ItemID, float, Duration);
+
 UCLASS()
 class PROJECTERN_API AERNPlayerState : public APlayerState
 {
@@ -52,6 +55,14 @@ public:
 	// 블루프린트에서 닉네임 설정 (자동으로 서버 RPC 호출)
 	UFUNCTION(BlueprintCallable, Category = "Player Info")
 	void SetNickname(const FString& Nickname);
+
+	// 소모품 버프 부여 이벤트 (UI 연동용)
+	UPROPERTY(BlueprintAssignable, Category = "Buff UI")
+	FOnConsumableBuffAdded OnConsumableBuffAdded;
+
+	// 서버에서 버프 이벤트를 모든 클라이언트에게 방송
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_AddConsumableBuff(const FName& ItemID, float Duration);
 
 protected:
 	// bIsReady 리플리케이션 콜백

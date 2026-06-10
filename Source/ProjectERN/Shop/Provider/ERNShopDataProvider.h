@@ -65,6 +65,12 @@ public:
     FERNShopInventory GetCachedShopData(EShopType ShopType);
 
     /**
+     * 상점 데이터 캐시 초기화 (맵 이동 시 등)
+     */
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Shop|Provider")
+    void ClearCache();
+
+    /**
      * 데이터 준비 여부 확인
      * @return 캐시에 유효한 데이터가 있으면 true
      */

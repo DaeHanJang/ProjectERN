@@ -32,6 +32,7 @@ public:
     virtual void RequestShopData_Implementation(EShopType ShopType) override;
     virtual void RequestPurchase_Implementation(FERNShopTransaction Transaction) override;
     virtual FERNShopInventory GetCachedShopData_Implementation(EShopType ShopType) override;
+    virtual void ClearCache_Implementation() override;
     virtual bool IsDataReady_Implementation() override;
     virtual void HandleReceivedData_Implementation(const FERNShopInventory& ShopData) override;
     virtual void HandlePurchaseResult_Implementation(const FERNShopTransaction& Transaction) override;

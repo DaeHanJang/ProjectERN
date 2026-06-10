@@ -96,6 +96,19 @@ void AERNPlayerState::Server_SetNickname_Implementation(const FString& Nickname)
 	}
 }
 
+void AERNPlayerState::Multicast_AddConsumableBuff_Implementation(const FName& ItemID, float Duration)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[BuffUI] Server Broadcast - Multicast_AddConsumableBuff! ItemID: %s, Duration: %f, PS: %s"), *ItemID.ToString(), Duration, *GetName());
+	if (OnConsumableBuffAdded.IsBound())
+	{
+		OnConsumableBuffAdded.Broadcast(ItemID, Duration);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BuffUI] OnConsumableBuffAdded delegate is NOT bound on this client! (Is BuffList initialized?)"));
+	}
+}
+
 void AERNPlayerState::Server_SetReady_Implementation(bool bReady)
 {
 	bIsReady = bReady;

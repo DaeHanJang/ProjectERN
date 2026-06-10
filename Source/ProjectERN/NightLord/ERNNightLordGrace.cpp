@@ -236,9 +236,13 @@ void AERNNightLordGrace::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedCom
 			
 			PlayerCharacters.Add(PlayerCharacter);
 			FTimerHandle TimerHandle;
-			GetWorldTimerManager().SetTimer(TimerHandle, FTimerDelegate::CreateLambda([this, PlayerCharacter]
+			TWeakObjectPtr<AERNNightLordGrace> WeakThis(this);
+			GetWorldTimerManager().SetTimer(TimerHandle, FTimerDelegate::CreateLambda([WeakThis, PlayerCharacter]
 			{
-				PlayerCharacters.Remove(PlayerCharacter);
+				if (WeakThis.IsValid())
+				{
+					WeakThis->PlayerCharacters.Remove(PlayerCharacter);
+				}
 			}), 15.0f, false);
 			
 			Cast<AERNCharacterBase>(OtherActor)->Multicast_PlayEffectAndSound(FoundEffect, GetActorLocation() + FVector(0.0f, 0.0f, 350.0f), FoundSound, GetActorLocation());

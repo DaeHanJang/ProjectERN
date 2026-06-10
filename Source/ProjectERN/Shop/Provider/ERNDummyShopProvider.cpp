@@ -93,11 +93,12 @@ void UERNDummyShopProvider::RequestPurchase_Implementation(FERNShopTransaction T
 
 FERNShopInventory UERNDummyShopProvider::GetCachedShopData_Implementation(EShopType ShopType)
 {
-    if (CachedData.Contains(ShopType))
-    {
-        return CachedData[ShopType];
-    }
-    return FERNShopInventory();
+    return CachedData.Contains(ShopType) ? CachedData[ShopType] : FERNShopInventory();
+}
+
+void UERNDummyShopProvider::ClearCache_Implementation()
+{
+    CachedData.Empty();
 }
 
 bool UERNDummyShopProvider::IsDataReady_Implementation()
