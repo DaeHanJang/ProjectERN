@@ -1096,7 +1096,33 @@ void AProjectERNCharacter::DoJumpEnd()
 
 void AProjectERNCharacter::ExecuteJumpLaunch()
 {
-	Jump();
+	// Jump();
+	
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	if (!Move)
+	{
+		return;
+	}
+
+	// 실제로 점프가 가능할 때만 작동
+	if (CanJump())
+	{
+		Jump();
+		return;
+	}
+
+	const bool bJumpAbilityActive = AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Jumping);
+
+	if (bJumpAbilityActive)
+	{
+		LaunchCharacter(
+			FVector(0.f, 0.f, Move->JumpZVelocity),
+			false, // XY 속도는 유지
+			true   // Z 속도는 점프 속도로 덮어쓰기
+		);
+
+		EndCoyoteTime();
+	}
 }
 
 void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
