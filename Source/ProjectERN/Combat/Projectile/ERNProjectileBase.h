@@ -69,6 +69,9 @@ protected:
 	// 플레이어 owner 기준 직격/폭발 데미지 재계산 (서버, BeginPlay)
 	void RecalculateDamageFromOwner();
 
+	// 맞은 대상 최대HP 비례 추가 데미지 계산 (bAddMaxHealthPercentDamage true일 때만, 아니면 0)
+	float GetMaxHealthBonusDamage(AActor* TargetActor) const;
+
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -145,6 +148,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Damage",
 		meta = (ClampMin = "0.0"))
 	float WeaponDamageScale = 1.0f;
+
+	// 체력비례 추가 데미지 사용 여부 - true면 직격/폭발 데미지에 맞은 대상 최대HP의 일정 비율을 합산
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Damage")
+	bool bAddMaxHealthPercentDamage = false;
+
+	// 추가 데미지 비율 - 맞은 대상 최대HP * 이 값을 기본 데미지에 합산 (0.05 = 최대HP의 5%)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile|Damage",
+		meta = (EditCondition = "bAddMaxHealthPercentDamage", ClampMin = "0.0"))
+	float MaxHealthPercentDamage = 0.05f;
 
 	// 경직력 (BP_투사체마다 다르게 설정)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Projectile")

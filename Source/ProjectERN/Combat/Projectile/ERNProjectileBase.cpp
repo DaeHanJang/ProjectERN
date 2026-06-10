@@ -18,6 +18,7 @@
 #include "Curves/CurveFloat.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "AbilitySystemInterface.h"
 #include "Camera/CameraShakeBase.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
@@ -333,16 +334,16 @@ void AERNProjectileBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AAc
 	const FVector ImpactPoint = bFromSweep ? FVector(SweepResult.ImpactPoint) : GetActorLocation();
 	const FRotator ImpactRot = bFromSweep ? SweepResult.ImpactNormal.Rotation() : GetActorRotation();
 
-	// 직격 데미지 적용
+	// 직격 데미지 적용 (체력비례 추가 데미지 합산)
 	if (OtherEnemy)
 	{
-		OtherEnemy->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), OwnerActor);
+		OtherEnemy->TakeDamage(Damage + GetMaxHealthBonusDamage(OtherEnemy), FDamageEvent(), GetInstigatorController(), OwnerActor);
 		// 투사체 충돌 지점을 HitOrigin으로 전달 → 적이 투사체 방향 기준 4방향 경직
 		OtherEnemy->TryApplyStagger(StaggerPower, ImpactPoint);
 	}
 	else if (OtherPlayer)
 	{
-		OtherPlayer->TakeDamage(Damage, FDamageEvent(), GetInstigatorController(), OwnerActor);
+		OtherPlayer->TakeDamage(Damage + GetMaxHealthBonusDamage(OtherPlayer), FDamageEvent(), GetInstigatorController(), OwnerActor);
 		// 투사체 충돌 지점을 HitOrigin으로 전달 → 플레이어가 투사체 방향 기준 4방향 경직
 		OtherPlayer->TryApplyStagger(StaggerPower, ImpactPoint);
 	}
@@ -537,6 +538,24 @@ void AERNProjectileBase::RecalculateDamageFromOwner()
 	}
 }
 
+float AERNProjectileBase::GetMaxHealthBonusDamage(AActor* TargetActor) const
+{
+	if (!bAddMaxHealthPercentDamage || MaxHealthPercentDamage <= 0.f || !TargetActor)
+	{
+		return 0.f;
+	}
+
+	// 대상 ASC에서 최대HP를 읽어 비율만큼 추가 데미지 산출
+	const IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(TargetActor);
+	UAbilitySystemComponent* ASC = ASI ? ASI->GetAbilitySystemComponent() : nullptr;
+	if (!ASC)
+	{
+		return 0.f;
+	}
+
+	return ASC->GetNumericAttribute(UERNAttributeSet::GetMaxHealthAttribute()) * MaxHealthPercentDamage;
+}
+
 // 폭발 범위 데미지 적용
 void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 {
@@ -572,7 +591,7 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 			
 			if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(HitActor))
 			{
-				Enemy->TakeDamage(ExplosionDamage, FDamageEvent(), GetInstigatorController(), OwnerActor);
+				Enemy->TakeDamage(ExplosionDamage + GetMaxHealthBonusDamage(Enemy), FDamageEvent(), GetInstigatorController(), OwnerActor);
 				// 폭발 중심을 HitOrigin으로 전달 → 적이 폭발 방향 기준 4방향 경직
 				Enemy->TryApplyStagger(ExplosionStaggerPower, ExplosionCenter);
 
@@ -588,7 +607,7 @@ void AERNProjectileBase::ApplyExplosionDamage(const FVector& ExplosionCenter)
 		{
 			if (AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(HitActor))
 			{
-				Player->TakeDamage(ExplosionDamage, FDamageEvent(), GetInstigatorController(), OwnerActor);
+				Player->TakeDamage(ExplosionDamage + GetMaxHealthBonusDamage(Player), FDamageEvent(), GetInstigatorController(), OwnerActor);
 				// 폭발 중심을 HitOrigin으로 전달 → 플레이어가 폭발 방향 기준 4방향 경직
 				Player->TryApplyStagger(ExplosionStaggerPower, ExplosionCenter);
 
