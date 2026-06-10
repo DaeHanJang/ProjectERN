@@ -281,6 +281,9 @@ public:
 public:
 	bool IsLockOn() const { return bIsLockOn; }
 
+	// 현재 락온 중인 유효 타겟 반환 (락온 비활성/무효면 nullptr). 투사체 호밍 우선순위 등에 사용
+	AActor* GetActiveLockOnTarget() const;
+
 	UFUNCTION(Server, Reliable)
 	void Server_SetLockOn(bool bNewLockOn, FRotator TargetRotation);
 
