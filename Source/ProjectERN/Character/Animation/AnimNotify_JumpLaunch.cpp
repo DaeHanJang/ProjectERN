@@ -23,13 +23,15 @@ void UAnimNotify_JumpLaunch::Notify(USkeletalMeshComponent* MeshComp, UAnimSeque
 		return;
 	}
 
+	// Ability Tag 대신 Event Tag로 발동하도록 수정
 	FGameplayEventData EventData;
-	EventData.EventTag = TAG_Ability_Movement_Jump;
+	// EventData.EventTag = TAG_Ability_Movement_Jump;
+	EventData.EventTag = TAG_Event_Movement_JumpLaunch;
 	EventData.Instigator = OwnerActor;
 	EventData.Target = OwnerActor;
-
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
-		OwnerActor, TAG_Ability_Movement_Jump, EventData);
+	
+	// UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(OwnerActor, TAG_Ability_Movement_Jump, EventData);
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(OwnerActor, TAG_Event_Movement_JumpLaunch, EventData);
 }
 
 FString UAnimNotify_JumpLaunch::GetNotifyName_Implementation() const

@@ -91,3 +91,4 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GameplayCue_Ultimate_Sanctuary_Field)			// �
 
 // 이벤트
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Consumable_Throw)
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Movement_JumpLaunch)

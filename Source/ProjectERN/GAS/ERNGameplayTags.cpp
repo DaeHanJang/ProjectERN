@@ -88,3 +88,4 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_Sanctuary_Field, "GameplayCue.Ul
 
 // 이벤트
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Consumable_Throw, "Event.Consumable.Throw")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Movement_JumpLaunch, "Event.Movement.JumpLaunch")
