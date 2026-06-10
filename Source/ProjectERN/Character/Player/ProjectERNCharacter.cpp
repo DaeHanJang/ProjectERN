@@ -20,6 +20,8 @@
 #include "Components/PointLightComponent.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
+#include "Character/Enemy/ERNBossCharacter.h"
+#include "Character/Enemy/AI/ERNBossAIController.h"
 #include "Components/SphereComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
@@ -1117,8 +1119,19 @@ void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
 	}
 
 	const float Heal = DamageDealt * LifestealFraction;
-	const float NewHealth = FMath::Min(AttributeSet->GetMaxHealth(), AttributeSet->GetHealth() + Heal);
+	const float OldHealth = AttributeSet->GetHealth();
+	const float NewHealth = FMath::Min(AttributeSet->GetMaxHealth(), OldHealth + Heal);
 	AttributeSet->SetHealth(NewHealth); // 서버에서 적용 → Health 리플리케이트
+
+	// 전과: 실제 회복량(오버힐 제외) 누적
+	const float ActualHealed = NewHealth - OldHealth;
+	if (ActualHealed > 0.f)
+	{
+		if (AERNPlayerState* PS = GetPlayerState<AERNPlayerState>())
+		{
+			PS->TotalLifestealHealed += ActualHealed;
+		}
+	}
 }
 
 void AProjectERNCharacter::LockOn()
@@ -2496,6 +2509,88 @@ bool AProjectERNCharacter::TryReviveFromSkill(AController* Reviver)
 	return true;
 }
 
+bool AProjectERNCharacter::ReviveForEasyMode(int32 BonusFlasks)
+{
+	// 서버에서만, 탈락 상태(쓰러짐/다운/리스폰 대기)만 대상
+	if (!HasAuthority())
+	{
+		return false;
+	}
+
+	const EERNPlayerLifeState State = GetLifeState();
+	const bool bEliminated =
+		State == EERNPlayerLifeState::Collapsing ||
+		State == EERNPlayerLifeState::Downed ||
+		State == EERNPlayerLifeState::Respawning;
+	if (!bEliminated)
+	{
+		return false;
+	}
+
+	// Alive 복귀 시점에 보스 재교전을 트리거하기 위한 표식
+	bPendingEasyModeReengage = true;
+
+	// 리스폰 타이머 정리
+	GetWorldTimerManager().ClearTimer(DownedRespawnTimerHandle);
+	DownedRespawnEndServerTime = 0.f;
+
+	// State 변경
+	SetLifeState(EERNPlayerLifeState::Reviving);
+
+	// 다운 상태였다면 다운 컴포넌트 해제
+	if (DownedComponent && State == EERNPlayerLifeState::Downed)
+	{
+		DownedComponent->ExitDownedState();
+	}
+
+	// 부활 체력 100% + 성배병 추가 (현재만 +Bonus, 최대치 클램프)
+	if (AttributeSet)
+	{
+		AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
+
+		if (BonusFlasks > 0)
+		{
+			const float NewFlask = FMath::Min(
+				AttributeSet->GetFlaskQuantity() + BonusFlasks,
+				AttributeSet->GetMaxFlaskQuantity());
+			AttributeSet->SetFlaskQuantity(NewFlask);
+		}
+	}
+
+	// 캐싱된 입력 제거 + 전력질주 정지
+	CachedMoveInput = FVector2D::ZeroVector;
+	StopSprint();
+
+	// 모든 어빌리티 취소
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->CancelAllAbilities();
+	}
+
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	// 부활 몽타주 재생
+	Multicast_PlayReviveMontage();
+
+	// Fallback으로 최소 시간 설정 후 Alive 복귀
+	const float ReviveDuration = ReviveMontage ? ReviveMontage->GetPlayLength() : ReviveFallbackDuration;
+
+	GetWorldTimerManager().ClearTimer(ReviveTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		ReviveTimerHandle,
+		this,
+		&AProjectERNCharacter::FinishRevivingState,
+		FMath::Max(ReviveDuration, 0.01f),
+		false);
+
+	ForceNetUpdate();
+	return true;
+}
+
 bool AProjectERNCharacter::CanApplyReviveHit(AController* Reviver) const
 {
 	if (!HasAuthority() || !IsDowned() || !DownedComponent)
@@ -2604,6 +2699,21 @@ void AProjectERNCharacter::FinishRevivingState()
 	SetLifeState(EERNPlayerLifeState::Alive);
 	UpdateMovementSpeed();
 	ForceNetUpdate();
+
+	// EasyMode 부활로 살아난 경우, 이제 Alive가 됐으니 보스가 다시 타겟을 잡도록 재교전 트리거
+	// (Reviving 동안은 IsAlive()가 false라 어그로가 안 붙으므로 이 시점에 처리)
+	if (bPendingEasyModeReengage)
+	{
+		bPendingEasyModeReengage = false;
+
+		for (TActorIterator<AERNBossCharacter> It(GetWorld()); It; ++It)
+		{
+			if (AERNBossAIController* BossAIC = Cast<AERNBossAIController>(It->GetController()))
+			{
+				BossAIC->ReacquireTargetsAfterRevive();
+			}
+		}
+	}
 }
 
 void AProjectERNCharacter::InitializeDownedStatusWidget()
