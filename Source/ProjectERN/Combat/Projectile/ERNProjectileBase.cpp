@@ -63,7 +63,7 @@ AERNProjectileBase::AERNProjectileBase()
 	TrailEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("TrailEffect"));
 	TrailEffect->SetupAttachment(RootComponent);
 
-	InitialLifeSpan = 5.0f;
+	InitialLifeSpan = 3.0f;
 }
 
 void AERNProjectileBase::Multicast_PlayImpactEffect_Implementation(FVector Location, FRotator Rotation)
@@ -384,8 +384,16 @@ void AERNProjectileBase::InitializeHoming()
 		}
 		else
 		{
-			// 플레이어 투사체: 락온 미구현 임시로 자동 검색
-			Target = FindHomingTargetForPlayer();
+			// 플레이어 투사체: 락온 타겟 최우선 (범위/각도 무시), 없으면 최근접 적 자동 검색
+			if (AProjectERNCharacter* PlayerShooter = Cast<AProjectERNCharacter>(GetOwner()))
+			{
+				Target = PlayerShooter->GetActiveLockOnTarget();
+			}
+
+			if (!Target)
+			{
+				Target = FindHomingTargetForPlayer();
+			}
 		}
 	}
 

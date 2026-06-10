@@ -1767,6 +1767,17 @@ FRotator AProjectERNCharacter::GetLockOnDesiredRotation() const
 	return FRotator(0.f, DesiredLockOnYaw, 0.f);
 }
 
+AActor* AProjectERNCharacter::GetActiveLockOnTarget() const
+{
+	// 실제 락온 중일 때만 유효 타겟 반환 (서버도 Server_SetLockOn에서 자체 락온하므로 서버에서 조회 가능)
+	if (LockOnComponent && LockOnComponent->IsLockedOn())
+	{
+		return LockOnComponent->GetCurrentTarget();
+	}
+
+	return nullptr;
+}
+
 FRotator AProjectERNCharacter::GetAttackDesiredRotation() const
 {
 	FRotator TargetRotation = GetActorRotation();
