@@ -43,9 +43,10 @@ public:
 	// Blackboard Component 접근자
 	FORCEINLINE UBlackboardComponent* GetBlackboardComp() const { return Blackboard; }
 
-	// 현재 시야에 들어와 있는 플레이어 목록 (캐시된 값)
+	// 현재 시야에 들어와 있는 살아있는 플레이어 목록 (라이브 perception 조회 + IsAlive 필터).
+	// 저장 배열 대신 라이브 조회라, 다운 후 부활한 플레이어도 즉시 다시 포함됨 (Mob과 동일 방식)
 	UFUNCTION(BlueprintCallable, Category = "Boss AI")
-	TArray<AActor*> GetPerceivedPlayers() const { return PerceivedPlayers; }
+	TArray<AActor*> GetPerceivedPlayers();
 
 	// EasyMode 부활 후 재교전 — 살아있는 전체 플레이어를 다시 인식/어그로하여 타겟을 재획득 (서버)
 	// (부활 시 perception 신규 이벤트가 안 떠서 보스가 멈추는 문제 해결)

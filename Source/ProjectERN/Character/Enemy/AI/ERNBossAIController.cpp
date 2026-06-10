@@ -5,6 +5,8 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AISense_Sight.h"
+#include "Perception/AIPerceptionComponent.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
@@ -385,6 +387,34 @@ AActor* AERNBossAIController::GetSecondHighestAggroTarget() const
 	}
 
 	return SecondTarget;
+}
+
+TArray<AActor*> AERNBossAIController::GetPerceivedPlayers()
+{
+	// 저장 배열이 아니라 라이브 perception을 조회 + IsAlive 필터.
+	// 다운 시 배열에서 빠졌다가 부활해도 perception 신규 이벤트가 안 떠 재등록이 안 되는 문제를 회피한다.
+	TArray<AActor*> Result;
+
+	UAIPerceptionComponent* PerceptionComp = GetPerceptionComponent();
+	if (!PerceptionComp)
+	{
+		return Result;
+	}
+
+	TArray<AActor*> Perceived;
+	PerceptionComp->GetCurrentlyPerceivedActors(UAISense_Sight::StaticClass(), Perceived);
+
+	for (AActor* Actor : Perceived)
+	{
+		const AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Actor);
+		// 살아있는 플레이어만 대상
+		if (Player && Player->IsAlive())
+		{
+			Result.Add(Actor);
+		}
+	}
+
+	return Result;
 }
 
 bool AERNBossAIController::IsValidAggroTarget(AActor* Target) const
