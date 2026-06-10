@@ -24,6 +24,8 @@ class UPostProcessComponent;
 class UERNCompassWidget;
 class UERNSkillCoolPanel;
 class UERNDownedStatusWidget;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
 
 /**
  *  Basic PlayerController class for a third person game
@@ -287,6 +289,46 @@ private:
 	float CharacterTypeCheckStartTime;
 	
 	
+#pragma region SliceFreeze
+public:
+	// 보스 쾌속 베기 투사체 피격 시 화면 사선 슬라이스 연출 + 이동 입력 차단 (소유 클라 로컬)
+	UFUNCTION(Client, Reliable)
+	void Client_PlaySliceEffect(float Duration);
+
+protected:
+	// 슬라이스 포스트프로세스 머티리얼 (Post Process 도메인, "SliceAmount" 스칼라 파라미터 보유)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|SliceEffect")
+	TObjectPtr<UMaterialInterface> SliceMaterial;
+
+	// 화면 좌/우 최대 어긋남 정도 (UV 오프셋, 0~1 스케일)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|SliceEffect", meta = (ClampMin = "0.0"))
+	float SliceMaxOffset = 0.04f;
+
+	// 어긋남이 최대치에 도달하기까지 걸리는 시간 (초) - 베인 순간의 빠른 연출
+	UPROPERTY(EditDefaultsOnly, Category = "UI|SliceEffect", meta = (ClampMin = "0.0"))
+	float SliceRiseTime = 0.1f;
+
+	// 프리즈 종료 직전 화면이 원상복구되는 시간 (초)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|SliceEffect", meta = (ClampMin = "0.0"))
+	float SliceFallTime = 0.25f;
+
+private:
+	// 슬라이스 연출 envelope 갱신 (타이머 콜백)
+	void TickSliceEffect();
+
+	// 슬라이스 연출 종료 - 입력 복구 + 블렌더블 제거 (로컬)
+	void EndSliceEffectLocal();
+
+	// 런타임 생성 DMI (SlicePostProcessComponent 블렌더블)
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> SliceMID;
+
+	FTimerHandle SliceEffectTimerHandle;
+	// 시작 시각 기준으로 경과를 계산 (프레임레이트 무관하게 정확히 Duration에 종료)
+	float SliceEffectStartTime = 0.f;
+	float SliceEffectDuration = 0.f;
+#pragma endregion
+
 #pragma region NightRainZone
 public:
 	// 서버의 자기장 포스트 프로세스 상태 업데이트

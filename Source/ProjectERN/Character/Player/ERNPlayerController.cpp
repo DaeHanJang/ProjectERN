@@ -27,6 +27,8 @@
 #include "Character/Enemy/ERNBossCharacter.h"
 #include "Camera/CameraShakeBase.h"
 #include "Components/PostProcessComponent.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "UI/World/ERNMinimapWidget.h"
 #include "UI/World/ERNCompassWidget.h"
 #include "World/ERNMinimapPinPoint.h"
@@ -1141,6 +1143,108 @@ void AERNPlayerController::TickNightRainZonePostProcessBlend()
 		
 		GetWorldTimerManager().ClearTimer(NightRainPostProcessBlendTimerHandle);
 	}
+}
+
+// ===== 슬라이스 프리즈 화면 연출 (소유 클라 로컬) =====
+
+void AERNPlayerController::Client_PlaySliceEffect_Implementation(float Duration)
+{
+	// 이미 진행 중인 연출이 있으면 깔끔하게 정리 후 재시작
+	EndSliceEffectLocal();
+
+	// 이동 + 시점(카메라) 입력 차단 (서버 MOVE_None과 별개로 로컬 예측 입력도 막음)
+	SetIgnoreMoveInput(true);
+	SetIgnoreLookInput(true);
+
+	SliceEffectStartTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+	SliceEffectDuration = FMath::Max(Duration, 0.f);
+
+	// 화면 변형 머티리얼을 슬라이스 포스트프로세스에 블렌더블로 주입
+	const AProjectERNCharacter* ERNCharacter = Cast<AProjectERNCharacter>(GetPawn());
+	UPostProcessComponent* SlicePP = ERNCharacter ? ERNCharacter->GetSlicePostProcessComponent() : nullptr;
+	if (SliceMaterial && SlicePP)
+	{
+		SliceMID = UMaterialInstanceDynamic::Create(SliceMaterial, this);
+		if (SliceMID)
+		{
+			SliceMID->SetScalarParameterValue(TEXT("SliceAmount"), 0.f);
+			SlicePP->Settings.WeightedBlendables.Array.Empty();
+			SlicePP->Settings.AddBlendable(SliceMID, 1.f);
+		}
+	}
+
+	// Duration이 0 이하면 시각 효과 없이 즉시 종료(입력 복구)
+	if (SliceEffectDuration <= 0.f)
+	{
+		EndSliceEffectLocal();
+		return;
+	}
+
+	GetWorldTimerManager().SetTimer(
+		SliceEffectTimerHandle, this, &AERNPlayerController::TickSliceEffect, 0.016f, true);
+}
+
+void AERNPlayerController::TickSliceEffect()
+{
+	if (GetWorld() == nullptr)
+	{
+		EndSliceEffectLocal();
+		return;
+	}
+
+	// 시작 시각 기준 절대 경과 (프레임레이트/타이머 주기와 무관하게 정확)
+	const float Elapsed = GetWorld()->GetTimeSeconds() - SliceEffectStartTime;
+
+	// envelope: 빠르게 어긋남(Rise) → 유지(Hold) → 종료 직전 복귀(Fall)
+	float Amount = SliceMaxOffset;
+	const float FallStart = SliceEffectDuration - SliceFallTime;
+
+	if (SliceRiseTime > 0.f && Elapsed < SliceRiseTime)
+	{
+		Amount = SliceMaxOffset * (Elapsed / SliceRiseTime);
+	}
+	else if (SliceFallTime > 0.f && Elapsed > FallStart)
+	{
+		const float FallAlpha = FMath::Clamp((SliceEffectDuration - Elapsed) / SliceFallTime, 0.f, 1.f);
+		Amount = SliceMaxOffset * FallAlpha;
+	}
+
+	if (SliceMID)
+	{
+		SliceMID->SetScalarParameterValue(TEXT("SliceAmount"), Amount);
+	}
+
+	if (Elapsed >= SliceEffectDuration)
+	{
+		EndSliceEffectLocal();
+	}
+}
+
+void AERNPlayerController::EndSliceEffectLocal()
+{
+	GetWorldTimerManager().ClearTimer(SliceEffectTimerHandle);
+
+	// 이동 + 시점 입력 복구 (Client_PlaySliceEffect에서 건 차단 해제)
+	SetIgnoreMoveInput(false);
+	SetIgnoreLookInput(false);
+
+	// 블렌더블 제거 + 파라미터 초기화
+	if (const AProjectERNCharacter* ERNCharacter = Cast<AProjectERNCharacter>(GetPawn()))
+	{
+		if (UPostProcessComponent* SlicePP = ERNCharacter->GetSlicePostProcessComponent())
+		{
+			SlicePP->Settings.WeightedBlendables.Array.Empty();
+		}
+	}
+
+	if (SliceMID)
+	{
+		SliceMID->SetScalarParameterValue(TEXT("SliceAmount"), 0.f);
+		SliceMID = nullptr;
+	}
+
+	SliceEffectStartTime = 0.f;
+	SliceEffectDuration = 0.f;
 }
 
 UPostProcessComponent* AERNPlayerController::FindNightRainPostProcessComponent() const

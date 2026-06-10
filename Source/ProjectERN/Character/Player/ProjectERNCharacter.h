@@ -33,6 +33,8 @@ class UNiagaraSystem;
 class UERNDownedComponent;
 class ANightRainZoneManager;
 class UWidgetComponent;
+class USoundBase;
+class USoundAttenuation;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -645,6 +647,52 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NightRain|PostProcess",
 		meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UPostProcessComponent> NightRainPostProcessComponent;
+#pragma endregion
+
+	// 슬라이스 프리즈 (보스 쾌속 베기 투사체 피격 시 이동 불가 + 화면 사선 슬라이스 연출)
+#pragma region SliceFreeze
+public:
+	// 슬라이스 프리즈 적용 (서버 권위). Duration 동안 이동 불가, 끝나는 순간 데미지 + 경직(히트리액트) + 사운드 적용.
+	// 소유 클라에는 Client RPC로 화면 사선 슬라이스 연출을 트리거한다.
+	void ApplySliceFreeze(float DelayedDamage, float StaggerPower, const FVector& HitOrigin, float Duration,
+		AController* InstigatorController, AActor* DamageCauser,
+		USoundBase* DamageSound = nullptr, USoundAttenuation* DamageSoundAttenuation = nullptr);
+
+	// 슬라이스 연출용 포스트프로세스 컴포넌트 (컨트롤러가 DMI 블렌더블 주입)
+	UPostProcessComponent* GetSlicePostProcessComponent() const { return SlicePostProcessComponent; }
+
+	// 현재 슬라이스 프리즈 상태인지 (중복 적용/이동 차단 판정용)
+	bool IsSliceFrozen() const { return bIsSliceFrozen; }
+
+	// 지연 데미지 사운드를 모든 클라에서 맞은 플레이어 위치에 재생 (프리즈 종료 시)
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlaySliceDamageSound(USoundBase* Sound, USoundAttenuation* Attenuation);
+
+private:
+	// 프리즈 종료 - 지연 데미지 적용 + 이동 복구 (서버)
+	void EndSliceFreeze();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SliceFreeze|PostProcess",
+		meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UPostProcessComponent> SlicePostProcessComponent;
+
+	// 프리즈 진행 중 여부 (서버 권위, 중복 트리거 방지)
+	bool bIsSliceFrozen = false;
+
+	// 프리즈 종료 시 적용할 지연 데미지/경직/가해자/사운드 정보 (서버)
+	float PendingSliceDamage = 0.f;
+	float PendingSliceStagger = 0.f;
+	FVector PendingSliceHitOrigin = FVector::ZeroVector;
+	TWeakObjectPtr<AController> PendingSliceInstigator;
+	TWeakObjectPtr<AActor> PendingSliceCauser;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundBase> PendingSliceSound = nullptr;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundAttenuation> PendingSliceSoundAttenuation = nullptr;
+
+	FTimerHandle SliceFreezeTimerHandle;
 #pragma endregion
 
 public:

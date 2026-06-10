@@ -77,7 +77,7 @@ void AERNProjectileBase::Multicast_PlayImpactEffect_Implementation(FVector Locat
 			Location,
 			Rotation,
 			ImpactEffectScale,
-			true,
+			true, 
 			true,
 			ENCPoolMethod::None,
 			true);
@@ -343,9 +343,13 @@ void AERNProjectileBase::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AAc
 	}
 	else if (OtherPlayer)
 	{
-		OtherPlayer->TakeDamage(Damage + GetMaxHealthBonusDamage(OtherPlayer), FDamageEvent(), GetInstigatorController(), OwnerActor);
-		// 투사체 충돌 지점을 HitOrigin으로 전달 → 플레이어가 투사체 방향 기준 4방향 경직
-		OtherPlayer->TryApplyStagger(StaggerPower, ImpactPoint);
+		// 서브클래스가 직격을 가로채면(true) 기본 데미지/경직 스킵 (슬라이스 프리즈 등)
+		if (!HandlePlayerHit(OtherPlayer, ImpactPoint))
+		{
+			OtherPlayer->TakeDamage(Damage + GetMaxHealthBonusDamage(OtherPlayer), FDamageEvent(), GetInstigatorController(), OwnerActor);
+			// 투사체 충돌 지점을 HitOrigin으로 전달 → 플레이어가 투사체 방향 기준 4방향 경직
+			OtherPlayer->TryApplyStagger(StaggerPower, ImpactPoint);
+		}
 	}
 
 	// 직격 넉백 - 맞은 대상을 투사체 진행 방향 그대로 밀어냄

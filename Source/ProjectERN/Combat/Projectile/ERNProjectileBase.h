@@ -17,6 +17,7 @@ class USoundAttenuation;
 class UAudioComponent;
 class UCameraShakeBase;
 class ACharacter;
+class AProjectERNCharacter;
 
 /**
  * AERNProjectileBase - 원거리 투사체 베이스
@@ -43,6 +44,11 @@ protected:
 	void OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 		bool bFromSweep, const FHitResult& SweepResult);
+
+	// 적 투사체가 플레이어에 직격했을 때 호출 (서버). 기본 구현은 아무것도 안 하고 false 반환.
+	// 서브클래스가 override해서 true 반환하면 OnBeginOverlap의 기본 직격 데미지/경직 처리를 건너뜀.
+	// (예: 슬라이스 투사체는 즉시 데미지 대신 프리즈 후 지연 데미지를 적용)
+	virtual bool HandlePlayerHit(AProjectERNCharacter* HitPlayer, const FVector& ImpactPoint) { return false; }
 
 	// 유도 타겟 결정 및 PMC 세팅
 	void InitializeHoming();

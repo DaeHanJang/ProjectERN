@@ -44,6 +44,7 @@
 #include "Components/WidgetComponent.h"
 #include "Core/ERNGameState.h"
 #include "Engine/DamageEvents.h"
+#include "Kismet/GameplayStatics.h"
 #include "GameFramework/GameStateBase.h"
 #include "Character/Player/ERNPlayerController.h"
 #include "Inventory/Item/ERNItemActor.h"
@@ -106,6 +107,114 @@ void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVe
 			}
 		}
 	}
+}
+
+// ===== 슬라이스 프리즈 (보스 쾌속 베기 투사체) =====
+
+void AProjectERNCharacter::ApplySliceFreeze(float DelayedDamage, float StaggerPower, const FVector& HitOrigin, float Duration,
+	AController* InstigatorController, AActor* DamageCauser,
+	USoundBase* DamageSound, USoundAttenuation* DamageSoundAttenuation)
+{
+	// 서버 권위 + 생존 상태에서만, 이미 프리즈 중이면 중복 적용 무시
+	if (!HasAuthority() || !IsAlive() || bIsDead || bIsSliceFrozen)
+	{
+		return;
+	}
+
+	bIsSliceFrozen = true;
+
+	// 프리즈 종료 시 적용할 지연 데미지/경직/가해자/사운드 캐싱
+	PendingSliceDamage = DelayedDamage;
+	PendingSliceStagger = StaggerPower;
+	PendingSliceHitOrigin = HitOrigin;
+	PendingSliceInstigator = InstigatorController;
+	PendingSliceCauser = DamageCauser;
+	PendingSliceSound = DamageSound;
+	PendingSliceSoundAttenuation = DamageSoundAttenuation;
+
+	// 이동 차단 (MOVE_None은 CMC를 통해 클라로 복제됨)
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->StopMovementImmediately();
+		Move->SetMovementMode(MOVE_None);
+	}
+
+	// Duration이 0 이하면 즉시 종료(데미지 + 이동 복구)
+	if (Duration <= 0.f)
+	{
+		EndSliceFreeze();
+	}
+	else
+	{
+		GetWorldTimerManager().SetTimer(
+			SliceFreezeTimerHandle, this, &AProjectERNCharacter::EndSliceFreeze, Duration, false);
+	}
+
+	// 소유 클라에 화면 사선 슬라이스 연출 + 입력 차단 트리거
+	if (AERNPlayerController* PC = Cast<AERNPlayerController>(GetController()))
+	{
+		PC->Client_PlaySliceEffect(Duration);
+	}
+}
+
+void AProjectERNCharacter::EndSliceFreeze()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bIsSliceFrozen = false;
+
+	// 이동 복구 (사망 상태가 아니라면)
+	if (!bIsDead)
+	{
+		if (UCharacterMovementComponent* Move = GetCharacterMovement())
+		{
+			Move->SetMovementMode(MOVE_Walking);
+		}
+	}
+
+	// 프리즈가 끝나는 순간 지연 데미지 + 경직(히트리액트) 적용 (살아 있을 때만)
+	if (IsAlive())
+	{
+		if (PendingSliceDamage > 0.f)
+		{
+			TakeDamage(PendingSliceDamage, FDamageEvent(), PendingSliceInstigator.Get(), PendingSliceCauser.Get());
+		}
+
+		// 데미지와 함께 경직 적용 → 충돌 지점 기준 방향성 히트리액션 몽타주 재생
+		if (PendingSliceStagger > 0.f)
+		{
+			TryApplyStagger(PendingSliceStagger, PendingSliceHitOrigin);
+		}
+	}
+
+	// 실제 데미지가 들어가는 순간 사운드 (모든 클라, 맞은 플레이어 위치)
+	if (PendingSliceSound)
+	{
+		Multicast_PlaySliceDamageSound(PendingSliceSound, PendingSliceSoundAttenuation);
+	}
+
+	PendingSliceDamage = 0.f;
+	PendingSliceStagger = 0.f;
+	PendingSliceHitOrigin = FVector::ZeroVector;
+	PendingSliceInstigator = nullptr;
+	PendingSliceCauser = nullptr;
+	PendingSliceSound = nullptr;
+	PendingSliceSoundAttenuation = nullptr;
+}
+
+void AProjectERNCharacter::Multicast_PlaySliceDamageSound_Implementation(USoundBase* Sound, USoundAttenuation* Attenuation)
+{
+	if (!Sound)
+	{
+		return;
+	}
+
+	UGameplayStatics::PlaySoundAtLocation(
+		this, Sound, GetActorLocation(), GetActorRotation(),
+		1.f, 1.f, 0.f, Attenuation);
 }
 
 AProjectERNCharacter::AProjectERNCharacter()
@@ -191,6 +300,16 @@ AProjectERNCharacter::AProjectERNCharacter()
 	NightRainPostProcessComponent->bUnbound = true;
 	NightRainPostProcessComponent->BlendWeight = 0.f;
 	NightRainPostProcessComponent->Priority = 100.f;
+
+	// 슬라이스 프리즈 화면 연출용 포스트프로세스 (DMI 블렌더블은 컨트롤러가 런타임에 주입)
+	SlicePostProcessComponent = CreateDefaultSubobject<
+		UPostProcessComponent>(TEXT("SlicePostProcessComponent"));
+	SlicePostProcessComponent->SetupAttachment(FollowCamera);
+	SlicePostProcessComponent->bEnabled = true;
+	SlicePostProcessComponent->bUnbound = true;
+	SlicePostProcessComponent->BlendWeight = 1.f;
+	// NightRain보다 높은 우선순위로 화면 최종 변형 단계에 적용
+	SlicePostProcessComponent->Priority = 200.f;
 
 	// Create LockOn Component
 	LockOnComponent = CreateDefaultSubobject<UERNLockOnComponent>(TEXT("LockOnComponent"));
