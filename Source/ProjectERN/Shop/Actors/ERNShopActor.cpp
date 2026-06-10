@@ -1,6 +1,5 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-
 #include "Shop/Actors/ERNShopActor.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"

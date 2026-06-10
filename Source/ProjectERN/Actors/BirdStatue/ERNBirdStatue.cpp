@@ -134,6 +134,12 @@ void AERNBirdStatue::Interact_Implementation(APlayerController* PlayerController
 	{
 		// 이 동상의 개별 비행 파라미터 주입 (Replicated → 클라까지 전파)
 		Bird->ConfigureFlight(AscentHeight, AscentForwardDistance, FlightDistance, FlightDuration);
+		
+		AERNCharacterBase* Character = Cast<AERNCharacterBase>(PlayerController->GetPawn());
+		if (Character)
+		{
+			Character->Multicast_PlayEffectAndSound(nullptr, FVector::ZeroVector, Sound, Character->GetActorLocation());
+		}
 	}
 }
 

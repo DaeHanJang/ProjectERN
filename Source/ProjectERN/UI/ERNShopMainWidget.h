@@ -32,7 +32,7 @@ public:
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
-
+	
 	// 골드 표시 텍스트 블록 (블루프린트 위젯 이름을 GoldText로 맞춰야 자동 연동됨)
 	UPROPERTY(meta = (BindWidgetOptional))
 	UTextBlock* GoldText;
