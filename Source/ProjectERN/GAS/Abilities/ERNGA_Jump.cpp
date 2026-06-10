@@ -5,6 +5,7 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GAS/ERNGameplayTags.h"
 
 UERNGA_Jump::UERNGA_Jump()
@@ -130,6 +131,21 @@ void UERNGA_Jump::OnJumpLaunchEvent(FGameplayEventData Payload)
 	if (Character->IsLocallyControlled() || Character->HasAuthority())
 	{
 		Character->ExecuteJumpLaunch();
+	}
+	
+	if (Character->HasAuthority())
+	{
+		const UCharacterMovementComponent* MovementComp = Character->GetCharacterMovement();
+		const bool bIsSuperJump = MovementComp && (MovementComp->JumpZVelocity >= SuperJumpVelocityThreshold);
+		USoundBase* SoundToPlay = bIsSuperJump ? SuperJumpSound : JumpSound;
+		if (SoundToPlay)
+		{
+			Character->Multicast_PlayEffectAndSound(
+				nullptr,
+				FVector::ZeroVector,
+				SoundToPlay,
+				Character->GetActorLocation());
+		}
 	}
 }
 

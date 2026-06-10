@@ -9,6 +9,7 @@
 class UAnimMontage;
 class UAbilityTask_PlayMontageAndWait;
 class UAbilityTask_WaitGameplayEvent;
+class USoundBase;
 
 UCLASS()
 class PROJECTERN_API UERNGA_Jump : public UERNGameplayAbility
@@ -34,12 +35,24 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Animation")
 	TObjectPtr<UAnimMontage> JumpMontage;
 	
+	// 점프 효과음
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	TObjectPtr<USoundBase> JumpSound;
+	
+	// 슈퍼 점프 효과음
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	TObjectPtr<USoundBase> SuperJumpSound;
+	
+	// 사운드 적용 분기를 위한 점프 속도 (점프와 슈퍼 점프 구분)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	float SuperJumpVelocityThreshold = 3500.f;
+	
 	UPROPERTY()
 	TObjectPtr<UAbilityTask_WaitGameplayEvent> JumpLaunchEventTask;
 
 	UPROPERTY()
 	TObjectPtr<UAbilityTask_PlayMontageAndWait> JumpMontageTask;
-
+	
 	// 실제 점프가 발동했는지 확인하는 플래그
 	bool bJumpLaunchConsumed = false;
 
@@ -56,9 +69,4 @@ protected:
 	void OnMontageCancelled();
 
 	void FinishJumpAbility(bool bWasCancelled);
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
-	TObjectPtr<USoundBase> JumpSound;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
-	TObjectPtr<USoundBase> SuperJumpSound;
 };
