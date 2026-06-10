@@ -10,6 +10,7 @@
 UERNShopMainWidget::UERNShopMainWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	SetIsFocusable(true);
 }
 
 void UERNShopMainWidget::NativeConstruct()

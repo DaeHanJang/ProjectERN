@@ -116,6 +116,27 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 	UERNSaveSettings* CachedSettings = nullptr;
 
+	// ===== EasyMode (호스트 전용 게임플레이 옵션) =====
+	// 호스트가 옵션에서 설정. 켜지면 최종 자기장 전원 탈락 시 딱 1회 전원 부활.
+	// GameInstance에 두는 이유: BossPortal travel/ServerTravel을 넘어 런 내내 유지돼야 하기 때문
+	UPROPERTY(BlueprintReadWrite, Category = "Settings|EasyMode")
+	bool bEasyModeEnabled = false;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|EasyMode")
+	void SetEasyModeEnabled(bool bEnabled) { bEasyModeEnabled = bEnabled; }
+
+	UFUNCTION(BlueprintPure, Category = "Settings|EasyMode")
+	bool IsEasyModeEnabled() const { return bEasyModeEnabled; }
+
+	// 1회 부활 가드 (런 단위). 로비 진입 시 ResetEasyModeRunGuard로 초기화
+	bool IsEasyModeReviveUsed() const { return bEasyModeReviveUsed; }
+	void MarkEasyModeReviveUsed() { bEasyModeReviveUsed = true; }
+	void ResetEasyModeRunGuard() { bEasyModeReviveUsed = false; }
+
+private:
+	// EasyMode 1회 부활 사용 여부 (런 가드, BP 노출 불필요)
+	bool bEasyModeReviveUsed = false;
+
 private:
 	// 저장된 DLSS 상태(켜짐/모드)를 실제 적용 (EnableDLSS + 스크린퍼센트). 설정/해상도 적용 후 마지막에 호출
 	void ApplyDLSS();

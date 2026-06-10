@@ -29,6 +29,14 @@ struct FEnemyHitboxConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float StaggerPower = 10.f;
 
+	// 체력비례 추가 데미지 사용 여부 - true면 맞은 플레이어 최대HP의 일정 비율을 데미지에 합산
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bAddMaxHealthPercentDamage = false;
+
+	// 추가 데미지 비율 - 맞은 플레이어 최대HP * 이 값을 데미지에 합산 (0.05 = 최대HP의 5%)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "bAddMaxHealthPercentDamage", ClampMin = "0.0"))
+	float MaxHealthPercentDamage = 0.05f;
+
 	// 히트 시 재생할 사운드 (Multicast로 모든 머신에서 재생)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TObjectPtr<USoundBase> HitSound;
@@ -233,7 +241,7 @@ public:
 	float OutgoingDamageMultiplier = 1.f;
 
 	// AnimNotifyState가 활성화 구간 동안 설정하는 데미지/경직력 오버라이드 (HitboxConfig 값보다 우선)
-	void SetHitboxOverride(bool bDamage, float Damage, bool bStagger, float StaggerPower);
+	void SetHitboxOverride(bool bDamage, float Damage, bool bStagger, float StaggerPower, bool bMaxHealthPercent, float MaxHealthPercent);
 	void ClearHitboxOverride();
 
 protected:
@@ -254,6 +262,8 @@ private:
 	float ActiveDamageOverride = 0.f;
 	bool  bActiveStaggerOverride = false;
 	float ActiveStaggerOverride = 0.f;
+	bool  bActiveMaxHealthPercentOverride = false;
+	float ActiveMaxHealthPercentOverride = 0.f;
 
 	UFUNCTION()
 	void OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,

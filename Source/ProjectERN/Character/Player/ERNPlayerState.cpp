@@ -39,6 +39,9 @@ void AERNPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AERNPlayerState, SavedConsumableState);
 	DOREPLIFETIME(AERNPlayerState, KillCount);
 	DOREPLIFETIME(AERNPlayerState, TotalDamageDealt);
+	DOREPLIFETIME(AERNPlayerState, TotalLifestealHealed);
+	DOREPLIFETIME(AERNPlayerState, TotalUltimateHealed);
+	DOREPLIFETIME(AERNPlayerState, TotalBarrierBlocked);
 
 	DOREPLIFETIME(AERNPlayerState, bIsInInstance);
 	DOREPLIFETIME(AERNPlayerState, SavedFieldTransform);
@@ -66,6 +69,9 @@ void AERNPlayerState::CopyProperties(APlayerState* PlayerState)
 		NewPS->SavedConsumableState = SavedConsumableState;
 		NewPS->KillCount = KillCount;
 		NewPS->TotalDamageDealt = TotalDamageDealt;
+		NewPS->TotalLifestealHealed = TotalLifestealHealed;
+		NewPS->TotalUltimateHealed = TotalUltimateHealed;
+		NewPS->TotalBarrierBlocked = TotalBarrierBlocked;
 		
 		// 미니맵에 사용될 플레이어 번호
 		NewPS->PlayerNumber = PlayerNumber;
@@ -449,4 +455,7 @@ void AERNPlayerState::ClearRunProgress()
 	SavedConsumableState = FItemRuntimeState();
 	KillCount = 0;
 	TotalDamageDealt = 0.f;
+	TotalLifestealHealed = 0.f;
+	TotalUltimateHealed = 0.f;
+	TotalBarrierBlocked = 0.f;
 }

@@ -6,6 +6,8 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "GameFramework/PlayerController.h"
+#include "Engine/World.h"
 
 AERNBossAIController::AERNBossAIController()
 {
@@ -390,6 +392,37 @@ bool AERNBossAIController::IsValidAggroTarget(AActor* Target) const
 	// 플레이어 캐릭터가 살아있는지 확인
 	const AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(Target);
 	return Player && Player->IsAlive();
+}
+
+void AERNBossAIController::ReacquireTargetsAfterRevive()
+{
+	UWorld* World = GetWorld();
+	if (!World || !Blackboard)
+	{
+		return;
+	}
+
+	AERNBossCharacter* Boss = Cast<AERNBossCharacter>(GetPawn());
+
+	// 살아있는 전체 플레이어를 다시 인식 목록에 등록 + 어그로 부여 (AddAggro가 타겟 없으면 SetTarget까지 처리)
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		AProjectERNCharacter* Player = PC ? Cast<AProjectERNCharacter>(PC->GetPawn()) : nullptr;
+		if (!IsValidAggroTarget(Player))
+		{
+			continue;
+		}
+
+		PerceivedPlayers.AddUnique(Player);
+		AddAggro(Player, 10.0f);
+
+		// 비전투 상태 해제 알림 (시야 최초 감지와 동일 처리)
+		if (Boss)
+		{
+			Player->NotifyDetectedBy(Boss);
+		}
+	}
 }
 
 void AERNBossAIController::RemoveAggroTarget(AActor* Target)

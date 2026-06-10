@@ -47,6 +47,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Boss AI")
 	TArray<AActor*> GetPerceivedPlayers() const { return PerceivedPlayers; }
 
+	// EasyMode 부활 후 재교전 — 살아있는 전체 플레이어를 다시 인식/어그로하여 타겟을 재획득 (서버)
+	// (부활 시 perception 신규 이벤트가 안 떠서 보스가 멈추는 문제 해결)
+	UFUNCTION(BlueprintCallable, Category = "Boss AI")
+	void ReacquireTargetsAfterRevive();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnPossess(APawn* InPawn) override;
@@ -77,7 +82,7 @@ protected:
 
 	// 시야 안에 있을 때 초당 누적되는 기본 어그로
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI")
-	float SightAggroPerSecond = 1.0f;
+	float SightAggroPerSecond = 100.0f;
 
 	// === 거리 기반 어그로 배율 ===
 	// 가까운 거리 기준 (이 거리 이하면 NearAggroMultiplier 적용)
@@ -90,20 +95,20 @@ protected:
 
 	// 가까울 때 어그로 배율
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|Distance")
-	float NearAggroMultiplier = 1.5f;
+	float NearAggroMultiplier = 3.0f;
 
 	// 멀 때 어그로 배율
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|Distance")
-	float FarAggroMultiplier = 0.8f;
+	float FarAggroMultiplier = 1.0f;
 
 	// === 타겟 락 시간 ===
 	// 타겟 변경 후 최소 유지 시간 (이 시간 동안 타겟 변경 불가)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|TargetLock")
-	float MinTargetLockTime = 20.0f;
+	float MinTargetLockTime = 10.0f;
 
 	// 한 타겟 최대 유지 시간 (이 시간 초과 시 강제 변경)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss AI|TargetLock")
-	float MaxTargetLockTime = 40.0f;
+	float MaxTargetLockTime = 20.0f;
 
 	// 어그로 업데이트 타이머
 	FTimerHandle AggroDecayTimerHandle;

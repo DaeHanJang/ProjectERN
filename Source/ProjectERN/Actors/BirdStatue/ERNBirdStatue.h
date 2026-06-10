@@ -55,6 +55,10 @@ public:
 	// 스폰할 새 클래스
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Statue")
 	TSubclassOf<AERNIntroBird> BirdClass;
+	
+	// 효과음
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Statue")
+	TObjectPtr<USoundBase> Sound;	
 
 	// === 이 동상에서 스폰되는 새의 비행 파라미터 (동상별 개별 설정) ===
 

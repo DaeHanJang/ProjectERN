@@ -281,6 +281,9 @@ public:
 public:
 	bool IsLockOn() const { return bIsLockOn; }
 
+	// 현재 락온 중인 유효 타겟 반환 (락온 비활성/무효면 nullptr). 투사체 호밍 우선순위 등에 사용
+	AActor* GetActiveLockOnTarget() const;
+
 	UFUNCTION(Server, Reliable)
 	void Server_SetLockOn(bool bNewLockOn, FRotator TargetRotation);
 
@@ -789,6 +792,10 @@ public:
 	// 스킬로 부활 적용 (성기사 궁극기)
 	UFUNCTION(BlueprintCallable, Category="ERN|Downed")
 	bool TryReviveFromSkill(AController* Reviver);
+
+	// EasyMode 전원 부활용 — 탈락 상태에서 그자리 100% 체력으로 부활 + 성배병 BonusFlasks개 추가 (서버).
+	// EnterRevivingState(50%)와 달리 풀피로 일으킴. 부활 적용 시 true 반환
+	bool ReviveForEasyMode(int32 BonusFlasks);
 	
 protected:
 	// 부활 공격 조건 검사
@@ -819,6 +826,9 @@ protected:
 
 	// fallback 적용을 위한 부활 타이머
 	FTimerHandle ReviveTimerHandle;
+
+	// EasyMode 부활 진행 중 표식 — Alive 복귀(FinishRevivingState) 시 보스 재교전을 트리거
+	bool bPendingEasyModeReengage = false;
 	
 	// 부활 시 적용할 체력 비율
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState", meta=(ClampMin="0.0", ClampMax="1.0"))
