@@ -2120,6 +2120,20 @@ void AProjectERNCharacter::ApplyPlayerRegenEffects()
 
 FVector AProjectERNCharacter::GetRollWorldDirection() const
 {
+	const bool bIsSprinting = AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Sprinting);
+
+	// LockOn + Sprint 중에는 컨트롤러/락온 방향이 아니라 실제 이동 방향을 사용한다.
+	if (bIsLockOn && bIsSprinting)
+	{
+		const FVector VelocityDirection = GetVelocity().GetSafeNormal2D();
+		if (!VelocityDirection.IsNearlyZero())
+		{
+			return VelocityDirection;
+		}
+
+		return GetActorForwardVector();
+	}
+	
 	if (!CachedMoveInput.IsNearlyZero() && Controller)
 	{
 		const FRotator ControlRotation = Controller->GetControlRotation();
