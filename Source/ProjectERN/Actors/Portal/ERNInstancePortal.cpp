@@ -113,6 +113,20 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 
 	// 동적 스폰 포탈은 에디터 참조가 없으므로 런타임에 확보
 	ANightRainZoneManager* ZoneManager = ResolveNightRainZoneManager();
+	
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		APawn* Pawn = PS ? PS->GetPawn() : nullptr;
+		if (!Pawn)
+		{
+			continue;
+		}
+		
+		if (AERNPlayerController* ERNPC = Cast<AERNPlayerController>(Pawn->GetController()))
+		{
+			ERNPC->Client_CloseInteractableWidgetsForPortal();
+		}
+	}
 
 	// 한 명이 눌러도 전원 이동
 	int32 Index = 0;
