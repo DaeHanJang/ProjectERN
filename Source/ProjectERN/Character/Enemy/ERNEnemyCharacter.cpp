@@ -25,6 +25,8 @@
 #include "EngineUtils.h"
 #include "Actors/Portal/ERNInstancePortal.h"
 #include "Actors/Portal/ERNPortalDestinationPoint.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 
 AERNEnemyCharacter::AERNEnemyCharacter()
 {
@@ -232,8 +234,32 @@ void AERNEnemyCharacter::ClearHitboxOverride()
 	ActiveMaxHealthPercentOverride = 0.f;
 }
 
+void AERNEnemyCharacter::StartDamageAccumulation()
+{
+	bTrackAccumulatedDamage = true;
+	AccumulatedDamage = 0.f;
+}
+
+void AERNEnemyCharacter::StopDamageAccumulation()
+{
+	bTrackAccumulatedDamage = false;
+	AccumulatedDamage = 0.f;
+}
+
 void AERNEnemyCharacter::Multicast_PlayHitSound_Implementation(USoundBase* Sound, FVector Location)
 {
+	if (Sound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, Sound, Location);
+	}
+}
+
+void AERNEnemyCharacter::Multicast_PlayCounterChargeFX_Implementation(UNiagaraSystem* System, USoundBase* Sound, FVector Location)
+{
+	if (System)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, System, Location);
+	}
 	if (Sound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, Sound, Location);
@@ -259,6 +285,12 @@ float AERNEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 	if (ActualDamage > 0.0f)
 	{
 		Multicast_ShowHealthBar();
+
+		// NotifyState 구간 데미지 누적 (임계치 도달 시 반격 투사체 발사용)
+		if (HasAuthority() && bTrackAccumulatedDamage)
+		{
+			AccumulatedDamage += ActualDamage;
+		}
 
 		// 공격자 클라이언트에게 데미지 텍스트 표시 요청 + 누적 데미지(전과)
 		if (HasAuthority())
