@@ -44,6 +44,26 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Shop|UI")
 	void RefreshGoldDisplay();
 
+	// 아이템 툴팁 위젯 (호버/선택용)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<class UERNItemToolTipWidget> WBP_ItemToolTip;
+	
+	// 장착중 아이템 툴팁 위젯 (비교용)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<class UERNItemToolTipWidget> WBP_EquippedItemToolTip;
+
+	// 상점 툴팁 갱신 (비교 로직 포함)
+	UFUNCTION(BlueprintCallable, Category = "Shop|UI")
+	void UpdateShopTooltip(FName ItemID, int32 ItemPrice);
+
+	// 상점 결제 결과 수신 콜백
+	UFUNCTION()
+	void OnPurchaseResultReceived(const struct FERNShopTransaction& Transaction);
+
+	// 슬롯들을 보관하는 컨테이너 위젯 (블루프린트 위젯 이름을 ItemListBox로 맞춰야 자동 연동됨)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	class UPanelWidget* ItemListBox;
+
 private:
 	// 어트리뷰트 변경 감지 해제를 위한 핸들
 	FDelegateHandle GoldChangedDelegateHandle;

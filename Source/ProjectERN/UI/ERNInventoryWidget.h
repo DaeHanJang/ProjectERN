@@ -119,9 +119,13 @@ private:
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UERNSlideWidget> WBP_SlideWidget;
 	
-	// 아이템 툴팁 위젯 (선택적)
+	// 아이템 툴팁 위젯 (호버/선택용)
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UERNItemToolTipWidget> WBP_ItemToolTip;
+	
+	// 장착중 아이템 툴팁 위젯 (비교용)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UERNItemToolTipWidget> WBP_EquippedItemToolTip;
 	
 	// 플레이어 스탯 상세창 위젯 (툴팁이 없을 때 기본 표시)
 	UPROPERTY(meta=(BindWidgetOptional))
