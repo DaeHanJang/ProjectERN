@@ -95,8 +95,15 @@ void UERNSkillCoolSlot::UpdateCooldownVisual()
 	{
 		return;
 	}
-
+	
 	IconDynamicMaterial->SetScalarParameterValue(CooldownPercentParameterName, CalculateCooldownPercent());
+	
+	const bool bReady = CalculateCooldownPercent() >= 0.999f;
+
+	if (SkillReadyImage)
+	{
+		SkillReadyImage->SetVisibility(bReady ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
 }
 
 float UERNSkillCoolSlot::CalculateCooldownPercent() const

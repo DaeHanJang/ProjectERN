@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "GameplayTagContainer.h"
 #include "Blueprint/UserWidget.h"
 #include "ERNSkillCoolSlot.generated.h"
@@ -53,6 +54,10 @@ protected:
 	// SkillIconImage
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UImage> SkillIconImage;
+	
+	// SkillUsableImage
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UImage> SkillReadyImage;
 
 private:
 	// BP의 Image Brush에 설정된 머티리얼로부터 동적 인스턴스를 가져온다.
@@ -83,4 +88,5 @@ private:
 	// 각 슬롯이 독립적으로 파라미터를 변경할 수 있도록 생성되는 MID.
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> IconDynamicMaterial;
+	
 };
