@@ -699,6 +699,20 @@ void AERNPlayerController::TryInteract()
 	}
 }
 
+void AERNPlayerController::Client_CloseInteractableWidgetsForPortal_Implementation()
+{
+	for (TObjectIterator<UERNInteractableWidget> It; It; ++It)
+	{
+		if (It->GetWorld() == GetWorld() && It->IsInViewport())
+		{
+			It->BP_PlayCloseAnimation();
+		}
+	}
+	
+	SetInputMode(FInputModeGameOnly());
+	SetShowMouseCursor(false);
+}
+
 void AERNPlayerController::Server_RequestDHRollReward_Implementation(ADHRollActor* RollActor)
 {
 	if (!IsValid(RollActor))

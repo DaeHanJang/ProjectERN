@@ -158,6 +158,9 @@ public:
 	
 	UFUNCTION(Server, Reliable)
 	void Server_RequestDHRollReward(ADHRollActor* RollActor);
+	
+	UFUNCTION(Client, Reliable)
+	void Client_CloseInteractableWidgetsForPortal();
 
 	// Pedestal(상호작용가능한액터)에서 호출용
 	AActor* GetCurrentInteractable() const { return CurrentInteractableActor.Get(); }

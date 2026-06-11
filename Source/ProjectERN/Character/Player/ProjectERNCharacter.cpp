@@ -136,6 +136,16 @@ void AProjectERNCharacter::ApplySliceFreeze(float DelayedDamage, float StaggerPo
 		AbilitySystemComponent->CancelAbilities(&NormalSkillTags);
 	}
 
+	// 점프/벽점프 중 피격이면 어빌리티를 끊고 프리즈 진행
+	// (애니메이션 정지로 점프 몽타주가 끝나지 않으면 어빌리티가 영구 잔류 → State.Combat.Jumping이 남아 이후 점프 불가)
+	if (AbilitySystemComponent)
+	{
+		FGameplayTagContainer JumpTags;
+		JumpTags.AddTag(TAG_Ability_Movement_Jump);
+		JumpTags.AddTag(TAG_Ability_Movement_WallJump);
+		AbilitySystemComponent->CancelAbilities(&JumpTags);
+	}
+
 	// 데미지 면역(회피 등)이면 return
 	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Immunity_Damage))
 	{
