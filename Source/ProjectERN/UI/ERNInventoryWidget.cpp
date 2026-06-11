@@ -631,14 +631,9 @@ void UERNInventoryWidget::UpdateVisuals()
 		if (DisplayIndex == -1)
 		{
 			WBP_ItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
-			if (WBP_PlayerDetailStatus) 
-			{
-				WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::HitTestInvisible);
-				if (UERNPlayerDetailStatusWidget* StatusWidget = Cast<UERNPlayerDetailStatusWidget>(WBP_PlayerDetailStatus))
-				{
-					StatusWidget->RefreshAllAttributes();
-				}
-			}
+			if (WBP_EquippedItemToolTip) WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+			// if (WBP_PlayerDetailStatus) 
+			// { ... }
 		}
 		else
 		{
@@ -672,19 +667,70 @@ void UERNInventoryWidget::UpdateVisuals()
 			{
 				WBP_ItemToolTip->UpdateTooltip(ItemID, 0); // 가격 0으로 표시
 				WBP_ItemToolTip->SetVisibility(ESlateVisibility::HitTestInvisible);
-				if (WBP_PlayerDetailStatus) WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::Hidden);
+				
+				bool bIsHoveringEquipmentSlot = (DisplayIndex == SlotWidgets.Num() + 1);
+				bool bIsHoveringConsumableSlot = (DisplayIndex == SlotWidgets.Num());
+				
+				bool bIsEquipment = false;
+				FName EquippedItemID = NAME_None;
+				if (UGameInstance* GI = GetGameInstance())
+				{
+					if (UItemManagerSubsystem* ItemSubsystem = GI->GetSubsystem<UItemManagerSubsystem>())
+					{
+						if (const FERNItemTable* ItemRow = ItemSubsystem->FindItemRow(ItemID))
+						{
+							if (ItemRow->ItemType == EItemType::Equipable)
+							{
+								bIsEquipment = true;
+							}
+						}
+					}
+				}
+				
+				if (bIsHoveringEquipmentSlot || bIsHoveringConsumableSlot)
+				{
+					// 장착 슬롯(무기/소모품)에 마우스를 올렸을 때: 단일 툴팁, "장착 중"
+					WBP_ItemToolTip->SetTooltipStateText(FText::FromString(TEXT("장착 중")));
+					if (WBP_EquippedItemToolTip) WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+				}
+				else if (bIsEquipment)
+				{
+					// 일반 인벤토리에서 장비를 호버했을 때: 비교 모드
+					if (WBP_EquippedItemToolTip)
+					{
+						if (UERNEquipmentComponent* EquipComp = GetEquipmentComponent())
+						{
+							EquippedItemID = EquipComp->EquipableSlot.GetItemID();
+						}
+						
+						if (!EquippedItemID.IsNone() && EquippedItemID != NAME_None)
+						{
+							WBP_ItemToolTip->SetTooltipStateText(FText::FromString(TEXT("비교")));
+							WBP_EquippedItemToolTip->UpdateTooltip(EquippedItemID, 0);
+							WBP_EquippedItemToolTip->SetTooltipStateText(FText::FromString(TEXT("장착 중")));
+							WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::HitTestInvisible);
+						}
+						else
+						{
+							// 장착된 아이템이 없다면 단일 툴팁 표시
+							WBP_ItemToolTip->SetTooltipStateText(FText::GetEmpty());
+							WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+						}
+					}
+				}
+				else
+				{
+					// 일반 인벤토리에서 소모품/재료를 호버했을 때: 단일 툴팁
+					WBP_ItemToolTip->SetTooltipStateText(FText::GetEmpty());
+					if (WBP_EquippedItemToolTip) WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+				}
 			}
 			else
 			{
 				WBP_ItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
-				if (WBP_PlayerDetailStatus) 
-				{
-					WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::HitTestInvisible);
-					if (UERNPlayerDetailStatusWidget* StatusWidget = Cast<UERNPlayerDetailStatusWidget>(WBP_PlayerDetailStatus))
-					{
-						StatusWidget->RefreshAllAttributes();
-					}
-				}
+				if (WBP_EquippedItemToolTip) WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+				// if (WBP_PlayerDetailStatus) 
+				// { ... }
 			}
 		}
 	}

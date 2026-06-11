@@ -71,6 +71,15 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	class UTextBlock* Text_Flask;
 
+	UPROPERTY(meta = (BindWidgetOptional))
+	class UProgressBar* PB_Health;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	class UProgressBar* PB_Mana;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	class UProgressBar* PB_Stamina;
+
 	// 내부 텍스트 갱신 헬퍼
 	void UpdateLevelText(float Level);
 	void UpdateGoldText(float Gold);

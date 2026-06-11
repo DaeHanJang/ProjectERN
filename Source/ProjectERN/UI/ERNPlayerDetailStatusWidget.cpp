@@ -4,6 +4,7 @@
 #include "GAS/ERNAttributeSet.h"
 #include "GameFramework/PlayerController.h"
 #include "Components/TextBlock.h"
+#include "Components/ProgressBar.h"
 
 void UERNPlayerDetailStatusWidget::NativeConstruct()
 {
@@ -321,6 +322,10 @@ void UERNPlayerDetailStatusWidget::UpdateHealthText(float Current, float Max)
 		Text_Health->SetText(FText::Format(NSLOCTEXT("Status", "HealthFormat", "{0} / {1}"), 
 			FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max))));
 	}
+	if (PB_Health)
+	{
+		PB_Health->SetPercent(Max > 0.0f ? (Current / Max) : 0.0f);
+	}
 }
 
 void UERNPlayerDetailStatusWidget::UpdateManaText(float Current, float Max)
@@ -330,6 +335,10 @@ void UERNPlayerDetailStatusWidget::UpdateManaText(float Current, float Max)
 		Text_Mana->SetText(FText::Format(NSLOCTEXT("Status", "ManaFormat", "{0} / {1}"), 
 			FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max))));
 	}
+	if (PB_Mana)
+	{
+		PB_Mana->SetPercent(Max > 0.0f ? (Current / Max) : 0.0f);
+	}
 }
 
 void UERNPlayerDetailStatusWidget::UpdateStaminaText(float Current, float Max)
@@ -338,6 +347,10 @@ void UERNPlayerDetailStatusWidget::UpdateStaminaText(float Current, float Max)
 	{
 		Text_Stamina->SetText(FText::Format(NSLOCTEXT("Status", "StaminaFormat", "{0} / {1}"), 
 			FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max))));
+	}
+	if (PB_Stamina)
+	{
+		PB_Stamina->SetPercent(Max > 0.0f ? (Current / Max) : 0.0f);
 	}
 }
 

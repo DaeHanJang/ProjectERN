@@ -46,6 +46,18 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Shop|Slot")
 	void SetPurchaseButtonEnabled(bool bEnabled);
 
+	// 결제 실패 시 시각적 피드백 재생 (예: 골드 부족 애니메이션)
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Shop|Slot")
+	void BP_PlayFailureFeedback(EERNTransactionResult FailureReason);
+
+	// 호버 이미지 가시성 강제 설정 (실패 연출 등에서 블루프린트 노드로 사용)
+	UFUNCTION(BlueprintCallable, Category = "Shop|Slot")
+	void SetHoverImageVisibility(ESlateVisibility InVisibility);
+
+	// 호버 이미지 색상 강제 설정 (실패 연출 등에서 블루프린트 노드로 사용)
+	UFUNCTION(BlueprintCallable, Category = "Shop|Slot")
+	void SetHoverImageColor(FLinearColor InColor);
+
 	// 슬롯의 텍스트 및 UI를 갱신하는 함수
 	UFUNCTION(BlueprintCallable, Category = "Shop|Slot")
 	virtual void RefreshSlotUI();

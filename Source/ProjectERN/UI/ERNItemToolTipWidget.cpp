@@ -6,6 +6,22 @@
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
 #include "Inventory/Item/Data/EquipableItemDataAsset.h"
 
+void UERNItemToolTipWidget::SetTooltipStateText(const FText& InStateText)
+{
+	if (Text_TooltipState)
+	{
+		if (InStateText.IsEmpty())
+		{
+			Text_TooltipState->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		else
+		{
+			Text_TooltipState->SetText(InStateText);
+			Text_TooltipState->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		}
+	}
+}
+
 void UERNItemToolTipWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
