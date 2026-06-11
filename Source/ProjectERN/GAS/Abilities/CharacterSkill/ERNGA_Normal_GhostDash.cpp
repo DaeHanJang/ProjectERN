@@ -160,11 +160,10 @@ void UERNGA_Normal_GhostDash::ApplyGhostDashCollision(AProjectERNCharacter* Char
 
 	// 종료 시 원복하기 위해 기존 응답을 저장한다.
 	PreviousCapsuleResponse = Capsule->GetCollisionResponseToChannel(GhostPassThroughChannel);
-	PreviousProjectileResponse = Capsule->GetCollisionResponseToChannel(GhostPassProjectileChannel);
 
 	// 스킬 사용 중에는 지정 채널과 충돌하지 않게 한다.
+	// (투사체 채널은 무시하지 않음 — 프리즈 투사체가 명중해야 하고, 일반 투사체 데미지는 무적 태그가 0 처리)
 	Capsule->SetCollisionResponseToChannel(GhostPassThroughChannel, ECR_Ignore);
-	Capsule->SetCollisionResponseToChannel(GhostPassProjectileChannel, ECR_Ignore);
 }
 
 void UERNGA_Normal_GhostDash::ClearGhostDashCollision(AProjectERNCharacter* Character)
@@ -176,7 +175,6 @@ void UERNGA_Normal_GhostDash::ClearGhostDashCollision(AProjectERNCharacter* Char
 
 	// Collision 원상 복구
 	Character->GetCapsuleComponent()->SetCollisionResponseToChannel(GhostPassThroughChannel, PreviousCapsuleResponse);
-	Character->GetCapsuleComponent()->SetCollisionResponseToChannel(GhostPassProjectileChannel, PreviousProjectileResponse);
 }
 
 void UERNGA_Normal_GhostDash::StartGhostDashNiagaraEffects(AProjectERNCharacter* Character)

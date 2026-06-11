@@ -55,16 +55,13 @@ private:
 	
 protected:
 	// 스킬 사용하는 동안 Pawn과의 충돌을 없앰
+	// (투사체 채널은 무시하지 않음 — 프리즈 투사체 등이 물리적으로 명중해야 하고, 일반 투사체 데미지는 무적 태그가 0 처리)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Skill")
 	TEnumAsByte<ECollisionChannel> GhostPassThroughChannel = ECC_Pawn;
-	// 투사체와 충돌을 없앰
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Skill")
-	TEnumAsByte<ECollisionChannel> GhostPassProjectileChannel = ECC_GameTraceChannel1;
 
 private:
 	// 이전 충돌 채널
 	ECollisionResponse PreviousCapsuleResponse = ECR_Block;
-	ECollisionResponse PreviousProjectileResponse = ECR_Overlap;
 
 	// 충돌 제거 적용
 	void ApplyGhostDashCollision(AProjectERNCharacter* Character);
