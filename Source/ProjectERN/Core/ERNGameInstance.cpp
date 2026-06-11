@@ -18,6 +18,7 @@
 #include "DLSSLibrary.h"
 #include "HAL/IConsoleManager.h"
 #include "Sound/SoundClass.h"
+#include "TimerManager.h"
 
 static const FString ERNSettingsSlotName = TEXT("ERNSettings");
 
@@ -48,6 +49,24 @@ void UERNGameInstance::Init()
 	LoadAndApplySettings();
 
 	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UERNGameInstance::OnPostLoadMap);
+
+	// PIE 첫 맵에서 PostLoadMapWithWorld를 놓치는 케이스 대응 — 0.5초 후 볼륨 재적용
+	// (Init 시점엔 오디오 디바이스/월드 준비 전이라 LoadAndApplySettings의 적용이 무시될 수 있음. SoundSubsystem과 동일 패턴)
+	if (UWorld* World = GetWorld())
+	{
+		FTimerHandle Tmp;
+		World->GetTimerManager().SetTimer(Tmp,
+			FTimerDelegate::CreateWeakLambda(this, [this]()
+			{
+				if (CachedSettings)
+				{
+					ApplyAudioVolume(MasterSoundClass, CachedSettings->MasterVolume);
+					ApplyAudioVolume(MusicSoundClass, CachedSettings->MusicVolume);
+					ApplyAudioVolume(SFXSoundClass, CachedSettings->SFXVolume);
+				}
+			}),
+			0.5f, false);
+	}
 }
 
 void UERNGameInstance::OnPostLoadMap(UWorld* LoadedWorld)
@@ -57,6 +76,15 @@ void UERNGameInstance::OnPostLoadMap(UWorld* LoadedWorld)
 	{
 		IERNShopDataProvider::Execute_ClearCache(ShopDataProvider);
 		UE_LOG(LogTemp, Log, TEXT("[ERNGameInstance] OnPostLoadMap 완료 - 상점 캐시 초기화"));
+	}
+
+	// 맵 전환 시 사운드 믹스 오버라이드가 초기화되므로 저장된 볼륨 재적용
+	// (Init 시점엔 월드가 없어 적용이 무시될 수 있음 → 매 맵 로드 완료마다 보장)
+	if (CachedSettings)
+	{
+		ApplyAudioVolume(MasterSoundClass, CachedSettings->MasterVolume);
+		ApplyAudioVolume(MusicSoundClass, CachedSettings->MusicVolume);
+		ApplyAudioVolume(SFXSoundClass, CachedSettings->SFXVolume);
 	}
 }
 
@@ -621,8 +649,13 @@ void UERNGameInstance::ApplyAudioVolume(USoundClass* SoundClass, float Volume)
 	UWorld* World = GetWorld();
 	if (!World) return;
 
+	// 하한 0.0001 — 완전 0이면 오디오 엔진이 소스를 컬링(정지)해서 볼륨을 다시 올릴 때 처음부터 재생됨.
+	// 극소 볼륨으로 계속 재생시켜 재생 위치를 유지한다.
 	UGameplayStatics::SetSoundMixClassOverride(World, MasterSoundMix, SoundClass,
-		FMath::Clamp(Volume, 0.0f, 1.0f), 1.0f, 0.0f, true);
+		FMath::Clamp(Volume, 0.0001f, 1.0f), 1.0f, 0.0f, true);
+
+	// 믹스가 활성(Push) 상태여야 오버라이드가 실제 적용
+	UGameplayStatics::PushSoundMixModifier(World, MasterSoundMix);
 }
 
 void UERNGameInstance::SetMasterVolume(float Volume)
