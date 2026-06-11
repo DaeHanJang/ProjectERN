@@ -72,6 +72,18 @@ void UERNSoundSubsystem::PlayBGM(USoundBase* BGM, float FadeInTime)
 		return;
 	}
 
+	// 같은 BGM이 이미 재생 중이면 처음부터 재시작하지 않음
+	if (CurrentBGM && CurrentBGM->Sound == BGM)
+	{
+		if (bBGMPaused)
+		{
+			// 일시정지 상태면 이어서 재개
+			PauseBGM(false, FadeInTime);
+		}
+		UE_LOG(LogTemp, Warning, TEXT("[SoundSubsystem] PlayBGM skipped: same BGM already active (%s)"), *BGM->GetName());
+		return;
+	}
+
 	// 기존 BGM 정지 (AutoDestroy=false라 컴포넌트는 살아있음 → nullptr 처리로 GC)
 	if (CurrentBGM)
 	{

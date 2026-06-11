@@ -58,6 +58,22 @@ void UERNShopItemSlotWidget::NativeConstruct()
 	RefreshSlotUI();
 }
 
+void UERNShopItemSlotWidget::SetHoverImageVisibility(ESlateVisibility InVisibility)
+{
+	if (HoverImage)
+	{
+		HoverImage->SetVisibility(InVisibility);
+	}
+}
+
+void UERNShopItemSlotWidget::SetHoverImageColor(FLinearColor InColor)
+{
+	if (HoverImage)
+	{
+		HoverImage->SetColorAndOpacity(InColor);
+	}
+}
+
 void UERNShopItemSlotWidget::RefreshSlotUI()
 {
 	if (PriceText)

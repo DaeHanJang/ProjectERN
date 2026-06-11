@@ -290,7 +290,13 @@ void UERNShopComponent::Client_PurchaseResult_Implementation(const FERNShopTrans
         *Transaction.ItemID.ToString(), static_cast<int32>(Transaction.Result));
 
     OnPurchaseResult.Broadcast(Transaction);
-    OnShopUIUpdate.Broadcast();
+    
+    // 성공 시에만 상점 전체 슬롯을 갱신합니다. 
+    // 실패 시 전체 갱신을 생략하여 실패 애니메이션(피드백)이 도중에 끊기고 재시작되는 현상을 방지합니다.
+    if (Transaction.Result == EERNTransactionResult::Success)
+    {
+        OnShopUIUpdate.Broadcast();
+    }
 }
 
 // ===== 내부 콜백 =====

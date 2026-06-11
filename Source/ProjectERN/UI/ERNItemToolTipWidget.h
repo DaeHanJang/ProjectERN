@@ -21,8 +21,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Shop|ToolTip")
 	void UpdateTooltip(FName ItemID, int32 ItemPrice);
 
+	// 상태 텍스트 설정 (장착 중, 선택됨 등)
+	UFUNCTION(BlueprintCallable, Category = "Shop|ToolTip")
+	void SetTooltipStateText(const FText& InStateText);
+
 protected:
 	virtual void NativeConstruct() override;
+
+	// 헤더 상태 텍스트 (옵션)
+	UPROPERTY(meta = (BindWidgetOptional))
+	UTextBlock* Text_TooltipState;
 
 	// 필수로 연결해야 하는 위젯들
 	UPROPERTY(meta = (BindWidget))

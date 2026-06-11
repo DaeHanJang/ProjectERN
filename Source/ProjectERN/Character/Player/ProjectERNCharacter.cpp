@@ -113,17 +113,48 @@ void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVe
 
 void AProjectERNCharacter::ApplySliceFreeze(float DelayedDamage, float StaggerPower, const FVector& HitOrigin, float Duration,
 	AController* InstigatorController, AActor* DamageCauser,
-	USoundBase* DamageSound, USoundAttenuation* DamageSoundAttenuation)
+	USoundBase* DamageSound, USoundAttenuation* DamageSoundAttenuation,
+	UNiagaraSystem* DamageEffect)
 {
 	// 서버 권위 + 생존 상태에서만, 이미 프리즈 중이면 중복 적용 무시
 	if (!HasAuthority() || !IsAlive() || bIsDead || bIsSliceFrozen)
 	{
 		return;
 	}
+	
+	// 궁극기 사용 중 피격이면 궁극기를 끊고 프리즈 진행 (시전 취소 → 궁극기 무적도 함께 해제)
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_UsingSkill_Ultimate))
+	{
+		FGameplayTagContainer UltTags(TAG_Ability_Skill_Ultimate);
+		AbilitySystemComponent->CancelAbilities(&UltTags);
+	}
+
+	// 대시 스킬(전사 일반스킬) 중 피격이면 스킬을 끊고 프리즈 진행 (취소 → 대시 무적도 함께 해제)
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_DashSkill))
+	{
+		FGameplayTagContainer NormalSkillTags(TAG_Ability_Skill_Normal);
+		AbilitySystemComponent->CancelAbilities(&NormalSkillTags);
+	}
+
+	// 점프/벽점프 중 피격이면 어빌리티를 끊고 프리즈 진행
+	// (애니메이션 정지로 점프 몽타주가 끝나지 않으면 어빌리티가 영구 잔류 → State.Combat.Jumping이 남아 이후 점프 불가)
+	if (AbilitySystemComponent)
+	{
+		FGameplayTagContainer JumpTags;
+		JumpTags.AddTag(TAG_Ability_Movement_Jump);
+		JumpTags.AddTag(TAG_Ability_Movement_WallJump);
+		AbilitySystemComponent->CancelAbilities(&JumpTags);
+	}
+
+	// 데미지 면역(회피 등)이면 return
+	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Immunity_Damage))
+	{
+		return;
+	}
 
 	bIsSliceFrozen = true;
 
-	// 프리즈 종료 시 적용할 지연 데미지/경직/가해자/사운드 캐싱
+	// 프리즈 종료 시 적용할 지연 데미지/경직/가해자/사운드/이펙트 캐싱
 	PendingSliceDamage = DelayedDamage;
 	PendingSliceStagger = StaggerPower;
 	PendingSliceHitOrigin = HitOrigin;
@@ -131,6 +162,7 @@ void AProjectERNCharacter::ApplySliceFreeze(float DelayedDamage, float StaggerPo
 	PendingSliceCauser = DamageCauser;
 	PendingSliceSound = DamageSound;
 	PendingSliceSoundAttenuation = DamageSoundAttenuation;
+	PendingSliceEffect = DamageEffect;
 
 	// 이동 차단 (MOVE_None은 CMC를 통해 클라로 복제됨)
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
@@ -138,6 +170,9 @@ void AProjectERNCharacter::ApplySliceFreeze(float DelayedDamage, float StaggerPo
 		Move->StopMovementImmediately();
 		Move->SetMovementMode(MOVE_None);
 	}
+
+	// 맞은 순간의 포즈 그대로 애니메이션 정지 (모든 머신)
+	Multicast_SetSliceFreezeAnimPaused(true);
 
 	// Duration이 0 이하면 즉시 종료(데미지 + 이동 복구)
 	if (Duration <= 0.f)
@@ -175,6 +210,9 @@ void AProjectERNCharacter::EndSliceFreeze()
 		}
 	}
 
+	// 애니메이션 재개 — 경직 히트리액션 몽타주가 정지 포즈에 묻히지 않도록 데미지/경직 적용보다 먼저
+	Multicast_SetSliceFreezeAnimPaused(false);
+
 	// 프리즈가 끝나는 순간 지연 데미지 + 경직(히트리액트) 적용 (살아 있을 때만)
 	if (IsAlive())
 	{
@@ -196,6 +234,12 @@ void AProjectERNCharacter::EndSliceFreeze()
 		Multicast_PlaySliceDamageSound(PendingSliceSound, PendingSliceSoundAttenuation);
 	}
 
+	// 실제 데미지가 들어가는 순간 나이아가라 (모든 클라, 맞은 플레이어 위치 — 피 튀김 등)
+	if (PendingSliceEffect)
+	{
+		Multicast_PlayEffectAndSound(PendingSliceEffect, GetActorLocation(), nullptr, FVector::ZeroVector);
+	}
+
 	PendingSliceDamage = 0.f;
 	PendingSliceStagger = 0.f;
 	PendingSliceHitOrigin = FVector::ZeroVector;
@@ -203,6 +247,7 @@ void AProjectERNCharacter::EndSliceFreeze()
 	PendingSliceCauser = nullptr;
 	PendingSliceSound = nullptr;
 	PendingSliceSoundAttenuation = nullptr;
+	PendingSliceEffect = nullptr;
 }
 
 void AProjectERNCharacter::Multicast_PlaySliceDamageSound_Implementation(USoundBase* Sound, USoundAttenuation* Attenuation)
@@ -215,6 +260,14 @@ void AProjectERNCharacter::Multicast_PlaySliceDamageSound_Implementation(USoundB
 	UGameplayStatics::PlaySoundAtLocation(
 		this, Sound, GetActorLocation(), GetActorRotation(),
 		1.f, 1.f, 0.f, Attenuation);
+}
+
+void AProjectERNCharacter::Multicast_SetSliceFreezeAnimPaused_Implementation(bool bPaused)
+{
+	if (GetMesh())
+	{
+		GetMesh()->bPauseAnims = bPaused;
+	}
 }
 
 AProjectERNCharacter::AProjectERNCharacter()
@@ -758,8 +811,10 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 			return;
 		}
 
-		// 캐릭터 몸 회전은 질주, 공격 중에는 적용하지 않음
-		if (!bIsSprinting)
+		// 캐릭터 몸 회전은 질주, 이동 불가(프리즈/부활 등 MOVE_None) 중에는 적용하지 않음
+		// MOVE_None은 CMC로 전 머신에 리플리케이트되므로 서버/소유 클라 모두에서 회전이 막힘
+		const bool bMovementDisabled = GetCharacterMovement() && GetCharacterMovement()->MovementMode == MOVE_None;
+		if (!bIsSprinting && !bMovementDisabled)
 		{
 			if (HasAuthority() || IsLocallyControlled())
 			{
@@ -2120,6 +2175,20 @@ void AProjectERNCharacter::ApplyPlayerRegenEffects()
 
 FVector AProjectERNCharacter::GetRollWorldDirection() const
 {
+	const bool bIsSprinting = AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Sprinting);
+
+	// LockOn + Sprint 중에는 컨트롤러/락온 방향이 아니라 실제 이동 방향을 사용한다.
+	if (bIsLockOn && bIsSprinting)
+	{
+		const FVector VelocityDirection = GetVelocity().GetSafeNormal2D();
+		if (!VelocityDirection.IsNearlyZero())
+		{
+			return VelocityDirection;
+		}
+
+		return GetActorForwardVector();
+	}
+	
 	if (!CachedMoveInput.IsNearlyZero() && Controller)
 	{
 		const FRotator ControlRotation = Controller->GetControlRotation();

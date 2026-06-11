@@ -656,7 +656,8 @@ public:
 	// 소유 클라에는 Client RPC로 화면 사선 슬라이스 연출을 트리거한다.
 	void ApplySliceFreeze(float DelayedDamage, float StaggerPower, const FVector& HitOrigin, float Duration,
 		AController* InstigatorController, AActor* DamageCauser,
-		USoundBase* DamageSound = nullptr, USoundAttenuation* DamageSoundAttenuation = nullptr);
+		USoundBase* DamageSound = nullptr, USoundAttenuation* DamageSoundAttenuation = nullptr,
+		UNiagaraSystem* DamageEffect = nullptr);
 
 	// 슬라이스 연출용 포스트프로세스 컴포넌트 (컨트롤러가 DMI 블렌더블 주입)
 	UPostProcessComponent* GetSlicePostProcessComponent() const { return SlicePostProcessComponent; }
@@ -667,6 +668,10 @@ public:
 	// 지연 데미지 사운드를 모든 클라에서 맞은 플레이어 위치에 재생 (프리즈 종료 시)
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlaySliceDamageSound(USoundBase* Sound, USoundAttenuation* Attenuation);
+
+	// 프리즈 동안 맞은 순간의 포즈 그대로 애니메이션 정지/재개 (모든 머신)
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SetSliceFreezeAnimPaused(bool bPaused);
 
 private:
 	// 프리즈 종료 - 지연 데미지 적용 + 이동 복구 (서버)
@@ -691,6 +696,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USoundAttenuation> PendingSliceSoundAttenuation = nullptr;
+
+	// 프리즈 종료 = 지연 데미지 순간 재생할 나이아가라 (피 튀김 등)
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraSystem> PendingSliceEffect = nullptr;
 
 	FTimerHandle SliceFreezeTimerHandle;
 #pragma endregion
