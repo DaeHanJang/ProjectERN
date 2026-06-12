@@ -2203,7 +2203,7 @@ FVector AProjectERNCharacter::GetRollWorldDirection() const
 	return GetActorForwardVector();
 }
 
-bool AProjectERNCharacter::TryEndActiveChannelingWeaponSkill()
+bool AProjectERNCharacter::TryEndActiveChannelingWeaponSkill(bool bRequireLoopSection)
 {
 	if (!AbilitySystemComponent)
 	{
@@ -2228,7 +2228,11 @@ bool AProjectERNCharacter::TryEndActiveChannelingWeaponSkill()
 		{
 			if (UERNGA_WeaponSkill_Channeling* ChannelingSkill = Cast<UERNGA_WeaponSkill_Channeling>(AbilityInstance))
 			{
-				ChannelingSkill->RequestEndChanneling();
+				if (!bRequireLoopSection || ChannelingSkill->CanRequestEndChanneling())
+				{
+					ChannelingSkill->RequestEndChanneling();
+				}
+
 				return true;
 			}
 		}
@@ -2243,8 +2247,13 @@ void AProjectERNCharacter::Server_RequestEndActiveChannelingWeaponSkill_Implemen
 	{
 		return;
 	}
-	
+
 	TryEndActiveChannelingWeaponSkill();
+}
+
+void AProjectERNCharacter::Client_RequestEndActiveChannelingWeaponSkill_Implementation()
+{
+	TryEndActiveChannelingWeaponSkill(false);
 }
 
 void AProjectERNCharacter::Server_RequestRoll_Implementation(FVector_NetQuantizeNormal RollDirection)

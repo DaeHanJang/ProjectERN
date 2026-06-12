@@ -706,10 +706,13 @@ private:
 
 public:
 	// 캐릭터 HeavyAttack 입력을 토글로 변경
-	bool TryEndActiveChannelingWeaponSkill();
+	bool TryEndActiveChannelingWeaponSkill(bool bRequireLoopSection = true);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestEndActiveChannelingWeaponSkill();
+	
+	UFUNCTION(Client, Reliable)
+	void Client_RequestEndActiveChannelingWeaponSkill();
 
 private:
 	// 무기 스킬 이펙트 Multicast (Unreliable로 가볍게)

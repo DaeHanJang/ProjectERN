@@ -56,7 +56,8 @@
 		},
 		{
 			"Name": "DLSS",
-			"Enabled": true
+			"Enabled": true,
+			"MarketplaceURL": "https://www.unrealengine.com/marketplace/en-US/product/nvidia-dlss"
 		}
 	]
 }
