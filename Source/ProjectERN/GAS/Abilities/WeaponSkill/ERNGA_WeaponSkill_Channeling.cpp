@@ -4,14 +4,18 @@
 #include "GAS/Abilities/WeaponSkill/ERNGA_WeaponSkill_Channeling.h"
 
 #include "AbilitySystemComponent.h"
+#include "Animation/AnimInstance.h"
 #include "Combat/Weapons/ERNMeleeWeapon.h"
 #include "Components/BoxComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Character/Player/ERNSkillNiagaraComponent.h"
+#include "Character/Player/ProjectERNCharacter.h"
 #include "Combat/ERNSkillDamageLibrary.h"
+#include "Components/AudioComponent.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Character.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 UERNGA_WeaponSkill_Channeling::UERNGA_WeaponSkill_Channeling()
 {
@@ -45,7 +49,8 @@ void UERNGA_WeaponSkill_Channeling::StartChannelingFromNotify(USkeletalMeshCompo
 	{
 		return;
 	}
-
+	
+	bEndChannelingRequested = false;
 	// 채널링 시작
 	bIsChanneling = true;
 	// 스킬 사용위치
@@ -57,7 +62,9 @@ void UERNGA_WeaponSkill_Channeling::StartChannelingFromNotify(USkeletalMeshCompo
 
 	// 채널링 효과 소환
 	StartChannelingNiagaraEffects();
-
+	// 사운드 적용
+	StartChannelingSound(MeshComp);
+	
 	// 대미지/코스트 tick은 서버에서만
 	if (!AvatarActor->HasAuthority())
 	{
@@ -84,7 +91,9 @@ void UERNGA_WeaponSkill_Channeling::StopChanneling()
 
 	// 채널링 이펙트 제거
 	StopChannelingNiagaraEffects();
-
+	// 사운드 정지
+	StopChannelingSound();
+	
 	// 스킬 시작 위치 초기화
 	CachedMeshComp.Reset();
 	// 채널링 누적시간 초기화
@@ -97,25 +106,74 @@ void UERNGA_WeaponSkill_Channeling::StopChanneling()
 
 void UERNGA_WeaponSkill_Channeling::RequestEndChanneling()
 {
+	
+	if (bEndChannelingRequested || IsAttackMontageInSection(ChannelingData.EndSectionName))
+	{
+		return;
+	}
+
+	bEndChannelingRequested = true;
+	
 	StopChanneling();
 
 	if (!IsActive())
 	{
 		return;
 	}
-	
+
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-	// 섹션 이름이 적용되어 있지 않다면 바로 EndAbility
-	if (!ASC || ChannelingData.LoopSectionName == NAME_None || ChannelingData.EndSectionName == NAME_None)
+	if (!ASC || !AttackMontage || ChannelingData.EndSectionName == NAME_None)
 	{
 		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
 		return;
 	}
 
-	// 현재 Loop를 기다리지 않고 즉시 End로 이어지게 한다.
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const bool bHasAuthority = AvatarActor && AvatarActor->HasAuthority();
+
+	// 클라이언트에 종료요청
+	if (bHasAuthority)
+	{
+		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(AvatarActor))
+		{
+			Character->Client_RequestEndActiveChannelingWeaponSkill();
+		}
+	}
+	
+	if (!bHasAuthority)
+	{
+		if (AvatarActor)
+		{
+			if (USkeletalMeshComponent* Mesh = AvatarActor->FindComponentByClass<USkeletalMeshComponent>())
+			{
+				if (UAnimInstance* AnimInstance = Mesh->GetAnimInstance())
+				{
+					if (AnimInstance->Montage_IsPlaying(AttackMontage))
+					{
+						AnimInstance->Montage_JumpToSection(ChannelingData.EndSectionName, AttackMontage);
+					}
+				}
+			}
+		}
+
+		return;
+	}
+
+	// 서버는 GAS CurrentMontage 경로로 처리
+	if (ASC->GetCurrentMontage() != AttackMontage)
+	{
+		// 여기로 들어오면 1번 방식(GAS 몽타주 복제)이 성립하지 않는 상태
+		ASC->CurrentMontageStop(0.15f);
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+		return;
+	}
+
+	if (ChannelingData.LoopSectionName != NAME_None)
+	{
+		ASC->CurrentMontageSetNextSectionName(ChannelingData.LoopSectionName, ChannelingData.EndSectionName);
+	}
+
 	ASC->CurrentMontageJumpToSection(ChannelingData.EndSectionName);
-	// 현재 Loop가 끝나면 End 섹션으로 이어지게 한다.
-	// ASC->CurrentMontageSetNextSectionName(ChannelingData.LoopSectionName,ChannelingData.EndSectionName);
 }
 
 void UERNGA_WeaponSkill_Channeling::EndAbility(const FGameplayAbilitySpecHandle Handle,
@@ -125,6 +183,8 @@ void UERNGA_WeaponSkill_Channeling::EndAbility(const FGameplayAbilitySpecHandle 
                                                bool bWasCancelled)
 {
 	StopChanneling();
+	StopChannelingSound();
+	bEndChannelingRequested = false;
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
@@ -345,4 +405,90 @@ bool UERNGA_WeaponSkill_Channeling::GetChannelOriginTransform(USkeletalMeshCompo
 	OutTransform.SetLocation(OutTransform.TransformPosition(ChannelingData.OriginData.LocationOffset));
 	OutTransform.ConcatenateRotation(ChannelingData.OriginData.RotationOffset.Quaternion());
 	return true;
+}
+
+bool UERNGA_WeaponSkill_Channeling::IsAttackMontageInSection(FName SectionName) const
+{
+	if (!AttackMontage || SectionName == NAME_None)
+	{
+		return false;
+	}
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return false;
+	}
+
+	USkeletalMeshComponent* Mesh = AvatarActor->FindComponentByClass<USkeletalMeshComponent>();
+	UAnimInstance* AnimInstance = Mesh ? Mesh->GetAnimInstance() : nullptr;
+
+	return AnimInstance 
+	&& AnimInstance->Montage_IsPlaying(AttackMontage) 
+	&& AnimInstance->Montage_GetCurrentSection(AttackMontage) == SectionName;
+}
+
+bool UERNGA_WeaponSkill_Channeling::CanRequestEndChanneling() const
+{
+	return !bEndChannelingRequested && IsAttackMontageInSection(ChannelingData.LoopSectionName);
+}
+
+void UERNGA_WeaponSkill_Channeling::StartChannelingSound(USkeletalMeshComponent* MeshComp)
+{
+	if (ActiveChannelingAudioComponent || !ChannelingData.ChannelingLoopSound || !MeshComp)
+	{
+		return;
+	}
+
+	USceneComponent* AttachComponent = MeshComp;
+	FTransform OriginTransform;
+
+	if (USceneComponent* CalculatedAttach = nullptr;
+		GetChannelOriginTransform(MeshComp, OriginTransform, CalculatedAttach) && CalculatedAttach)
+	{
+		AttachComponent = CalculatedAttach;
+	}
+
+	const float InitialVolume = ChannelingData.ChannelingSoundFadeInTime > 0.f
+		? 0.f
+		: ChannelingData.ChannelingSoundVolume;
+
+	ActiveChannelingAudioComponent = UGameplayStatics::SpawnSoundAttached(
+		ChannelingData.ChannelingLoopSound,
+		AttachComponent,
+		NAME_None,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		EAttachLocation::SnapToTarget,
+		false,
+		InitialVolume,
+		ChannelingData.ChannelingSoundPitch,
+		0.f,
+		ChannelingData.ChannelingSoundAttenuation);
+
+	if (ActiveChannelingAudioComponent && ChannelingData.ChannelingSoundFadeInTime > 0.f)
+	{
+		ActiveChannelingAudioComponent->FadeIn(
+			ChannelingData.ChannelingSoundFadeInTime,
+			ChannelingData.ChannelingSoundVolume);
+	}
+}
+
+void UERNGA_WeaponSkill_Channeling::StopChannelingSound()
+{
+	if (!ActiveChannelingAudioComponent)
+	{
+		return;
+	}
+
+	if (ChannelingData.ChannelingSoundFadeOutTime > 0.f)
+	{
+		ActiveChannelingAudioComponent->FadeOut(ChannelingData.ChannelingSoundFadeOutTime, 0.f);
+	}
+	else
+	{
+		ActiveChannelingAudioComponent->Stop();
+	}
+
+	ActiveChannelingAudioComponent = nullptr;
 }

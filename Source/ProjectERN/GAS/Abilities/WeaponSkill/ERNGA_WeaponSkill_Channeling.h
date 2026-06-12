@@ -9,6 +9,10 @@
 #include "GAS/Abilities/WeaponSkill/ERNWeaponSkillTypes.h"
 #include "ERNGA_WeaponSkill_Channeling.generated.h"
 
+class USoundBase;
+class USoundAttenuation;
+class UAudioComponent;
+
 USTRUCT(BlueprintType)
 struct FERNWeaponSkillChannelOriginData
 {
@@ -80,6 +84,24 @@ struct FERNWeaponSkillChannelingData
 	// 디버그용 드로우 활성화 여부
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Debug")
 	bool bDrawDebug = false;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Sound")
+	TObjectPtr<USoundBase> ChannelingLoopSound = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Sound")
+	TObjectPtr<USoundAttenuation> ChannelingSoundAttenuation = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Sound")
+	float ChannelingSoundVolume = 1.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Sound")
+	float ChannelingSoundPitch = 1.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Sound")
+	float ChannelingSoundFadeInTime = 0.05f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Channeling|Sound")
+	float ChannelingSoundFadeOutTime = 0.2f;
 };
 
 UCLASS()
@@ -147,4 +169,22 @@ private:
 	USkeletalMeshComponent* MeshComp,
 	FTransform& OutTransform,
 	USceneComponent*& OutAttachComponent) const;
+	
+	// 끝 재요청 방지
+	bool bEndChannelingRequested = false;
+	
+	// 몽타주 섹션 확인
+	bool IsAttackMontageInSection(FName SectionName) const;
+	
+public:
+	// 취소 가능 여부 확인
+	bool CanRequestEndChanneling() const;
+	
+private:
+	// 사운드 추가
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> ActiveChannelingAudioComponent = nullptr;
+
+	void StartChannelingSound(USkeletalMeshComponent* MeshComp);
+	void StopChannelingSound();
 };
