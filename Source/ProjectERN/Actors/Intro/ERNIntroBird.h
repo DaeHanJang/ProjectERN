@@ -8,6 +8,7 @@
 
 class USceneComponent;
 class UNiagaraComponent;
+class UAudioComponent;
 class UCurveFloat;
 class AProjectERNCharacter;
 
@@ -77,6 +78,10 @@ protected:
 	// 비행 중 재생할 나이아가라 (BP에서 NiagaraSystem 에셋 할당)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNiagaraComponent> FlightVFX;
+
+	// 비행 중 재생할 바람 소리 오디오 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Audio")
+	TObjectPtr<UAudioComponent> FlightWindAudio;
 
 	// === 비행 파라미터 ===
 
