@@ -41,7 +41,7 @@ public:
 	// 어그로 전파 반경 (cm)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert",
 		meta = (EditCondition = "bAlertNearbyMobs", ClampMin = "0.0"))
-	float AlertRadius = 1500.0f;
+	float AlertRadius = 5000.0f;
 
 	// 같은 클래스의 몹만 깨우기 (false면 모든 일반 몹)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert",
