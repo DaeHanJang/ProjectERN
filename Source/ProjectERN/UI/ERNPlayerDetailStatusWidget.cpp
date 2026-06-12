@@ -5,6 +5,9 @@
 #include "GameFramework/PlayerController.h"
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
+#include "Character/Player/ProjectERNCharacter.h"
+#include "Inventory/Components/ERNEquipmentComponent.h"
+#include "Combat/Weapons/ERNWeaponBase.h"
 
 void UERNPlayerDetailStatusWidget::NativeConstruct()
 {
@@ -52,6 +55,14 @@ bool UERNPlayerDetailStatusWidget::TryInitASC()
 				// UI가 켜질 때 현재 수치로 한 번 강제 갱신
 				RefreshAllAttributes();
 				
+				if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(Pawn))
+				{
+					if (UERNEquipmentComponent* EquipComp = Character->GetEquipmentComponent())
+					{
+						EquipComp->OnEquipmentSlotChanged.AddUniqueDynamic(this, &UERNPlayerDetailStatusWidget::OnEquipmentSlotChanged);
+					}
+				}
+				
 				return true;
 			}
 		}
@@ -80,6 +91,20 @@ void UERNPlayerDetailStatusWidget::NativeDestruct()
 		CachedASC->GetGameplayAttributeValueChangeDelegate(UERNAttributeSet::GetFlaskQuantityAttribute()).Remove(FlaskChangedDelegateHandle);
 		CachedASC->GetGameplayAttributeValueChangeDelegate(UERNAttributeSet::GetMaxFlaskQuantityAttribute()).Remove(MaxFlaskChangedDelegateHandle);
 		CachedASC->GetGameplayAttributeValueChangeDelegate(UERNAttributeSet::GetShieldAttribute()).Remove(ShieldChangedDelegateHandle);
+	}
+
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (APawn* Pawn = PC->GetPawn())
+		{
+			if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(Pawn))
+			{
+				if (UERNEquipmentComponent* EquipComp = Character->GetEquipmentComponent())
+				{
+					EquipComp->OnEquipmentSlotChanged.RemoveDynamic(this, &UERNPlayerDetailStatusWidget::OnEquipmentSlotChanged);
+				}
+			}
+		}
 	}
 
 	Super::NativeDestruct();
@@ -274,6 +299,9 @@ void UERNPlayerDetailStatusWidget::UpdateGoldText(float Gold)
 
 void UERNPlayerDetailStatusWidget::UpdateAttackPowerText(float Base, float Bonus)
 {
+	float WeaponDamage = GetWeaponDamage();
+	Bonus += WeaponDamage;
+
 	if (Text_AttackPower)
 	{
 		if (Bonus > 0.0f)
@@ -360,5 +388,34 @@ void UERNPlayerDetailStatusWidget::UpdateFlaskText(float Current, float Max)
 	{
 		Text_Flask->SetText(FText::Format(NSLOCTEXT("Status", "FlaskFormat", "{0} / {1}"), 
 			FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max))));
+	}
+}
+
+float UERNPlayerDetailStatusWidget::GetWeaponDamage() const
+{
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(PC->GetPawn()))
+		{
+			if (UERNEquipmentComponent* EquipComp = Character->GetEquipmentComponent())
+			{
+				if (AERNWeaponBase* Weapon = EquipComp->CurrentWeapon)
+				{
+					return Weapon->LightAttackDamage;
+				}
+			}
+		}
+	}
+	return 0.0f;
+}
+
+void UERNPlayerDetailStatusWidget::OnEquipmentSlotChanged(const FInventoryItemEntry& Entry)
+{
+	if (CachedASC.IsValid())
+	{
+		bool bFound = false;
+		float Base = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetAttackPowerAttribute(), bFound);
+		float Bonus = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetAttackPowerBonusAttribute(), bFound);
+		UpdateAttackPowerText(Base, Bonus);
 	}
 }

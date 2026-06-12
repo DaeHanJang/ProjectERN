@@ -12,6 +12,7 @@
 #include "TimerManager.h"
 #include "Engine/World.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Components/AudioComponent.h"
 
 AERNIntroBird::AERNIntroBird()
 {
@@ -53,6 +54,11 @@ AERNIntroBird::AERNIntroBird()
 	FlightVFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FlightVFX"));
 	FlightVFX->SetupAttachment(GetMesh());
 	FlightVFX->bAutoActivate = true;
+
+	// Flight Wind Audio
+	FlightWindAudio = CreateDefaultSubobject<UAudioComponent>(TEXT("FlightWindAudio"));
+	FlightWindAudio->SetupAttachment(GetMesh());
+	FlightWindAudio->bAutoActivate = false;
 }
 
 void AERNIntroBird::BeginPlay()
@@ -127,6 +133,12 @@ void AERNIntroBird::StartFlight()
 	FlightStartServerTime = GetServerNow();
 	LocalFlightStartTime = GetWorld()->GetTimeSeconds();  // 서버 자기 머신의 로컬 시작 시각
 	bIsFlying = true;
+
+	// 리슨 서버인 경우 직접 오디오 재생
+	if (GetNetMode() != NM_DedicatedServer && FlightWindAudio)
+	{
+		FlightWindAudio->Play();
+	}
 }
 
 void AERNIntroBird::StartApproachAndPickup(AProjectERNCharacter* Target, FVector InAscentDirection)
@@ -257,6 +269,11 @@ void AERNIntroBird::OnRep_IsFlying()
 		// → 이후 Tick은 자기 GetTimeSeconds()로 일관 진행 (ServerWorldTimeSecondsDelta 변동 영향 차단)
 		const float ServerElapsed = FMath::Max(0.f, GetServerNow() - FlightStartServerTime);
 		LocalFlightStartTime = GetWorld()->GetTimeSeconds() - ServerElapsed;
+
+		if (FlightWindAudio)
+		{
+			FlightWindAudio->Play();
+		}
 	}
 }
 

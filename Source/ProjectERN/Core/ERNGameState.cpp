@@ -420,9 +420,16 @@ void AERNGameState::TryHandleFinalZoneGameOver()
 		return;
 	}
 
-	// EasyMode: 켜져 있고 이번 런에서 아직 안 썼으면, 패배 대신 전원 1회 부활
 	if (UERNGameInstance* GI = GetGameInstance<UERNGameInstance>())
 	{
+		// ImmortalMode: 횟수 제한 없이 매번 전원 부활
+		if (GI->IsImmortalModeEnabled())
+		{
+			EasyModeReviveAllPlayers();
+			return;
+		}
+
+		// EasyMode: 켜져 있고 이번 런에서 아직 안 썼으면, 패배 대신 전원 1회 부활
 		if (GI->IsEasyModeEnabled() && !GI->IsEasyModeReviveUsed())
 		{
 			GI->MarkEasyModeReviveUsed();
