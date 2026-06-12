@@ -103,7 +103,7 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
                 }
                 else
                 {
-                    ActualBuyPrice = FMath::RoundToInt(ActualBuyPrice * It->PriceMultiplier);
+                    ActualBuyPrice = ActualBuyPrice;
                 }
                 
                 ItemData.Price = ActualBuyPrice;
@@ -155,10 +155,6 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
                     if (Candidates[i].bIsFree)
                     {
                         ActualBuyPrice = 0;
-                    }
-                    else
-                    {
-                        ActualBuyPrice = FMath::RoundToInt(ActualBuyPrice * Candidates[i].PriceMultiplier);
                     }
                     
                     ItemData.Price = ActualBuyPrice;
@@ -278,10 +274,6 @@ FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID
                 {
                     ActualBuyPrice = 0;
                 }
-                else
-                {
-                    ActualBuyPrice = FMath::RoundToInt(ActualBuyPrice * It->PriceMultiplier);
-                }
                 
                 ItemData.Price = ActualBuyPrice;
                 ItemData.bIsAvailable = (ItemData.StockCount != 0);
@@ -332,10 +324,6 @@ FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID
                     if (Candidates[i].bIsFree)
                     {
                         ActualBuyPrice = 0;
-                    }
-                    else
-                    {
-                        ActualBuyPrice = FMath::RoundToInt(ActualBuyPrice * Candidates[i].PriceMultiplier);
                     }
                     
                     ItemData.Price = ActualBuyPrice;

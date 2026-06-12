@@ -13,6 +13,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "GAS/ERNAttributeSet.h"
+#include "Kismet/GameplayStatics.h"
 
 AERNMeleeWeapon::AERNMeleeWeapon()
 {
@@ -105,7 +106,11 @@ void AERNMeleeWeapon::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActo
 	// 히트 이펙트 - 모든 클라이언트에 멀티캐스트
 	if (HitEffect)
 	{
-		Multicast_PlayHitEffect(SweepResult.ImpactPoint, SweepResult.ImpactNormal.Rotation());
+		FRotator Rotation = SweepResult.ImpactNormal.Rotation();
+		Rotation.Pitch += FMath::FRandRange(-5.0f , 5.0f);
+		Rotation.Yaw += FMath::FRandRange(-5.0f , 5.0f);
+		Rotation.Roll += FMath::FRandRange(-5.0f , 5.0f);
+		Multicast_PlayHitEffect(SweepResult.ImpactPoint, Rotation);
 	}
 
 	// 공격자에게 Hit Confirmation 카메라 흔들림 (Client RPC → 공격자 본인만 흔들림)
@@ -128,6 +133,10 @@ void AERNMeleeWeapon::Multicast_PlayHitEffect_Implementation(FVector Location, F
 	if (HitEffect)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), HitEffect, Location, Rotation);
+	}
+	if (HitSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, Location, Rotation);
 	}
 }
 

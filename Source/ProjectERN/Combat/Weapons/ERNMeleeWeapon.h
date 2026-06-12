@@ -54,6 +54,9 @@ public:
 	// 히트 시 나이아가라 이펙트
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Melee")
 	UNiagaraSystem* HitEffect;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Melee")
+	USoundBase* HitSound;
 
 	// 적 명중 시 공격자 카메라 흔들림 (Hit Confirmation)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Melee|CameraShake")
