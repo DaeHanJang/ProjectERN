@@ -138,6 +138,17 @@ public:
 	void MarkEasyModeReviveUsed() { bEasyModeReviveUsed = true; }
 	void ResetEasyModeRunGuard() { bEasyModeReviveUsed = false; }
 
+	// ===== ImmortalMode (호스트 전용 게임플레이 옵션) =====
+	// 켜지면 최종 자기장 전원 탈락 시 횟수 제한 없이 매번 전원 부활 (런 가드 없음, EasyMode보다 우선)
+	UPROPERTY(BlueprintReadWrite, Category = "Settings|ImmortalMode")
+	bool bImmortalModeEnabled = false;
+
+	UFUNCTION(BlueprintCallable, Category = "Settings|ImmortalMode")
+	void SetImmortalModeEnabled(bool bEnabled) { bImmortalModeEnabled = bEnabled; }
+
+	UFUNCTION(BlueprintPure, Category = "Settings|ImmortalMode")
+	bool IsImmortalModeEnabled() const { return bImmortalModeEnabled; }
+
 private:
 	// EasyMode 1회 부활 사용 여부 (런 가드, BP 노출 불필요)
 	bool bEasyModeReviveUsed = false;
