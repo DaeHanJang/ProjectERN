@@ -343,6 +343,19 @@ void AERNPlayerController::RegisterHUDWidget(UUserWidget* Widget)
 	if (Widget)
 	{
 		ManagedHUDWidgets.AddUnique(Widget);
+
+		// 등록하는 시점에 이미 컷신이 재생 중이라면 즉시 숨김 처리 (호스트 등 타이밍 이슈 방어)
+		if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr)
+		{
+			if (UERNCutsceneSubsystem* Cutscene = GI->GetSubsystem<UERNCutsceneSubsystem>())
+			{
+				if (Cutscene->IsPlayingCutscene())
+				{
+					CachedHUDVisibilities.Add(Widget, Widget->GetVisibility());
+					Widget->SetVisibility(ESlateVisibility::Collapsed);
+				}
+			}
+		}
 	}
 }
 

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "GAS/ERNAttributeSet.h"
+#include "UI/ERNUIManagerSubsystem.h"
 #include "ERNGoldWidget.generated.h"
 
 class UTextBlock;
@@ -28,6 +29,10 @@ protected:
 private:
 	// 골드 변경 핸들러
 	void OnGoldChanged(const FOnAttributeChangeData& Data);
+	
+	// UI 상태 변경 핸들러
+	UFUNCTION()
+	void OnUIStateChanged(EERNUIType UIType);
 	
 	void UpdateGoldText();
 	

@@ -11,6 +11,7 @@ class AERNProjectileBase;
 class UBoxComponent;
 class UMotionWarpingComponent;
 class USoundBase;
+class UNiagaraSystem;
 
 USTRUCT(BlueprintType)
 struct FEnemyHitboxConfig
@@ -89,6 +90,10 @@ public:
 	// 히트 사운드를 모든 머신에서 재생 (Unreliable — 빈도 높을 수 있고 놓쳐도 OK)
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayHitSound(USoundBase* Sound, FVector Location);
+
+	// 반격 차지 연출(나이아가라 + 사운드)을 모든 머신에서 재생 (Reliable — 발사 예고라 놓치면 안 됨)
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayCounterChargeFX(UNiagaraSystem* System, USoundBase* Sound, FVector Location);
 
 protected:
 	virtual void BeginPlay() override;
@@ -244,6 +249,11 @@ public:
 	void SetHitboxOverride(bool bDamage, float Damage, bool bStagger, float StaggerPower, bool bMaxHealthPercent, float MaxHealthPercent);
 	void ClearHitboxOverride();
 
+	// NotifyState 구간 동안 받은 데미지 누적 추적 (임계치 도달 시 반격 투사체 발사용, 서버 전용)
+	void StartDamageAccumulation();
+	void StopDamageAccumulation();
+	float GetAccumulatedDamage() const { return AccumulatedDamage; }
+
 protected:
 	// 드랍 처리
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
@@ -264,6 +274,10 @@ private:
 	float ActiveStaggerOverride = 0.f;
 	bool  bActiveMaxHealthPercentOverride = false;
 	float ActiveMaxHealthPercentOverride = 0.f;
+
+	// NotifyState 구간 데미지 누적 (StartDamageAccumulation ~ StopDamageAccumulation 사이 TakeDamage에서 가산)
+	bool  bTrackAccumulatedDamage = false;
+	float AccumulatedDamage = 0.f;
 
 	UFUNCTION()
 	void OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,

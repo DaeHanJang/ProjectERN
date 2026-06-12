@@ -12,10 +12,27 @@ void UERNGoldWidget::NativeConstruct()
 	Super::NativeConstruct();
 	
 	RefreshFromCurrentCharacter();
+	
+	if (ULocalPlayer* LocalPlayer = GetOwningLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			UIManager->OnUIStateChanged.AddDynamic(this, &UERNGoldWidget::OnUIStateChanged);
+			OnUIStateChanged(UIManager->GetActiveUIType());
+		}
+	}
 }
 
 void UERNGoldWidget::NativeDestruct()
 {
+	if (ULocalPlayer* LocalPlayer = GetOwningLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			UIManager->OnUIStateChanged.RemoveDynamic(this, &UERNGoldWidget::OnUIStateChanged);
+		}
+	}
+
 	// 골드 갱신 타이머 중지
 	if (GetWorld())
 	{
@@ -78,6 +95,18 @@ void UERNGoldWidget::RefreshFromCurrentCharacter()
 			
 			UpdateGoldText();
 		}
+	}
+}
+
+void UERNGoldWidget::OnUIStateChanged(EERNUIType UIType)
+{
+	if (UIType == EERNUIType::None || UIType == EERNUIType::Inventory)
+	{
+		SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
+	else
+	{
+		SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 
