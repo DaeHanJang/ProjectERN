@@ -2,6 +2,7 @@
 
 #include "UI/ERNUIManagerSubsystem.h"
 #include "UI/ERNConfirmPurchaseWidget.h"
+#include "Subsystem/ERNCutsceneSubsystem.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogUIManager, Log, All);
 
@@ -22,6 +23,19 @@ bool UERNUIManagerSubsystem::RequestOpenUI(EERNUIType UIType)
 	if (ActiveUIType == UIType)
 	{
 		return true;
+	}
+
+	// 컷신 중에는 전체화면 UI(메뉴, 인벤토리 등)를 열 수 없도록 차단
+	if (UGameInstance* GI = GetLocalPlayer()->GetGameInstance())
+	{
+		if (UERNCutsceneSubsystem* Cutscene = GI->GetSubsystem<UERNCutsceneSubsystem>())
+		{
+			if (Cutscene->IsPlayingCutscene())
+			{
+				UE_LOG(LogUIManager, Warning, TEXT("[UIManager] 컷신 재생 중이므로 UI [%d] 열기가 차단되었습니다."), (int32)UIType);
+				return false;
+			}
+		}
 	}
 
 	// 다른 UI가 열려있으면 → 거부

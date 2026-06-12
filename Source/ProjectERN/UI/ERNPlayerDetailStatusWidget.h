@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "GameplayEffectTypes.h"
+#include "Inventory/Data/ERNInventoryList.h"
 #include "ERNPlayerDetailStatusWidget.generated.h"
 
 class UAbilitySystemComponent;
@@ -97,6 +98,11 @@ protected:
 private:
 	// 캐싱된 ASC
 	TWeakObjectPtr<UAbilitySystemComponent> CachedASC;
+
+	UFUNCTION()
+	void OnEquipmentSlotChanged(const FInventoryItemEntry& Entry);
+
+	float GetWeaponDamage() const;
 
 	// 델리게이트 핸들 보관용
 	FDelegateHandle HealthChangedDelegateHandle;
