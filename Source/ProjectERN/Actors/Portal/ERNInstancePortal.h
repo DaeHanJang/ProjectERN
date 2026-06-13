@@ -64,7 +64,7 @@ protected:
 
 	// 도착 지점 액터들 (레벨에 배치 후 드래그, 인원수만큼 권장 — 3명 분산)
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Portal")
-	TArray<TObjectPtr<AActor>> DestinationPoints;
+	TArray<TObjectPtr<AERNPortalDestinationPoint>> DestinationPoints;
 
 	// 도착 지점이 모자랄 때 첫 지점 주위로 흩는 반경
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal", meta = (ClampMin = "0.0"))

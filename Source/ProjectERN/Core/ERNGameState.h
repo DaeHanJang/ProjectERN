@@ -7,6 +7,7 @@
 #include "World/Data/ERNDayNightCycleState.h"
 #include "ERNGameState.generated.h"
 
+class AERNPortalDestinationPoint;
 class ULevelSequence;
 class AERNPlayerState;
 class AProjectERNCharacter;
@@ -223,11 +224,18 @@ public:
 	void RemoveInstancePortalState(AERNPlayerState* PlayerState);
 	//  인스턴스 포탈 사용중인 플레이어 수
 	int32 GetInstancePortalInPlayer() const { return InstancePortalInPlayer.Num(); }
+
+	void SetActiveInstancePortalDestinationPoint(AERNPortalDestinationPoint* PortalDestinationPoint);
+	AERNPortalDestinationPoint* GetActiveInstancePortalDestinationPoint() const;
+	void ClearActiveInstancePortalDestinationPoint();
 	
 private:
-	
 	//  인스턴스 포탈 사용중인 플레이어
 	UPROPERTY()
 	TSet<TObjectPtr<AERNPlayerState>> InstancePortalInPlayer;
+	
+	//  활성화 된 인스턴스 포탈의 DestinationPoint
+	UPROPERTY()
+	TObjectPtr<AERNPortalDestinationPoint> ActiveInstancePortalDestinationPoint;
 #pragma endregion InstancePortal
 };
