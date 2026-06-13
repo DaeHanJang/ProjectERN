@@ -14,6 +14,7 @@
 #include "EngineUtils.h"
 #include "ERNPlayerController.h"
 #include "ERNPlayerStatusTable.h"
+#include "Core/ERNGameInstance.h"
 #include "ERNSkillNiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
@@ -1149,9 +1150,17 @@ void AProjectERNCharacter::DoLook(float Yaw, float Pitch)
 
 	if (GetController() != nullptr)
 	{
+		// 설정에서 마우스 감도 배율 가져오기 (없으면 1.0배)
+		float Sensitivity = 1.0f;
+		UERNGameInstance* GameInstance = Cast<UERNGameInstance>(GetGameInstance());
+		if (GameInstance)
+		{
+			Sensitivity = GameInstance->GetMouseSensitivityMultiplier();
+		}
+
 		// add yaw and pitch input to controller
-		AddControllerYawInput(Yaw);
-		AddControllerPitchInput(Pitch);
+		AddControllerYawInput(Yaw * Sensitivity);
+		AddControllerPitchInput(Pitch * Sensitivity);
 	}
 }
 

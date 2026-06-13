@@ -697,6 +697,32 @@ float UERNGameInstance::GetSFXVolume() const
 	return CachedSettings ? CachedSettings->SFXVolume : 1.0f;
 }
 
+// ===== 설정: 입력 =====
+
+void UERNGameInstance::SetMouseSensitivity(float Sensitivity)
+{
+	if (!CachedSettings) return;
+	CachedSettings->MouseSensitivity = FMath::Clamp(Sensitivity, 0.0f, 1.0f);
+	SaveSettings();
+}
+
+float UERNGameInstance::GetMouseSensitivity() const
+{
+	return CachedSettings ? CachedSettings->MouseSensitivity : 0.5f;
+}
+
+float UERNGameInstance::GetMouseSensitivityMultiplier() const
+{
+	const float Slider = CachedSettings ? CachedSettings->MouseSensitivity : 0.5f;
+
+	// 중앙(0.5)을 기본 1.0배로 유지 — 하단 절반은 0.1~1.0, 상단 절반은 1.0~3.0으로 매핑
+	if (Slider <= 0.5f)
+	{
+		return FMath::GetMappedRangeValueClamped(FVector2D(0.0f, 0.5f), FVector2D(0.1f, 1.0f), Slider);
+	}
+	return FMath::GetMappedRangeValueClamped(FVector2D(0.5f, 1.0f), FVector2D(1.0f, 3.0f), Slider);
+}
+
 // ===== 설정: 비디오 =====
 
 void UERNGameInstance::SetWindowMode(int32 Mode)

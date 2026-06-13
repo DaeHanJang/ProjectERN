@@ -175,6 +175,18 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Settings|Audio")
 	float GetSFXVolume() const;
 
+	// ===== 설정: 입력 =====
+
+	// 슬라이더 값(0~1) 설정/조회 — 볼륨과 동일하게 슬라이더에 직접 바인딩
+	UFUNCTION(BlueprintCallable, Category = "Settings|Input")
+	void SetMouseSensitivity(float Sensitivity);
+	UFUNCTION(BlueprintPure, Category = "Settings|Input")
+	float GetMouseSensitivity() const;
+
+	// 슬라이더 값을 실제 카메라 입력 배율로 매핑 (0.5 = 1.0배). DoLook에서 사용
+	UFUNCTION(BlueprintPure, Category = "Settings|Input")
+	float GetMouseSensitivityMultiplier() const;
+
 	// ===== 설정: 비디오 =====
 
 	// 0=Fullscreen, 1=WindowedFullscreen, 2=Windowed
