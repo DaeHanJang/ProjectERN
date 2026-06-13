@@ -143,7 +143,17 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 		{
 			continue;
 		}
-
+		
+		// 개별 플레이어 자기장 무적 적용
+		if (ZoneManager)
+		{
+			if (AERNPlayerController* ERNPC = Cast<AERNPlayerController>(Pawn->GetController()))
+			{
+				ZoneManager->SetIgnoreNightRainZone(ERNPC, bEntering);
+			}
+		}
+		
+		
 		FTransform Dest;
 		if (bEntering)
 		{

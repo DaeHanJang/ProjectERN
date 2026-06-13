@@ -196,10 +196,12 @@ void ANightRainZoneManager::ResumeZoneProgress_ServerOnly()
 
 void ANightRainZoneManager::SetIgnoreNightRainZone(AERNPlayerController* PlayerController, bool bIgnore)
 {
-	if (PlayerController ==	nullptr)
+	if (HasAuthority() == false || PlayerController ==	nullptr)
 	{
 		return;
 	}
+	
+	PlayerController->SetIgnoreNightRainZone_ServerOnly(bIgnore);
 }
 
 FVector ANightRainZoneManager::FindNearestNightLordGraceSafeLocation(const APawn* Pawn) const
