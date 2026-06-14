@@ -33,4 +33,8 @@ public:
 	// DLSS 품질 모드 (UDLSSMode 값, 4 = Quality) — 플러그인 의존 피하려고 int32로 저장
 	UPROPERTY(BlueprintReadWrite, Category = "Video")
 	int32 DLSSMode = 4;
+
+	// 마우스 감도 슬라이더 값 (0.0 ~ 1.0, 0.5 = 기본 1.0배). 실제 배율은 GameInstance에서 매핑
+	UPROPERTY(BlueprintReadWrite, Category = "Input")
+	float MouseSensitivity = 0.5f;
 };
