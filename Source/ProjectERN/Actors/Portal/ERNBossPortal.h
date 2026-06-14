@@ -11,6 +11,7 @@ class UBoxComponent;
 class UNiagaraComponent;
 class AProjectERNCharacter;
 class UPrimitiveComponent;
+class UUserWidget;
 
 /**
  * 최종 보스맵 이동용 포탈
@@ -44,6 +45,10 @@ protected:
 	// 이동할 보스맵 이름
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal")
 	FString BossMapName = TEXT("Persistent_01");
+
+	// 이 포탈 전용 로딩 위젯 (비워두면 GameInstance 기본 로딩 위젯 사용)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Portal")
+	TSubclassOf<UUserWidget> LoadingWidgetOverride = nullptr;
 
 	// 현재 포탈 안에 있는 플레이어 수 (UI 피드백용 — 클라에 리플)
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Portal")

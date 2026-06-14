@@ -128,7 +128,9 @@ void UERNCutsceneSubsystem::EnsureLoadingWidgetInViewport()
 		return;
 	}
 
-	if (!GameInst->GetLoadingWidgetClass())
+	// 오버라이드가 지정돼 있으면 그걸, 아니면 GameInstance 기본 로딩 위젯을 사용
+	TSubclassOf<UUserWidget> WidgetClass = ActiveLoadingWidgetClass ? ActiveLoadingWidgetClass : GameInst->GetLoadingWidgetClass();
+	if (!WidgetClass)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[CutsceneSubsystem] LoadingWidgetClass not set in GameInstance!"));
 		return;
@@ -142,7 +144,7 @@ void UERNCutsceneSubsystem::EnsureLoadingWidgetInViewport()
 	}
 
 	// GameInstance를 소유자로 위젯 생성 (PC 파괴와 무관하게 유지)
-	LoadingWidget = CreateWidget<UUserWidget>(GetGameInstance(), GameInst->GetLoadingWidgetClass());
+	LoadingWidget = CreateWidget<UUserWidget>(GetGameInstance(), WidgetClass);
 	if (LoadingWidget)
 	{
 		// 낮은 레벨의 Slate 위젯으로 추가 (맵 전환에도 유지됨 — 클라는 OnPostLoadMapWithWorld에서 재부착)
@@ -157,7 +159,7 @@ void UERNCutsceneSubsystem::EnsureLoadingWidgetInViewport()
 	}
 }
 
-void UERNCutsceneSubsystem::ShowLoadingScreen()
+void UERNCutsceneSubsystem::ShowLoadingScreen(TSubclassOf<UUserWidget> OverrideWidgetClass)
 {
 	UE_LOG(LogTemp, Warning, TEXT("[CutsceneSubsystem] ShowLoadingScreen called. bIsLoading=%d"), bIsLoading);
 
@@ -166,6 +168,9 @@ void UERNCutsceneSubsystem::ShowLoadingScreen()
 		UE_LOG(LogTemp, Warning, TEXT("[CutsceneSubsystem] Already loading, skip"));
 		return;
 	}
+
+	// 이번 로딩에 사용할 위젯 클래스 기억 (비어있으면 기본 위젯 폴백) — 맵 전환 후 재부착에서도 사용
+	ActiveLoadingWidgetClass = OverrideWidgetClass;
 
 	bIsLoading = true;
 	OnLoadingStarted.Broadcast();
@@ -197,6 +202,9 @@ void UERNCutsceneSubsystem::HideLoadingScreen()
 	{
 		LoadingWidget = nullptr;
 	}
+
+	// 다음 로딩은 다시 기본 위젯부터 시작하도록 오버라이드 리셋
+	ActiveLoadingWidgetClass = nullptr;
 
 	OnLoadingFinished.Broadcast();
 

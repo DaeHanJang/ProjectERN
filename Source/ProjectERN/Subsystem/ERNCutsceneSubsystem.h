@@ -46,9 +46,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Loading")
 	FOnLoadingFinished OnLoadingFinished;
 
-	// 로딩 화면 표시
+	// 로딩 화면 표시 (OverrideWidgetClass가 지정되면 그 위젯, 비어있으면 GameInstance 기본 로딩 위젯 사용)
 	UFUNCTION(BlueprintCallable, Category = "Loading")
-	void ShowLoadingScreen();
+	void ShowLoadingScreen(TSubclassOf<UUserWidget> OverrideWidgetClass = nullptr);
 
 	// 로딩 화면 숨김
 	UFUNCTION(BlueprintCallable, Category = "Loading")
@@ -140,6 +140,11 @@ private:
 	// 현재 로딩 위젯
 	UPROPERTY()
 	UUserWidget* LoadingWidget = nullptr;
+
+	// 이번 로딩에 사용할 오버라이드 위젯 클래스 (비어있으면 GameInstance 기본 사용)
+	// 맵 전환 후 재부착(EnsureLoadingWidgetInViewport) 때도 같은 위젯을 쓰도록 기억해둔다
+	UPROPERTY()
+	TSubclassOf<UUserWidget> ActiveLoadingWidgetClass = nullptr;
 
 	// Slate 위젯 레퍼런스 (RemoveViewportWidgetContent용)
 	TSharedPtr<SWidget> LoadingSlateWidget;

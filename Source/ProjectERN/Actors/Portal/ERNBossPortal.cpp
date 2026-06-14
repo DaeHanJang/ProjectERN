@@ -159,7 +159,8 @@ void AERNBossPortal::Multicast_ShowLoadingScreen_Implementation()
 	{
 		if (UERNCutsceneSubsystem* CutsceneSubsystem = GI->GetSubsystem<UERNCutsceneSubsystem>())
 		{
-			CutsceneSubsystem->ShowLoadingScreen();
+			// 포탈에 전용 위젯이 할당돼 있으면 그걸, 없으면 내부에서 기본 위젯으로 폴백
+			CutsceneSubsystem->ShowLoadingScreen(LoadingWidgetOverride);
 		}
 	}
 }
