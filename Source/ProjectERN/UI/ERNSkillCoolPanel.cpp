@@ -7,6 +7,8 @@
 #include "ERNSkillCoolSlot.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "GAS/ERNGameplayTags.h"
+#include "UI/ERNUIManagerSubsystem.h"
+#include "Engine/LocalPlayer.h"
 
 void UERNSkillCoolPanel::NativeConstruct()
 {
@@ -14,6 +16,16 @@ void UERNSkillCoolPanel::NativeConstruct()
 
 	// 현재 캐릭터 기준으로 슬롯을 다시 연결
 	RefreshFromCurrentCharacter();
+
+	// 옵션/메뉴 등 전체화면 UI가 열리면 함께 숨겨지도록 UI 매니저 상태 변경을 구독
+	if (const ULocalPlayer* LocalPlayer = GetOwningLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			UIManager->OnUIStateChanged.AddUniqueDynamic(this, &UERNSkillCoolPanel::HandleUIStateChanged);
+			HandleUIStateChanged(UIManager->GetActiveUIType()); // 초기 상태 반영
+		}
+	}
 }
 
 void UERNSkillCoolPanel::NativeDestruct()
@@ -24,7 +36,28 @@ void UERNSkillCoolPanel::NativeDestruct()
 		World->GetTimerManager().ClearTimer(InitializeRetryTimerHandle);
 	}
 
+	// UI 매니저 구독 해제
+	if (const ULocalPlayer* LocalPlayer = GetOwningLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			UIManager->OnUIStateChanged.RemoveDynamic(this, &UERNSkillCoolPanel::HandleUIStateChanged);
+		}
+	}
+
 	Super::NativeDestruct();
+}
+
+void UERNSkillCoolPanel::HandleUIStateChanged(EERNUIType UIType)
+{
+	if (UIType != EERNUIType::None)
+	{
+		SetVisibility(ESlateVisibility::Hidden);
+	}
+	else
+	{
+		SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
 }
 
 void UERNSkillCoolPanel::TryInitializeSkillSlots()

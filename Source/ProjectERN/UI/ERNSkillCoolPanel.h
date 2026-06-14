@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "ERNSkillCoolPanel.generated.h"
 
+enum class EERNUIType : uint8;
 class UERNSkillCoolSlot;
 
 /**
@@ -33,6 +34,10 @@ protected:
 private:
 	// Pawn과 ASC 준비 여부를 확인하고 슬롯을 초기화, 준비가 끝나지 않았다면 잠시 후 다시 호출
 	void TryInitializeSkillSlots();
+
+	// UI 매니저의 상호작용 UI 상태 변경 시 숨김/표시 처리 (옵션/메뉴 등이 열리면 숨김)
+	UFUNCTION()
+	void HandleUIStateChanged(EERNUIType UIType);
 
 	FTimerHandle InitializeRetryTimerHandle;
 	
