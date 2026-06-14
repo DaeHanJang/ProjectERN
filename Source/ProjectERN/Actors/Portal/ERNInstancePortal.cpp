@@ -111,6 +111,48 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 		bEntering = (InteractorPS->bIsInInstance == false);
 	}
 
+	
+	if (bEntering)
+	{
+		// 목적지의 스트리밍 소스 활성화
+		AERNPortalDestinationPoint* DestinationPoint = DestinationPoints[0].Get();
+		if (DestinationPoint == nullptr)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Active DestinationPoint is null"));
+			return;
+		}
+		
+		DestinationPoint->EnableDungeonStreamingSource();
+		// 활성화 된 스트리밍 소스를 GS에 등록
+		GS->SetActiveInstancePortalDestinationPoint(DestinationPoint);
+		
+		// 입장 - 데이터 레이어 활성화
+		if (SetDungeonDataLayerActive(true) == false)
+		{
+			UE_LOG(LogTemp,Warning, TEXT("던전 활성화 실패. 텔레포트를 시작하지 않습니다."));
+			return;
+		}
+	}
+	else
+	{
+		// 활성화 된 스트리밍 소스 비활성화
+		AERNPortalDestinationPoint* DestinationPoint = GS->GetActiveInstancePortalDestinationPoint();
+		if (DestinationPoint == nullptr)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Active DestinationPoint is null"));
+			return;
+		}
+		DestinationPoint->DisableDungeonStreamingSource();
+		GS->ClearActiveInstancePortalDestinationPoint();
+		
+		// 퇴장 - 데이터 레이어 비활성화
+		if (SetDungeonDataLayerActive(false) == false)
+		{
+			// 복귀는 데이터 레이어 비활성화 결과와 상관없이 진행
+			UE_LOG(LogTemp, Warning, TEXT("던전 레이어 비활성화 실패. 복귀는 진행됩니다."));
+		}
+	}
+	
 	// 동적 스폰 포탈은 에디터 참조가 없으므로 런타임에 확보
 	ANightRainZoneManager* ZoneManager = ResolveNightRainZoneManager();
 	
@@ -157,13 +199,6 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 		FTransform Dest;
 		if (bEntering)
 		{
-			// 입장 - 데이터 레이어 활성화
-			if (SetDungeonDataLayerActive(true) == false)
-			{
-				UE_LOG(LogTemp,Warning, TEXT("던전 활성화 실패. 텔레포트를 시작하지 않습니다."));
-				return;
-			}
-			
 			// 입장 — 현재 필드 위치를 각자 저장한 뒤 도착 지점으로 이동
 			ERNPlayerState->SavedFieldTransform = Pawn->GetActorTransform();
 			Dest = ResolveDestination(Index++);
@@ -172,13 +207,6 @@ void AERNInstancePortal::Interact_Implementation(APlayerController* PlayerContro
 		{
 			// 복귀 — 저장해둔 필드 위치로 순간이동 (저장하지 않음)
 			Dest = ERNPlayerState->SavedFieldTransform;
-			
-			// 복귀 - 데이터 레이어 비활성화
-			if (SetDungeonDataLayerActive(false) == false)
-			{
-				// 복귀는 데이터 레이어 관리와 상관없이 가능하도록
-				UE_LOG(LogTemp, Warning, TEXT("던전 비활성화 실패"));
-			}
 		}
 
 		// 서버에서 옮기면 RepMovement로 모든 클라에 복제

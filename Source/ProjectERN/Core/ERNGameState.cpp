@@ -199,6 +199,26 @@ void AERNGameState::RemoveInstancePortalState(AERNPlayerState* PlayerState)
 	}
 }
 
+void AERNGameState::SetActiveInstancePortalDestinationPoint(AERNPortalDestinationPoint* PortalDestinationPoint)
+{
+	if (HasAuthority() == false || PortalDestinationPoint == nullptr)
+	{
+		return;
+	}
+	
+	ActiveInstancePortalDestinationPoint = PortalDestinationPoint;
+}
+
+AERNPortalDestinationPoint* AERNGameState::GetActiveInstancePortalDestinationPoint() const
+{
+	return ActiveInstancePortalDestinationPoint;
+}
+
+void AERNGameState::ClearActiveInstancePortalDestinationPoint()
+{
+	ActiveInstancePortalDestinationPoint = nullptr;
+}
+
 void AERNGameState::CheckAllPlayersReady()
 {
 	// 서버에서만 실행
