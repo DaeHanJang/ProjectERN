@@ -632,8 +632,7 @@ void UERNInventoryWidget::UpdateVisuals()
 		{
 			WBP_ItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
 			if (WBP_EquippedItemToolTip) WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
-			// if (WBP_PlayerDetailStatus) 
-			// { ... }
+			if (WBP_PlayerDetailStatus) WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 		}
 		else
 		{
@@ -667,6 +666,7 @@ void UERNInventoryWidget::UpdateVisuals()
 			{
 				WBP_ItemToolTip->UpdateTooltip(ItemID, 0); // 가격 0으로 표시
 				WBP_ItemToolTip->SetVisibility(ESlateVisibility::HitTestInvisible);
+				if (WBP_PlayerDetailStatus) WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::Collapsed);
 				
 				bool bIsHoveringEquipmentSlot = (DisplayIndex == SlotWidgets.Num() + 1);
 				bool bIsHoveringConsumableSlot = (DisplayIndex == SlotWidgets.Num());
@@ -729,8 +729,7 @@ void UERNInventoryWidget::UpdateVisuals()
 			{
 				WBP_ItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
 				if (WBP_EquippedItemToolTip) WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
-				// if (WBP_PlayerDetailStatus) 
-				// { ... }
+				if (WBP_PlayerDetailStatus) WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 			}
 		}
 	}
