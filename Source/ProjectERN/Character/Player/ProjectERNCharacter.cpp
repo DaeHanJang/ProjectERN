@@ -112,17 +112,18 @@ void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVe
 
 // ===== 슬라이스 프리즈 (보스 쾌속 베기 투사체) =====
 
-void AProjectERNCharacter::ApplySliceFreeze(float DelayedDamage, float StaggerPower, const FVector& HitOrigin, float Duration,
-	AController* InstigatorController, AActor* DamageCauser,
-	USoundBase* DamageSound, USoundAttenuation* DamageSoundAttenuation,
-	UNiagaraSystem* DamageEffect)
+void AProjectERNCharacter::ApplySliceFreeze(float DelayedDamage, float StaggerPower, const FVector& HitOrigin,
+                                            float Duration,
+                                            AController* InstigatorController, AActor* DamageCauser,
+                                            USoundBase* DamageSound, USoundAttenuation* DamageSoundAttenuation,
+                                            UNiagaraSystem* DamageEffect)
 {
 	// 서버 권위 + 생존 상태에서만, 이미 프리즈 중이면 중복 적용 무시
 	if (!HasAuthority() || !IsAlive() || bIsDead || bIsSliceFrozen)
 	{
 		return;
 	}
-	
+
 	// 궁극기 사용 중 피격이면 궁극기를 끊고 프리즈 진행 (시전 취소 → 궁극기 무적도 함께 해제)
 	if (AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_UsingSkill_Ultimate))
 	{
@@ -251,7 +252,8 @@ void AProjectERNCharacter::EndSliceFreeze()
 	PendingSliceEffect = nullptr;
 }
 
-void AProjectERNCharacter::Multicast_PlaySliceDamageSound_Implementation(USoundBase* Sound, USoundAttenuation* Attenuation)
+void AProjectERNCharacter::Multicast_PlaySliceDamageSound_Implementation(
+	USoundBase* Sound, USoundAttenuation* Attenuation)
 {
 	if (!Sound)
 	{
@@ -384,7 +386,7 @@ AProjectERNCharacter::AProjectERNCharacter()
 	DownedStatusWidgetComponent->SetDrawSize(FVector2D(96.f, 96.f));
 	DownedStatusWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	DownedStatusWidgetComponent->SetWindowFocusable(false);
-	
+
 	// GAS 컴포넌트는 부모 클래스(ERNCharacterBase)에서 생성됨
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character)
@@ -513,7 +515,7 @@ void AProjectERNCharacter::BeginPlay()
 
 	// 기절 위젯 초기화
 	InitializeDownedStatusWidget();
-	
+
 	// 스폰 직후 즉시 OutOfCombat - 적이 감지하면 NotifyDetectedBy로 해제됨
 	if (HasAuthority())
 	{
@@ -524,13 +526,13 @@ void AProjectERNCharacter::BeginPlay()
 			CombatLeashTimerHandle, this,
 			&AProjectERNCharacter::CheckCombatLeash, 0.5f, true);
 	}
-	
+
 	// 부활 완료 바인딩
 	if (HasAuthority() && DownedComponent)
 	{
 		DownedComponent->OnReviveGaugeDepleted.AddUObject(this, &AProjectERNCharacter::CompleteRevive);
 	}
-	
+
 	if (LockOnComponent && LockOnDetector && FollowCamera)
 	{
 		LockOnComponent->Initialize(LockOnDetector, FollowCamera);
@@ -608,7 +610,7 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 	{
 		return;
 	}
-	
+
 	// 죽었다면 상호작용 불가
 	if (!IsAlive())
 	{
@@ -637,7 +639,7 @@ void AProjectERNCharacter::UpdateInteractionDetector()
 		{
 			continue;
 		}
-		
+
 		if (const AERNItemActor* ItemActor = Cast<AERNItemActor>(Actor))
 		{
 			if (!ItemActor->CanBeInteractedBy(ERNController))
@@ -1060,7 +1062,7 @@ void AProjectERNCharacter::Move(const FInputActionValue& Value)
 	{
 		return;
 	}*/
-	
+
 	if ((bIsAttacking && !bCanMoveWhileAttacking) || bIsGettingHit || bIsUsingSkill)
 	{
 		return;
@@ -1221,7 +1223,7 @@ void AProjectERNCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode,
 		{
 			bCoyoteJumpAvailable = true;
 			GetWorldTimerManager().SetTimer(CoyoteTimerHandle, this,
-				&AProjectERNCharacter::EndCoyoteTime, CoyoteTime, false);
+			                                &AProjectERNCharacter::EndCoyoteTime, CoyoteTime, false);
 		}
 	}
 	else
@@ -1279,8 +1281,7 @@ void AProjectERNCharacter::DoJumpEnd()
 
 void AProjectERNCharacter::ExecuteJumpLaunch()
 {
-	// Jump();
-	
+	/*
 	UCharacterMovementComponent* Move = GetCharacterMovement();
 	if (!Move)
 	{
@@ -1306,6 +1307,23 @@ void AProjectERNCharacter::ExecuteJumpLaunch()
 
 		EndCoyoteTime();
 	}
+	*/
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	if (!Move)
+	{
+		return;
+	}
+
+	const bool bJumpAbilityActive = AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Combat_Jumping);
+
+	if (!bJumpAbilityActive)
+	{
+		return;
+	}
+
+	LaunchCharacter(FVector(0.f, 0.f, Move->JumpZVelocity), false, true);
+
+	EndCoyoteTime();
 }
 
 void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
@@ -1321,7 +1339,7 @@ void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
 	{
 		return;
 	}
-	
+
 	if (bIsDead)
 	{
 		return;
@@ -1371,11 +1389,11 @@ void AProjectERNCharacter::Server_SetLockOn_Implementation(bool bNewLockOn, FRot
 		{
 			LockOnComponent->ClearLockOn();
 		}
-		
+
 		ApplyLockOnState(false, GetActorRotation());
 		return;
 	}
-	
+
 	if (bNewLockOn)
 	{
 		const bool bServerLocked = LockOnComponent && LockOnComponent->TryLockOn();
@@ -1416,7 +1434,7 @@ void AProjectERNCharacter::Server_UpdateLockOnYaw_Implementation(float NewYaw)
 	{
 		return;
 	}
-	
+
 	DesiredLockOnYaw = NewYaw;
 }
 
@@ -1497,12 +1515,12 @@ void AProjectERNCharacter::Bird()
 
 void AProjectERNCharacter::Gold(int32 Amount)
 {
-	Server_GiveGold(Amount);	// 골드는 서버 권한 → 서버로 라우팅
+	Server_GiveGold(Amount); // 골드는 서버 권한 → 서버로 라우팅
 }
 
 void AProjectERNCharacter::Server_GiveGold_Implementation(int32 Amount)
 {
-	AddGold(Amount);			// 베이스의 서버측 골드 가산
+	AddGold(Amount); // 베이스의 서버측 골드 가산
 }
 
 void AProjectERNCharacter::SummonRideBird()
@@ -1750,14 +1768,14 @@ void AProjectERNCharacter::UpdateMovementSpeed()
 	}
 
 	// 특정 상태 동안 움직임 방지
-	if (LifeState == EERNPlayerLifeState::Collapsing ||	// 기절 
-	LifeState == EERNPlayerLifeState::Reviving ||		// 부활
-	LifeState == EERNPlayerLifeState::Respawning)		// 리스폰
+	if (LifeState == EERNPlayerLifeState::Collapsing || // 기절 
+		LifeState == EERNPlayerLifeState::Reviving || // 부활
+		LifeState == EERNPlayerLifeState::Respawning) // 리스폰
 	{
 		GetCharacterMovement()->MaxWalkSpeed = 0.f;
 		return;
 	}
-	
+
 	// 태그 부여 여부 확인 (대시 스킬)
 	const bool bIsDashSkill = AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_DashSkill);
@@ -2103,7 +2121,7 @@ void AProjectERNCharacter::Server_CacheLightAttackComboInput_Implementation(FRot
 	{
 		return;
 	}
-	
+
 	CacheActiveLightAttackComboInput(TargetRotation);
 }
 
@@ -2184,7 +2202,8 @@ void AProjectERNCharacter::ApplyPlayerRegenEffects()
 
 FVector AProjectERNCharacter::GetRollWorldDirection() const
 {
-	const bool bIsSprinting = AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_Movement_Sprinting);
+	const bool bIsSprinting = AbilitySystemComponent && AbilitySystemComponent->HasMatchingGameplayTag(
+		TAG_State_Movement_Sprinting);
 
 	// LockOn + Sprint 중에는 컨트롤러/락온 방향이 아니라 실제 이동 방향을 사용한다.
 	if (bIsLockOn && bIsSprinting)
@@ -2197,7 +2216,7 @@ FVector AProjectERNCharacter::GetRollWorldDirection() const
 
 		return GetActorForwardVector();
 	}
-	
+
 	if (!CachedMoveInput.IsNearlyZero() && Controller)
 	{
 		const FRotator ControlRotation = Controller->GetControlRotation();
@@ -2294,7 +2313,7 @@ void AProjectERNCharacter::Server_LevelUp_Implementation()
 	}
 
 	const FName NextLevel(FString::FromInt(static_cast<int32>(AttributeSet->GetLevel()) + 1));;
-	
+
 	const FERNPlayerStatusTable* NewRow = StatusCurveTable->FindRow<FERNPlayerStatusTable>(
 		NextLevel, TEXT("TextLevelContext"));
 	if (!NewRow)
@@ -2561,7 +2580,7 @@ void AProjectERNCharacter::RefreshLifeStateTags()
 	}
 
 	// 죽음 태그
-	const bool bShouldApplyDownedTag = 
+	const bool bShouldApplyDownedTag =
 		LifeState == EERNPlayerLifeState::Collapsing ||
 		LifeState == EERNPlayerLifeState::Downed ||
 		LifeState == EERNPlayerLifeState::Reviving ||
@@ -2659,9 +2678,9 @@ void AProjectERNCharacter::EnterDownedState()
 
 	// 움직임 속도 제한 적용
 	UpdateMovementSpeed();
-	
+
 	GetWorldTimerManager().ClearTimer(DownedRespawnTimerHandle);
-	
+
 	DownedRespawnEndServerTime = 0.f;
 
 	// 리스폰 가능 여부 확인
@@ -2671,18 +2690,18 @@ void AProjectERNCharacter::EnterDownedState()
 		ForceNetUpdate();
 		return;
 	}
-	
+
 	// 카운트 다운 시간이 정해져 있지 않으면 즉시 리스폰 시작
 	if (DownedRespawnCountdownDuration <= 0.f)
 	{
 		CompleteDownedCountdown();
 		return;
 	}
-	
+
 	// 서버 기준 리스폰 종료 시간 세팅
-	DownedRespawnEndServerTime = 
+	DownedRespawnEndServerTime =
 		DownedRespawnCountdownDuration > 0.f ? GetSyncedServerWorldTimeSeconds() + DownedRespawnCountdownDuration : 0.f;
-	
+
 	// 리스폰 카운트다운 시작
 	GetWorldTimerManager().SetTimer(
 		DownedRespawnTimerHandle,
@@ -2863,10 +2882,10 @@ void AProjectERNCharacter::EnterRevivingState()
 
 	// 리스폰 타이머 정리
 	GetWorldTimerManager().ClearTimer(DownedRespawnTimerHandle);
-	
+
 	// 서버 리스폰 시간 정리
 	DownedRespawnEndServerTime = 0.f;
-	
+
 	// State 변경
 	SetLifeState(EERNPlayerLifeState::Reviving);
 
@@ -2901,7 +2920,7 @@ void AProjectERNCharacter::EnterRevivingState()
 
 	// 몽타주 재생
 	Multicast_PlayReviveMontage();
-	
+
 	// Fallback으로 최소 시간 설정
 	const float ReviveDuration = ReviveMontage ? ReviveMontage->GetPlayLength() : ReviveFallbackDuration;
 
@@ -2973,7 +2992,7 @@ void AProjectERNCharacter::Multicast_PlayReviveMontage_Implementation()
 	{
 		return;
 	}
-	
+
 	// 멀티캐스트로 부활 몽타주 재생
 	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 	{
@@ -2988,7 +3007,7 @@ void AProjectERNCharacter::CompleteDownedCountdown()
 	{
 		return;
 	}
-	
+
 	// 리스폰 불가 상태에서 안전장치
 	if (!CanAutoRespawnFromDowned())
 	{
@@ -2998,7 +3017,7 @@ void AProjectERNCharacter::CompleteDownedCountdown()
 		ForceNetUpdate();
 		return;
 	}
-	
+
 	// 리스폰 상태로 변경
 	EnterRespawningState();
 }
@@ -3039,7 +3058,7 @@ void AProjectERNCharacter::FinishRespawnDeathMontage()
 	{
 		return;
 	}
-	
+
 	// 리스폰 위치 설정
 	PendingRespawnTransform = ResolveRespawnTransform();
 	// 리스폰 지역 프리로드 시작
@@ -3146,7 +3165,7 @@ void AProjectERNCharacter::BeginRespawnPreload(const FTransform& RespawnTransfor
 	ERNPC->BeginRespawnPreloadStreaming(RespawnLocation, RespawnPreloadRadius);
 	// 클라이언트 프리로드
 	ERNPC->Client_BeginRespawnPreloadStreaming(RespawnLocation, RespawnPreloadRadius);
-	
+
 	GetWorldTimerManager().ClearTimer(RespawnPreloadCheckTimerHandle);
 	// 리스폰 위치 로딩 체크 타이머 시작
 	GetWorldTimerManager().SetTimer(
@@ -3271,7 +3290,7 @@ void AProjectERNCharacter::CleanupRespawnPreload()
 FTransform AProjectERNCharacter::ResolveRespawnTransform() const
 {
 	const FRotator RespawnRotation(0.f, GetActorRotation().Yaw, 0.f);
-	
+
 	// 자기장 매니저 설정
 	if (const ANightRainZoneManager* ZoneManager = FindNightRainZoneManager())
 	{
