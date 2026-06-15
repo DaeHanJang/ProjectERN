@@ -65,6 +65,12 @@ void AERNIntroBird::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 새마다 날갯짓 재생속도를 살짝 다르게 → 여러 새가 시간이 지나며 위상이 어긋나 똑같이 펄럭이지 않음
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->GlobalAnimRateScale = FMath::FRandRange(0.9f, 1.1f);
+	}
+
 	// HangBoneName 지정 시 본의 rest 위치 + HangPoint의 BP 위치를 캐싱 → Tick에서 본 delta 적용
 	if (HangPoint && GetMesh() && !HangBoneName.IsNone())
 	{
