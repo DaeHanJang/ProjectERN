@@ -100,7 +100,7 @@ void UERNGoldWidget::RefreshFromCurrentCharacter()
 
 void UERNGoldWidget::OnUIStateChanged(EERNUIType UIType)
 {
-	if (UIType == EERNUIType::None || UIType == EERNUIType::Inventory)
+	if (UIType == EERNUIType::None || UIType == EERNUIType::Inventory || UIType == EERNUIType::LevelUp)
 	{
 		SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	}
