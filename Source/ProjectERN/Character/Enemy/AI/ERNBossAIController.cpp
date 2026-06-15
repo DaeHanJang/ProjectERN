@@ -461,14 +461,40 @@ void AERNBossAIController::RemoveAggroTarget(AActor* Target)
 	{
 		return;
 	}
-	
+
+	// 제거 대상이 현재 타겟이었는지 먼저 확인 (제거 후엔 판단 불가)
+	const bool bWasCurrentTarget =
+		Blackboard && Blackboard->GetValueAsObject(TEXT("TargetActor")) == Target;
+
 	AggroTable.Remove(Target);
 	PerceivedPlayers.Remove(Target);
 
-	if (Blackboard && Blackboard->GetValueAsObject(TEXT("TargetActor")) == Target)
+	if (bWasCurrentTarget && Blackboard)
 	{
-		Blackboard->ClearValue(TEXT("TargetActor"));
-		CurrentTargetStartTime = 0.f;
-		CachedCurrentTarget.Reset();
+		// 현재 타겟이 빠지면 다음 후보를 즉시 선정해 한 틱도 멈추지 않게 함.
+		// 어그로 테이블을 기준으로 잡으므로 PerceivedPlayers 어긋남에도 안전하고,
+		// 무효 타겟이 빠진 직후라 락타임 무시하고 직접 전환한다.
+		AActor* NextTarget = GetHighestAggroTarget();
+		if (NextTarget)
+		{
+			SetTarget(NextTarget);
+		}
+		else
+		{
+			Blackboard->ClearValue(TEXT("TargetActor"));
+			CurrentTargetStartTime = 0.f;
+			CachedCurrentTarget.Reset();
+		}
 	}
+}
+
+void AERNBossAIController::NotifyTargetDowned(AActor* DownedTarget)
+{
+	if (!DownedTarget)
+	{
+		return;
+	}
+
+	// 어그로/타겟에서 제거하고, 현재 타겟이었다면 다음 후보로 즉시 전환
+	RemoveAggroTarget(DownedTarget);
 }

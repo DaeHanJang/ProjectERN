@@ -427,6 +427,11 @@ protected:
 
 	UFUNCTION()
 	void HandleCutsceneFinished();
+
+	// 컷신 진입 시 BP가 포커스/입력 모드를 쥐고 있는 UI를 강제로 닫게 하는 알림
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI|Cutscene")
+	void OnCutsceneForceCloseUI();
+	
 #pragma endregion CutsceneHUD
 
 	/** Minimap input action */

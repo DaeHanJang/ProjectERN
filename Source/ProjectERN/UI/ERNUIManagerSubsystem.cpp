@@ -73,6 +73,20 @@ void UERNUIManagerSubsystem::CloseActiveUI()
 	UE_LOG(LogUIManager, Log, TEXT("[UIManager] UI [%d] 닫힘"), (int32)ClosedType);
 }
 
+void UERNUIManagerSubsystem::ForceCloseAllUI()
+{
+	// 이미 None이어도 항상 브로드캐스트 (CloseActiveUI와 달리 early-return 없음)
+	ActiveUIType = EERNUIType::None;
+
+	// 연관 서브 팝업도 정리
+	CloseConfirmPurchasePopup();
+
+	// HUD 재표시 + 상호작용 게이트 해제를 위해 구독자에게 상태 갱신 통지
+	OnUIStateChanged.Broadcast(ActiveUIType);
+
+	UE_LOG(LogUIManager, Log, TEXT("[UIManager] ForceCloseAllUI — 상태 None 강제 + 재브로드캐스트"));
+}
+
 void UERNUIManagerSubsystem::RegisterConfirmPurchasePopup(UERNConfirmPurchaseWidget* NewPopup)
 {
 	// 이미 열려있는 팝업이 있다면 취소(닫기) 처리

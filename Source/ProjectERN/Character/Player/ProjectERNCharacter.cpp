@@ -2670,6 +2670,19 @@ void AProjectERNCharacter::EnterDownedState()
 		DownedComponent->EnterDownedState(DownedComponent->GetPenaltyStacks() + 1);
 	}
 
+	// 기절 즉시 보스에게 알려 타겟을 다른 생존자로 전환시킴 (1초 틱 대기/타겟 고착 방지)
+	if (HasAuthority())
+	{
+		for (TActorIterator<AERNBossCharacter> It(GetWorld()); It; ++It)
+		{
+			AERNBossAIController* BossAIC = Cast<AERNBossAIController>(It->GetController());
+			if (BossAIC)
+			{
+				BossAIC->NotifyTargetDowned(this);
+			}
+		}
+	}
+
 	// 이동 모드를 지상 보행으로 변경
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{

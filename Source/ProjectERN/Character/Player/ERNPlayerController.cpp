@@ -405,6 +405,25 @@ void AERNPlayerController::UnbindCutsceneEvents()
 
 void AERNPlayerController::HandleCutsceneStarted()
 {
+	// 컷신 진입 시 열린 인터랙티브 UI를 모두 닫아 포커스/입력 모드를 게임으로 회수
+	// (안 닫으면 컷신 종료 후 InputMode가 GameAndUI/UIOnly로 남아 입력이 안 먹음)
+	InventoryClose();
+	MinimapClose();
+	ClosePauseMenu();
+
+	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
+	if (UIManager)
+	{
+		UIManager->CloseActiveUI();
+	}
+
+	// 채팅 등 BP가 포커스를 쥐고 있는 UI를 닫도록 알림
+	OnCutsceneForceCloseUI();
+
+	// 남아있는 키보드 포커스까지 게임 뷰포트로 회수
+	SetInputMode(FInputModeGameOnly());
+	SetShowMouseCursor(false);
+
 	CachedHUDVisibilities.Reset();
 
 	for (const TObjectPtr<UUserWidget>& Widget : ManagedHUDWidgets)
@@ -432,6 +451,19 @@ void AERNPlayerController::HandleCutsceneFinished()
 	}
 
 	CachedHUDVisibilities.Reset();
+
+	// 컷신 종료 후 게임플레이 입력이 확실히 먹도록 입력 모드를 게임으로 고정
+	SetInputMode(FInputModeGameOnly());
+	SetShowMouseCursor(false);
+
+	// 컷신 동안 'UI 열림' 상태로 캐싱되어 숨겨진 채 복원된 HUD(스킬/퀵슬롯/골드 등 OnUIStateChanged 구독)와
+	// TryInteract 게이트를 정상화 — 인벤토리를 I로 닫았을 때와 동일하게 UI 상태 None을 재브로드캐스트한다.
+	// (HUD 복원 루프 뒤에 실행되어 캐시 타이밍과 무관하게 최종 보정)
+	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
+	if (UIManager)
+	{
+		UIManager->ForceCloseAllUI();
+	}
 }
 
 void AERNPlayerController::OnPossess(APawn* InPawn)

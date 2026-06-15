@@ -53,6 +53,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Boss AI")
 	void ReacquireTargetsAfterRevive();
 
+	// 플레이어가 기절(Downed)한 즉시 호출 — 해당 타겟을 어그로/타겟에서 제거하고 다음 후보로 즉시 전환 (서버)
+	// (1초 타이머 틱을 기다리지 않아 기절 순간 보스가 멈추지 않음)
+	UFUNCTION(BlueprintCallable, Category = "Boss AI")
+	void NotifyTargetDowned(AActor* DownedTarget);
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnPossess(APawn* InPawn) override;
