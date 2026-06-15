@@ -185,18 +185,38 @@ void AChest::Dissolve_Implementation()
 
 void AChest::UpdateDissolve()
 {
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		// 셀 언로드 등으로 월드가 분리된 경우 즉시 탈출
+		return;
+	}
+
 	RemainingDissolveTime -= DissolveRate;
-	
-	const float Opacity = RemainingDissolveTime / DissolveTime;
-	DynamicMaterial0->SetScalarParameterValue(TEXT("Dissolve"), Opacity);
-	
+
+	if (DynamicMaterial0)
+	{
+		const float Opacity = RemainingDissolveTime / DissolveTime;
+		DynamicMaterial0->SetScalarParameterValue(TEXT("Dissolve"), Opacity);
+	}
+
 	if (RemainingDissolveTime <= 0.0f)
 	{
-		GetWorldTimerManager().ClearTimer(DissolveTimerHandle);
-		
+		World->GetTimerManager().ClearTimer(DissolveTimerHandle);
+
 		if (HasAuthority())
 		{
 			Destroy();
 		}
 	}
+}
+
+void AChest::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(DissolveTimerHandle);
+	}
+
+	Super::EndPlay(EndPlayReason);
 }

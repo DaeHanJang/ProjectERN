@@ -22,7 +22,10 @@ class PROJECTERN_API AChest : public AActor, public IInteractable
 public:	
 	// Sets default values for this actor's properties
 	AChest();
-	
+
+	// 액터 종료/스트리밍 아웃 시 디졸브 타이머 정리
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 	// IInteractable
 	virtual void Interact_Implementation(APlayerController* PlayerController) override;
 	virtual void EndInteract_Implementation(APlayerController* PlayerController) override;
