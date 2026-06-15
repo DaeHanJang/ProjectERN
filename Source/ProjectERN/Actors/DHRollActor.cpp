@@ -353,25 +353,34 @@ void ADHRollActor::SpawnRewardForPlayer(APlayerController* PlayerController)
 
 void ADHRollActor::Close()
 {
-	if (const AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(GetWorld()->GetFirstPlayerController()->GetCharacter()))
+	AERNPlayerController* PC = nullptr;
+	
+	if (RollWidget)
 	{
-		if (AERNPlayerController* PC = Cast<AERNPlayerController>(PlayerCharacter->GetController()))
+		PC = Cast<AERNPlayerController>(RollWidget->GetOwningPlayer());
+	}
+	
+	if (PC == nullptr && GetWorld())
+	{
+		PC = Cast<AERNPlayerController>(GetWorld()->GetFirstPlayerController());
+	}
+	
+	if (RollWidget)
+	{
+		RollWidget->RemoveFromParent();
+		RollWidget = nullptr;
+	}
+	
+	if (PC)
+	{
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->SetShowMouseCursor(false);
+		
+		if (const ULocalPlayer* LocalPlayer = PC->GetLocalPlayer())
 		{
-			if (RollWidget)
+			if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
 			{
-				RollWidget->RemoveFromParent();
-				RollWidget = nullptr;
-				
-				PC->SetInputMode(FInputModeGameOnly());
-				PC->SetShowMouseCursor(false);
-				
-				if (const ULocalPlayer* LocalPlayer = PC->GetLocalPlayer())
-				{
-					if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
-					{
-						UIManager->CloseActiveUI();
-					}
-				}
+				UIManager->CloseActiveUI();
 			}
 		}
 	}

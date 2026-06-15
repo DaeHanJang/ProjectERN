@@ -719,6 +719,15 @@ void AERNPlayerController::Client_CloseInteractableWidgetsForPortal_Implementati
 		if (It->GetWorld() == GetWorld() && It->IsInViewport())
 		{
 			It->BP_PlayCloseAnimation();
+			It->NotifyCloseAnimationFinished();
+		}
+	}
+	
+	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			UIManager->ResetUIState();
 		}
 	}
 	
