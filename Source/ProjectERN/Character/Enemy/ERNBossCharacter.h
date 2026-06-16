@@ -172,6 +172,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float MinAttackPartyScale = 0.8f;
 
+	// 난이도 스케일링(레벨/인원 배율)과 별개로 보스 최종 출력 데미지에 곱하는 전체 배율 (1.0=기본, 1.3=30% 증가)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "0.0"))
+	float FinalDamageMultiplier = 1.f;
+
 	// 모든 머신에서 보스 BGM 재생 (AIC가 첫 감지 시 호출)
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_PlayBossBGM();
