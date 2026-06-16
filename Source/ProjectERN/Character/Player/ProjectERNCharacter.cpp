@@ -545,6 +545,13 @@ void AProjectERNCharacter::BeginPlay()
 	}
 	ApplyHeadLightState();
 
+	// FOV 캐싱
+	if (FollowCamera && IsLocallyControlled())
+	{
+		SpeedFOVBase = FollowCamera->FieldOfView;
+		SpeedFOVTarget = SpeedFOVBase;
+	}
+	
 	BindMovementSpeedTagEvents();
 	UpdateMovementSpeed();
 }
@@ -763,6 +770,9 @@ void AProjectERNCharacter::Tick(float DeltaSeconds)
 		}
 	}
 
+	// 속도 별 FOV 보간으로 적용
+	TickSpeedFOV(DeltaSeconds);
+	
 	// 락온 마커(흰 점) 갱신 — 로컬 전용, 락온 상태에 따라 표시/숨김 (분기 전에 매 프레임 호출)
 	UpdateLockOnMarker();
 
@@ -1806,6 +1816,8 @@ void AProjectERNCharacter::UpdateMovementSpeed()
 
 	// 속도 적용
 	GetCharacterMovement()->MaxWalkSpeed = NewSpeed;
+	// FOV 적용
+	UpdateSpeedFOVTarget(NewSpeed);
 }
 
 void AProjectERNCharacter::UpdateRotationMode()
@@ -3390,4 +3402,43 @@ float AProjectERNCharacter::GetSyncedServerWorldTimeSeconds() const
 
 	// 둘다 없으면 0 반환
 	return 0.f;
+}
+
+void AProjectERNCharacter::UpdateSpeedFOVTarget(float NewSpeed)
+{
+	// 본인의 화면에만 적용
+	if (!IsLocallyControlled() || !FollowCamera)
+	{
+		return;
+	}
+
+	// 0 방지
+	const float Range = FMath::Max(1.f, SpeedFOVFullSpeed - SpeedFOVStartSpeed);
+	
+	// 현재 속도를 FOV 변화 구간 안에서 0 ~ 1 사이의 값으로 정의
+	const float Alpha = FMath::Clamp((NewSpeed - SpeedFOVStartSpeed) / Range, 0.f, 1.f);
+
+	SpeedFOVTarget = SpeedFOVBase + SpeedFOVMaxAdd * Alpha;
+}
+
+void AProjectERNCharacter::TickSpeedFOV(float DeltaSeconds)
+{
+	if (!IsLocallyControlled() || !FollowCamera)
+	{
+		return;
+	}
+
+	// 기존 매달림/새 연출 카메라 FOV와 싸우지 않게 양보
+	if (bIsCameraTransitioning || bIsHangingFromBird)
+	{
+		return;
+	}
+
+	const float NewFOV = FMath::FInterpTo(
+		FollowCamera->FieldOfView,
+		SpeedFOVTarget,
+		DeltaSeconds,
+		SpeedFOVInterpSpeed);
+
+	FollowCamera->SetFieldOfView(NewFOV);
 }

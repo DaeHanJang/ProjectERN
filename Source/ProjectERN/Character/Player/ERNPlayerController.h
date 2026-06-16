@@ -116,6 +116,8 @@ protected:
 	// 캐릭터 타입 확인 및 수정 (맵 이동 후)
 	void CheckAndFixCharacterType();
 
+	virtual void FlushPressedKeys() override;
+
 	/** Input mapping context setup */
 	virtual void SetupInputComponent() override;
 
