@@ -31,7 +31,13 @@ void UERNShopItemSlotWidget::OnPurchaseButtonClicked()
 	Popup->OwnerSlotWidget = this;
 	Popup->SetupPopup(ItemData);
 	Popup->AddToViewport(200); // 상점 UI(100)보다 높은 ZOrder로 표시
-
+	
+	// 콘솔을 위한 포커스 이동
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		Popup->SetUserFocus(PC);
+	}
+	
 	// UI 매니저에 팝업 등록 (기존 팝업 자동 닫힘)
 	if (ULocalPlayer* LocalPlayer = GetOwningLocalPlayer())
 	{
@@ -122,6 +128,20 @@ void UERNShopItemSlotWidget::RefreshSlotUI()
 	{
 		SetPurchaseButtonEnabled(true);
 	}
+}
+
+FReply UERNShopItemSlotWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	const FKey Key = InKeyEvent.GetKey();
+	
+	// 기존의 아이템 구매 버튼 클릭과 동일한 동작
+	if (Key == EKeys::Gamepad_FaceButton_Bottom)
+	{
+		OnPurchaseButtonClicked();
+		return FReply::Handled();
+	}
+	
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
 void UERNShopItemSlotWidget::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)

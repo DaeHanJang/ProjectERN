@@ -80,6 +80,8 @@ void UERNConfirmPurchaseWidget::OnYesClicked()
 
 	// Yes를 눌렀으므로 팝업 닫기
 	RemoveFromParent();
+	
+	// 포커스는 상품 리스트가 갱신되면서 BP에서 같이 처리됨
 }
 
 void UERNConfirmPurchaseWidget::OnNoClicked()
@@ -92,4 +94,34 @@ void UERNConfirmPurchaseWidget::OnNoClicked()
 	
 	// No를 눌렀으므로 아무 동작 없이 팝업 닫기
 	RemoveFromParent();
+	
+	// 상점 리스트가 갱신되지 않으므로 직접 포커스 처리. 
+	// UI Manager에서 ActiveConfirmPurchasePopup 이 비워지지 않아서 두번째 동작부터 이상해짐 
+	if (OwnerSlotWidget)
+	{
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			OwnerSlotWidget->SetUserFocus(PC);
+		}
+	}
+}
+
+FReply UERNConfirmPurchaseWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	FKey Key = InKeyEvent.GetKey();
+	
+	// 구매
+	if (Key == EKeys::Gamepad_FaceButton_Bottom)
+	{
+		OnYesClicked();
+		return FReply::Handled();
+	}
+	// 창 닫기
+	if (Key == EKeys::Gamepad_FaceButton_Right)
+	{
+		OnNoClicked();
+		return FReply::Handled();
+	}
+	
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }

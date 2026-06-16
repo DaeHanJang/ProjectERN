@@ -62,6 +62,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Shop|Slot")
 	virtual void RefreshSlotUI();
 
+	// 콘솔 키 처리
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+	
 protected:
 	virtual void NativeConstruct() override;
 

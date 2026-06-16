@@ -46,6 +46,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Shop|Purchase")
 	void OnNoClicked();
 
+	// 콘솔 키 처리
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+	
 protected:
 	virtual void NativeConstruct() override;
 

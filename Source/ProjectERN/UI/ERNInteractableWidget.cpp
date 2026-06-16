@@ -11,7 +11,7 @@ UERNInteractableWidget::UERNInteractableWidget(const FObjectInitializer& ObjectI
 
 FReply UERNInteractableWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
-	if (InKeyEvent.GetKey() == EKeys::Escape)
+	if (InKeyEvent.GetKey() == EKeys::Escape || InKeyEvent.GetKey() == EKeys::Gamepad_FaceButton_Right)
 	{
 		// 즉시 닫지 않고 블루프린트의 닫기 애니메이션 재생 이벤트를 호출
 		BP_PlayCloseAnimation();
