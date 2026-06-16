@@ -73,6 +73,9 @@ protected:
 	class UTextBlock* Text_Flask;
 
 	UPROPERTY(meta = (BindWidgetOptional))
+	class UTextBlock* Text_Lifesteal;
+
+	UPROPERTY(meta = (BindWidgetOptional))
 	class UProgressBar* PB_Health;
 
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -94,6 +97,7 @@ protected:
 	void UpdateManaText(float Current, float Max);
 	void UpdateStaminaText(float Current, float Max);
 	void UpdateFlaskText(float Current, float Max);
+	void UpdateLifestealText(float Fraction);
 
 private:
 	// 캐싱된 ASC
@@ -102,7 +106,14 @@ private:
 	UFUNCTION()
 	void OnEquipmentSlotChanged(const FInventoryItemEntry& Entry);
 
+	// 인벤토리 변경 시 라이프스틸 갱신 (Drain 아이템은 인벤토리 기반)
+	UFUNCTION()
+	void OnInventorySlotChanged(const FInventoryItemEntry& Entry);
+
 	float GetWeaponDamage() const;
+
+	// 캐릭터의 라이프스틸 총합(기본 + 아이템 보너스) 반환
+	float GetLifestealFraction() const;
 
 	// 델리게이트 핸들 보관용
 	FDelegateHandle HealthChangedDelegateHandle;

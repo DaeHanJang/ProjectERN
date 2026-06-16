@@ -1339,7 +1339,9 @@ void AProjectERNCharacter::ExecuteJumpLaunch()
 void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
 {
 	// 서버 권위에서만, 라이프스틸 비율이 설정된 캐릭터(Warrior BP)만 회복
-	if (!HasAuthority() || DamageDealt <= 0.f || LifestealFraction <= 0.f || !AttributeSet)
+	// 기본값(LifestealFraction) + 아이템 보너스(BonusLifestealFraction) 합산
+	const float TotalFraction = LifestealFraction + BonusLifestealFraction;
+	if (!HasAuthority() || DamageDealt <= 0.f || TotalFraction <= 0.f || !AttributeSet)
 	{
 		return;
 	}
@@ -1355,7 +1357,7 @@ void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
 		return;
 	}
 
-	const float Heal = DamageDealt * LifestealFraction;
+	const float Heal = DamageDealt * TotalFraction;
 	const float OldHealth = AttributeSet->GetHealth();
 	const float NewHealth = FMath::Min(AttributeSet->GetMaxHealth(), OldHealth + Heal);
 	AttributeSet->SetHealth(NewHealth); // 서버에서 적용 → Health 리플리케이트
@@ -1482,6 +1484,7 @@ void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProp
 	DOREPLIFETIME(AProjectERNCharacter, AttachedBird);
 	DOREPLIFETIME(AProjectERNCharacter, bHeadLightOn);
 	DOREPLIFETIME(AProjectERNCharacter, DownedRespawnEndServerTime);
+	DOREPLIFETIME(AProjectERNCharacter, BonusLifestealFraction);
 }
 
 void AProjectERNCharacter::ToggleLight()
@@ -2362,12 +2365,12 @@ void AProjectERNCharacter::Server_LevelUp_Implementation()
 
 	AttributeSet->SetLevel(static_cast<int32>(AttributeSet->GetLevel()) + 1);
 	AttributeSet->SetMaxHealth(NewRow->MaxHealth);
-	AttributeSet->SetHealth(NewRow->MaxHealth);
+	AttributeSet->SetHealth(AttributeSet->GetMaxHealth());     // base가 아닌 보너스 포함 current로 풀회복
 	AttributeSet->SetMaxMana(NewRow->MaxMana);
-	AttributeSet->SetMana(NewRow->MaxMana);
+	AttributeSet->SetMana(AttributeSet->GetMaxMana());
 	AttributeSet->SetManaRegenRate(NewRow->ManaRegenRate);
 	AttributeSet->SetMaxStamina(NewRow->MaxStamina);
-	AttributeSet->SetStamina(NewRow->MaxStamina);
+	AttributeSet->SetStamina(AttributeSet->GetMaxStamina());
 	AttributeSet->SetStaminaRegenRate(NewRow->StaminaRegenRate);
 	AttributeSet->SetAttackPower(NewRow->AttackPower);
 	AttributeSet->SetDefense(NewRow->Defense);

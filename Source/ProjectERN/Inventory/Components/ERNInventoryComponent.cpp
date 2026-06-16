@@ -197,7 +197,7 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 
 	// 논-어트리뷰트 변수 초기화
 	Character->AddGoldWeight(-Character->GetGoldWeight());
-	Character->LifestealFraction = 0.0f;
+	Character->BonusLifestealFraction = 0.0f;
 
 	const UItemManagerSubsystem* ItemManager = GetItemManager();
 	if (!ItemManager)
@@ -255,7 +255,7 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 			Character->AddGoldWeight(50.0f * Weight);
 			break;
 		case EItemAbility::Drain:
-			Character->LifestealFraction += 0.005f * Weight;
+			Character->BonusLifestealFraction += 0.005f * Weight;
 			break;
 		case EItemAbility::HealthCurse:
 			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), -50.0f * Weight);
