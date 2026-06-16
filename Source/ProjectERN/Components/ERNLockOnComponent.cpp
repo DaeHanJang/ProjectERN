@@ -5,6 +5,7 @@
 #include "Camera/CameraComponent.h"
 #include "Character/ERNCharacterBase.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
+#include "Character/Player/ProjectERNCharacter.h"
 #include "Components/SphereComponent.h"
 
 // Sets default values for this component's properties
@@ -71,6 +72,16 @@ bool UERNLockOnComponent::ToggleLockOn()
 
 bool UERNLockOnComponent::TryLockOn()
 {
+	// 죽었을 때 LockOn 방어
+	if (const AProjectERNCharacter* ProjectERNCharacter = Cast<AProjectERNCharacter>(GetOwner()))
+	{
+		if (!ProjectERNCharacter->IsAlive())
+		{
+			ClearLockOn();
+			return false;
+		}
+	}
+	
 	if (!IsValid(DetectionSphere))
 	{
 		return false;

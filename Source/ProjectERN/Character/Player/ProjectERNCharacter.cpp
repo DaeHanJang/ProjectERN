@@ -1377,6 +1377,18 @@ void AProjectERNCharacter::LockOn()
 	{
 		return;
 	}
+	
+	// 죽으면 LockOn 입력 자체를 막음
+	if (!IsAlive())
+	{
+		if (LockOnComponent)
+		{
+			LockOnComponent->ClearLockOn();
+		}
+		
+		ApplyLockOnState(false, GetActorRotation());
+		return;
+	}
 
 	const bool bNewLockOn = LockOnComponent->ToggleLockOn();
 
@@ -1450,6 +1462,11 @@ void AProjectERNCharacter::Server_UpdateLockOnYaw_Implementation(float NewYaw)
 
 void AProjectERNCharacter::OnRep_IsLockOn()
 {
+	if (!bIsLockOn && LockOnComponent)
+	{
+		LockOnComponent->ClearLockOn();
+	}
+	
 	UpdateRotationMode();
 	UpdateMovementSpeed();
 }
