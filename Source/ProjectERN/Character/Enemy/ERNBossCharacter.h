@@ -159,7 +159,7 @@ public:
 
 	// 체력/공격 배율 상한 (과도한 스케일 방지)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "1.0"))
-	float MaxHealthMultiplier = 3.f;
+	float MaxHealthMultiplier = 2.5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "1.0"))
 	float MaxAttackMultiplier = 2.f;
@@ -171,6 +171,10 @@ public:
 	// 인원 부족에 따른 공격 배율 하한 (너무 약해지지 않도록 제한)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float MinAttackPartyScale = 0.8f;
+
+	// 난이도 스케일링(레벨/인원 배율)과 별개로 보스 최종 출력 데미지에 곱하는 전체 배율 (1.0=기본, 1.3=30% 증가)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "0.0"))
+	float FinalDamageMultiplier = 1.f;
 
 	// 모든 머신에서 보스 BGM 재생 (AIC가 첫 감지 시 호출)
 	UFUNCTION(NetMulticast, Reliable)

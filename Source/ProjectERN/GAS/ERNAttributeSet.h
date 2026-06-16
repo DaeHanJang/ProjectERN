@@ -27,6 +27,9 @@ public:
 	// 스태미나/마나 Max를 넘지 않게 Clamp를 걸기 위함
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 
+	// Attribute Current Value가 변경된 후 호출 (Max 값이 변경되었을 때 현재 값을 스케일링/클램프하기 위함)
+	virtual void PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue) override;
+
 	// 인스턴트 GE로 Base Value가 변경되기 직전 - OutOfCombat 시 Stamina 감소 차단
 	virtual void PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const override;
 

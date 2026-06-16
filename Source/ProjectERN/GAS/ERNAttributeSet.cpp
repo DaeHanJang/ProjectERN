@@ -90,6 +90,68 @@ void UERNAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, f
 	}
 }
 
+void UERNAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue)
+{
+	Super::PostAttributeChange(Attribute, OldValue, NewValue);
+
+	// Max 값이 변경되었을 때, 현재 값이 Max를 초과하면 Clamp 처리
+	// 또한 Max 값이 증가했다면 증가분만큼 현재 값도 회복시켜줌 (아이템 장착 시 보너스 등)
+	if (Attribute == GetMaxHealthAttribute())
+	{
+		if (NewValue > OldValue)
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				ASC->ApplyModToAttributeUnsafe(GetHealthAttribute(), EGameplayModOp::Additive, NewValue - OldValue);
+			}
+		}
+
+		if (GetHealth() > NewValue)
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				ASC->ApplyModToAttributeUnsafe(GetHealthAttribute(), EGameplayModOp::Override, NewValue);
+			}
+		}
+	}
+	else if (Attribute == GetMaxManaAttribute())
+	{
+		if (NewValue > OldValue)
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				ASC->ApplyModToAttributeUnsafe(GetManaAttribute(), EGameplayModOp::Additive, NewValue - OldValue);
+			}
+		}
+
+		if (GetMana() > NewValue)
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				ASC->ApplyModToAttributeUnsafe(GetManaAttribute(), EGameplayModOp::Override, NewValue);
+			}
+		}
+	}
+	else if (Attribute == GetMaxStaminaAttribute())
+	{
+		if (NewValue > OldValue)
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				ASC->ApplyModToAttributeUnsafe(GetStaminaAttribute(), EGameplayModOp::Additive, NewValue - OldValue);
+			}
+		}
+
+		if (GetStamina() > NewValue)
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				ASC->ApplyModToAttributeUnsafe(GetStaminaAttribute(), EGameplayModOp::Override, NewValue);
+			}
+		}
+	}
+}
+
 void UERNAttributeSet::PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const
 {
 	Super::PreAttributeBaseChange(Attribute, NewValue);

@@ -428,8 +428,8 @@ void AERNBossCharacter::ApplyDynamicDifficulty()
 		1.f - AttackReductionPerMissingPlayer * MissingPlayers,
 		MinAttackPartyScale, 1.f);
 
-	// 최종 출력 데미지 배율 = 레벨 배율 * 인원 배율
-	OutgoingDamageMultiplier = LevelAttackMul * AttackPartyScale;
+	// 최종 출력 데미지 배율 = 전체 배율 * 레벨 배율 * 인원 배율
+	OutgoingDamageMultiplier = FinalDamageMultiplier * LevelAttackMul * AttackPartyScale;
 
 	UE_LOG(LogTemp, Log, TEXT("[Boss %s] DynamicDifficulty: Players=%d AvgAtk=%.1f AvgLv=%.1f -> MaxHP=%.0f(HMul x%.2f, Party x%.2f) DmgMul=%.2f(Lv x%.2f, Party x%.2f)"),
 		*GetName(), Count, AvgAttack, AvgLevel, NewMaxHealth, HealthMul, PartyScale, OutgoingDamageMultiplier, LevelAttackMul, AttackPartyScale);

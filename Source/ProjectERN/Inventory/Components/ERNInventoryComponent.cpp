@@ -205,9 +205,10 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 		return;
 	}
 
-	// 동적 GE 생성
+	// 동적 GE 생성 (고정된 이름 사용 시 기존 객체가 재사용될 수 있으므로 Modifiers를 반드시 초기화해야 함)
 	UGameplayEffect* GE = NewObject<UGameplayEffect>(GetTransientPackage(), FName(TEXT("ItemAbilitiesGE")));
 	GE->DurationPolicy = EGameplayEffectDurationType::Infinite;
+	GE->Modifiers.Empty(); // <--- 핵심: 재사용된 GE 객체의 기존 모디파이어 찌꺼기를 비워줌
 
 	// 인벤토리 전체를 순회하며 효과 누적
 	for (int32 i = 0; i < Inventory.GetItems().Num(); ++i)
