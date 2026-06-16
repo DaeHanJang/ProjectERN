@@ -43,6 +43,15 @@ void AERNPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// 새 레벨(컨트롤러) 시작 시 UI 상태 초기화
+	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			UIManager->ResetUIState();
+		}
+	}
+
 	// 컷신 동안 HUD 일괄 숨김 (로컬 컨트롤러 전용)
 	BindCutsceneEvents();
 
@@ -646,6 +655,23 @@ void AERNPlayerController::ToggleReady()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ToggleReady called but PlayerState is null"));
 	}
+}
+
+void AERNPlayerController::FlushPressedKeys()
+{
+	// UI 매니저가 열려있는 상태로 전환 중이거나 유지 중일 때는 입력을 끊지 않도록 방어
+	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			if (UIManager->GetActiveUIType() != EERNUIType::None)
+			{
+				return;
+			}
+		}
+	}
+
+	Super::FlushPressedKeys();
 }
 
 void AERNPlayerController::CheckAndFixCharacterType()
