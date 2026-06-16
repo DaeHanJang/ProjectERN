@@ -103,6 +103,7 @@ void AERNItemActor::BeginPlay()
 	Super::BeginPlay();
 	
 	SetReplicateMovement(true);
+	SetLifeSpan(60.0f);
 }
 
 void AERNItemActor::Interact_Implementation(APlayerController* PlayerController)
