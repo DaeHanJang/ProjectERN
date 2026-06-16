@@ -491,7 +491,7 @@ FReply UERNUpgradeMainWidget::NativeOnKeyDown(const FGeometry& InGeometry, const
     // 상호작용은 포커스 잡힌 슬롯 기준
     if (FocusSlotIndex != -1)
     {
-        if (InKeyEvent.GetKey() == EKeys::E)
+        if (InKeyEvent.GetKey() == EKeys::E || InKeyEvent.GetKey() == EKeys::Gamepad_FaceButton_Top)
         {
             OnUpgradeConfirmed();
             // 포커스는 그대로 둬서 강화 후 갱신된 프리뷰를 계속 볼 수 있게 함
@@ -515,7 +515,12 @@ FReply UERNUpgradeMainWidget::NativeOnMouseButtonDown(const FGeometry& InGeometr
 
 FReply UERNUpgradeMainWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
-    const int32 ActiveIndex = (HoveredSlotIndex != -1) ? HoveredSlotIndex : FocusSlotIndex;
+    int32 ActiveIndex = (HoveredSlotIndex != -1) ? HoveredSlotIndex : FocusSlotIndex;
+    if (ActiveIndex == -1)
+    {
+        ActiveIndex = 0;    
+    }
+    
     if (ActiveIndex != -1 && InventoryRef)
     {
         const int32 NextIndex = GetNavigationTargetSlotIndex(InKeyEvent.GetKey(), InventoryRef->GetMaxSlotSize(), ActiveIndex);
@@ -534,19 +539,19 @@ const int32 UERNUpgradeMainWidget::GetNavigationTargetSlotIndex(const FKey& Key,
 {
     int32 NextIndex = INDEX_NONE;
     
-    if (Key == EKeys::Up)
+    if (Key == EKeys::Up || Key == EKeys::Gamepad_DPad_Up)
     {
         NextIndex = (CurrentIndex - ColumnSize < 0) ? CurrentIndex + ColumnSize * (((CurrentIndex - ColumnSize) * -1 + MaxSlotSize - 1) / ColumnSize - 1) : CurrentIndex - ColumnSize;
     }
-    else if (Key == EKeys::Down)
+    else if (Key == EKeys::Down || Key == EKeys::Gamepad_DPad_Down)
     {
         NextIndex = CurrentIndex + ColumnSize >= MaxSlotSize ? (CurrentIndex + ColumnSize) % ColumnSize : CurrentIndex + ColumnSize;
     }
-    else if (Key == EKeys::Left)
+    else if (Key == EKeys::Left || Key == EKeys::Gamepad_DPad_Left)
     {
         NextIndex = (CurrentIndex - 1 < 0) ? MaxSlotSize - 1 : CurrentIndex - 1;
     }
-    else if (Key == EKeys::Right)
+    else if (Key == EKeys::Right || Key == EKeys::Gamepad_DPad_Right)
     {
         NextIndex = (CurrentIndex + 1) % MaxSlotSize;
     }

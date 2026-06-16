@@ -42,7 +42,7 @@ void UERNLevelUpWidget::NativeDestruct()
 
 FReply UERNLevelUpWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
-	if (InKeyEvent.GetKey() == EKeys::E)
+	if (InKeyEvent.GetKey() == EKeys::E || InKeyEvent.GetKey() == EKeys::Gamepad_FaceButton_Top)
 	{
 		if (const APlayerController* PC = GetOwningPlayer())
 		{
