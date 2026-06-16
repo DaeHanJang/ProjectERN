@@ -62,7 +62,7 @@ void UERNItemToolTipWidget::UpdateTooltipWithState(const FItemRuntimeState& Item
 						case EItemAbility::Stamina: AbilityStr = FString::Printf(TEXT("최대 스태미나 +%d"), 10 * Weight); break;
 						case EItemAbility::Defence: AbilityStr = FString::Printf(TEXT("방어력 +%d"), 1 * Weight); break;
 						case EItemAbility::Gold: AbilityStr = FString::Printf(TEXT("골드 획득 +%d"), 50 * Weight); break;
-						case EItemAbility::Drain: AbilityStr = FString::Printf(TEXT("생명력 흡수 +%.1f%%"), 0.5f * Weight * 100.0f); break;
+						case EItemAbility::Drain: AbilityStr = FString::Printf(TEXT("생명력 흡수 +%.1f%%"), 0.5f * Weight); break;
 						case EItemAbility::HealthCurse: AbilityStr = FString::Printf(TEXT("최대 체력 -%d, 공격력 +%d"), 50 * Weight, 5 * Weight); break;
 						case EItemAbility::AttackCurse: AbilityStr = FString::Printf(TEXT("공격력 -%d, 방어력 +%d, 최대 체력 +%d"), 5 * Weight, 1 * Weight, 20 * Weight); break;
 						default: break;

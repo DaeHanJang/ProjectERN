@@ -205,10 +205,9 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 		return;
 	}
 
-	// 동적 GE 생성 (고정된 이름 사용 시 기존 객체가 재사용될 수 있으므로 Modifiers를 반드시 초기화해야 함)
-	UGameplayEffect* GE = NewObject<UGameplayEffect>(GetTransientPackage(), FName(TEXT("ItemAbilitiesGE")));
+	// 동적 GE 생성 (고정된 이름을 쓰면 이전 객체가 재사용되어 GAS 내부 참조 크래시가 발생하므로, 매번 고유한 임시 객체를 생성)
+	UGameplayEffect* GE = NewObject<UGameplayEffect>(GetTransientPackage(), NAME_None, RF_Transient);
 	GE->DurationPolicy = EGameplayEffectDurationType::Infinite;
-	GE->Modifiers.Empty(); // <--- 핵심: 재사용된 GE 객체의 기존 모디파이어 찌꺼기를 비워줌
 
 	// 인벤토리 전체를 순회하며 효과 누적
 	for (int32 i = 0; i < Inventory.GetItems().Num(); ++i)
@@ -256,7 +255,7 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 			Character->AddGoldWeight(50.0f * Weight);
 			break;
 		case EItemAbility::Drain:
-			Character->LifestealFraction += 0.5f * Weight;
+			Character->LifestealFraction += 0.005f * Weight;
 			break;
 		case EItemAbility::HealthCurse:
 			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), -50.0f * Weight);
