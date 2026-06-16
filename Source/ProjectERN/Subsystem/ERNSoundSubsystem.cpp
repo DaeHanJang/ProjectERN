@@ -115,6 +115,11 @@ void UERNSoundSubsystem::PlayBGM(USoundBase* BGM, float FadeInTime)
 
 	if (CurrentBGM)
 	{
+		// BGM은 전투 SFX/투사체 사운드가 폭증하면 보이스를 뺏겨 0초부터 재시작됨.
+		// 우선순위를 SFX(기본 1.0)보다 훨씬 높게 고정해 voice-stealing 대상에서 제외한다.
+		CurrentBGM->bOverridePriority = true;
+		CurrentBGM->Priority = 100.f;
+
 		if (FadeInTime > 0.f)
 		{
 			CurrentBGM->FadeIn(FadeInTime, 1.f);
