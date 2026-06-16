@@ -201,7 +201,7 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 	}
 	
 	// 키보드 I를 누를 경우 (=인벤토리 UI 숨기기)
-	if (InKeyEvent.GetKey() == EKeys::I)
+	if (InKeyEvent.GetKey() == EKeys::I || InKeyEvent.GetKey() == EKeys::Gamepad_FaceButton_Right)
 	{
 		// UI 닫기 처리 BP 함수 호출 (부모에서 선언된 함수)
 		BP_PlayCloseAnimation();
@@ -221,7 +221,7 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 			return FReply::Handled();
 		}
 		// 키보드 G를 누를 경우 (=아이템 버리기)
-		if (InKeyEvent.GetKey() == EKeys::G)
+		if (InKeyEvent.GetKey() == EKeys::G || InKeyEvent.GetKey() == EKeys::Gamepad_FaceButton_Bottom)
 		{
 			if (SlotWidgets.IsValidIndex(ActiveIndex))
 			{
@@ -259,7 +259,7 @@ FReply UERNInventoryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 			return FReply::Handled();
 		}
 		// 키보드 E키를 누를 경우 (=아이템 장착)
-		if (InKeyEvent.GetKey() == EKeys::E)
+		if (InKeyEvent.GetKey() == EKeys::E || InKeyEvent.GetKey() == EKeys::Gamepad_FaceButton_Top)
 		{
 			if (SlotWidgets.IsValidIndex(ActiveIndex))
 			{
@@ -305,7 +305,12 @@ FReply UERNInventoryWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, 
 	}
 	
 	// 활성화된 슬롯 인덱스가 있을 경우
-	const int32 ActiveIndex = (HoveredSlotIndex != -1) ? HoveredSlotIndex : FocusSlotIndex;
+	int32 ActiveIndex = (HoveredSlotIndex != -1) ? HoveredSlotIndex : FocusSlotIndex;
+	if (ActiveIndex == -1)
+	{
+		ActiveIndex = 0;
+	}
+	
 	if (ActiveIndex != -1)
 	{
 		// 인벤토리 네비게이션 (Up, Left, Down, Right)
@@ -326,26 +331,26 @@ const int32 UERNInventoryWidget::GetNavigationTargetSlotIndex(const FKey& Key, c
 	int32 NextIndex = INDEX_NONE;
 	
 	// 위
-	if (Key == EKeys::Up)
+	if (Key == EKeys::Up || Key == EKeys::Gamepad_DPad_Up)
 	{
 		NextIndex = (CurrentIndex - ColumnSize < 0) ? 
 		CurrentIndex + ColumnSize * (((CurrentIndex - ColumnSize) * -1 + MaxSlotSize - 1) / ColumnSize - 1) : 
 		CurrentIndex - ColumnSize;
 	}
 	// 아래
-	else if (Key == EKeys::Down)
+	else if (Key == EKeys::Down || Key == EKeys::Gamepad_DPad_Down)
 	{
 		NextIndex = CurrentIndex + ColumnSize >= MaxSlotSize ?
 		(CurrentIndex + ColumnSize) % ColumnSize : 
 		CurrentIndex + ColumnSize;
 	}
 	// 왼쪽
-	else if (Key == EKeys::Left)
+	else if (Key == EKeys::Left || Key == EKeys::Gamepad_DPad_Left)
 	{
 		NextIndex = (CurrentIndex - 1 < 0) ? MaxSlotSize - 1 : CurrentIndex - 1;
 	}
 	// 오른쪽
-	else if (Key == EKeys::Right)
+	else if (Key == EKeys::Right || Key == EKeys::Gamepad_DPad_Right)
 	{
 		NextIndex = (CurrentIndex + 1) % MaxSlotSize;
 	}

@@ -561,7 +561,7 @@ void AERNPlayerController::SetupInputComponent()
 		{
 			if (ReadyToggleAction)
 			{
-				EnhancedInputComponent->BindAction(ReadyToggleAction, ETriggerEvent::Started, this, &AERNPlayerController::ToggleReady);
+				EnhancedInputComponent->BindAction(ReadyToggleAction, ETriggerEvent::Triggered, this, &AERNPlayerController::ToggleReady);
 			}
 
 			if (InteractAction)
@@ -1356,6 +1356,7 @@ void AERNPlayerController::MinimapOpen()
 			ERNMinimapWidget->RefreshStaticMarkers();
 			ERNMinimapWidget->StartDynamicMinimapRefresh();
 			ERNMinimapWidget->PlayOpenAnimation();
+			ERNMinimapWidget->StartGamepadMoveRefresh();
 		}
 	}
 }
@@ -1381,6 +1382,7 @@ void AERNPlayerController::MinimapClose()
 		if (UERNMinimapWidget* ERNMinimapWidget = Cast<UERNMinimapWidget>(MinimapWidget))
 		{
 			ERNMinimapWidget->StopDynamicMinimapRefresh();
+			ERNMinimapWidget->StopGamepadMoveRefresh();
 		}
 		
 		MinimapWidget->SetVisibility(ESlateVisibility::Collapsed);
@@ -1408,6 +1410,30 @@ void AERNPlayerController::Server_RequestCreateMinimapPin_Implementation(FVector
 	if (ERNPlayerState == nullptr)
 	{
 		return;
+	}
+	
+	// 일정거리 이내의 본인 핑 삭제
+	constexpr float ToggleDistance = 500.f;
+	const float ToggleDistanceSq = FMath::Square(ToggleDistance);
+
+	for (TActorIterator<AERNMinimapPinPoint> It(World); It; ++It)
+	{
+		AERNMinimapPinPoint* Pin = *It;
+		if (!IsValid(Pin))
+		{
+			continue;
+		}
+
+		if (Pin->GetOwnerPlayerState() != PlayerState)
+		{
+			continue;
+		}
+
+		if (FVector::DistSquared2D(Pin->GetActorLocation(), WorldLocation) <= ToggleDistanceSq)
+		{
+			Pin->Destroy();
+			return;
+		}
 	}
 	
 	// 기존 핀 삭제

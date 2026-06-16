@@ -75,7 +75,71 @@ FReply UERNMinimapWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKe
 		return FReply::Unhandled();
 	}
 
+	// 콘솔 키 처리
+	// 줌인
+	if (Key == EKeys::Gamepad_FaceButton_Bottom)
+	{
+		const FVector2D ZoomCenter = GetMapViewportCenterPosition();
+		const float ZoomMultiplier = FMath::Pow(MouseWheelZoomMultiplier, 1.f);
+		SetMapZoomAtScreenPosition(CurrentMapZoom * ZoomMultiplier, ZoomCenter);
+		return FReply::Handled();
+	}
+	// 줌아웃
+	if (Key == EKeys::Gamepad_FaceButton_Right)
+	{
+		const FVector2D ZoomCenter = GetMapViewportCenterPosition();
+		const float ZoomMultiplier = FMath::Pow(MouseWheelZoomMultiplier, -1.f);
+		SetMapZoomAtScreenPosition(CurrentMapZoom * ZoomMultiplier, ZoomCenter);
+		return FReply::Handled();
+	}
+	// 핀
+	if (Key == EKeys::Gamepad_FaceButton_Left)
+	{
+		const FVector2D PinCenter = GetMapViewportCenterPosition();
+		const FVector2D MapPosition = MapContent->GetCachedGeometry().AbsoluteToLocal(PinCenter);
+		const FVector WorldLocation = MapToWorldPosition(MapPosition);
+		
+		if (AERNPlayerController* PC = Cast<AERNPlayerController>(GetOwningPlayer()))
+		{
+			PC->Server_RequestCreateMinimapPin(WorldLocation);
+		}
+		
+		return FReply::Handled();
+	}
+	
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+}
+
+FReply UERNMinimapWidget::NativeOnAnalogValueChanged(const FGeometry& InGeometry,
+	const FAnalogInputEvent& InAnalogEvent)
+{
+	const FKey Key = InAnalogEvent.GetKey();
+	const float RawValue = InAnalogEvent.GetAnalogValue();
+	float Value;
+	
+	if (FMath::Abs(RawValue) < 0.2f)
+	{
+		Value = 0.f;
+	}
+	else
+	{
+		Value = RawValue;
+	}
+	
+	// IA를 통한 값 전달이 아닌 위젯에서의 값 전달
+	if (Key == EKeys::Gamepad_RightX)
+	{
+		GamepadPanInput.X = Value * -1;
+		return FReply::Handled();
+	}
+	
+	if (Key == EKeys::Gamepad_RightY)
+	{
+		GamepadPanInput.Y = Value;
+		return FReply::Handled();
+	}
+	
+	return Super::NativeOnAnalogValueChanged(InGeometry, InAnalogEvent);
 }
 
 FVector2D UERNMinimapWidget::WorldToMapPosition(const FVector& WorldLocation) const
@@ -326,6 +390,20 @@ FVector2D UERNMinimapWidget::WorldRadiusToMapRadius(float WorldRadius) const
 	return FVector2D(MapRadiusX, MapRadiusY);
 }
 
+FVector2D UERNMinimapWidget::GetMapViewportCenterPosition() const
+{
+	if (MapViewport == nullptr)
+	{
+		return FVector2D::ZeroVector;
+	}
+	
+	// 저장된 지형의 중심을 미니맵 위젯에 맞게 변환
+	const FGeometry& ViewportGeometry = MapViewport->GetCachedGeometry();
+	
+	const FVector2D LocalCenter = ViewportGeometry.GetLocalSize() * 0.5f;
+	return ViewportGeometry.LocalToAbsolute(LocalCenter);
+}
+
 void UERNMinimapWidget::RefreshPlayerMarkers()
 {
 	if (PlayerMarkerLayer == nullptr || PlayerMarkerWidgetClass == nullptr || GetWorld() == nullptr)
@@ -347,7 +425,6 @@ void UERNMinimapWidget::RefreshPlayerMarkers()
 	
 	TSet<APawn*> CurrentPlayerPawns;
 	
-	// todo 병목 확인 필요, 최적화 여부 결정 필요
 	// PlayerState의 PC가 조작하는 Pawn을 찾아냄. 틱 주기 * 플레이어 수 만큼 반복됨.
 	for (APlayerState* CurrentPlayerState : GameState->PlayerArray)
 	{
@@ -595,11 +672,43 @@ void UERNMinimapWidget::AddMapPanOffsetByScreenDelta(const FVector2D& CurrentScr
 	const FVector2D LastLocalPosition = ViewportGeometry.AbsoluteToLocal(LastDragScreenPosition);
 	const FVector2D CurrentLocalPosition = ViewportGeometry.AbsoluteToLocal(CurrentScreenPosition);
 	
-	CurrentMapPanOffset += CurrentLocalPosition - LastLocalPosition;
+	AddMapPanOffsetByDelta(CurrentLocalPosition - LastLocalPosition);
+
 	LastDragScreenPosition = CurrentScreenPosition;
-	
+}
+
+void UERNMinimapWidget::AddMapPanOffsetByDelta(const FVector2D& Delta)
+{
+	CurrentMapPanOffset += Delta;
 	ClampMapPanOffset();
 	ApplyMapTransform();
+}
+
+void UERNMinimapWidget::StartGamepadMoveRefresh()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(GamepadMoveTimerHandle, this, &UERNMinimapWidget::RefreshGamepadMove, 0.01f, true);
+	}
+}
+
+void UERNMinimapWidget::StopGamepadMoveRefresh()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(GamepadMoveTimerHandle);
+	}
+	GamepadPanInput = FVector2D::ZeroVector;
+}
+
+void UERNMinimapWidget::RefreshGamepadMove()
+{
+	if (GamepadPanInput.IsNearlyZero())
+	{
+		return;
+	}
+	
+	AddMapPanOffsetByDelta(GamepadPanInput * GamepadMoveSpeed * 0.01f);
 }
 
 void UERNMinimapWidget::ClampMapPanOffset()

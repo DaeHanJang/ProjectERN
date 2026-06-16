@@ -33,14 +33,15 @@ protected:
 	
 	// WASD는 무시
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
-
+	// 콘솔 키 전용
+	virtual FReply NativeOnAnalogValueChanged(const FGeometry& InGeometry, const FAnalogInputEvent& InAnalogEvent) override;
+	
 public:
 	// 월드 맵 좌표를 미니맵 UI 좌표로 변환
 	FVector2D WorldToMapPosition(const FVector& WorldLocation) const;
 	
 	// 맵 좌표 -> 월드 좌표 (Pin 찍을 때 사용)
 	FVector MapToWorldPosition(const FVector2D& MapPosition) const;
-	
 	
 	// 마커 생성
 	void RebuildStaticMarkers();
@@ -65,6 +66,14 @@ public:
 	// 확대 줌인 줌아웃 처리
 	void SetMapZoomAtScreenPosition(float NewZoom, const FVector2D& ScreenPosition);
 	void AddMapPanOffsetByScreenDelta(const FVector2D& CurrentScreenPosition);
+	void AddMapPanOffsetByDelta(const FVector2D& Delta);
+
+	// 콘솔 환경 미니맵 이동
+	void StartGamepadMoveRefresh();
+	void StopGamepadMoveRefresh();
+	void RefreshGamepadMove();
+	
+	
 	// 맵 밖으로 나가지 못하게 드래그 범위 제한
 	void ClampMapPanOffset();
 	// 마커 아이콘 크기는 줌 배율에 역보정을 걸어서 일정 크기 유지
@@ -133,6 +142,10 @@ private:
 	
 	ANightRainZoneManager* FindNightRainZoneManager();
 	FVector2D WorldRadiusToMapRadius(float WorldRadius) const;
+	
+	// 게임 패드 처리 지원 함수
+	FVector2D GetMapViewportCenterPosition() const;
+	
 private:
 	// 열기 애니메이션
 	UPROPERTY(meta=(BindWidgetAnim), Transient)
@@ -178,4 +191,12 @@ private:
 	
 	bool bIsDraggingMap = false;
 	FVector2D LastDragScreenPosition = FVector2D::ZeroVector;
+	
+	// 게임 패드 조작 관련
+	FVector2D GamepadPanInput = FVector2D::ZeroVector;
+	
+	UPROPERTY(EditAnywhere, Category="Minimap|GamePad", meta=(ClampMin="1.0"))
+	float GamepadMoveSpeed = 500.f;
+	
+	FTimerHandle GamepadMoveTimerHandle;
 };
