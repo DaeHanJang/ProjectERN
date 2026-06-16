@@ -101,18 +101,35 @@ void UERNShopMainWidget::RefreshGoldDisplay()
 	GoldText->SetText(FText::AsNumber(CurrentGold));
 }
 
-void UERNShopMainWidget::UpdateShopTooltip(FName ItemID, int32 ItemPrice)
+void UERNShopMainWidget::ClearShopTooltip()
 {
 	if (WBP_ItemToolTip)
 	{
-		if (ItemID.IsNone() || ItemID == NAME_None)
+		WBP_ItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (WBP_EquippedItemToolTip)
+	{
+		WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UERNShopMainWidget::UpdateShopTooltip(const FERNShopItemData& ShopItemData)
+{
+	if (WBP_ItemToolTip)
+	{
+		if (ShopItemData.ItemID.IsNone() || ShopItemData.ItemID == NAME_None)
 		{
-			WBP_ItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
-			if (WBP_EquippedItemToolTip) WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::Collapsed);
+			ClearShopTooltip();
 			return;
 		}
 
-		WBP_ItemToolTip->UpdateTooltip(ItemID, ItemPrice);
+		FItemRuntimeState TooltipState = ShopItemData.ItemState;
+		if (TooltipState.GetItemID().IsNone())
+		{
+			TooltipState.SetItemID(ShopItemData.ItemID);
+		}
+
+		WBP_ItemToolTip->UpdateTooltipWithState(TooltipState, ShopItemData.Price);
 		WBP_ItemToolTip->SetVisibility(ESlateVisibility::HitTestInvisible);
 		
 		bool bIsEquipment = false;
@@ -123,7 +140,7 @@ void UERNShopMainWidget::UpdateShopTooltip(FName ItemID, int32 ItemPrice)
 			// 상단에 이미 Include가 되어있는지 확인, 아니면 런타임에 Cast로 처리하기 위해 생략하지 않고 Include 추가.
 			if (UItemManagerSubsystem* ItemSubsystem = GI->GetSubsystem<UItemManagerSubsystem>())
 			{
-				if (const FERNItemTable* ItemRow = ItemSubsystem->FindItemRow(ItemID))
+				if (const FERNItemTable* ItemRow = ItemSubsystem->FindItemRow(ShopItemData.ItemID))
 				{
 					if (ItemRow->ItemType == EItemType::Equipable)
 					{
@@ -137,19 +154,21 @@ void UERNShopMainWidget::UpdateShopTooltip(FName ItemID, int32 ItemPrice)
 		{
 			if (WBP_EquippedItemToolTip)
 			{
+				FItemRuntimeState EquippedItemState;
 				APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 				if (PC && PC->GetPawn())
 				{
 					if (UERNEquipmentComponent* EquipComp = PC->GetPawn()->FindComponentByClass<UERNEquipmentComponent>())
 					{
 						EquippedItemID = EquipComp->EquipableSlot.GetItemID();
+						EquippedItemState = EquipComp->EquipableSlot.GetItemRuntimeState();
 					}
 				}
 				
-				if (!EquippedItemID.IsNone() && EquippedItemID != NAME_None)
+				if (EquippedItemState.IsValid())
 				{
 					WBP_ItemToolTip->SetTooltipStateText(FText::FromString(TEXT("비교")));
-					WBP_EquippedItemToolTip->UpdateTooltip(EquippedItemID, 0);
+					WBP_EquippedItemToolTip->UpdateTooltipWithState(EquippedItemState, 0);
 					WBP_EquippedItemToolTip->SetTooltipStateText(FText::FromString(TEXT("장착 중")));
 					WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::HitTestInvisible);
 				}

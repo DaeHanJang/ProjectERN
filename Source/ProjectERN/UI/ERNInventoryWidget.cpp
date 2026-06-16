@@ -636,19 +636,19 @@ void UERNInventoryWidget::UpdateVisuals()
 		}
 		else
 		{
-			FName ItemID = NAME_None;
+			FItemRuntimeState TargetItemState;
 			if (DisplayIndex == SlotWidgets.Num() + 1) // 장비 슬롯
 			{
 				if (UERNEquipmentComponent* EquipComp = GetEquipmentComponent())
 				{
-					ItemID = EquipComp->EquipableSlot.GetItemID();
+					TargetItemState = EquipComp->EquipableSlot.GetItemRuntimeState();
 				}
 			}
 			else if (DisplayIndex == SlotWidgets.Num()) // 소모품 슬롯
 			{
 				if (UERNEquipmentComponent* EquipComp = GetEquipmentComponent())
 				{
-					ItemID = EquipComp->ConsumableSlot.GetItemID();
+					TargetItemState = EquipComp->ConsumableSlot.GetItemRuntimeState();
 				}
 			}
 			else if (SlotWidgets.IsValidIndex(DisplayIndex)) // 일반 인벤토리 슬롯
@@ -657,14 +657,15 @@ void UERNInventoryWidget::UpdateVisuals()
 				{
 					if (InvComp->GetInventory().GetItems().IsValidIndex(DisplayIndex))
 					{
-						ItemID = InvComp->GetInventory().GetItems()[DisplayIndex].GetItemID();
+						TargetItemState = InvComp->GetInventory().GetItems()[DisplayIndex].GetItemRuntimeState();
 					}
 				}
 			}
 			
-			if (!ItemID.IsNone() && ItemID != NAME_None)
+			if (TargetItemState.IsValid())
 			{
-				WBP_ItemToolTip->UpdateTooltip(ItemID, 0); // 가격 0으로 표시
+				FName ItemID = TargetItemState.GetItemID();
+				WBP_ItemToolTip->UpdateTooltipWithState(TargetItemState, 0); // 가격 0으로 표시
 				WBP_ItemToolTip->SetVisibility(ESlateVisibility::HitTestInvisible);
 				if (WBP_PlayerDetailStatus) WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::Collapsed);
 				
@@ -698,15 +699,17 @@ void UERNInventoryWidget::UpdateVisuals()
 					// 일반 인벤토리에서 장비를 호버했을 때: 비교 모드
 					if (WBP_EquippedItemToolTip)
 					{
+						FItemRuntimeState EquippedItemState;
 						if (UERNEquipmentComponent* EquipComp = GetEquipmentComponent())
 						{
 							EquippedItemID = EquipComp->EquipableSlot.GetItemID();
+							EquippedItemState = EquipComp->EquipableSlot.GetItemRuntimeState();
 						}
 						
-						if (!EquippedItemID.IsNone() && EquippedItemID != NAME_None)
+						if (EquippedItemState.IsValid())
 						{
 							WBP_ItemToolTip->SetTooltipStateText(FText::FromString(TEXT("비교")));
-							WBP_EquippedItemToolTip->UpdateTooltip(EquippedItemID, 0);
+							WBP_EquippedItemToolTip->UpdateTooltipWithState(EquippedItemState, 0);
 							WBP_EquippedItemToolTip->SetTooltipStateText(FText::FromString(TEXT("장착 중")));
 							WBP_EquippedItemToolTip->SetVisibility(ESlateVisibility::HitTestInvisible);
 						}

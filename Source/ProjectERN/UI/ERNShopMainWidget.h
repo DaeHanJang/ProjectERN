@@ -54,7 +54,11 @@ protected:
 
 	// 상점 툴팁 갱신 (비교 로직 포함)
 	UFUNCTION(BlueprintCallable, Category = "Shop|UI")
-	void UpdateShopTooltip(FName ItemID, int32 ItemPrice);
+	void UpdateShopTooltip(const struct FERNShopItemData& ShopItemData);
+
+	// 상점 툴팁 숨김
+	UFUNCTION(BlueprintCallable, Category = "Shop|UI")
+	void ClearShopTooltip();
 
 	// 상점 결제 결과 수신 콜백
 	UFUNCTION()

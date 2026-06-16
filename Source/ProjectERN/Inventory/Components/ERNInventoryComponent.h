@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "Inventory/Data/ERNInventoryList.h"
 #include "Inventory/Item/Data/ERNItemEnums.h"
+#include "ActiveGameplayEffectHandle.h"
 #include "ERNInventoryComponent.generated.h"
 
 class AERNItemActor;
@@ -48,8 +49,11 @@ protected:
 	virtual void BeginPlay() override;
 	
 private:
-	void ApplyItemAbility(const FItemRuntimeState& ItemRuntimeState, EItemGrade Grade) const;
-	void RemoveItemAbility(const FItemRuntimeState& ItemRuntimeState, EItemGrade Grade) const;
+	void RecalculateItemAbilities();
+
+	// 적용된 아이템 어빌리티 GE 핸들 목록
+	UPROPERTY(Transient)
+	TArray<struct FActiveGameplayEffectHandle> ActiveItemAbilityHandles;
 	
 private:
 	// Get ItemManager

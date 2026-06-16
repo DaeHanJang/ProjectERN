@@ -4,7 +4,8 @@
 #include "Shop/Provider/ERNShopDataProvider.h"
 #include "Shop/Provider/ERNDummyShopProvider.h"
 #include "Shop/Provider/ERNNetworkShopProvider.h"
-#include "Shop/Provider/ERNDataTableShopProvider.h" // [Fix] 추가
+#include "Shop/Provider/ERNDataTableShopProvider.h"
+#include "Shop/Actors/ERNShopActor.h" // [Fix] 추가
 #include "Core/ERNGameInstance.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "GameFramework/Character.h"
@@ -153,7 +154,12 @@ void UERNShopComponent::Server_OpenShopRandom_Implementation(FName RequestShopID
             }
             else
             {
-                InventoryData = DTProvider->GenerateRandomInventory(RequestShopID, ShopType, SlotConfigs);
+                bool bForceNoAbilities = false;
+                if (AERNShopActor* ShopActor = Cast<AERNShopActor>(TargetNPC))
+                {
+                    bForceNoAbilities = ShopActor->IsForceNoAbilities();
+                }
+                InventoryData = DTProvider->GenerateRandomInventory(RequestShopID, ShopType, SlotConfigs, bForceNoAbilities);
                 DTProvider->CachedShopData.Add(RequestShopID, InventoryData);
             }
 
@@ -181,7 +187,12 @@ void UERNShopComponent::Server_OpenShopFixed_Implementation(FName RequestShopID,
             }
             else
             {
-                InventoryData = DTProvider->GenerateFixedInventory(RequestShopID, ShopType, SlotConfigs, FixedDataTable);
+                bool bForceNoAbilities = false;
+                if (AERNShopActor* ShopActor = Cast<AERNShopActor>(TargetNPC))
+                {
+                    bForceNoAbilities = ShopActor->IsForceNoAbilities();
+                }
+                InventoryData = DTProvider->GenerateFixedInventory(RequestShopID, ShopType, SlotConfigs, FixedDataTable, bForceNoAbilities);
                 DTProvider->CachedShopData.Add(RequestShopID, InventoryData);
             }
 

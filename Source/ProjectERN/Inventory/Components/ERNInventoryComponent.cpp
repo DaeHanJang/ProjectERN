@@ -8,6 +8,8 @@
 #include "Inventory/Item/ERNItemActor.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "AbilitySystemComponent.h"
+#include "GameplayEffect.h"
 
 UERNInventoryComponent::UERNInventoryComponent()
 {
@@ -25,6 +27,8 @@ void UERNInventoryComponent::CopyInventoryFrom(const UERNInventoryComponent* Sou
 	
 	Inventory.CopyFrom(Source->GetInventory(), MaxSlotSize);
 	
+	RecalculateItemAbilities();
+	
 	for (const FInventoryItemEntry& Entry : Inventory.GetItems())
 	{
 		OnInventorySlotChanged.Broadcast(Entry);
@@ -39,6 +43,11 @@ void UERNInventoryComponent::BeginPlay()
 	if (Inventory.GetItems().Num() == 0)
 	{
 		Inventory.Init(MaxSlotSize);
+	}
+	else
+	{
+		// 스냅샷으로 복원된 아이템이 있다면 어빌리티 다시 적용
+		RecalculateItemAbilities();
 	}
 }
 
@@ -92,10 +101,7 @@ void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemAc
 		return;
 	}
 	
-	if (ItemTable->ItemType == EItemType::Equipable)
-	{
-		ApplyItemAbility(ItemRuntimeState, ItemTable->Grade);
-	}
+	RecalculateItemAbilities();
 	
 	// 리슨 서버 인벤토리 변경 이벤트 발신 (UI 갱신)
 	for (const FInventoryItemEntry& ChangedSlot : ChangedSlots)
@@ -141,9 +147,10 @@ void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIn
 	const FERNItemTable* ItemTable = ItemManager->FindItemRow(DropItemRuntimeState.GetItemID());
 	if (ItemTable->ItemType == EItemType::Equipable)
 	{
-		RemoveItemAbility(DropItemRuntimeState, ItemTable->Grade);
 		UE_LOG(LogTemp, Warning, TEXT("Item: %s, Quantity: %d, Ability: %d"), *DropItemRuntimeState.GetItemID().ToString(), DropItemRuntimeState.GetQuantity(), static_cast<int32>(DropItemRuntimeState.GetItemAbility()));
 	}
+
+	RecalculateItemAbilities();
 	
 	// 리슨 서버 전용 UI 갱신 이벤트
 	OnInventorySlotChanged.Broadcast(ChangedSlot);
@@ -162,168 +169,115 @@ void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIn
 	UE_LOG(LogTemp, Warning, TEXT("CurrentItem: %s, Quantity: %d"), *Inventory.GetItems()[SlotIndex].GetItemID().ToString(), Inventory.GetItemQuantity(SlotIndex));
 }
 
-void UERNInventoryComponent::ApplyItemAbility(const FItemRuntimeState& ItemRuntimeState, EItemGrade Grade) const
+void UERNInventoryComponent::RecalculateItemAbilities()
 {
-	AERNCharacterBase* Character = Cast<AERNCharacterBase>(GetOwner());
-	if (!Character)
+	if (!GetOwner()->HasAuthority())
 	{
 		return;
 	}
-	
-	UERNAttributeSet* AttributeSet = Character->GetAttributeSet();
-	if (!AttributeSet)
-	{
-		return;
-	}
-	
-	const int32 Weight = static_cast<int32>(Grade) + 1;
-	float Value, Value2;
-	switch (ItemRuntimeState.GetItemAbility())
-	{
-	case EItemAbility::Health:
-		Value = 20.0f * Weight;
-		AttributeSet->SetMaxHealth(AttributeSet->GetMaxHealth() + Value);
-		AttributeSet->SetHealth(AttributeSet->GetHealth() + Value);
-		break;
-	case EItemAbility::Attack:
-		Value = 2.0f * Weight;
-		AttributeSet->SetAttackPower(AttributeSet->GetAttackPower() + Value);
-		break;
-	case EItemAbility::HealthAndAttack:
-		Value = 10.0f * Weight;
-		Value2 = 1.0f * Weight;
-		AttributeSet->SetMaxHealth(AttributeSet->GetMaxHealth() + Value);
-		AttributeSet->SetHealth(AttributeSet->GetHealth() + Value);
-		AttributeSet->SetAttackPower(AttributeSet->GetAttackPower() + Value2);
-		break;
-	case EItemAbility::Stamina:
-		Value = 10.0f * Weight;
-		AttributeSet->SetMaxStamina(AttributeSet->GetMaxStamina() + Value);
-		AttributeSet->SetStamina(AttributeSet->GetStamina() + Value);
-		break;
-	case EItemAbility::Defence:
-		Value = 1.0f * Weight;
-		AttributeSet->SetDefense(AttributeSet->GetDefense() + Value);
-		break;
-	case EItemAbility::Gold:
-		Value = 50.0f * Weight;
-		Character->AddGoldWeight(Value);
-		break;
-	case EItemAbility::Drain:
-		Value = 0.5f * Weight;
-		if (AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(Character))
-		{
-			PlayerCharacter->LifestealFraction += Value;
-		}
-		break;
-	case EItemAbility::HealthCurse:
-		Value = 50.0f * Weight;
-		Value2 = 5.0f * Weight;
-		AttributeSet->SetMaxHealth(AttributeSet->GetMaxHealth() - Value);
-		if (AttributeSet->GetMaxHealth() < AttributeSet->GetHealth())
-		{
-			AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
-		}
-		AttributeSet->SetAttackPower(AttributeSet->GetAttackPower() + Value2);
-		break;
-	case EItemAbility::AttackCurse:
-		Value = 5.0f * Weight;
-		Value2 = 1.0f * Weight;
-		AttributeSet->SetAttackPower(AttributeSet->GetAttackPower() - Value);
-		AttributeSet->SetDefense(AttributeSet->GetDefense() + Value2);
-		AttributeSet->SetMaxHealth(AttributeSet->GetMaxHealth() + Value2 * 20.0f);
-		AttributeSet->SetHealth(AttributeSet->GetHealth() + Value2 * 20.0f);
-		break;
-	default:
-		break;
-	}	
-}
 
-void UERNInventoryComponent::RemoveItemAbility(const FItemRuntimeState& ItemRuntimeState, EItemGrade Grade) const
-{
-	AERNCharacterBase* Character = Cast<AERNCharacterBase>(GetOwner());
+	AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(GetOwner());
 	if (!Character)
 	{
 		return;
 	}
-	
-	UERNAttributeSet* AttributeSet = Character->GetAttributeSet();
-	if (!AttributeSet)
+
+	UAbilitySystemComponent* ASC = Character->GetAbilitySystemComponent();
+	if (!ASC)
 	{
 		return;
 	}
-	
-	const int32 Weight = static_cast<int32>(Grade) + 1;
-	float Value, Value2;
-	switch (ItemRuntimeState.GetItemAbility())
+
+	// 기존 GE 버프 모두 해제
+	for (const FActiveGameplayEffectHandle& Handle : ActiveItemAbilityHandles)
 	{
-	case EItemAbility::Health:
-		Value = 20.0f * Weight;
-		AttributeSet->SetMaxHealth(AttributeSet->GetMaxHealth() - Value);
-		if (AttributeSet->GetMaxHealth() < AttributeSet->GetHealth())
+		ASC->RemoveActiveGameplayEffect(Handle);
+	}
+	ActiveItemAbilityHandles.Empty();
+
+	// 논-어트리뷰트 변수 초기화
+	Character->AddGoldWeight(-Character->GetGoldWeight());
+	Character->LifestealFraction = 0.0f;
+
+	const UItemManagerSubsystem* ItemManager = GetItemManager();
+	if (!ItemManager)
+	{
+		return;
+	}
+
+	// 동적 GE 생성
+	UGameplayEffect* GE = NewObject<UGameplayEffect>(GetTransientPackage(), FName(TEXT("ItemAbilitiesGE")));
+	GE->DurationPolicy = EGameplayEffectDurationType::Infinite;
+
+	// 인벤토리 전체를 순회하며 효과 누적
+	for (int32 i = 0; i < Inventory.GetItems().Num(); ++i)
+	{
+		const FInventoryItemEntry& Entry = Inventory.GetItems()[i];
+		const FItemRuntimeState& ItemState = Entry.GetItemRuntimeState();
+		if (!ItemState.IsValid()) continue;
+
+		const FERNItemTable* ItemRow = ItemManager->FindItemRow(ItemState.GetItemID());
+		if (!ItemRow || ItemRow->ItemType != EItemType::Equipable) continue;
+
+		EItemAbility Ability = ItemState.GetItemAbility();
+		if (Ability == EItemAbility::None) continue;
+
+		int32 Weight = static_cast<int32>(ItemRow->Grade) + 1;
+
+		auto AddMod = [&](FGameplayAttribute Attribute, float Value)
 		{
-			AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
-		}
-		break;
-	case EItemAbility::Attack:
-		Value = 2.0f * Weight;
-		AttributeSet->SetAttackPower(AttributeSet->GetAttackPower() - Value);
-		break;
-	case EItemAbility::HealthAndAttack:
-		Value = 10.0f * Weight;
-		Value2 = 1.0f * Weight;
-		AttributeSet->SetMaxHealth(AttributeSet->GetMaxHealth() - Value);
-		if (AttributeSet->GetMaxHealth() < AttributeSet->GetHealth())
+			int32 Idx = GE->Modifiers.AddDefaulted();
+			FGameplayModifierInfo& ModInfo = GE->Modifiers[Idx];
+			ModInfo.Attribute = Attribute;
+			ModInfo.ModifierOp = EGameplayModOp::Additive;
+			ModInfo.ModifierMagnitude = FScalableFloat(Value);
+		};
+
+		switch (Ability)
 		{
-			AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
+		case EItemAbility::Health:
+			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 20.0f * Weight);
+			break;
+		case EItemAbility::Attack:
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 2.0f * Weight);
+			break;
+		case EItemAbility::HealthAndAttack:
+			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 10.0f * Weight);
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 1.0f * Weight);
+			break;
+		case EItemAbility::Stamina:
+			AddMod(UERNAttributeSet::GetMaxStaminaAttribute(), 10.0f * Weight);
+			break;
+		case EItemAbility::Defence:
+			AddMod(UERNAttributeSet::GetDefenseAttribute(), 1.0f * Weight);
+			break;
+		case EItemAbility::Gold:
+			Character->AddGoldWeight(50.0f * Weight);
+			break;
+		case EItemAbility::Drain:
+			Character->LifestealFraction += 0.5f * Weight;
+			break;
+		case EItemAbility::HealthCurse:
+			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), -50.0f * Weight);
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 5.0f * Weight);
+			break;
+		case EItemAbility::AttackCurse:
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), -5.0f * Weight);
+			AddMod(UERNAttributeSet::GetDefenseAttribute(), 1.0f * Weight);
+			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 20.0f * Weight);
+			break;
+		default:
+			break;
 		}
-		AttributeSet->SetAttackPower(AttributeSet->GetAttackPower() - Value2);
-		break;
-	case EItemAbility::Stamina:
-		Value = 10.0f * Weight;
-		AttributeSet->SetMaxStamina(AttributeSet->GetMaxStamina() - Value);
-		if (AttributeSet->GetMaxStamina() < AttributeSet->GetStamina())
+	}
+
+	if (GE->Modifiers.Num() > 0)
+	{
+		FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+		FActiveGameplayEffectHandle Handle = ASC->ApplyGameplayEffectToSelf(GE, 1.0f, Context);
+		if (Handle.WasSuccessfullyApplied())
 		{
-			AttributeSet->SetStamina(AttributeSet->GetMaxStamina());
+			ActiveItemAbilityHandles.Add(Handle);
 		}
-		break;
-	case EItemAbility::Defence:
-		Value = 1.0f * Weight;
-		AttributeSet->SetDefense(AttributeSet->GetDefense() - Value);
-		break;
-	case EItemAbility::Gold:
-		Value = 50.0f * Weight;
-		Character->AddGoldWeight(-Value);
-		break;
-	case EItemAbility::Drain:
-		Value = 0.5f * Weight;
-		if (AProjectERNCharacter* PlayerCharacter = Cast<AProjectERNCharacter>(Character))
-		{
-			PlayerCharacter->LifestealFraction -= Value;
-			if (PlayerCharacter->LifestealFraction < 0.0f)
-			{
-				PlayerCharacter->LifestealFraction = 0.0f;
-			}
-		}
-		break;
-	case EItemAbility::HealthCurse:
-		Value = 50.0f * Weight;
-		Value2 = 5.0f * Weight;
-		AttributeSet->SetMaxHealth(AttributeSet->GetMaxHealth() + Value);
-		AttributeSet->SetHealth(AttributeSet->GetHealth() + Value);
-		AttributeSet->SetAttackPower(AttributeSet->GetAttackPower() - Value2);
-		break;
-	case EItemAbility::AttackCurse:
-		Value = 5.0f * Weight;
-		Value2 = 1.0f * Weight;
-		AttributeSet->SetAttackPower(AttributeSet->GetAttackPower() + Value);
-		AttributeSet->SetDefense(AttributeSet->GetDefense() - Value2);
-		AttributeSet->SetMaxHealth(AttributeSet->GetMaxHealth() - Value2 * 20.0f);
-		if (AttributeSet->GetMaxHealth() < AttributeSet->GetHealth())
-		{
-			AttributeSet->SetHealth(AttributeSet->GetMaxHealth());
-		}
-	default:
-		break;
 	}
 }

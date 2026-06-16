@@ -5,6 +5,7 @@
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "Inventory/Item/Data/ItemDataAssetBase.h"
 #include "Inventory/Item/Data/EquipableItemDataAsset.h"
+#include "Inventory/Data/ERNInventoryList.h"
 
 void UERNItemToolTipWidget::SetTooltipStateText(const FText& InStateText)
 {
@@ -28,6 +29,63 @@ void UERNItemToolTipWidget::NativeConstruct()
 
 	// 상점이 처음 열렸을 때 툴팁이 보이지 않도록 초기화
 	SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UERNItemToolTipWidget::UpdateTooltipWithState(const FItemRuntimeState& ItemState, int32 ItemPrice)
+{
+	UpdateTooltip(ItemState.GetItemID(), ItemPrice);
+
+	if (AbilityPlusText)
+	{
+		EItemAbility Ability = ItemState.GetItemAbility();
+		if (Ability == EItemAbility::None)
+		{
+			AbilityPlusText->SetVisibility(ESlateVisibility::Collapsed);
+			if (AbilityPanel) AbilityPanel->SetVisibility(ESlateVisibility::Collapsed);
+			if (AbilityIcon) AbilityIcon->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		else
+		{
+			FString AbilityStr;
+			if (UGameInstance* GI = GetGameInstance())
+			{
+				if (UItemManagerSubsystem* ItemSubsystem = GI->GetSubsystem<UItemManagerSubsystem>())
+				{
+					if (const FERNItemTable* ItemRow = ItemSubsystem->FindItemRow(ItemState.GetItemID()))
+					{
+						int32 Weight = static_cast<int32>(ItemRow->Grade) + 1;
+						switch (Ability)
+						{
+						case EItemAbility::Health: AbilityStr = FString::Printf(TEXT("최대 체력 +%d"), 20 * Weight); break;
+						case EItemAbility::Attack: AbilityStr = FString::Printf(TEXT("공격력 +%d"), 2 * Weight); break;
+						case EItemAbility::HealthAndAttack: AbilityStr = FString::Printf(TEXT("최대 체력 +%d, 공격력 +%d"), 10 * Weight, 1 * Weight); break;
+						case EItemAbility::Stamina: AbilityStr = FString::Printf(TEXT("최대 스태미나 +%d"), 10 * Weight); break;
+						case EItemAbility::Defence: AbilityStr = FString::Printf(TEXT("방어력 +%d"), 1 * Weight); break;
+						case EItemAbility::Gold: AbilityStr = FString::Printf(TEXT("골드 획득 +%d"), 50 * Weight); break;
+						case EItemAbility::Drain: AbilityStr = FString::Printf(TEXT("생명력 흡수 +%.1f%%"), 0.5f * Weight * 100.0f); break;
+						case EItemAbility::HealthCurse: AbilityStr = FString::Printf(TEXT("최대 체력 -%d, 공격력 +%d"), 50 * Weight, 5 * Weight); break;
+						case EItemAbility::AttackCurse: AbilityStr = FString::Printf(TEXT("공격력 -%d, 방어력 +%d, 최대 체력 +%d"), 5 * Weight, 1 * Weight, 20 * Weight); break;
+						default: break;
+						}
+					}
+				}
+			}
+
+			if (!AbilityStr.IsEmpty())
+			{
+				AbilityPlusText->SetText(FText::FromString(AbilityStr));
+				AbilityPlusText->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+				if (AbilityPanel) AbilityPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+				if (AbilityIcon) AbilityIcon->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+			}
+			else
+			{
+				AbilityPlusText->SetVisibility(ESlateVisibility::Collapsed);
+				if (AbilityPanel) AbilityPanel->SetVisibility(ESlateVisibility::Collapsed);
+				if (AbilityIcon) AbilityIcon->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
+	}
 }
 
 void UERNItemToolTipWidget::UpdateTooltip(FName ItemID, int32 ItemPrice)
@@ -124,6 +182,10 @@ void UERNItemToolTipWidget::UpdateTooltip(FName ItemID, int32 ItemPrice)
 					if (AbilityPanel)
 					{
 						AbilityPanel->SetVisibility(ESlateVisibility::Collapsed);
+					}
+					if (AbilityPlusText)
+					{
+						AbilityPlusText->SetVisibility(ESlateVisibility::Collapsed);
 					}
 				}
 			}

@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Inventory/Item/Data/ERNItemEnums.h"
+#include "Inventory/Item/Data/ERNItemRuntimeState.h"
 #include "Engine/DataTable.h"
 #include "ERNShopTypes.generated.h"
 
@@ -90,6 +91,10 @@ struct FERNShopItemData
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
     FName ItemID;
+    
+    // 무작위 어빌리티 등 런타임 정보 저장을 위한 상태 변수
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    FItemRuntimeState ItemState;
 
     // UI에서 카테고리별 탭(Tab) 분류 및 정렬을 위해 추가
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")

@@ -166,6 +166,25 @@ void UItemManagerSubsystem::RollItemAbility(FItemRuntimeState& OutItemRuntimeSta
 	case 3:
 		OutItemRuntimeState.SetItemAbility(EItemAbility::HealthAndAttack);
 		break;
+	case 4:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Stamina);
+		break;
+	case 5:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Defence);
+		break;
+	case 6:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Gold);
+		break;
+	case 7:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Drain);
+		break;
+	case 8:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::HealthCurse);
+		break;
+	case 9:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::AttackCurse);
+		break;
+	case 10:
 	default:
 		OutItemRuntimeState.SetItemAbility(EItemAbility::None);
 	}

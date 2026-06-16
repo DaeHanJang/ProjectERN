@@ -17,7 +17,11 @@ class PROJECTERN_API UERNItemToolTipWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	// 툴팁 데이터 갱신 (현재는 이름과 아이콘만 연동)
+	// 툴팁 데이터 갱신 (런타임 상태 포함)
+	UFUNCTION(BlueprintCallable, Category = "Shop|ToolTip")
+	void UpdateTooltipWithState(const struct FItemRuntimeState& ItemState, int32 ItemPrice);
+
+	// 툴팁 데이터 갱신 (순수 데이터테이블 기반, 상점용)
 	UFUNCTION(BlueprintCallable, Category = "Shop|ToolTip")
 	void UpdateTooltip(FName ItemID, int32 ItemPrice);
 
@@ -58,4 +62,11 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	UPanelWidget* AbilityPanel;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	UImage* AbilityIcon;
+
+	// 새로 추가: 아이템의 무작위 어빌리티 텍스트 출력용
+	UPROPERTY(meta = (BindWidgetOptional))
+	UTextBlock* AbilityPlusText;
 };
