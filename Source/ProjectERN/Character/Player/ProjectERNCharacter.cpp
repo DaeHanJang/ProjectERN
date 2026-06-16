@@ -2301,8 +2301,11 @@ float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 	{
 		return 0.f;
 	}
+	
+	const float DamageReductionRate = 100 / (100 + GetAttributeSet()->GetDefense()); 
+	const float FinalDamage = DamageAmount * DamageReductionRate;
 
-	return Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	return Super::TakeDamage(FinalDamage, DamageEvent, EventInstigator, DamageCauser);
 }
 
 void AProjectERNCharacter::Server_LevelUp_Implementation()

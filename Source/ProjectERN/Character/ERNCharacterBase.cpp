@@ -518,7 +518,8 @@ void AERNCharacterBase::OnMovementModeChanged(EMovementMode PrevMovementMode, ui
 void AERNCharacterBase::AddGold(const int32 Amount) const
 {
 	const int32 CurrentGold = static_cast<int32>(AttributeSet->GetGold());
-	const int32 NewGold = CurrentGold + Amount;
+	int32 NewGold = CurrentGold + Amount;
+	NewGold += NewGold * GoldWeight;
 	AttributeSet->SetGold(static_cast<float>(NewGold));
 	
 	UE_LOG(LogTemp, Warning, TEXT("PlayerController: %s, Gold: %d"), *GetNameSafe(Controller), static_cast<int32>(AttributeSet->GetGold()));

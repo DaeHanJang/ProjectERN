@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Inventory/Data/ERNInventoryList.h"
+#include "Inventory/Item/Data/ERNItemEnums.h"
 #include "ERNInventoryComponent.generated.h"
 
 class AERNItemActor;
@@ -45,6 +46,10 @@ public:
 	
 protected: 
 	virtual void BeginPlay() override;
+	
+private:
+	void ApplyItemAbility(const FItemRuntimeState& ItemRuntimeState, EItemGrade Grade) const;
+	void RemoveItemAbility(const FItemRuntimeState& ItemRuntimeState, EItemGrade Grade) const;
 	
 private:
 	// Get ItemManager

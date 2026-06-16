@@ -7,11 +7,12 @@
 #include "Character/Player/ERNPlayerController.h"
 #include "Character/Player/ERNPlayerState.h"
 #include "Character/Player/ProjectERNCharacter.h"
-#include "Combat/Consumable/ERNConsumableBase.h"
 #include "Combat/Weapons/ERNWeaponBase.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/Character.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GAS/ERNAttributeSet.h"
+#include "GAS/Abilities/ERNGA_AttackAbility.h"
 #include "Inventory/Item/Data/ConsumableItemDataAsset.h"
 #include "Inventory/Item/Data/EquipableItemDataAsset.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
@@ -135,6 +136,7 @@ void UERNEquipmentComponent::Server_EquipWeapon_Implementation(FName ItemID)
 	FItemRuntimeState NewWeaponRuntimeState;
 	NewWeaponRuntimeState.SetItemID(ItemID);
 	NewWeaponRuntimeState.SetQuantity(1);
+	NewWeaponRuntimeState.SetItemAbility(EItemAbility::None);
 	NewWeapon->Init(NewWeaponRuntimeState, DA);
 	
 	// 장착할 아이템 부착

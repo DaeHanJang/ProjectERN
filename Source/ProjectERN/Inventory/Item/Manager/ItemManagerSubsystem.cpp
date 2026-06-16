@@ -138,12 +138,37 @@ bool UItemManagerSubsystem::RollItemFromDropTable(const UDataTable* DropTable, F
 			
 			OutItemRuntimeState.SetItemID(Row.ItemID);
 			OutItemRuntimeState.SetQuantity(Quantity);
+			if (Row.Type != EDropItemType::None && Row.Type != EDropItemType::Consumable)
+			{
+				RollItemAbility(OutItemRuntimeState);
+			}
 			
 			break;
 		}
 	}
 	
 	return OutItemRuntimeState.IsValid();
+}
+
+void UItemManagerSubsystem::RollItemAbility(FItemRuntimeState& OutItemRuntimeState) const
+{
+	switch (const int32 Roll = FMath::RandRange(0, static_cast<int32>(EItemAbility::Max) - 1))
+	{
+	case 0:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::None);
+		break;
+	case 1:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Health);
+		break;
+	case 2:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Attack);
+		break;
+	case 3:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::HealthAndAttack);
+		break;
+	default:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::None);
+	}
 }
 
 const UItemDataAssetBase* UItemManagerSubsystem::LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags)

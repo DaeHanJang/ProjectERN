@@ -6,4 +6,5 @@ void FItemRuntimeState::Init()
 {
 	ItemID = NAME_None;
 	Quantity = 0;
+	ItemAbility = EItemAbility::None;
 }

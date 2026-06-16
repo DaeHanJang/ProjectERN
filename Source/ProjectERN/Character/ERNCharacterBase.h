@@ -34,6 +34,9 @@ class PROJECTERN_API AERNCharacterBase : public ACharacter, public IAbilitySyste
 public:
 	AERNCharacterBase();
 	
+	FORCEINLINE float GetGoldWeight() const { return GoldWeight; }
+	FORCEINLINE void AddGoldWeight(const float Amount) { GoldWeight += Amount; }
+	
 	// IAbilitySystemInterface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
@@ -90,6 +93,8 @@ protected:
 
 	// 배리어 차단 전과 크레딧용 — 현재 실드를 걸어준 성기사 (서버). 배리어 흡수량을 이 캐릭터 전과로 가산
 	TWeakObjectPtr<AProjectERNCharacter> ShieldInstigator;
+	
+	float GoldWeight = 0.0f;
 
 public:
 	// 실드를 걸어준 시전자 설정 (PaladinShield 적용 시 호출, 서버)

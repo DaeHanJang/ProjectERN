@@ -6,6 +6,7 @@
 #include "Combat/Weapons/ERNWeaponBase.h"
 #include "Components/ActorComponent.h"
 #include "Inventory/Data/ERNInventoryList.h"
+#include "Inventory/Item/Data/ERNItemEnums.h"
 #include "ERNEquipmentComponent.generated.h"
 
 class AERNConsumableBase;
@@ -58,7 +59,7 @@ public:
 	
 	// 장착한 소모품 개수 감소
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Equipment")
-	void Server_UseCurrentConsumableQuantity();	
+	void Server_UseCurrentConsumableQuantity();
 	
 private:
 	UItemManagerSubsystem* GetItemManagerSubsystem() const;
