@@ -47,6 +47,9 @@ public:
     /** 상호작용 실행 정책 */
     virtual EInteractionExecutionPolicy GetInteractionExecutionPolicy_Implementation() const override;
 
+    /** 이 상점에서 어빌리티를 강제로 부여하지 않을지 여부 반환 */
+    UFUNCTION(BlueprintCallable, Category = "Shop")
+    bool IsForceNoAbilities() const { return bForceNoAbilities; }
     
 protected:
     virtual void BeginPlay() override;
@@ -106,5 +109,9 @@ protected:
     /** 고정 상점 데이터 테이블 (bIsFixedShop이 true일 때만 유효) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop", meta = (EditCondition = "bIsFixedShop"))
     class UDataTable* FixedShopDataTable = nullptr;
+
+    /** 이 상점에서 판매하는 아이템은 어빌리티를 가지지 못하게 강제합니다 (장비더라도 None으로 처리) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shop")
+    bool bForceNoAbilities = false;
 
 };

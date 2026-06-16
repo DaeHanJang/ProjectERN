@@ -117,6 +117,7 @@ bool FInventoryList::AddItem(FItemRuntimeState& ItemRuntimeState, const int32 Ma
 		
 		Items[SlotIndex].SetItemID(ItemRuntimeState.GetItemID());
 		Items[SlotIndex].SetQuantity(FMath::Min(MaxStackSize, Remaining));
+		Items[SlotIndex].SetItemRuntimeState(ItemRuntimeState);
 		
 		Remaining -= Items[SlotIndex].GetQuantity();
 		
@@ -153,6 +154,7 @@ void FInventoryList::RemoveItem(const int32 SlotIndex, const int32 Count, FItemR
 	// 인벤토리에 아이템을 지우고 월드에 생성할 ItemActor의 RuntimeState 값 설정
 	OutDropRuntimeState.SetItemID(Items[SlotIndex].GetItemID());
 	OutDropRuntimeState.SetQuantity(Count);
+	OutDropRuntimeState.SetItemAbility(Items[SlotIndex].GetItemRuntimeState().GetItemAbility());
 	Items[SlotIndex].AddQuantity(-Count);
 	// 슬롯에 남아있는 아이템의 수량이 0이하라면 슬롯 초기화
 	if (Items[SlotIndex].GetQuantity() <= 0)

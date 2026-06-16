@@ -2,9 +2,14 @@
 
 #include "Inventory/Components/ERNInventoryComponent.h"
 
+#include "Character/ERNCharacterBase.h"
+#include "Character/Player/ProjectERNCharacter.h"
+#include "GAS/ERNAttributeSet.h"
 #include "Inventory/Item/ERNItemActor.h"
 #include "Inventory/Item/Manager/ItemManagerSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "AbilitySystemComponent.h"
+#include "GameplayEffect.h"
 
 UERNInventoryComponent::UERNInventoryComponent()
 {
@@ -22,6 +27,8 @@ void UERNInventoryComponent::CopyInventoryFrom(const UERNInventoryComponent* Sou
 	
 	Inventory.CopyFrom(Source->GetInventory(), MaxSlotSize);
 	
+	RecalculateItemAbilities();
+	
 	for (const FInventoryItemEntry& Entry : Inventory.GetItems())
 	{
 		OnInventorySlotChanged.Broadcast(Entry);
@@ -36,6 +43,11 @@ void UERNInventoryComponent::BeginPlay()
 	if (Inventory.GetItems().Num() == 0)
 	{
 		Inventory.Init(MaxSlotSize);
+	}
+	else
+	{
+		// 스냅샷으로 복원된 아이템이 있다면 어빌리티 다시 적용
+		RecalculateItemAbilities();
 	}
 }
 
@@ -83,10 +95,13 @@ void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemAc
 	
 	TArray<FInventoryItemEntry> ChangedSlots;
 	// Inventory에 넣기 요청
-	if (!Inventory.AddItem(ItemRuntimeState, MaxSlotSize, ItemManager->FindItemRow(ItemRuntimeState.GetItemID())->MaxStackSize, ChangedSlots))
+	const FERNItemTable* ItemTable = ItemManager->FindItemRow(ItemRuntimeState.GetItemID());
+	if (!Inventory.AddItem(ItemRuntimeState, MaxSlotSize, ItemTable->MaxStackSize, ChangedSlots))
 	{
 		return;
 	}
+	
+	RecalculateItemAbilities();
 	
 	// 리슨 서버 인벤토리 변경 이벤트 발신 (UI 갱신)
 	for (const FInventoryItemEntry& ChangedSlot : ChangedSlots)
@@ -100,6 +115,8 @@ void UERNInventoryComponent::Server_AddItem_Implementation(AERNItemActor* ItemAc
 	{
 		ItemActor->Destroy();
 	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("Item: %s, Quantity: %d, Ability: %d"), *ItemRuntimeState.GetItemID().ToString(), ItemRuntimeState.GetQuantity(), static_cast<int32>(ItemRuntimeState.GetItemAbility()));
 }
 
 void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIndex, const int32 Count)
@@ -121,6 +138,20 @@ void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIn
 	// 인벤토리에서 아이템 제거
 	Inventory.RemoveItem(SlotIndex, Count, DropItemRuntimeState, ChangedSlot);
 	
+	const UItemManagerSubsystem* ItemManager = GetItemManager();
+	// 서버에서 ItemID 유효성 검사
+	if (!ItemManager || !ItemManager->ItemValid(DropItemRuntimeState.GetItemID()))
+	{
+		return;
+	}
+	const FERNItemTable* ItemTable = ItemManager->FindItemRow(DropItemRuntimeState.GetItemID());
+	if (ItemTable->ItemType == EItemType::Equipable)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Item: %s, Quantity: %d, Ability: %d"), *DropItemRuntimeState.GetItemID().ToString(), DropItemRuntimeState.GetQuantity(), static_cast<int32>(DropItemRuntimeState.GetItemAbility()));
+	}
+
+	RecalculateItemAbilities();
+	
 	// 리슨 서버 전용 UI 갱신 이벤트
 	OnInventorySlotChanged.Broadcast(ChangedSlot);
 	
@@ -128,8 +159,125 @@ void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIn
 	
 	// 인벤토리에서 제거한 아이템 월드에 생성 
 	const FVector& DropLocation = GetOwner()->GetActorLocation() + GetOwner()->GetActorForwardVector() * 50.0f;
-	GetItemManager()->SpawnItem(DropItemRuntimeState, DropLocation, GetOwner()->GetActorRotation());
+	AActor* Item = GetItemManager()->SpawnItem(DropItemRuntimeState, DropLocation, GetOwner()->GetActorRotation());
+	if (AERNItemActor* ERNItem = Cast<AERNItemActor>(Item))
+	{
+		ERNItem->Launch(GetOwner()->GetActorForwardVector());
+	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("DropItem: %s, Quantity: %d"), *DropItemRuntimeState.GetItemID().ToString(), DropItemRuntimeState.GetQuantity());
 	UE_LOG(LogTemp, Warning, TEXT("CurrentItem: %s, Quantity: %d"), *Inventory.GetItems()[SlotIndex].GetItemID().ToString(), Inventory.GetItemQuantity(SlotIndex));
+}
+
+void UERNInventoryComponent::RecalculateItemAbilities()
+{
+	if (!GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
+	AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(GetOwner());
+	if (!Character)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = Character->GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return;
+	}
+
+	// 기존 GE 버프 모두 해제
+	for (const FActiveGameplayEffectHandle& Handle : ActiveItemAbilityHandles)
+	{
+		ASC->RemoveActiveGameplayEffect(Handle);
+	}
+	ActiveItemAbilityHandles.Empty();
+
+	// 논-어트리뷰트 변수 초기화
+	Character->AddGoldWeight(-Character->GetGoldWeight());
+	Character->LifestealFraction = 0.0f;
+
+	const UItemManagerSubsystem* ItemManager = GetItemManager();
+	if (!ItemManager)
+	{
+		return;
+	}
+
+	// 동적 GE 생성
+	UGameplayEffect* GE = NewObject<UGameplayEffect>(GetTransientPackage(), FName(TEXT("ItemAbilitiesGE")));
+	GE->DurationPolicy = EGameplayEffectDurationType::Infinite;
+
+	// 인벤토리 전체를 순회하며 효과 누적
+	for (int32 i = 0; i < Inventory.GetItems().Num(); ++i)
+	{
+		const FInventoryItemEntry& Entry = Inventory.GetItems()[i];
+		const FItemRuntimeState& ItemState = Entry.GetItemRuntimeState();
+		if (!ItemState.IsValid()) continue;
+
+		const FERNItemTable* ItemRow = ItemManager->FindItemRow(ItemState.GetItemID());
+		if (!ItemRow || ItemRow->ItemType != EItemType::Equipable) continue;
+
+		EItemAbility Ability = ItemState.GetItemAbility();
+		if (Ability == EItemAbility::None) continue;
+
+		int32 Weight = static_cast<int32>(ItemRow->Grade) + 1;
+
+		auto AddMod = [&](FGameplayAttribute Attribute, float Value)
+		{
+			int32 Idx = GE->Modifiers.AddDefaulted();
+			FGameplayModifierInfo& ModInfo = GE->Modifiers[Idx];
+			ModInfo.Attribute = Attribute;
+			ModInfo.ModifierOp = EGameplayModOp::Additive;
+			ModInfo.ModifierMagnitude = FScalableFloat(Value);
+		};
+
+		switch (Ability)
+		{
+		case EItemAbility::Health:
+			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 20.0f * Weight);
+			break;
+		case EItemAbility::Attack:
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 2.0f * Weight);
+			break;
+		case EItemAbility::HealthAndAttack:
+			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 10.0f * Weight);
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 1.0f * Weight);
+			break;
+		case EItemAbility::Stamina:
+			AddMod(UERNAttributeSet::GetMaxStaminaAttribute(), 10.0f * Weight);
+			break;
+		case EItemAbility::Defence:
+			AddMod(UERNAttributeSet::GetDefenseAttribute(), 1.0f * Weight);
+			break;
+		case EItemAbility::Gold:
+			Character->AddGoldWeight(50.0f * Weight);
+			break;
+		case EItemAbility::Drain:
+			Character->LifestealFraction += 0.5f * Weight;
+			break;
+		case EItemAbility::HealthCurse:
+			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), -50.0f * Weight);
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 5.0f * Weight);
+			break;
+		case EItemAbility::AttackCurse:
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), -5.0f * Weight);
+			AddMod(UERNAttributeSet::GetDefenseAttribute(), 1.0f * Weight);
+			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 20.0f * Weight);
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (GE->Modifiers.Num() > 0)
+	{
+		FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+		FActiveGameplayEffectHandle Handle = ASC->ApplyGameplayEffectToSelf(GE, 1.0f, Context);
+		if (Handle.WasSuccessfullyApplied())
+		{
+			ActiveItemAbilityHandles.Add(Handle);
+		}
+	}
 }

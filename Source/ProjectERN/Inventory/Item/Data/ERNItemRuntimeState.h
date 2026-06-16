@@ -5,6 +5,22 @@
 #include "CoreMinimal.h"
 #include "ERNItemRuntimeState.generated.h"
 
+UENUM(BlueprintType)
+enum class EItemAbility : uint8
+{
+	None            UMETA(DisplayName="None"), 
+	Health          UMETA(DisplayName="Health"),
+	Attack          UMETA(DisplayName="Attack"),
+	HealthAndAttack UMETA(DisplayName="HealthAndAttack"),
+	Stamina         UMETA(DisplayName="Stamina"),
+	Defence         UMETA(DisplayName="Defence"),
+	Gold            UMETA(DisplayName="Gold"),
+	Drain           UMETA(DisplayName="Drain"),
+	HealthCurse     UMETA(DisplayName="HealthCurse"),
+	AttackCurse     UMETA(DisplayName="AttackCurse"),
+	Max             UMETA(Hidden)
+};
+
 // Item Runtime State
 USTRUCT(BlueprintType)
 struct FItemRuntimeState
@@ -18,6 +34,8 @@ public:
 	FORCEINLINE const int32 GetQuantity() const { return Quantity; }
 	FORCEINLINE void SetQuantity(const int32 InQuantity) { Quantity = InQuantity; }
 	FORCEINLINE void AddQuantity(const int32 AddQuantity) { Quantity += AddQuantity; }
+	FORCEINLINE EItemAbility GetItemAbility() const { return ItemAbility; } 
+	FORCEINLINE void SetItemAbility(const EItemAbility InItemAbility) { ItemAbility = InItemAbility; }
 	
 	FORCEINLINE bool IsValid() const { return !ItemID.IsNone(); }
 	
@@ -32,5 +50,9 @@ private:
 	// 수량
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
 	int32 Quantity = 0;
+	
+	// 아이템 어빌리티
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, meta=(AllowPrivateAccess="true"))
+	EItemAbility ItemAbility = EItemAbility::None;
 	
 };

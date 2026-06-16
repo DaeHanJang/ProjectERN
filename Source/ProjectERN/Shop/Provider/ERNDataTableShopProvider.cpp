@@ -19,7 +19,7 @@ void UERNDataTableShopProvider::Initialize_Implementation(UObject* Owner)
     UE_LOG(LogShopProvider, Log, TEXT("[DataTableProvider] 초기화 완료 (단일 마스터 테이블 방식 랜덤 생성 모드 대기)"));
 }
 
-FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs)
+FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, bool bForceNoAbilities)
 {
     FERNShopInventory NewInventory;
     NewInventory.ShopID = ShopID;
@@ -82,10 +82,15 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
                 ItemData.StockCount = It->MaxStock;
                 
                 int32 ActualBuyPrice = 0;
+                bool bIsEquipable = false;
                 if (ItemMgr)
                 {
                     if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(ItemData.ItemID))
                     {
+                        if (ItemRow->ItemType == EItemType::Equipable)
+                        {
+                            bIsEquipable = true;
+                        }
                         for (const FItemShopPrice& ShopPrice : ItemRow->ShopPrices)
                         {
                             if (ShopPrice.ShopType == ShopType)
@@ -109,6 +114,16 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
                 ItemData.Price = ActualBuyPrice;
                 ItemData.bIsAvailable = (ItemData.StockCount != 0);
                 ItemData.UniqueID = FGuid::NewGuid();
+                
+                ItemData.ItemState.SetItemID(ItemData.ItemID);
+                ItemData.ItemState.SetQuantity(1);
+                if (bIsEquipable && !bForceNoAbilities)
+                {
+                    if (ItemMgr)
+                    {
+                        ItemMgr->RollItemAbility(ItemData.ItemState);
+                    }
+                }
 
                 NewInventory.Items.Add(ItemData);
                 It.RemoveCurrent();
@@ -137,10 +152,15 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
                     ItemData.StockCount = Candidates[i].MaxStock;
                     
                     int32 ActualBuyPrice = 0;
+                    bool bIsEquipable = false;
                     if (ItemMgr)
                     {
                         if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(ItemData.ItemID))
                         {
+                            if (ItemRow->ItemType == EItemType::Equipable)
+                            {
+                                bIsEquipable = true;
+                            }
                             for (const FItemShopPrice& ShopPrice : ItemRow->ShopPrices)
                             {
                                 if (ShopPrice.ShopType == ShopType)
@@ -160,6 +180,16 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
                     ItemData.Price = ActualBuyPrice;
                     ItemData.bIsAvailable = (ItemData.StockCount != 0);
                     ItemData.UniqueID = FGuid::NewGuid();
+                    
+                    ItemData.ItemState.SetItemID(ItemData.ItemID);
+                    ItemData.ItemState.SetQuantity(1);
+                    if (bIsEquipable && !bForceNoAbilities)
+                    {
+                        if (ItemMgr)
+                        {
+                            ItemMgr->RollItemAbility(ItemData.ItemState);
+                        }
+                    }
 
                     NewInventory.Items.Add(ItemData);
                     Candidates.RemoveAt(i);
@@ -178,21 +208,12 @@ FERNShopInventory UERNDataTableShopProvider::GenerateRandomInventory(FName ShopI
 
     UE_LOG(LogShopProvider, Warning, TEXT("====================================="));
     UE_LOG(LogShopProvider, Warning, TEXT("[%s] 랜덤 생성 완료. 총 %d개 아이템 생성됨. (아래는 최종 정렬 결과)"), *ShopID.ToString(), NewInventory.Items.Num());
-    
-    for (int32 i = 0; i < NewInventory.Items.Num(); ++i)
-    {
-        const FERNShopItemData& Item = NewInventory.Items[i];
-        FString CategoryStr = (Item.ItemCategory == EItemType::Equipable) ? TEXT("장비(Equipable)") : 
-                              (Item.ItemCategory == EItemType::Consumable) ? TEXT("소모품(Consumable)") : TEXT("기타");
-
-        UE_LOG(LogShopProvider, Warning, TEXT("  -> [%d] ItemID: %s | 분류: %s"), i, *Item.ItemID.ToString(), *CategoryStr);
-    }
     UE_LOG(LogShopProvider, Warning, TEXT("====================================="));
 
     return NewInventory;
 }
 
-FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, UDataTable* FixedDataTable)
+FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID, EShopType ShopType, const TArray<FERNShopSlotConfig>& SlotConfigs, UDataTable* FixedDataTable, bool bForceNoAbilities)
 {
     FERNShopInventory NewInventory;
     NewInventory.ShopID = ShopID;
@@ -255,10 +276,15 @@ FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID
                 ItemData.StockCount = It->MaxStock;
                 
                 int32 ActualBuyPrice = 0;
+                bool bIsEquipable = false;
                 if (ItemMgr)
                 {
                     if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(ItemData.ItemID))
                     {
+                        if (ItemRow->ItemType == EItemType::Equipable)
+                        {
+                            bIsEquipable = true;
+                        }
                         for (const FItemShopPrice& ShopPrice : ItemRow->ShopPrices)
                         {
                             if (ShopPrice.ShopType == ShopType)
@@ -278,6 +304,16 @@ FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID
                 ItemData.Price = ActualBuyPrice;
                 ItemData.bIsAvailable = (ItemData.StockCount != 0);
                 ItemData.UniqueID = FGuid::NewGuid();
+
+                ItemData.ItemState.SetItemID(ItemData.ItemID);
+                ItemData.ItemState.SetQuantity(1);
+                if (bIsEquipable && !bForceNoAbilities)
+                {
+                    if (ItemMgr)
+                    {
+                        ItemMgr->RollItemAbility(ItemData.ItemState);
+                    }
+                }
 
                 NewInventory.Items.Add(ItemData);
                 It.RemoveCurrent();
@@ -306,10 +342,15 @@ FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID
                     ItemData.StockCount = Candidates[i].MaxStock;
                     
                     int32 ActualBuyPrice = 0;
+                    bool bIsEquipable = false;
                     if (ItemMgr)
                     {
                         if (const FERNItemTable* ItemRow = ItemMgr->FindItemRow(ItemData.ItemID))
                         {
+                            if (ItemRow->ItemType == EItemType::Equipable)
+                            {
+                                bIsEquipable = true;
+                            }
                             for (const FItemShopPrice& ShopPrice : ItemRow->ShopPrices)
                             {
                                 if (ShopPrice.ShopType == ShopType)
@@ -329,6 +370,16 @@ FERNShopInventory UERNDataTableShopProvider::GenerateFixedInventory(FName ShopID
                     ItemData.Price = ActualBuyPrice;
                     ItemData.bIsAvailable = (ItemData.StockCount != 0);
                     ItemData.UniqueID = FGuid::NewGuid();
+
+                    ItemData.ItemState.SetItemID(ItemData.ItemID);
+                    ItemData.ItemState.SetQuantity(1);
+                    if (bIsEquipable && !bForceNoAbilities)
+                    {
+                        if (ItemMgr)
+                        {
+                            ItemMgr->RollItemAbility(ItemData.ItemState);
+                        }
+                    }
 
                     NewInventory.Items.Add(ItemData);
                     Candidates.RemoveAt(i);
@@ -428,8 +479,7 @@ void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransacti
             return;
         }
 
-        FItemRuntimeState NewItemState;
-        NewItemState.SetItemID(TargetItem->ItemID);
+        FItemRuntimeState NewItemState = TargetItem->ItemState;
         NewItemState.SetQuantity(Transaction.Quantity);
 
         TArray<FInventoryItemEntry> ChangedEntries;

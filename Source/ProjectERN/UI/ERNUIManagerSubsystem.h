@@ -53,6 +53,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void CloseActiveUI();
 
+	/**
+	 * UI 상태를 None으로 강제 확정하고, 이미 None이어도 OnUIStateChanged를 항상 브로드캐스트.
+	 * CloseActiveUI는 이미 None이면 브로드캐스트하지 않으므로, 컷신 종료 후
+	 * OnUIStateChanged 구독 HUD(스킬/퀵슬롯/골드 등) 재표시 + 상호작용 게이트 복구용으로 사용.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ForceCloseAllUI();
+
 	/** 현재 열려있는 UI 타입 반환 */
 	UFUNCTION(BlueprintPure, Category = "UI")
 	EERNUIType GetActiveUIType() const { return ActiveUIType; }

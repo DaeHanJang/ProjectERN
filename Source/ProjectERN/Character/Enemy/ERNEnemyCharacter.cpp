@@ -553,7 +553,7 @@ void AERNEnemyCharacter::SpawnGold()
 			continue;
 		}
 		
-		PlayerCharacter->AddGold(RewordGold);
+		PlayerCharacter->AddGold(RewordGold + PlayerCharacter->GetGoldWeight());
 	}
 }
 

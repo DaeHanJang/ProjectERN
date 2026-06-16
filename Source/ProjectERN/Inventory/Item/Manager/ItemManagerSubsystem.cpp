@@ -138,12 +138,56 @@ bool UItemManagerSubsystem::RollItemFromDropTable(const UDataTable* DropTable, F
 			
 			OutItemRuntimeState.SetItemID(Row.ItemID);
 			OutItemRuntimeState.SetQuantity(Quantity);
+			if (Row.Type != EDropItemType::None && Row.Type != EDropItemType::Consumable)
+			{
+				RollItemAbility(OutItemRuntimeState);
+			}
 			
 			break;
 		}
 	}
 	
 	return OutItemRuntimeState.IsValid();
+}
+
+void UItemManagerSubsystem::RollItemAbility(FItemRuntimeState& OutItemRuntimeState) const
+{
+	switch (const int32 Roll = FMath::RandRange(0, static_cast<int32>(EItemAbility::Max) - 1))
+	{
+	case 0:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::None);
+		break;
+	case 1:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Health);
+		break;
+	case 2:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Attack);
+		break;
+	case 3:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::HealthAndAttack);
+		break;
+	case 4:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Stamina);
+		break;
+	case 5:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Defence);
+		break;
+	case 6:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Gold);
+		break;
+	case 7:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::Drain);
+		break;
+	case 8:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::HealthCurse);
+		break;
+	case 9:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::AttackCurse);
+		break;
+	case 10:
+	default:
+		OutItemRuntimeState.SetItemAbility(EItemAbility::None);
+	}
 }
 
 const UItemDataAssetBase* UItemManagerSubsystem::LoadItemDataAssetSync(const FName ItemID, const EItemAssetLoadFlags LoadFlags)

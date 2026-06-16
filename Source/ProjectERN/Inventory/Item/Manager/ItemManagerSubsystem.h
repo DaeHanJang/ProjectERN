@@ -52,6 +52,9 @@ public:
 	// 드롭 테이블 기반 아이템 데이터 생성
 	UFUNCTION(BlueprintCallable, Category="ItemManager")
 	bool RollItemFromDropTable(const UDataTable* DropTable, FItemRuntimeState& OutItemRuntimeState, EDropItemType DropItemType = EDropItemType::None) const;
+	// 아이템 런타임 스테이트에 어빌리티 추가
+	UFUNCTION(BlueprintCallable, Category="ItmeManager")
+	void RollItemAbility(FItemRuntimeState& OutItemRuntimeState) const;
 
 	// 아이템 데이터 애셋 동기 로드
 	UFUNCTION(BlueprintCallable, Category="ItemManager")

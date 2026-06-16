@@ -1006,4 +1006,38 @@ protected:
 	float GetSyncedServerWorldTimeSeconds() const;
 	
 #pragma endregion PlayerRespawn
+	
+#pragma region FOVControlBySpeed
+	// 속도 기반 카메라 FOV
+protected:
+	// 기본 속도 (FOV 최소값)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Camera|SpeedFOV")
+	float SpeedFOVStartSpeed = 600;
+
+	// 최대 속도 (FOV 최대값)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Camera|SpeedFOV")
+	float SpeedFOVFullSpeed = 1500.f;
+
+	// 최대 FOV 적용값
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Camera|SpeedFOV")
+	float SpeedFOVMaxAdd = 25.f;
+
+	// FOV 보간 속도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|Camera|SpeedFOV")
+	float SpeedFOVInterpSpeed = 8.f;
+
+	// 캐싱용
+	UPROPERTY(Transient)
+	float SpeedFOVBase = 90.f;
+
+	UPROPERTY(Transient)
+	float SpeedFOVTarget = 90.f;
+
+	// 적용할 FOV 값 업데이트
+	void UpdateSpeedFOVTarget(float NewSpeed);
+	
+	// Tick에서 보간으로 FOV 적용
+	void TickSpeedFOV(float DeltaSeconds);
+	
+#pragma endregion FOVControlBySpeed
 };

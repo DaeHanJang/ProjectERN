@@ -300,15 +300,24 @@ void UERNPlayerDetailStatusWidget::UpdateGoldText(float Gold)
 void UERNPlayerDetailStatusWidget::UpdateAttackPowerText(float Base, float Bonus)
 {
 	float WeaponDamage = GetWeaponDamage();
-	Bonus += WeaponDamage;
+	float GEBonus = 0.0f;
+	if (CachedASC.IsValid())
+	{
+		float BaseAttr = CachedASC->GetNumericAttributeBase(UERNAttributeSet::GetAttackPowerAttribute());
+		GEBonus = Base - BaseAttr;
+		Base = BaseAttr;
+	}
+
+	float TotalBonus = Bonus + WeaponDamage + GEBonus;
 
 	if (Text_AttackPower)
 	{
-		if (Bonus > 0.0f)
+		if (TotalBonus != 0.0f)
 		{
-			FText FormattedText = FText::Format(NSLOCTEXT("Status", "AttackPowerBonus", "{0} (+{1})"), 
-				FText::AsNumber(FMath::RoundToInt(Base + Bonus)), 
-				FText::AsNumber(FMath::RoundToInt(Bonus)));
+			FText FormattedText = FText::Format(NSLOCTEXT("Status", "AttackPowerBonus", "{0} ({1}{2})"), 
+				FText::AsNumber(FMath::RoundToInt(Base + TotalBonus)), 
+				TotalBonus > 0 ? FText::FromString(TEXT("+")) : FText::GetEmpty(),
+				FText::AsNumber(FMath::RoundToInt(TotalBonus)));
 			Text_AttackPower->SetText(FormattedText);
 		}
 		else
@@ -320,7 +329,28 @@ void UERNPlayerDetailStatusWidget::UpdateAttackPowerText(float Base, float Bonus
 
 void UERNPlayerDetailStatusWidget::UpdateDefenseText(float Defense)
 {
-	if (Text_Defense) Text_Defense->SetText(FText::AsNumber(FMath::RoundToInt(Defense)));
+	if (Text_Defense) 
+	{
+		float Base = Defense;
+		float Bonus = 0.0f;
+		if (CachedASC.IsValid())
+		{
+			Base = CachedASC->GetNumericAttributeBase(UERNAttributeSet::GetDefenseAttribute());
+			Bonus = Defense - Base;
+		}
+
+		if (Bonus != 0.0f)
+		{
+			Text_Defense->SetText(FText::Format(NSLOCTEXT("Status", "DefenseBonus", "{0} ({1}{2})"), 
+				FText::AsNumber(FMath::RoundToInt(Defense)), 
+				Bonus > 0 ? FText::FromString(TEXT("+")) : FText::GetEmpty(),
+				FText::AsNumber(FMath::RoundToInt(Bonus))));
+		}
+		else
+		{
+			Text_Defense->SetText(FText::AsNumber(FMath::RoundToInt(Defense)));
+		}
+	}
 }
 
 void UERNPlayerDetailStatusWidget::UpdateMoveSpeedText(float MoveSpeed)
@@ -347,8 +377,26 @@ void UERNPlayerDetailStatusWidget::UpdateHealthText(float Current, float Max)
 {
 	if (Text_Health)
 	{
-		Text_Health->SetText(FText::Format(NSLOCTEXT("Status", "HealthFormat", "{0} / {1}"), 
-			FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max))));
+		float BaseMax = Max;
+		float BonusMax = 0.0f;
+		if (CachedASC.IsValid())
+		{
+			BaseMax = CachedASC->GetNumericAttributeBase(UERNAttributeSet::GetMaxHealthAttribute());
+			BonusMax = Max - BaseMax;
+		}
+
+		if (BonusMax != 0.0f)
+		{
+			Text_Health->SetText(FText::Format(NSLOCTEXT("Status", "HealthFormatBonus", "{0} / {1} ({2}{3})"), 
+				FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max)),
+				BonusMax > 0 ? FText::FromString(TEXT("+")) : FText::GetEmpty(),
+				FText::AsNumber(FMath::RoundToInt(BonusMax))));
+		}
+		else
+		{
+			Text_Health->SetText(FText::Format(NSLOCTEXT("Status", "HealthFormat", "{0} / {1}"), 
+				FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max))));
+		}
 	}
 	if (PB_Health)
 	{
@@ -373,8 +421,26 @@ void UERNPlayerDetailStatusWidget::UpdateStaminaText(float Current, float Max)
 {
 	if (Text_Stamina)
 	{
-		Text_Stamina->SetText(FText::Format(NSLOCTEXT("Status", "StaminaFormat", "{0} / {1}"), 
-			FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max))));
+		float BaseMax = Max;
+		float BonusMax = 0.0f;
+		if (CachedASC.IsValid())
+		{
+			BaseMax = CachedASC->GetNumericAttributeBase(UERNAttributeSet::GetMaxStaminaAttribute());
+			BonusMax = Max - BaseMax;
+		}
+
+		if (BonusMax != 0.0f)
+		{
+			Text_Stamina->SetText(FText::Format(NSLOCTEXT("Status", "StaminaFormatBonus", "{0} / {1} ({2}{3})"), 
+				FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max)),
+				BonusMax > 0 ? FText::FromString(TEXT("+")) : FText::GetEmpty(),
+				FText::AsNumber(FMath::RoundToInt(BonusMax))));
+		}
+		else
+		{
+			Text_Stamina->SetText(FText::Format(NSLOCTEXT("Status", "StaminaFormat", "{0} / {1}"), 
+				FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max))));
+		}
 	}
 	if (PB_Stamina)
 	{

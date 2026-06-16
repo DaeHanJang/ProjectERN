@@ -43,6 +43,15 @@ void AERNPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// 새 레벨(컨트롤러) 시작 시 UI 상태 초기화
+	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			UIManager->ResetUIState();
+		}
+	}
+
 	// 컷신 동안 HUD 일괄 숨김 (로컬 컨트롤러 전용)
 	BindCutsceneEvents();
 
@@ -405,6 +414,25 @@ void AERNPlayerController::UnbindCutsceneEvents()
 
 void AERNPlayerController::HandleCutsceneStarted()
 {
+	// 컷신 진입 시 열린 인터랙티브 UI를 모두 닫아 포커스/입력 모드를 게임으로 회수
+	// (안 닫으면 컷신 종료 후 InputMode가 GameAndUI/UIOnly로 남아 입력이 안 먹음)
+	InventoryClose();
+	MinimapClose();
+	ClosePauseMenu();
+
+	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
+	if (UIManager)
+	{
+		UIManager->CloseActiveUI();
+	}
+
+	// 채팅 등 BP가 포커스를 쥐고 있는 UI를 닫도록 알림
+	OnCutsceneForceCloseUI();
+
+	// 남아있는 키보드 포커스까지 게임 뷰포트로 회수
+	SetInputMode(FInputModeGameOnly());
+	SetShowMouseCursor(false);
+
 	CachedHUDVisibilities.Reset();
 
 	for (const TObjectPtr<UUserWidget>& Widget : ManagedHUDWidgets)
@@ -432,6 +460,19 @@ void AERNPlayerController::HandleCutsceneFinished()
 	}
 
 	CachedHUDVisibilities.Reset();
+
+	// 컷신 종료 후 게임플레이 입력이 확실히 먹도록 입력 모드를 게임으로 고정
+	SetInputMode(FInputModeGameOnly());
+	SetShowMouseCursor(false);
+
+	// 컷신 동안 'UI 열림' 상태로 캐싱되어 숨겨진 채 복원된 HUD(스킬/퀵슬롯/골드 등 OnUIStateChanged 구독)와
+	// TryInteract 게이트를 정상화 — 인벤토리를 I로 닫았을 때와 동일하게 UI 상태 None을 재브로드캐스트한다.
+	// (HUD 복원 루프 뒤에 실행되어 캐시 타이밍과 무관하게 최종 보정)
+	UERNUIManagerSubsystem* UIManager = ULocalPlayer::GetSubsystem<UERNUIManagerSubsystem>(GetLocalPlayer());
+	if (UIManager)
+	{
+		UIManager->ForceCloseAllUI();
+	}
 }
 
 void AERNPlayerController::OnPossess(APawn* InPawn)
@@ -614,6 +655,23 @@ void AERNPlayerController::ToggleReady()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ToggleReady called but PlayerState is null"));
 	}
+}
+
+void AERNPlayerController::FlushPressedKeys()
+{
+	// UI 매니저가 열려있는 상태로 전환 중이거나 유지 중일 때는 입력을 끊지 않도록 방어
+	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			if (UIManager->GetActiveUIType() != EERNUIType::None)
+			{
+				return;
+			}
+		}
+	}
+
+	Super::FlushPressedKeys();
 }
 
 void AERNPlayerController::CheckAndFixCharacterType()
