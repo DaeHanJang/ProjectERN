@@ -159,7 +159,7 @@ public:
 
 	// 체력/공격 배율 상한 (과도한 스케일 방지)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "1.0"))
-	float MaxHealthMultiplier = 3.f;
+	float MaxHealthMultiplier = 2.5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boss|Difficulty", meta = (ClampMin = "1.0"))
 	float MaxAttackMultiplier = 2.f;
