@@ -155,3 +155,33 @@ void UERNShopItemSlotWidget::NativeOnMouseLeave(const FPointerEvent& InMouseEven
 		OnSlotUnhovered.Broadcast();
 	}
 }
+
+void UERNShopItemSlotWidget::NativeOnAddedToFocusPath(const FFocusEvent& InFocusEvent)
+{
+	Super::NativeOnAddedToFocusPath(InFocusEvent);
+
+	if (HoverImage)
+	{
+		HoverImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
+
+	if (OnSlotHovered.IsBound())
+	{
+		OnSlotHovered.Broadcast(ItemData);
+	}
+}
+
+void UERNShopItemSlotWidget::NativeOnRemovedFromFocusPath(const FFocusEvent& InFocusEvent)
+{
+	Super::NativeOnRemovedFromFocusPath(InFocusEvent);
+
+	if (HoverImage)
+	{
+		HoverImage->SetVisibility(ESlateVisibility::Hidden);
+	}
+
+	if (OnSlotUnhovered.IsBound())
+	{
+		OnSlotUnhovered.Broadcast();
+	}
+}

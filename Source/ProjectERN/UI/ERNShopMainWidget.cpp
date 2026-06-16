@@ -113,6 +113,41 @@ void UERNShopMainWidget::ClearShopTooltip()
 	}
 }
 
+FNavigationReply UERNShopMainWidget::NativeOnNavigation(const FGeometry& MyGeometry, const FNavigationEvent& InNavigationEvent, const FNavigationReply& InDefaultReply)
+{
+	// 패드나 키보드 내비게이션(방향키)이 발생했을 때 호출
+	if (ItemListBox && ItemListBox->GetChildrenCount() > 0)
+	{
+		bool bHasSlotFocus = false;
+		for (int32 i = 0; i < ItemListBox->GetChildrenCount(); ++i)
+		{
+			if (ItemListBox->GetChildAt(i)->HasAnyUserFocus())
+			{
+				bHasSlotFocus = true;
+				break;
+			}
+		}
+
+		// 만약 현재 슬롯들 중 어느 곳에도 포커스가 없다면
+		// (즉, 상점이 막 켜졌거나 빈 곳에 포커스가 있는 상태에서 방향키를 누름)
+		if (!bHasSlotFocus)
+		{
+			UWidget* FirstChild = ItemListBox->GetChildAt(0);
+			if (FirstChild)
+			{
+				TSharedPtr<SWidget> SafeWidget = FirstChild->GetCachedWidget();
+				if (SafeWidget.IsValid())
+				{
+					// 0번째 슬롯(Slate 위젯)으로 포커스를 명시적으로 이동시킵니다.
+					return FNavigationReply::Explicit(SafeWidget);
+				}
+			}
+		}
+	}
+
+	return Super::NativeOnNavigation(MyGeometry, InNavigationEvent, InDefaultReply);
+}
+
 void UERNShopMainWidget::UpdateShopTooltip(const FERNShopItemData& ShopItemData)
 {
 	if (WBP_ItemToolTip)

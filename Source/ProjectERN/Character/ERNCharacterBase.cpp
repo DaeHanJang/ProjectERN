@@ -519,7 +519,10 @@ void AERNCharacterBase::AddGold(const int32 Amount) const
 {
 	const int32 CurrentGold = static_cast<int32>(AttributeSet->GetGold());
 	int32 NewGold = CurrentGold + Amount;
-	NewGold += NewGold * GoldWeight;
+	
+	// 버그 수정: NewGold += NewGold * GoldWeight; (이중 적용 및 총자산 증식 버그 제거)
+	// 가중치(플랫 보너스)는 이미 에너미 처치 시(ERNEnemyCharacter.cpp) Amount에 합산되어 들어옴.
+
 	AttributeSet->SetGold(static_cast<float>(NewGold));
 	
 	UE_LOG(LogTemp, Warning, TEXT("PlayerController: %s, Gold: %d"), *GetNameSafe(Controller), static_cast<int32>(AttributeSet->GetGold()));

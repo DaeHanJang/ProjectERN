@@ -82,4 +82,10 @@ protected:
 	
 	// 마우스가 슬롯에서 나갔을 때 오버라이드
 	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
+
+	// 패드로 포커스를 받았을 때 오버라이드 (Hover 효과 및 툴팁 대응)
+	virtual void NativeOnAddedToFocusPath(const FFocusEvent& InFocusEvent) override;
+
+	// 패드로 포커스를 잃었을 때 오버라이드
+	virtual void NativeOnRemovedFromFocusPath(const FFocusEvent& InFocusEvent) override;
 };
