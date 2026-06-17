@@ -7,6 +7,7 @@
 #include "Components/ProgressBar.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
+#include "Inventory/Components/ERNInventoryComponent.h"
 #include "Combat/Weapons/ERNWeaponBase.h"
 
 void UERNPlayerDetailStatusWidget::NativeConstruct()
@@ -61,8 +62,13 @@ bool UERNPlayerDetailStatusWidget::TryInitASC()
 					{
 						EquipComp->OnEquipmentSlotChanged.AddUniqueDynamic(this, &UERNPlayerDetailStatusWidget::OnEquipmentSlotChanged);
 					}
+
+					if (UERNInventoryComponent* InvComp = Character->GetInventoryComponent())
+					{
+						InvComp->OnInventorySlotChanged.AddUniqueDynamic(this, &UERNPlayerDetailStatusWidget::OnInventorySlotChanged);
+					}
 				}
-				
+
 				return true;
 			}
 		}
@@ -102,6 +108,11 @@ void UERNPlayerDetailStatusWidget::NativeDestruct()
 				if (UERNEquipmentComponent* EquipComp = Character->GetEquipmentComponent())
 				{
 					EquipComp->OnEquipmentSlotChanged.RemoveDynamic(this, &UERNPlayerDetailStatusWidget::OnEquipmentSlotChanged);
+				}
+
+				if (UERNInventoryComponent* InvComp = Character->GetInventoryComponent())
+				{
+					InvComp->OnInventorySlotChanged.RemoveDynamic(this, &UERNPlayerDetailStatusWidget::OnInventorySlotChanged);
 				}
 			}
 		}
@@ -146,6 +157,8 @@ void UERNPlayerDetailStatusWidget::RefreshAllAttributes()
 	float BaseAttack = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetAttackPowerAttribute(), bFound);
 	float BonusAttack = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetAttackPowerBonusAttribute(), bFound);
 	UpdateAttackPowerText(BaseAttack, BonusAttack);
+
+	UpdateLifestealText(GetLifestealFraction());
 }
 
 void UERNPlayerDetailStatusWidget::HealthChanged(const FOnAttributeChangeData& Data)
@@ -452,8 +465,21 @@ void UERNPlayerDetailStatusWidget::UpdateFlaskText(float Current, float Max)
 {
 	if (Text_Flask)
 	{
-		Text_Flask->SetText(FText::Format(NSLOCTEXT("Status", "FlaskFormat", "{0} / {1}"), 
+		Text_Flask->SetText(FText::Format(NSLOCTEXT("Status", "FlaskFormat", "{0} / {1}"),
 			FText::AsNumber(FMath::RoundToInt(Current)), FText::AsNumber(FMath::RoundToInt(Max))));
+	}
+}
+
+void UERNPlayerDetailStatusWidget::UpdateLifestealText(float Fraction)
+{
+	if (Text_Lifesteal)
+	{
+		// 비율(0.07)을 퍼센트(7.0%)로 표기, 소수점 1자리 (아이템 단위가 0.5%이므로)
+		FNumberFormattingOptions Opts;
+		Opts.MinimumFractionalDigits = 1;
+		Opts.MaximumFractionalDigits = 1;
+		Text_Lifesteal->SetText(FText::Format(NSLOCTEXT("Status", "LifestealFormat", "{0}%"),
+			FText::AsNumber(Fraction * 100.0f, &Opts)));
 	}
 }
 
@@ -484,4 +510,22 @@ void UERNPlayerDetailStatusWidget::OnEquipmentSlotChanged(const FInventoryItemEn
 		float Bonus = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetAttackPowerBonusAttribute(), bFound);
 		UpdateAttackPowerText(Base, Bonus);
 	}
+}
+
+void UERNPlayerDetailStatusWidget::OnInventorySlotChanged(const FInventoryItemEntry& Entry)
+{
+	// Drain 아이템 추가/제거 시 라이프스틸 갱신
+	UpdateLifestealText(GetLifestealFraction());
+}
+
+float UERNPlayerDetailStatusWidget::GetLifestealFraction() const
+{
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(PC->GetPawn()))
+		{
+			return Character->LifestealFraction + Character->BonusLifestealFraction;
+		}
+	}
+	return 0.0f;
 }

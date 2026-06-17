@@ -345,6 +345,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|Combat")
 	float LifestealFraction = 0.f;
 
+	// 아이템(Drain 효과)으로 추가되는 라이프스틸. 인벤 재계산 시 갱신되는 런타임 값 (기본값 LifestealFraction에 가산)
+	// 서버에서만 계산되므로 클라이언트 표시를 위해 리플리케이트
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "ERN|Combat")
+	float BonusLifestealFraction = 0.f;
+
 	// 가한 데미지 기반 자가 회복 (서버 권위). 적 TakeDamage에서 공격자로 호출됨
 	void ApplyLifesteal(float DamageDealt);
 
