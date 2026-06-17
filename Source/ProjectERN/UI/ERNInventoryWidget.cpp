@@ -672,7 +672,7 @@ void UERNInventoryWidget::UpdateVisuals()
 				FName ItemID = TargetItemState.GetItemID();
 				WBP_ItemToolTip->UpdateTooltipWithState(TargetItemState, 0); // 가격 0으로 표시
 				WBP_ItemToolTip->SetVisibility(ESlateVisibility::HitTestInvisible);
-				if (WBP_PlayerDetailStatus) WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::Collapsed);
+				// if (WBP_PlayerDetailStatus) WBP_PlayerDetailStatus->SetVisibility(ESlateVisibility::Collapsed);
 				
 				bool bIsHoveringEquipmentSlot = (DisplayIndex == SlotWidgets.Num() + 1);
 				bool bIsHoveringConsumableSlot = (DisplayIndex == SlotWidgets.Num());

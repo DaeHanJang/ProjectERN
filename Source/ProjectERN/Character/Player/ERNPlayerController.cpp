@@ -39,6 +39,8 @@
 #include "UI/ERNQuickSlotWidget.h"
 #include "UI/ERNInteractableWidget.h"
 
+#include "UI/ERNPlayerDetailStatusWidget.h"
+
 void AERNPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -164,6 +166,31 @@ void AERNPlayerController::BeginPlay()
 				InventoryWidget->AddToViewport(100);
 				RegisterHUDWidget(InventoryWidget);
 				RefreshInventoryWidget();
+			}
+		}
+	}
+
+	// 상태정보창 위젯 생성 (로컬 플레이어만)
+	if (IsLocalPlayerController() && StatusWidgetClass)
+	{
+		bool bShouldHide = false;
+		for (const FString& MapName : HideStatusWidgetMapNames)
+		{
+			if (CurrentMapName.Contains(MapName))
+			{
+				bShouldHide = true;
+				break;
+			}
+		}
+
+		if (!bShouldHide)
+		{
+			StatusWidget = CreateWidget<UERNPlayerDetailStatusWidget>(this, StatusWidgetClass);
+			if (StatusWidget)
+			{
+				StatusWidget->AddToViewport(150);
+				StatusWidget->SetVisibility(ESlateVisibility::Hidden);
+				RegisterHUDWidget(StatusWidget);
 			}
 		}
 	}
@@ -616,6 +643,12 @@ void AERNPlayerController::SetupInputComponent()
 				                                   &AERNPlayerController::InventoryOpen);
 			}
 			
+			if (StatusAction)
+			{
+				EnhancedInputComponent->BindAction(StatusAction, ETriggerEvent::Started, this, &AERNPlayerController::StatusOpen);
+				EnhancedInputComponent->BindAction(StatusAction, ETriggerEvent::Completed, this, &AERNPlayerController::StatusClose);
+			}
+			
 			if (MinimapAction)
 			{
 				EnhancedInputComponent->BindAction(MinimapAction, ETriggerEvent::Started, this,
@@ -741,7 +774,9 @@ void AERNPlayerController::TryInteract()
 	{
 		if (const UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
 		{
-			if (UIManager->GetActiveUIType() != EERNUIType::None)
+			EERNUIType ActiveUI = UIManager->GetActiveUIType();
+			// 인벤토리나 미니맵 등 이동이 가능한 UI 상태에서는 상호작용도 허용
+			if (ActiveUI != EERNUIType::None && ActiveUI != EERNUIType::Inventory && ActiveUI != EERNUIType::Minimap)
 			{
 				return;
 			}
@@ -894,6 +929,40 @@ void AERNPlayerController::InventoryClose()
 		FInputModeGameOnly InputMode;
 		SetInputMode(InputMode);
 		bShowMouseCursor = false;
+	}
+}
+
+void AERNPlayerController::StatusOpen()
+{
+	if (!StatusWidget) return;
+	if (!IsPlayerAlive()) return;
+
+	// 다른 전체화면 UI(인벤토리, 상점, 미니맵 등)가 열려있다면 탭 상태창을 띄우지 않음
+	if (const ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (const UERNUIManagerSubsystem* UIManager = LocalPlayer->GetSubsystem<UERNUIManagerSubsystem>())
+		{
+			if (UIManager->GetActiveUIType() != EERNUIType::None)
+			{
+				return;
+			}
+		}
+	}
+
+	if (StatusWidget->GetVisibility() == ESlateVisibility::Hidden || StatusWidget->GetVisibility() == ESlateVisibility::Collapsed)
+	{
+		StatusWidget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		StatusWidget->RefreshAllAttributes();
+	}
+}
+
+void AERNPlayerController::StatusClose()
+{
+	if (!StatusWidget) return;
+
+	if (StatusWidget->GetVisibility() != ESlateVisibility::Hidden && StatusWidget->GetVisibility() != ESlateVisibility::Collapsed)
+	{
+		StatusWidget->SetVisibility(ESlateVisibility::Hidden);
 	}
 }
 

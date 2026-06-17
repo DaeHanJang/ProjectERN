@@ -59,6 +59,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input|Actions")
 	UInputAction* InventoryAction;
 
+	/** Status input action */
+	UPROPERTY(EditAnywhere, Category="Input|Actions")
+	UInputAction* StatusAction;
+
 	/** Mobile controls widget to spawn */
 	UPROPERTY(EditAnywhere, Category="Input|Touch Controls")
 	TSubclassOf<UUserWidget> MobileControlsWidgetClass;
@@ -97,6 +101,17 @@ protected:
 	
 	UPROPERTY(Transient)
 	UUserWidget* InventoryWidget = nullptr;
+	
+	// 상태정보창 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<class UERNPlayerDetailStatusWidget> StatusWidgetClass;
+	
+	// 상태정보창 위젯을 숨길 맵 이름 목록 (부분 일치)
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TArray<FString> HideStatusWidgetMapNames;
+	
+	UPROPERTY(Transient)
+	TObjectPtr<class UERNPlayerDetailStatusWidget> StatusWidget = nullptr;
 	
 	/** Gameplay initialization */
 	virtual void BeginPlay() override;
@@ -176,6 +191,14 @@ public:
 	// 인벤토리 닫기
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void InventoryClose();
+
+	// 상태정보창 열기
+	UFUNCTION(BlueprintCallable, Category = "Status")
+	void StatusOpen();
+	
+	// 상태정보창 닫기
+	UFUNCTION(BlueprintCallable, Category = "Status")
+	void StatusClose();
 
 	// 데미지 텍스트 액터 클래스 (BP에서 설정)
 	UPROPERTY(EditDefaultsOnly, Category = "UI|DamageText")
