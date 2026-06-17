@@ -678,6 +678,13 @@ bool AERNPlayerController::IsPlayerAlive() const
 
 void AERNPlayerController::ToggleReady()
 {
+	// 준비 토글(출발)은 로비에서만 허용 — 다른 맵에서의 J 입력 무시
+	const FString CurrentMapName = GetWorld() ? GetWorld()->GetMapName() : FString();
+	if (!CurrentMapName.Contains(TEXT("Lobby")))
+	{
+		return;
+	}
+
 	AERNPlayerState* PS = GetPlayerState<AERNPlayerState>();
 	if (PS)
 	{

@@ -111,6 +111,13 @@ void AERNPlayerState::Multicast_AddConsumableBuff_Implementation(const FName& It
 
 void AERNPlayerState::Server_SetReady_Implementation(bool bReady)
 {
+	// 준비 상태는 로비에서만 변경 허용 — 다른 맵에서의 출발 트리거 방지 (권위 방어)
+	const FString CurrentMapName = GetWorld() ? GetWorld()->GetMapName() : FString();
+	if (!CurrentMapName.Contains(TEXT("Lobby")))
+	{
+		return;
+	}
+
 	bIsReady = bReady;
 	UE_LOG(LogTemp, Log, TEXT("Player %s ready state: %s"), *PlayerNickname, bIsReady ? TEXT("Ready") : TEXT("Not Ready"));
 
