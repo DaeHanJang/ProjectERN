@@ -316,7 +316,7 @@ void UERNGA_Normal_PaladinShield::ApplyShieldToTarget(AProjectERNCharacter* Cast
 		TargetASC->OnGameplayEffectRemoved_InfoDelegate(StateEffectHandle))
 	{
 		RemovedDelegate->AddUObject(this, &UERNGA_Normal_PaladinShield::OnShieldStateEffectRemoved);
-		ActiveShieldStateEffectTargets.Add(StateEffectHandle, TargetASC);
+		ActiveShieldStateEffectTargets.Add(StateEffectHandle, { TargetASC, CalculatedShieldAmount });
 	}
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*AmountSpecHandle.Data.Get(), TargetASC);
@@ -365,18 +365,33 @@ void UERNGA_Normal_PaladinShield::OnShieldStateEffectRemoved(const FGameplayEffe
 
 	const FActiveGameplayEffectHandle RemovedHandle = RemovalInfo.ActiveEffect->Handle;
 
-	TWeakObjectPtr<UAbilitySystemComponent> TargetASCWeak;
-	if (!ActiveShieldStateEffectTargets.RemoveAndCopyValue(RemovedHandle, TargetASCWeak))
+	FShieldStateTracking Tracking;
+	if (!ActiveShieldStateEffectTargets.RemoveAndCopyValue(RemovedHandle, Tracking))
 	{
 		return;
 	}
 
-	UAbilitySystemComponent* TargetASC = TargetASCWeak.Get();
-	if (!TargetASC)
+	UAbilitySystemComponent* TargetASC = Tracking.TargetASC.Get();
+	if (!TargetASC || !TargetASC->IsOwnerActorAuthoritative())
 	{
 		return;
 	}
 
+	// 실드가 막아준 데미지(= 깎인 실드량 = 부여량 − 남은 실드)만큼 체력 회복
+	const float RemainingShield = TargetASC->GetNumericAttribute(UERNAttributeSet::GetShieldAttribute());
+	const float ConsumedShield = FMath::Max(0.f, Tracking.GrantedAmount - RemainingShield);
+
+	// 살아있는 대상만 회복 (사망 시 부활 방지)
+	const AProjectERNCharacter* TargetChar = Cast<AProjectERNCharacter>(TargetASC->GetAvatarActor());
+	if (ConsumedShield > 0.f && TargetChar && TargetChar->IsAlive())
+	{
+		const float CurrentHealth = TargetASC->GetNumericAttribute(UERNAttributeSet::GetHealthAttribute());
+		const float MaxHealth = TargetASC->GetNumericAttribute(UERNAttributeSet::GetMaxHealthAttribute());
+		const float NewHealth = FMath::Clamp(CurrentHealth + ConsumedShield, 0.f, MaxHealth);
+		TargetASC->SetNumericAttributeBase(UERNAttributeSet::GetHealthAttribute(), NewHealth);
+	}
+
+	// 남은 실드 정리
 	TargetASC->SetNumericAttributeBase(UERNAttributeSet::GetShieldAttribute(), 0.f);
 }
 

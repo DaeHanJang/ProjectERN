@@ -449,8 +449,19 @@ void AERNGameState::TryHandleFinalZoneGameOver()
 			return;
 		}
 
-		// EasyMode: 켜져 있고 이번 런에서 아직 안 썼으면, 패배 대신 전원 1회 부활
-		if (GI->IsEasyModeEnabled() && !GI->IsEasyModeReviveUsed())
+		// 1인 플레이는 EasyMode와 동일하게 런당 1회 부활 보장 (유효 플레이어 수 1명)
+		int32 ValidPlayerCount = 0;
+		for (const APlayerState* PS : PlayerArray)
+		{
+			if (IsValid(PS))
+			{
+				++ValidPlayerCount;
+			}
+		}
+		const bool bSoloPlayer = (ValidPlayerCount == 1);
+
+		// EasyMode(또는 1인 플레이): 이번 런에서 아직 안 썼으면, 패배 대신 전원 1회 부활
+		if ((GI->IsEasyModeEnabled() || bSoloPlayer) && !GI->IsEasyModeReviveUsed())
 		{
 			GI->MarkEasyModeReviveUsed();
 			EasyModeReviveAllPlayers();

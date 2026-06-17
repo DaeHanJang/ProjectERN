@@ -249,8 +249,16 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 	{
 		return 0.0f;
 	}
-	
-	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	// 슈퍼아머 상태면 받는 데미지 절반
+	float IncomingDamage = DamageAmount;
+	if (AbilitySystemComponent &&
+		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_SuperArmor))
+	{
+		IncomingDamage *= 0.5f;
+	}
+
+	const float ActualDamage = Super::TakeDamage(IncomingDamage, DamageEvent, EventInstigator, DamageCauser);
 
 	if (AttributeSet && ActualDamage > 0.0f)
 	{

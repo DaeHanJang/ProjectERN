@@ -109,6 +109,13 @@ private:
 	UFUNCTION()
 	void OnMontageCancelled();
 
-	// GE 제거 콜백에서 어떤 ASC의 Shield를 정리할지 찾기 위한 맵
-	TMap<FActiveGameplayEffectHandle, TWeakObjectPtr<UAbilitySystemComponent>> ActiveShieldStateEffectTargets;
+	// 실드 상태 GE 추적 정보 (제거 시 회복량 = 부여량 − 남은 실드 계산용)
+	struct FShieldStateTracking
+	{
+		TWeakObjectPtr<UAbilitySystemComponent> TargetASC;
+		float GrantedAmount = 0.f;
+	};
+
+	// GE 제거 콜백에서 대상 ASC와 부여한 실드량을 찾기 위한 맵
+	TMap<FActiveGameplayEffectHandle, FShieldStateTracking> ActiveShieldStateEffectTargets;
 };
