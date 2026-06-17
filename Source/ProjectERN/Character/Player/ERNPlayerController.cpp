@@ -1039,12 +1039,12 @@ void AERNPlayerController::Client_ShowDamageText_Implementation(AActor* TargetAc
 void AERNPlayerController::Client_PlayCameraShake_Implementation(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale)
 {
 	if (!ShakeClass || !PlayerCameraManager) return;
-
-	PlayerCameraManager->StartCameraShake(ShakeClass, Scale);
+	
+	PlayerCameraManager->StartCameraShake(ShakeClass, 1.f);
 	
 	// 콘솔 진동
 	const float RumbleIntensity = FMath::Clamp(Scale, 0.f, 1.f);
-	const float RumbleDuration = 0.5f;
+	const float RumbleDuration = FMath::Clamp(Scale, 0.2f, 0.7f);;
 
 	if (RumbleIntensity > 0.05f && IsLocalController())
 	{

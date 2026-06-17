@@ -84,18 +84,23 @@ void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVe
 	// 최소 경직을 위한 데미지 DamageShakeThresholdSmall 이상일 때만 흔들림
 	if (IncomingStaggerPower >= DamageShakeThresholdSmall && HasAuthority())
 	{
+		float ShakeRumbleScale = 0.f;
+	
 		// 경직도에 따른 카메라 흔들림 분류
 		TSubclassOf<UCameraShakeBase> ShakeToPlay = nullptr;
 		if (IncomingStaggerPower < DamageShakeThresholdMedium)
 		{
+			ShakeRumbleScale = 0.3f;
 			ShakeToPlay = TakeDamageShakeClass_Small;
 		}
 		else if (IncomingStaggerPower < DamageShakeThresholdBig)
 		{
+			ShakeRumbleScale = 0.6;
 			ShakeToPlay = TakeDamageShakeClass_Medium;
 		}
 		else
 		{
+			ShakeRumbleScale = 1;
 			ShakeToPlay = TakeDamageShakeClass_Big;
 		}
 
@@ -104,7 +109,7 @@ void AProjectERNCharacter::TryApplyStagger(float IncomingStaggerPower, const FVe
 			AERNPlayerController* PC = Cast<AERNPlayerController>(GetController());
 			if (PC)
 			{
-				PC->Client_PlayCameraShake(ShakeToPlay, 1.f);
+				PC->Client_PlayCameraShake(ShakeToPlay, ShakeRumbleScale);
 			}
 		}
 	}
