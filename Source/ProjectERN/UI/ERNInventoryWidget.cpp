@@ -394,9 +394,29 @@ void UERNInventoryWidget::UpdateInventorySlot(const FInventoryItemEntry& Entry)
 		const int32 SlotIndex = Entry.GetSlotIndex();
 		const int32 Quantity = Entry.GetQuantity();
 		EItemGrade Grade = ItemManager->FindItemRow(Entry.GetItemID())->Grade;
-		
-		ItemManager->PreloadItemDataAssetAsync(Entry.GetItemID(), EItemAssetLoadFlags::UI, 
-			FOnItemDataAssetLoaded::CreateLambda([WeakThis, ItemID, SlotIndex, Quantity, Grade](const UItemDataAssetBase* ItemData)
+
+		// 어빌리티 효과 텍스트 생성 (RecalculateItemAbilities의 실제 GE 적용값과 동일, 없으면 숨김)
+		FString AbilityStr;
+		{
+			const int32 Weight = static_cast<int32>(Grade) + 1;
+			switch (Entry.GetItemRuntimeState().GetItemAbility())
+			{
+			case EItemAbility::Health:          AbilityStr = FString::Printf(TEXT("최대 체력 +%d"), 20 * Weight); break;
+			case EItemAbility::Attack:          AbilityStr = FString::Printf(TEXT("공격력 +%d"), 3 * Weight); break;
+			case EItemAbility::HealthAndAttack: AbilityStr = FString::Printf(TEXT("최대 체력 +%d, 공격력 +%d"), 10 * Weight, 1 * Weight); break;
+			case EItemAbility::Stamina:         AbilityStr = FString::Printf(TEXT("최대 스태미나 +%d"), 10 * Weight); break;
+			case EItemAbility::Defence:         AbilityStr = FString::Printf(TEXT("방어력 +%d"), 3 * Weight); break;
+			case EItemAbility::Gold:            AbilityStr = FString::Printf(TEXT("골드 획득 +%d"), 50 * Weight); break;
+			case EItemAbility::Drain:           AbilityStr = FString::Printf(TEXT("생명력 흡수 +%.1f%%"), 0.2f * Weight); break;
+			case EItemAbility::HealthCurse:     AbilityStr = FString::Printf(TEXT("최대 체력 -%d, 공격력 +%d"), 15 * Weight, 4 * Weight); break;
+			case EItemAbility::AttackCurse:     AbilityStr = FString::Printf(TEXT("공격력 -%d, 방어력 +%d, 최대 체력 +%d"), 4 * Weight, 3 * Weight, 20 * Weight); break;
+			default: break;
+			}
+		}
+		const FText AbilityText = FText::FromString(AbilityStr);
+
+		ItemManager->PreloadItemDataAssetAsync(Entry.GetItemID(), EItemAssetLoadFlags::UI,
+			FOnItemDataAssetLoaded::CreateLambda([WeakThis, ItemID, SlotIndex, Quantity, Grade, AbilityText](const UItemDataAssetBase* ItemData)
 			{
 				if (!WeakThis.IsValid() || !ItemData)
 				{
@@ -422,7 +442,8 @@ void UERNInventoryWidget::UpdateInventorySlot(const FInventoryItemEntry& Entry)
 				}
 				
 				WeakThis->SlotWidgets[SlotIndex]->SetItem(ItemData->Icon.Get(), Quantity, WeakThis->ItemGradeByColor(Grade));
-				
+				WeakThis->SlotWidgets[SlotIndex]->SetAbilityText(AbilityText);
+
 				WeakThis->UpdateFocusSlotIndex(WeakThis->FocusSlotIndex);
 			}
 		));

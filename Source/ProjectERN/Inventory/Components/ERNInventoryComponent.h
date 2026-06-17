@@ -45,12 +45,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void CopyInventoryFrom(const UERNInventoryComponent* Source);
 	
-protected: 
-	virtual void BeginPlay() override;
-	
-private:
+	// 인벤토리 변경 후 장착 아이템 어빌리티 재계산 (서버 전용)
 	void RecalculateItemAbilities();
 
+protected:
+	virtual void BeginPlay() override;
+
+private:
 	// 적용된 아이템 어빌리티 GE 핸들 목록
 	UPROPERTY(Transient)
 	TArray<struct FActiveGameplayEffectHandle> ActiveItemAbilityHandles;

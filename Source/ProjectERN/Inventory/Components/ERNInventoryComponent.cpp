@@ -255,7 +255,7 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 			Character->AddGoldWeight(50.0f * Weight);
 			break;
 		case EItemAbility::Drain:
-			Character->BonusLifestealFraction += 0.005f * Weight;
+			Character->BonusLifestealFraction += 0.002f * Weight;
 			break;
 		case EItemAbility::HealthCurse:
 			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), -15.0f * Weight);

@@ -499,6 +499,8 @@ void AProjectERNCharacter::ApplyRunSnapshot()
 		{
 			InventoryComponent->OnInventorySlotChanged.Broadcast(E);
 		}
+		// 스냅샷으로 복원된 인벤토리 아이템 어빌리티 재계산
+		InventoryComponent->RecalculateItemAbilities();
 	}
 
 	// 장착 무기 복원 (강화 수치 포함)

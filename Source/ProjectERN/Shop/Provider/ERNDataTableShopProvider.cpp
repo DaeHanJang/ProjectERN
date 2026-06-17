@@ -514,6 +514,9 @@ void UERNDataTableShopProvider::RequestPurchase_Implementation(FERNShopTransacti
             InvComp->OnInventorySlotChanged.Broadcast(Entry);
         }
 
+        // 구매로 추가된 장착 아이템 어빌리티 재계산
+        InvComp->RecalculateItemAbilities();
+
         // 4. 재고 차감 (무제한이 아닐 경우)
         if (TargetItem->StockCount != -1)
         {

@@ -42,6 +42,9 @@ public:
 	// Set UI
 	UFUNCTION(BlueprintCallable)
 	void SetItem(UTexture2D* Icon, const int32 QuantityText, FColor Color);
+
+	// 어빌리티 효과 텍스트 설정 (빈 텍스트면 숨김)
+	void SetAbilityText(const FText& InText) const;
 	
 protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -75,6 +78,10 @@ private:
 	// Quantity Text
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UTextBlock> ItemQuantityTextBlock;
+
+	// Ability Effect Text (어빌리티 있는 아이템만 표시 - 기존 WBP 호환 위해 Optional)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UTextBlock> ItemAbilityTextBlock;
 	
 	// Slot Index
 	int32 SlotIndex = -1;

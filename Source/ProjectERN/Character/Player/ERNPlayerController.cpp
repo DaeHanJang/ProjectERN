@@ -38,6 +38,7 @@
 #include "WorldPartition/WorldPartitionSubsystem.h"
 #include "UI/ERNQuickSlotWidget.h"
 #include "UI/ERNInteractableWidget.h"
+#include "UI/ERNFinScreenWidget.h"
 
 #include "UI/ERNPlayerDetailStatusWidget.h"
 
@@ -1718,10 +1719,78 @@ void AERNPlayerController::ShowEndScreen(bool bVictory)
 		return;
 	}
 
-	// 배너 위젯(BP)이 일정시간 뒤 전과 위젯으로 전환
-	if (UUserWidget* Banner = CreateWidget<UUserWidget>(this, WidgetClass))
+	UUserWidget* Banner = CreateWidget<UUserWidget>(this, WidgetClass);
+	if (!Banner)
 	{
-		Banner->AddToViewport(200);
+		return;
+	}
+	Banner->AddToViewport(200);
+	ActiveEndBanner = Banner;
+
+	// 승리 + Fin/Result 위젯이 모두 설정된 경우: C++이 배너 → Fin → 결과 순서를 직접 제어
+	// (이때 WBP_Victory 내부의 자체 전과 전환 로직은 제거해야 중복 표시되지 않음)
+	if (bVictory && FinScreenWidgetClass && ResultWidgetClass)
+	{
+		GetWorldTimerManager().SetTimer(VictoryToFinTimerHandle, this,
+			&AERNPlayerController::ShowFinScreen, FMath::Max(0.1f, VictoryBannerDuration), false);
+	}
+	// 그 외(패배, 미설정): 기존처럼 배너 BP가 자체적으로 처리
+}
+
+void AERNPlayerController::ShowFinScreen()
+{
+	// 승리 배너 제거 후 Fin 연출 표시
+	if (IsValid(ActiveEndBanner))
+	{
+		ActiveEndBanner->RemoveFromParent();
+		ActiveEndBanner = nullptr;
+	}
+
+	if (!FinScreenWidgetClass)
+	{
+		ShowResultWidget();
+		return;
+	}
+
+	if (UERNFinScreenWidget* FinScreen = CreateWidget<UERNFinScreenWidget>(this, FinScreenWidgetClass))
+	{
+		FinScreen->OnContinue.AddDynamic(this, &AERNPlayerController::OnFinScreenContinue);
+		FinScreen->AddToViewport(210);
+
+		// Fin 연출 동안 플레이어 입력 전부 차단 (UIOnly → 이동/공격 등 게임 입력 차단, Fin 위젯의 Space만 수신)
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(FinScreen->TakeWidget());
+		SetInputMode(InputMode);
+	}
+	else
+	{
+		// Fin 위젯 생성 실패 시 진행 막힘 방지
+		ShowResultWidget();
+	}
+}
+
+void AERNPlayerController::OnFinScreenContinue()
+{
+	// Space 입력 → Fin 동안 차단했던 플레이어 입력 복구 (UI 버튼도 클릭 가능하도록 커서 표시)
+	bShowMouseCursor = true;
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	SetInputMode(InputMode);
+
+	// 입력 복구 후 결과(전과) 위젯 표시
+	ShowResultWidget();
+}
+
+void AERNPlayerController::ShowResultWidget()
+{
+	if (!ResultWidgetClass)
+	{
+		return;
+	}
+
+	if (UUserWidget* Result = CreateWidget<UUserWidget>(this, ResultWidgetClass))
+	{
+		Result->AddToViewport(220);
 	}
 }
 

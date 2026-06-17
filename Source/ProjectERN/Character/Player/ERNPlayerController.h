@@ -245,8 +245,35 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "UI|EndScreen")
 	TSubclassOf<UUserWidget> DefeatBannerWidgetClass;
 
+	// 승리 시 배너(WBP_Victory) 다음에 표시할 "Fin (?)" 연출 위젯 (미설정 시 연출 생략)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|EndScreen")
+	TSubclassOf<class UERNFinScreenWidget> FinScreenWidgetClass;
+
+	// Fin 연출(Space) 후 표시할 결과(전과) 위젯 (WBP_Result)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|EndScreen")
+	TSubclassOf<UUserWidget> ResultWidgetClass;
+
+	// 승리 배너 표시 후 Fin 연출로 넘어가기까지의 시간(초)
+	UPROPERTY(EditDefaultsOnly, Category = "UI|EndScreen")
+	float VictoryBannerDuration = 7.0f;
+
 	// GameState Multicast가 호출 — 로컬에서 승/패 배너 위젯 생성
 	void ShowEndScreen(bool bVictory);
+
+	// 승리 연출 순차 진행: 배너 → (시간 경과) Fin → (Space) 결과 위젯
+	void ShowFinScreen();
+
+	UFUNCTION()
+	void OnFinScreenContinue();
+
+	void ShowResultWidget();
+
+	// 현재 표시 중인 종료 배너(Fin 전환 시 제거용)
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> ActiveEndBanner;
+
+	// 승리 배너 → Fin 연출 전환 타이머
+	FTimerHandle VictoryToFinTimerHandle;
 
 	// 전과 위젯 "로비로" 버튼 → 서버에 복귀 준비 통지
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "UI|EndScreen")

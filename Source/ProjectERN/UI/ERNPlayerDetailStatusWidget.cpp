@@ -474,7 +474,7 @@ void UERNPlayerDetailStatusWidget::UpdateLifestealText(float Fraction)
 {
 	if (Text_Lifesteal)
 	{
-		// 비율(0.07)을 퍼센트(7.0%)로 표기, 소수점 1자리 (아이템 단위가 0.5%이므로)
+		// 비율(0.07)을 퍼센트(7.0%)로 표기, 소수점 1자리 (아이템 단위가 0.2%이므로)
 		FNumberFormattingOptions Opts;
 		Opts.MinimumFractionalDigits = 1;
 		Opts.MaximumFractionalDigits = 1;

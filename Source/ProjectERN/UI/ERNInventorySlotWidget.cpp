@@ -84,6 +84,31 @@ void UERNInventorySlotWidget::ClearItem()
 		ItemQuantityTextBlock->SetText(FText::GetEmpty());
 		ItemQuantityTextBlock->SetVisibility(ESlateVisibility::Hidden);
 	}
+
+	if (ItemAbilityTextBlock)
+	{
+		ItemAbilityTextBlock->SetText(FText::GetEmpty());
+		ItemAbilityTextBlock->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
+void UERNInventorySlotWidget::SetAbilityText(const FText& InText) const
+{
+	if (!ItemAbilityTextBlock)
+	{
+		return;
+	}
+
+	if (InText.IsEmpty())
+	{
+		ItemAbilityTextBlock->SetText(FText::GetEmpty());
+		ItemAbilityTextBlock->SetVisibility(ESlateVisibility::Hidden);
+	}
+	else
+	{
+		ItemAbilityTextBlock->SetText(InText);
+		ItemAbilityTextBlock->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
 }
 
 void UERNInventorySlotWidget::SetItem(UTexture2D* Icon, const int32 QuantityText, FColor Color)
