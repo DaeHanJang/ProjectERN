@@ -16,6 +16,16 @@
 #include "Engine/World.h"
 #include "CollisionQueryParams.h"
 
+namespace
+{
+	// 죽은 캐릭터인지 (적은 사망해도 잠시 액터가 남아 IsValid가 true이므로 별도 판별 필요)
+	bool IsDeadCharacter(const AActor* Actor)
+	{
+		const AERNCharacterBase* Char = Cast<AERNCharacterBase>(Actor);
+		return Char && Char->IsDead();
+	}
+}
+
 AERNThunderCarrier::AERNThunderCarrier()
 {
 	// 캐리어는 직접 충돌하지 않는 순수 스포너 - Duration 타이머로만 소멸
@@ -132,8 +142,21 @@ void AERNThunderCarrier::OnFireTick()
 {
 	if (!HasAuthority()) return;
 
-	// 추적 모드에서 타겟이 사라지면 발사 중단 (직진 모드는 타겟 무관하게 계속)
-	if (bFollowTarget && !HomingTarget.IsValid()) return;
+	// 추적 모드: 현재 타겟이 죽었거나 사라졌으면 가장 가까운 살아있는 적으로 재탐색
+	if (bFollowTarget)
+	{
+		AActor* CurrentTarget = HomingTarget.Get();
+		if (!IsValid(CurrentTarget) || IsDeadCharacter(CurrentTarget))
+		{
+			EnsureValidTarget();
+		}
+
+		// 재탐색 후에도 유효한(살아있는) 타겟이 없으면 이번 발사 스킵
+		if (!HomingTarget.IsValid() || IsDeadCharacter(HomingTarget.Get()))
+		{
+			return;
+		}
+	}
 
 	UWorld* World = GetWorld();
 	if (!World) return;

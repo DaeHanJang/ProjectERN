@@ -255,7 +255,7 @@ float AERNCharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 	if (AbilitySystemComponent &&
 		AbilitySystemComponent->HasMatchingGameplayTag(TAG_State_SuperArmor))
 	{
-		IncomingDamage *= 0.5f;
+		IncomingDamage *= 0.75f;
 	}
 
 	const float ActualDamage = Super::TakeDamage(IncomingDamage, DamageEvent, EventInstigator, DamageCauser);
