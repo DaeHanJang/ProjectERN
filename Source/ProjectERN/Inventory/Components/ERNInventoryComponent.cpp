@@ -239,7 +239,7 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 20.0f * Weight);
 			break;
 		case EItemAbility::Attack:
-			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 2.0f * Weight);
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 3.0f * Weight);
 			break;
 		case EItemAbility::HealthAndAttack:
 			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 10.0f * Weight);
@@ -249,7 +249,7 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 			AddMod(UERNAttributeSet::GetMaxStaminaAttribute(), 10.0f * Weight);
 			break;
 		case EItemAbility::Defence:
-			AddMod(UERNAttributeSet::GetDefenseAttribute(), 1.0f * Weight);
+			AddMod(UERNAttributeSet::GetDefenseAttribute(), 3.0f * Weight);
 			break;
 		case EItemAbility::Gold:
 			Character->AddGoldWeight(50.0f * Weight);
@@ -258,12 +258,12 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 			Character->BonusLifestealFraction += 0.005f * Weight;
 			break;
 		case EItemAbility::HealthCurse:
-			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), -50.0f * Weight);
-			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 5.0f * Weight);
+			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), -15.0f * Weight);
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 4.0f * Weight);
 			break;
 		case EItemAbility::AttackCurse:
-			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), -5.0f * Weight);
-			AddMod(UERNAttributeSet::GetDefenseAttribute(), 1.0f * Weight);
+			AddMod(UERNAttributeSet::GetAttackPowerAttribute(), -4.0f * Weight);
+			AddMod(UERNAttributeSet::GetDefenseAttribute(), 3.0f * Weight);
 			AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 20.0f * Weight);
 			break;
 		default:
