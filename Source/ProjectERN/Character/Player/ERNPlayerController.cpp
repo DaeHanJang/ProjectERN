@@ -1039,8 +1039,22 @@ void AERNPlayerController::Client_ShowDamageText_Implementation(AActor* TargetAc
 void AERNPlayerController::Client_PlayCameraShake_Implementation(TSubclassOf<UCameraShakeBase> ShakeClass, float Scale)
 {
 	if (!ShakeClass || !PlayerCameraManager) return;
+	
+	PlayerCameraManager->StartCameraShake(ShakeClass, 1.f);
+	
+	// 콘솔 진동
+	const float RumbleIntensity = FMath::Clamp(Scale, 0.f, 1.f);
+	const float RumbleDuration = FMath::Clamp(Scale, 0.2f, 0.7f);;
 
-	PlayerCameraManager->StartCameraShake(ShakeClass, Scale);
+	if (RumbleIntensity > 0.05f && IsLocalController())
+	{
+		PlayDynamicForceFeedback(
+			RumbleIntensity,
+			RumbleDuration,
+			true, true, true, true,
+			EDynamicForceFeedbackAction::Start
+		);
+	}
 }
 
 void AERNPlayerController::Client_StartFadeIn_Implementation(float Duration)
