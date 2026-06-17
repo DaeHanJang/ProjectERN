@@ -17,8 +17,8 @@ class PROJECTERN_API UERNGA_Normal_StarFall : public UERNGA_NormalSkillBase
 public:
 	UERNGA_Normal_StarFall();
 
-	// Notify에서 호출할 함수 (투사체 발사 타이밍)
-	void FireProjectileFromNotify(USkeletalMeshComponent* MeshComp);
+	// Notify에서 호출할 함수 (투사체 발사 타이밍). SpawnLocationOffset은 노티파이가 지정한 추가 오프셋
+	void FireProjectileFromNotify(USkeletalMeshComponent* MeshComp, const FVector& SpawnLocationOffset = FVector::ZeroVector);
 	
 protected:
 	virtual void ActivateAbility(

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Combat/Projectile/ERNProjectileBase.h"
+#include "Combat/ERNSkillDamageTypes.h"
 #include "ERNThunderCarrier.generated.h"
 
 class USceneComponent;
@@ -41,8 +42,9 @@ protected:
 	// 타겟 미주입 시 폴백 (블랙보드 타겟 → 가장 가까운 플레이어)
 	void EnsureValidTarget();
 
-	// 가장 가까운 살아있는 플레이어 검색
-	AActor* FindNearestPlayer() const;
+	// 소유자 팀 기준 가장 가까운 살아있는 적대 대상 검색
+	// (적이 소유 → 플레이어 / 플레이어가 소유 → 적)
+	AActor* FindNearestTarget() const;
 
 	// 자식 스폰 사운드/이펙트 모든 클라이언트 재생
 	UFUNCTION(NetMulticast, Unreliable)
@@ -112,9 +114,18 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan", meta = (ClampMin = "0.0"))
 	float StrikeExplosionRadius = 200.f;
 
-	// 폭발 데미지 (보스 OutgoingDamageMultiplier 곱해짐)
+	// 폭발 데미지 (보스 OutgoingDamageMultiplier 곱해짐). bUseSkillDamageForStrike=false일 때 사용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan", meta = (ClampMin = "0.0"))
 	float StrikeExplosionDamage = 0.f;
+
+	// 플레이어 시전 시: StrikeExplosionDamage 대신 공격력/무기 데미지 스케일(SkillDamageData)로 데미지 계산
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan")
+	bool bUseSkillDamageForStrike = false;
+
+	// 스킬 데미지 = BaseDamage + 공격력*배율 + 공격력보너스 + 무기데미지*배율. bUseSkillDamageForStrike일 때 사용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan",
+		meta = (EditCondition = "bUseSkillDamageForStrike", EditConditionHides))
+	FERNSkillDamageData StrikeSkillDamage;
 
 	// 폭발 경직력
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Thunder|Hitscan", meta = (ClampMin = "0.0"))

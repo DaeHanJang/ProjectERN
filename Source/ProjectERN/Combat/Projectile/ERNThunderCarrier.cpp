@@ -6,6 +6,8 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Character/ERNCharacterBase.h"
+#include "Combat/ERNSkillDamageLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
@@ -190,11 +192,19 @@ void AERNThunderCarrier::OnFireTick()
 	const bool bHit = World->LineTraceSingleByChannel(Hit, SpawnLoc, TraceEnd, ECC_Visibility, TraceParams);
 	const FVector ImpactPoint = bHit ? Hit.ImpactPoint : TraceEnd;
 
-	// 동적 난이도 출력 배율 적용 (보스 owner)
-	float FinalDamage = StrikeExplosionDamage;
-	if (AERNEnemyCharacter* BossOwner = Cast<AERNEnemyCharacter>(GetOwner()))
+	// 데미지 계산: 스킬 스케일 모드(플레이어)면 공격력/무기 데미지 반영, 아니면 기존 보스 방식(플랫 × 난이도 배율)
+	float FinalDamage;
+	if (bUseSkillDamageForStrike)
 	{
-		FinalDamage *= BossOwner->OutgoingDamageMultiplier;
+		FinalDamage = UERNSkillDamageLibrary::CalculateSkillDamage(GetOwner(), StrikeSkillDamage);
+	}
+	else
+	{
+		FinalDamage = StrikeExplosionDamage;
+		if (AERNEnemyCharacter* BossOwner = Cast<AERNEnemyCharacter>(GetOwner()))
+		{
+			FinalDamage *= BossOwner->OutgoingDamageMultiplier;
+		}
 	}
 
 	// 기존 projectilebase와 동일한 폭발 공식 (공유 정적 헬퍼)
@@ -316,38 +326,50 @@ void AERNThunderCarrier::DoSplit()
 
 void AERNThunderCarrier::EnsureValidTarget()
 {
-	AActor* NewTarget = FindNearestPlayer();
+	AActor* NewTarget = FindNearestTarget();
 	if (NewTarget)
 	{
 		HomingTarget = NewTarget;	// 리플리케이트
 	}
 }
 
-AActor* AERNThunderCarrier::FindNearestPlayer() const
+AActor* AERNThunderCarrier::FindNearestTarget() const
 {
-	// 블랙보드 주 타겟 우선
-	if (AActor* BBTarget = GetEnemyBlackboardTarget())
+	// 소유자가 적(보스/몹)인지 판별 → 노릴 대상 팀 결정
+	const bool bOwnerIsEnemy = (Cast<AERNEnemyCharacter>(GetOwner()) != nullptr);
+
+	// 적이 소유한 경우 블랙보드 주 타겟 우선 (보스 AI가 지정한 타겟)
+	if (bOwnerIsEnemy)
 	{
-		return BBTarget;
+		if (AActor* BBTarget = GetEnemyBlackboardTarget())
+		{
+			return BBTarget;
+		}
 	}
 
-	TArray<AActor*> Players;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AProjectERNCharacter::StaticClass(), Players);
+	// 적이 소유 → 플레이어를, 플레이어가 소유 → 적을 검색
+	UClass* HostileClass = bOwnerIsEnemy
+		? static_cast<UClass*>(AProjectERNCharacter::StaticClass())
+		: static_cast<UClass*>(AERNEnemyCharacter::StaticClass());
+
+	TArray<AActor*> Candidates;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), HostileClass, Candidates);
 
 	AActor* Best = nullptr;
 	float BestDistSq = TargetSearchRadius * TargetSearchRadius;
 	const FVector Origin = GetActorLocation();
 
-	for (AActor* P : Players)
+	for (AActor* C : Candidates)
 	{
-		AProjectERNCharacter* Player = Cast<AProjectERNCharacter>(P);
-		if (!Player || Player->IsDead()) continue;
+		// 살아있는 대상만 (IsDead는 공용 베이스 AERNCharacterBase에 정의)
+		AERNCharacterBase* Char = Cast<AERNCharacterBase>(C);
+		if (!Char || Char->IsDead()) continue;
 
-		const float DistSq = FVector::DistSquared(Origin, Player->GetActorLocation());
+		const float DistSq = FVector::DistSquared(Origin, Char->GetActorLocation());
 		if (DistSq > BestDistSq) continue;
 
 		BestDistSq = DistSq;
-		Best = Player;
+		Best = C;
 	}
 	return Best;
 }

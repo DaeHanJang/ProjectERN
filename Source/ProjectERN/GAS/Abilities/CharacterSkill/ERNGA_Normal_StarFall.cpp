@@ -14,7 +14,7 @@ UERNGA_Normal_StarFall::UERNGA_Normal_StarFall()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 }
 
-void UERNGA_Normal_StarFall::FireProjectileFromNotify(USkeletalMeshComponent* MeshComp)
+void UERNGA_Normal_StarFall::FireProjectileFromNotify(USkeletalMeshComponent* MeshComp, const FVector& SpawnLocationOffset)
 {
 	// 투사체 적용 여부
 	if (!ProjectileData.bUseProjectile || !ProjectileData.ProjectileClass || !MeshComp)
@@ -56,6 +56,9 @@ void UERNGA_Normal_StarFall::FireProjectileFromNotify(USkeletalMeshComponent* Me
 
 	// BP에서 적용한 Location 적용
 	SpawnTransform.SetLocation(SpawnTransform.TransformPosition(ProjectileData.SpawnOffset));
+
+	// 노티파이가 지정한 추가 오프셋 (스폰 기준점 로컬 공간)
+	SpawnTransform.SetLocation(SpawnTransform.TransformPosition(SpawnLocationOffset));
 
 	// BP에서 적용한 Rotator 적용
 	const FRotator SpawnRotation = ProjectileData.bUseSourceRotation
