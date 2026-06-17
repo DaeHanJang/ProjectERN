@@ -102,6 +102,10 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UWidgetComponent> PromptComponent;
 	
+	// Ability Info
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UWidgetComponent> AbilityInfoComponent;
+	
 	// VFX
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UNiagaraSystem> CommonEffect;

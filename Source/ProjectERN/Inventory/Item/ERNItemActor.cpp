@@ -12,6 +12,7 @@
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Manager/ItemManagerSubsystem.h"
 #include "Net/UnrealNetwork.h"
+#include "UI/ERNAbilityInfoWidget.h"
 
 // Sets default values
 AERNItemActor::AERNItemActor()
@@ -68,6 +69,18 @@ AERNItemActor::AERNItemActor()
 	}
 	PromptComponent->SetWidgetSpace(EWidgetSpace::Screen);
 	PromptComponent->SetVisibility(false);
+	
+	// Ability Info
+	AbilityInfoComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("AbilityInfoComponent"));
+	AbilityInfoComponent->SetupAttachment(GetRootComponent());
+	AbilityInfoComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+	static ConstructorHelpers::FClassFinder<UUserWidget> AbilityClass(TEXT("/Game/Blueprint/Widget/Interact/WBP_ItemAbilityInfo"));
+	if (AbilityClass.Succeeded())
+	{
+		AbilityInfoComponent->SetWidgetClass(AbilityClass.Class);
+	}
+	AbilityInfoComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	AbilityInfoComponent->SetVisibility(false);
 	
 	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> CommonVFX(TEXT("/Game/Assets/VFX/Item/NS_CommonDropItem.NS_CommonDropItem"));
 	if (CommonVFX.Succeeded())
@@ -158,6 +171,53 @@ void AERNItemActor::ActivateInteract_Implementation() const
 	{
 		PromptComponent->SetVisibility(true);
 	}
+	
+	if (AbilityInfoComponent && AbilityInfoComponent->GetWidgetClass())
+	{
+		const EItemAbility CurrentAbility = ItemRuntimeState.GetItemAbility();
+		if (CurrentAbility != EItemAbility::None)
+		{
+			FString AbilityStr;
+			if (UItemManagerSubsystem* ItemSubsystem = GetItemManager())
+			{
+				if (const FERNItemTable* ItemRow = ItemSubsystem->FindItemRow(ItemRuntimeState.GetItemID()))
+				{
+					const int32 Weight = static_cast<int32>(ItemRow->Grade) + 1;
+					switch (CurrentAbility)
+					{
+					case EItemAbility::Health: AbilityStr = FString::Printf(TEXT("최대 체력 +%d"), 20 * Weight); break;
+					case EItemAbility::Attack: AbilityStr = FString::Printf(TEXT("공격력 +%d"), 2 * Weight); break;
+					case EItemAbility::HealthAndAttack: AbilityStr = FString::Printf(TEXT("최대 체력 +%d, 공격력 +%d"), 10 * Weight, 1 * Weight); break;
+					case EItemAbility::Stamina: AbilityStr = FString::Printf(TEXT("최대 스태미나 +%d"), 10 * Weight); break;
+					case EItemAbility::Defence: AbilityStr = FString::Printf(TEXT("방어력 +%d"), 1 * Weight); break;
+					case EItemAbility::Gold: AbilityStr = FString::Printf(TEXT("골드 획득 +%d"), 50 * Weight); break;
+					case EItemAbility::Drain: AbilityStr = FString::Printf(TEXT("생명력 흡수 +%.1f%%"), 0.5f * Weight); break;
+					case EItemAbility::HealthCurse: AbilityStr = FString::Printf(TEXT("최대 체력 -%d, 공격력 +%d"), 50 * Weight, 5 * Weight); break;
+					case EItemAbility::AttackCurse: AbilityStr = FString::Printf(TEXT("공격력 -%d, 방어력 +%d, 최대 체력 +%d"), 5 * Weight, 1 * Weight, 20 * Weight); break;
+					default: break;
+					}
+				}
+			}
+
+			if (!AbilityStr.IsEmpty())
+			{
+				if (UERNAbilityInfoWidget* AbilityWidget = Cast<UERNAbilityInfoWidget>(AbilityInfoComponent->GetWidget()))
+				{
+					AbilityWidget->SetAbilityText(FText::FromString(AbilityStr));
+					AbilityInfoComponent->SetVisibility(true);
+				}
+			}
+			else
+			{
+				AbilityInfoComponent->SetVisibility(false);
+			}
+		}
+		else
+		{
+			// 어빌리티가 없는 경우 이전 텍스트가 남는 버그 방지
+			AbilityInfoComponent->SetVisibility(false);
+		}
+	}
 }
 
 void AERNItemActor::EndInteract_Implementation(APlayerController* PlayerController)
@@ -165,6 +225,11 @@ void AERNItemActor::EndInteract_Implementation(APlayerController* PlayerControll
 	if (PromptComponent)
 	{
 		PromptComponent->SetVisibility(false);
+	}
+	
+	if (AbilityInfoComponent)
+	{
+		AbilityInfoComponent->SetVisibility(false);
 	}
 }
 
@@ -245,6 +310,10 @@ void AERNItemActor::UpdateOwnerOnlyVisibility() const
 	if (PromptComponent)
 	{
 		PromptComponent->SetVisibility(false);
+	}
+	if (AbilityInfoComponent)
+	{
+		AbilityInfoComponent->SetVisibility(false);
 	}
 }
 
