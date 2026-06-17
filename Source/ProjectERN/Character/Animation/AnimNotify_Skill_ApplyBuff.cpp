@@ -4,55 +4,32 @@
 #include "Character/Animation/AnimNotify_Skill_ApplyBuff.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
-#include "AbilitySystemComponent.h"
-#include "Abilities/GameplayAbility.h"
-#include "GAS/Abilities/CharacterSkill/ERNGA_Normal_PaladinShield.h"
+#include "Abilities/GameplayAbilityTypes.h"
+#include "GAS/ERNGameplayTags.h"
 
 void UAnimNotify_Skill_ApplyBuff::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
                                          const FAnimNotifyEventReference& EventReference)
 {
 	Super::Notify(MeshComp, Animation, EventReference);
-	
+
 	if (!MeshComp)
 	{
 		return;
 	}
 
-	if (UERNGA_Normal_PaladinShield* Skill = FindActivePaladinShieldSkill(MeshComp->GetOwner()))
-	{
-		Skill->ApplyShieldFromNotify(MeshComp);
-	}
-}
-
-UERNGA_Normal_PaladinShield* UAnimNotify_Skill_ApplyBuff::FindActivePaladinShieldSkill(AActor* OwnerActor) const
-{
+	AActor* OwnerActor = MeshComp->GetOwner();
 	if (!OwnerActor)
 	{
-		return nullptr;
+		return;
 	}
 
-	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerActor);
+	FGameplayEventData EventData;
+	EventData.EventTag = TAG_Event_Skill_Normal_PaladinShield_Apply;
+	EventData.Instigator = OwnerActor;
+	EventData.Target = OwnerActor;
 
-	if (!ASC)
-	{
-		return nullptr;
-	}
-
-	for (FGameplayAbilitySpec& AbilitySpec : ASC->GetActivatableAbilities())
-	{
-		if (!AbilitySpec.IsActive())
-		{
-			continue;
-		}
-
-		for (UGameplayAbility* AbilityInstance : AbilitySpec.GetAbilityInstances())
-		{
-			if (UERNGA_Normal_PaladinShield* PaladinShieldSkill = Cast<UERNGA_Normal_PaladinShield>(AbilityInstance))
-			{
-				return PaladinShieldSkill;
-			}
-		}
-	}
-
-	return nullptr;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+		OwnerActor,
+		TAG_Event_Skill_Normal_PaladinShield_Apply,
+		EventData);
 }

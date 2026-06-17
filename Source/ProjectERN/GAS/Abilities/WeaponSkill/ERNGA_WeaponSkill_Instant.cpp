@@ -3,8 +3,7 @@
 
 #include "GAS/Abilities/WeaponSkill/ERNGA_WeaponSkill_Instant.h"
 
-#include "AbilitySystemBlueprintLibrary.h"
-#include "AbilitySystemComponent.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Combat/Projectile/ERNProjectileBase.h"
 #include "Combat/ERNSkillDamageLibrary.h"
@@ -12,14 +11,60 @@
 #include "Combat/Weapons/ERNRangedWeapon.h"
 #include "Components/ArrowComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
+#include "Engine/World.h"
 #include "GameFramework/Character.h"
+#include "GAS/ERNGameplayTags.h"
 #include "Inventory/Components/ERNEquipmentComponent.h"
 
 UERNGA_WeaponSkill_Instant::UERNGA_WeaponSkill_Instant()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+}
+
+void UERNGA_WeaponSkill_Instant::ActivateAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	const FGameplayEventData* TriggerEventData)
+{
+	bProjectileFiredThisActivation = false;
+	bExplosionHandledThisActivation = false;
+
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
+	if (!IsActive())
+	{
+		return;
+	}
+
+	if (ProjectileData.bUseProjectile)
+	{
+		UAbilityTask_WaitGameplayEvent* ProjectileEventTask =
+			UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+				this,
+				TAG_Event_WeaponSkill_Instant_Projectile);
+
+		ProjectileEventTask->EventReceived.AddDynamic(
+			this,
+			&UERNGA_WeaponSkill_Instant::OnProjectileEventReceived);
+		ProjectileEventTask->ReadyForActivation();
+	}
+
+	if (ExplosionData.bUseExplosion)
+	{
+		UAbilityTask_WaitGameplayEvent* ExplosionEventTask =
+			UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+				this,
+				TAG_Event_WeaponSkill_Instant_Explosion);
+
+		ExplosionEventTask->EventReceived.AddDynamic(
+			this,
+			&UERNGA_WeaponSkill_Instant::OnExplosionEventReceived);
+		ExplosionEventTask->ReadyForActivation();
+	}
 }
 
 void UERNGA_WeaponSkill_Instant::BeginAreaDamage(USkeletalMeshComponent* MeshComp)
@@ -80,28 +125,68 @@ void UERNGA_WeaponSkill_Instant::EndAreaDamage(USkeletalMeshComponent* MeshComp)
 
 void UERNGA_WeaponSkill_Instant::FireProjectileFromNotify(USkeletalMeshComponent* MeshComp)
 {
-	if (!ProjectileData.bUseProjectile || !ProjectileData.ProjectileClass || !MeshComp)
+	TryFireProjectile(MeshComp);
+}
+
+void UERNGA_WeaponSkill_Instant::ExplodeFromNotify(USkeletalMeshComponent* MeshComp)
+{
+	TryExecuteExplosion(MeshComp);
+}
+
+void UERNGA_WeaponSkill_Instant::OnProjectileEventReceived(FGameplayEventData Payload)
+{
+	if (!IsEventFromAvatar(Payload))
 	{
 		return;
+	}
+
+	TryFireProjectile(GetAvatarMeshFromActorInfo());
+}
+
+void UERNGA_WeaponSkill_Instant::OnExplosionEventReceived(FGameplayEventData Payload)
+{
+	if (!IsEventFromAvatar(Payload))
+	{
+		return;
+	}
+
+	TryExecuteExplosion(GetAvatarMeshFromActorInfo());
+}
+
+bool UERNGA_WeaponSkill_Instant::TryFireProjectile(USkeletalMeshComponent* MeshComp)
+{
+	if (// bProjectileFiredThisActivation ||
+		!ProjectileData.bUseProjectile ||
+		!ProjectileData.ProjectileClass ||
+		!MeshComp)
+	{
+		return false;
 	}
 
 	AActor* OwnerActor = MeshComp->GetOwner();
 	if (!OwnerActor || !OwnerActor->HasAuthority())
 	{
-		return;
+		return false;
+	}
+
+	UWorld* World = OwnerActor->GetWorld();
+	if (!World)
+	{
+		return false;
 	}
 
 	FTransform SpawnTransform;
 	if (!GetProjectileSpawnTransform(MeshComp, SpawnTransform))
 	{
-		return;
+		return false;
 	}
+
+	bProjectileFiredThisActivation = true;
 
 	const FRotator SpawnRotation = ProjectileData.bUseSourceRotation
 		                               ? SpawnTransform.GetRotation().Rotator()
 		                               : OwnerActor->GetActorForwardVector().Rotation();
 
-	// 투사체 발사 시 적용할 나이아가라 이펙트
 	PlayInstantNiagaraEffects(EERNWeaponSkillInstantEffectTrigger::ProjectileFire, MeshComp);
 
 	FActorSpawnParameters SpawnParams;
@@ -110,37 +195,67 @@ void UERNGA_WeaponSkill_Instant::FireProjectileFromNotify(USkeletalMeshComponent
 	SpawnParams.SpawnCollisionHandlingOverride =
 		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	OwnerActor->GetWorld()->SpawnActor<AERNProjectileBase>(
+	World->SpawnActor<AERNProjectileBase>(
 		ProjectileData.ProjectileClass,
 		SpawnTransform.GetLocation(),
 		SpawnRotation,
 		SpawnParams);
+
+	return true;
 }
 
-void UERNGA_WeaponSkill_Instant::ExplodeFromNotify(USkeletalMeshComponent* MeshComp)
+bool UERNGA_WeaponSkill_Instant::TryExecuteExplosion(USkeletalMeshComponent* MeshComp)
 {
-	if (!ExplosionData.bUseExplosion || !MeshComp)
+	if (bExplosionHandledThisActivation || !ExplosionData.bUseExplosion || !MeshComp)
 	{
-		return;
+		return false;
 	}
 
-	// 서버에서만 처리
 	AActor* OwnerActor = MeshComp->GetOwner();
 	if (!OwnerActor || !OwnerActor->HasAuthority())
 	{
-		return;
+		return false;
 	}
 
 	FTransform ExplosionTransform;
 	if (!GetExplosionTransform(MeshComp, ExplosionTransform))
 	{
-		return;
+		return false;
 	}
 
-	// 폭발 나이아가라 적용
+	bExplosionHandledThisActivation = true;
+
 	PlayInstantNiagaraEffects(EERNWeaponSkillInstantEffectTrigger::Explosion, MeshComp);
-	// 폭발(범위)대미지 적용
 	ApplyExplosionDamage(MeshComp, ExplosionTransform.GetLocation());
+
+	return true;
+}
+
+bool UERNGA_WeaponSkill_Instant::IsEventFromAvatar(const FGameplayEventData& Payload) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return false;
+	}
+
+	const AActor* EventInstigator = Payload.Instigator.Get();
+	const AActor* EventTarget = Payload.Target.Get();
+
+	return (!EventInstigator || EventInstigator == AvatarActor) &&
+		(!EventTarget || EventTarget == AvatarActor);
+}
+
+USkeletalMeshComponent* UERNGA_WeaponSkill_Instant::GetAvatarMeshFromActorInfo() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	if (ActorInfo && ActorInfo->SkeletalMeshComponent.IsValid())
+	{
+		return ActorInfo->SkeletalMeshComponent.Get();
+	}
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	return AvatarActor ? AvatarActor->FindComponentByClass<USkeletalMeshComponent>() : nullptr;
 }
 
 FVector UERNGA_WeaponSkill_Instant::GetAreaDamageOrigin(USkeletalMeshComponent* MeshComp) const

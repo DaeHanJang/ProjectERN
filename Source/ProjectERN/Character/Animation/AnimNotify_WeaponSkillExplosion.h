@@ -6,8 +6,6 @@
 #include "Animation/AnimNotifies/AnimNotify.h"
 #include "AnimNotify_WeaponSkillExplosion.generated.h"
 
-class UERNGA_WeaponSkill_Instant;
-
 UCLASS()
 class PROJECTERN_API UAnimNotify_WeaponSkillExplosion : public UAnimNotify
 {
@@ -23,7 +21,4 @@ public:
 	{
 		return TEXT("Weapon Skill Explosion");
 	}
-
-private:
-	UERNGA_WeaponSkill_Instant* FindActiveInstantWeaponSkill(AActor* OwnerActor) const;
 };

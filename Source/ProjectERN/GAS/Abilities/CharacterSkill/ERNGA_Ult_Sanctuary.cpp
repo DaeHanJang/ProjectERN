@@ -3,9 +3,12 @@
 
 #include "GAS/Abilities/CharacterSkill/ERNGA_Ult_Sanctuary.h"
 
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Actors/AoE/ERNAoE_Heal.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "GAS/ERNGameplayTags.h"
 #include "Kismet/GameplayStatics.h"
 
 UERNGA_Ult_Sanctuary::UERNGA_Ult_Sanctuary()
@@ -15,16 +18,31 @@ UERNGA_Ult_Sanctuary::UERNGA_Ult_Sanctuary()
 
 void UERNGA_Ult_Sanctuary::SpawnAoEFromNotify(USkeletalMeshComponent* MeshComp)
 {
+	TrySpawnAoE(MeshComp);
+}
+
+void UERNGA_Ult_Sanctuary::OnSpawnAoEEventReceived(FGameplayEventData Payload)
+{
+	if (!IsSpawnAoEEventFromAvatar(Payload))
+	{
+		return;
+	}
+
+	TrySpawnAoE(GetAvatarMeshFromActorInfo());
+}
+
+bool UERNGA_Ult_Sanctuary::TrySpawnAoE(USkeletalMeshComponent* MeshComp)
+{
 	AProjectERNCharacter* Caster = nullptr;
 	if (!CanSpawnAoEFromNotify(MeshComp, Caster))
 	{
-		return;
+		return false;
 	}
 
 	UWorld* World = Caster->GetWorld();
 	if (!World || !AoEActorClass)
 	{
-		return;
+		return false;
 	}
 
 	const FVector Origin =
@@ -37,7 +55,6 @@ void UERNGA_Ult_Sanctuary::SpawnAoEFromNotify(USkeletalMeshComponent* MeshComp)
 	const FRotator Rotation = Caster->GetActorRotation();
 	const FTransform SpawnTransform(Rotation, Origin);
 
-	// 원하는 변수를 적용하여 액터를 스폰하기 위해 SpawnActorDeferred를 사용
 	AERNAoE_Heal* AoEActor = World->SpawnActorDeferred<AERNAoE_Heal>(
 		AoEActorClass,
 		SpawnTransform,
@@ -47,31 +64,56 @@ void UERNGA_Ult_Sanctuary::SpawnAoEFromNotify(USkeletalMeshComponent* MeshComp)
 
 	if (!AoEActor)
 	{
-		return;
+		return false;
 	}
 
-	// Actor Spawn 전 Caster 세팅
 	AoEActor->InitializeAoE(Caster);
 	UGameplayStatics::FinishSpawningActor(AoEActor, SpawnTransform);
 
-	// 아군 부활
 	if (bReviveDownedAlliesOnAoESpawn)
 	{
 		ReviveDownedAlliesInRadius(Origin, Caster);
 	}
-	
-	// 장판 생성 VFX/SFX Cue
+
 	ExecuteUltimateGameplayCue(
 		AoECueData,
 		Caster,
 		Origin,
 		Rotation);
-	
-	// 중복 방지
+
 	if (bSpawnAoEOnlyOncePerActivation)
 	{
 		bAoESpawnedThisActivation = true;
 	}
+
+	return true;
+}
+
+bool UERNGA_Ult_Sanctuary::IsSpawnAoEEventFromAvatar(const FGameplayEventData& Payload) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return false;
+	}
+
+	const AActor* EventInstigator = Payload.Instigator.Get();
+	const AActor* EventTarget = Payload.Target.Get();
+
+	return (!EventInstigator || EventInstigator == AvatarActor) &&
+		(!EventTarget || EventTarget == AvatarActor);
+}
+
+USkeletalMeshComponent* UERNGA_Ult_Sanctuary::GetAvatarMeshFromActorInfo() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	if (ActorInfo && ActorInfo->SkeletalMeshComponent.IsValid())
+	{
+		return ActorInfo->SkeletalMeshComponent.Get();
+	}
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	return AvatarActor ? AvatarActor->FindComponentByClass<USkeletalMeshComponent>() : nullptr;
 }
 
 void UERNGA_Ult_Sanctuary::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
@@ -82,12 +124,22 @@ void UERNGA_Ult_Sanctuary::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
 	bAoESpawnedThisActivation = false;
-	
+
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+
+	UAbilityTask_WaitGameplayEvent* SpawnAoEEventTask =
+		UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+			this,
+			TAG_Event_Skill_Ultimate_Sanctuary_SpawnAoE);
+
+	SpawnAoEEventTask->EventReceived.AddDynamic(
+		this,
+		&UERNGA_Ult_Sanctuary::OnSpawnAoEEventReceived);
+	SpawnAoEEventTask->ReadyForActivation();
 
 	// 시전 시작 VFX/SFX Cue
 	ExecuteCastGameplayCue();

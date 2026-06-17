@@ -4,6 +4,7 @@
 #include "GAS/Abilities/CharacterSkill/ERNGA_UltimateSkillBase.h"
 
 #include "AbilitySystemComponent.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Character/Enemy/ERNEnemyCharacter.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -27,29 +28,7 @@ UERNGA_UltimateSkillBase::UERNGA_UltimateSkillBase()
 
 void UERNGA_UltimateSkillBase::TriggerExplosionFromNotify(USkeletalMeshComponent* MeshComp)
 {
-	AProjectERNCharacter* Caster = nullptr;
-	if (!CanTriggerExplosionFromNotify(MeshComp, Caster))
-	{
-		return;
-	}
-
-	// 실제 대미지/판정은 서버에서만 처리한다.
-	// GameplayCue를 붙일 때는 이 함수 안에서 서버가 Cue를 실행하도록 확장하면 된다.
-	if (!Caster->HasAuthority())
-	{
-		return;
-	}
-
-	if (ExplosionData.bApplyOnlyOncePerActivation)
-	{
-		bExplosionAppliedThisActivation = true;
-	}
-
-	const FVector Origin = GetExplosionOrigin(Caster);
-	// 폭발 GameplayCue 실행
-	ExecuteExplosionGameplayCue(Caster, Origin);
-	// 대미지 적용
-	ApplyExplosionDamage(Caster, Origin);
+	TryTriggerExplosion(MeshComp);
 }
 
 void UERNGA_UltimateSkillBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
@@ -61,6 +40,81 @@ void UERNGA_UltimateSkillBase::ActivateAbility(const FGameplayAbilitySpecHandle 
 
 	// 궁극기를 새로 발동할 때마다 Notify 폭발 적용 기록을 초기화한다.
 	bExplosionAppliedThisActivation = false;
+
+	if (bUseExplosion)
+	{
+		UAbilityTask_WaitGameplayEvent* ExplosionEventTask =
+			UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+				this,
+				TAG_Event_Skill_Ultimate_Explosion);
+
+		ExplosionEventTask->EventReceived.AddDynamic(
+			this,
+			&UERNGA_UltimateSkillBase::OnExplosionEventReceived);
+		ExplosionEventTask->ReadyForActivation();
+	}
+}
+
+void UERNGA_UltimateSkillBase::OnExplosionEventReceived(FGameplayEventData Payload)
+{
+	if (!IsExplosionEventFromAvatar(Payload))
+	{
+		return;
+	}
+
+	TryTriggerExplosion(GetAvatarMeshFromActorInfo());
+}
+
+bool UERNGA_UltimateSkillBase::TryTriggerExplosion(USkeletalMeshComponent* MeshComp)
+{
+	AProjectERNCharacter* Caster = nullptr;
+	if (!CanTriggerExplosionFromNotify(MeshComp, Caster))
+	{
+		return false;
+	}
+
+	if (!Caster->HasAuthority())
+	{
+		return false;
+	}
+
+	if (ExplosionData.bApplyOnlyOncePerActivation)
+	{
+		bExplosionAppliedThisActivation = true;
+	}
+
+	const FVector Origin = GetExplosionOrigin(Caster);
+	ExecuteExplosionGameplayCue(Caster, Origin);
+	ApplyExplosionDamage(Caster, Origin);
+
+	return true;
+}
+
+bool UERNGA_UltimateSkillBase::IsExplosionEventFromAvatar(const FGameplayEventData& Payload) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return false;
+	}
+
+	const AActor* EventInstigator = Payload.Instigator.Get();
+	const AActor* EventTarget = Payload.Target.Get();
+
+	return (!EventInstigator || EventInstigator == AvatarActor) &&
+		(!EventTarget || EventTarget == AvatarActor);
+}
+
+USkeletalMeshComponent* UERNGA_UltimateSkillBase::GetAvatarMeshFromActorInfo() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	if (ActorInfo && ActorInfo->SkeletalMeshComponent.IsValid())
+	{
+		return ActorInfo->SkeletalMeshComponent.Get();
+	}
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	return AvatarActor ? AvatarActor->FindComponentByClass<USkeletalMeshComponent>() : nullptr;
 }
 
 bool UERNGA_UltimateSkillBase::CanTriggerExplosionFromNotify(USkeletalMeshComponent* MeshComp,

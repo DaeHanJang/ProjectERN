@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Abilities/GameplayAbilityTypes.h"
 #include "Actors/AoE/ERNAoE_Heal.h"
 #include "GAS/Abilities/CharacterSkill/ERNGA_UltimateSkillBase.h"
 #include "ERNGA_Ult_Sanctuary.generated.h"
@@ -45,6 +46,13 @@ protected:
 
 private:
 	bool bAoESpawnedThisActivation = false;
+
+	UFUNCTION()
+	void OnSpawnAoEEventReceived(FGameplayEventData Payload);
+
+	bool TrySpawnAoE(USkeletalMeshComponent* MeshComp);
+	bool IsSpawnAoEEventFromAvatar(const FGameplayEventData& Payload) const;
+	USkeletalMeshComponent* GetAvatarMeshFromActorInfo() const;
 
 	// 소환 가능한 캐릭터 존재 여부 확인
 	bool CanSpawnAoEFromNotify(USkeletalMeshComponent* MeshComp, AProjectERNCharacter*& OutCaster) const;

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Abilities/GameplayAbilityTypes.h"
 #include "Combat/ERNSkillDamageTypes.h"
 #include "GAS/Abilities/CharacterSkill/ERNGA_SkillBase.h"
 #include "ERNGA_UltimateSkillBase.generated.h"
@@ -119,6 +120,13 @@ protected:
 	
 private:
 	bool bExplosionAppliedThisActivation = false;
+
+	UFUNCTION()
+	void OnExplosionEventReceived(FGameplayEventData Payload);
+
+	bool TryTriggerExplosion(USkeletalMeshComponent* MeshComp);
+	bool IsExplosionEventFromAvatar(const FGameplayEventData& Payload) const;
+	USkeletalMeshComponent* GetAvatarMeshFromActorInfo() const;
 
 	bool CanTriggerExplosionFromNotify(USkeletalMeshComponent* MeshComp, AProjectERNCharacter*& OutCaster) const;
 	FVector GetExplosionOrigin(const AProjectERNCharacter* Caster) const;

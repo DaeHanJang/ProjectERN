@@ -6,8 +6,6 @@
 #include "Animation/AnimNotifies/AnimNotify.h"
 #include "AnimNotify_Ultimate_Explosion.generated.h"
 
-class UERNGA_UltimateSkillBase;
-
 UCLASS()
 class PROJECTERN_API UAnimNotify_Ultimate_Explosion : public UAnimNotify
 {
@@ -22,7 +20,4 @@ public:
 	{
 		return TEXT("Ultimate Explosion");
 	}
-
-private:
-	UERNGA_UltimateSkillBase* FindActiveUltimateSkill(AActor* OwnerActor) const;
 };

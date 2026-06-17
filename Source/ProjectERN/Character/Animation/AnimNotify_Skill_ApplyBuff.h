@@ -6,8 +6,6 @@
 #include "Animation/AnimNotifies/AnimNotify.h"
 #include "AnimNotify_Skill_ApplyBuff.generated.h"
 
-class UERNGA_Normal_PaladinShield;
-
 UCLASS()
 class PROJECTERN_API UAnimNotify_Skill_ApplyBuff : public UAnimNotify
 {
@@ -23,8 +21,4 @@ public:
 	{
 		return TEXT("Apply Buff");
 	}
-
-private:
-	UERNGA_Normal_PaladinShield* FindActivePaladinShieldSkill(AActor* OwnerActor) const;
-	
 };

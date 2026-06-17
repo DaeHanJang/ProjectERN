@@ -89,3 +89,8 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_Ultimate_Sanctuary_Field, "GameplayCue.Ul
 // 이벤트
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Consumable_Throw, "Event.Consumable.Throw")
 UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Movement_JumpLaunch, "Event.Movement.JumpLaunch")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_WeaponSkill_Instant_Projectile, "Event.WeaponSkill.Instant.Projectile")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_WeaponSkill_Instant_Explosion, "Event.WeaponSkill.Instant.Explosion")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Skill_Ultimate_Explosion, "Event.Skill.Ultimate.Explosion")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Skill_Normal_PaladinShield_Apply, "Event.Skill.Normal.PaladinShield.Apply")
+UE_DEFINE_GAMEPLAY_TAG(TAG_Event_Skill_Ultimate_Sanctuary_SpawnAoE, "Event.Skill.Ultimate.Sanctuary.SpawnAoE")

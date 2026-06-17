@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Abilities/GameplayAbilityTypes.h"
 #include "Combat/ERNSkillDamageTypes.h"
 #include "GAS/Abilities/ERNGA_WeaponSkill.h"
 #include "GAS/Abilities/WeaponSkill/ERNWeaponSkillTypes.h"
@@ -140,6 +141,12 @@ class PROJECTERN_API UERNGA_WeaponSkill_Instant : public UERNGA_WeaponSkill
 public:
 	UERNGA_WeaponSkill_Instant();
 
+	virtual void ActivateAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		const FGameplayEventData* TriggerEventData) override;
+
 	// NotifyState 범위 데미지 적용
 	void BeginAreaDamage(USkeletalMeshComponent* MeshComp);
 	void TickAreaDamage(USkeletalMeshComponent* MeshComp);
@@ -173,6 +180,20 @@ private:
 	TMap<TWeakObjectPtr<USkeletalMeshComponent>, TSet<TWeakObjectPtr<AActor>>> HitActorsByMesh;
 	// 누적 시간 저장용 Map
 	TMap<TWeakObjectPtr<USkeletalMeshComponent>, float> AreaDamageElapsedTimes;
+
+	bool bProjectileFiredThisActivation = false;
+	bool bExplosionHandledThisActivation = false;
+
+	UFUNCTION()
+	void OnProjectileEventReceived(FGameplayEventData Payload);
+
+	UFUNCTION()
+	void OnExplosionEventReceived(FGameplayEventData Payload);
+
+	bool TryFireProjectile(USkeletalMeshComponent* MeshComp);
+	bool TryExecuteExplosion(USkeletalMeshComponent* MeshComp);
+	bool IsEventFromAvatar(const FGameplayEventData& Payload) const;
+	USkeletalMeshComponent* GetAvatarMeshFromActorInfo() const;
 	
 	// 범위 대미지 작용 위치
 	FVector GetAreaDamageOrigin(USkeletalMeshComponent* MeshComp) const;

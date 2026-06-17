@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Abilities/GameplayAbilityTypes.h"
 #include "GameplayEffectTypes.h"
 #include "GAS/Abilities/CharacterSkill/ERNGA_NormalSkillBase.h"
 #include "ERNGA_Normal_PaladinShield.generated.h"
@@ -73,6 +74,13 @@ protected:
 private:
 	// 중복 적용 방지
 	bool bShieldAppliedThisActivation = false;
+
+	UFUNCTION()
+	void OnApplyShieldEventReceived(FGameplayEventData Payload);
+
+	bool TryApplyShield(USkeletalMeshComponent* MeshComp);
+	bool IsApplyShieldEventFromAvatar(const FGameplayEventData& Payload) const;
+	USkeletalMeshComponent* GetAvatarMeshFromActorInfo() const;
 	
 	// 범위 내 아군을 찾아 실드를 적용
 	void ApplyShieldToAllies(AProjectERNCharacter* Caster);

@@ -4,8 +4,10 @@
 #include "GAS/Abilities/CharacterSkill/ERNGA_Normal_PaladinShield.h"
 
 #include "AbilitySystemComponent.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "GAS/ERNAttributeSet.h"
 #include "GAS/ERNGameplayTags.h"
@@ -20,32 +22,73 @@ UERNGA_Normal_PaladinShield::UERNGA_Normal_PaladinShield()
 
 void UERNGA_Normal_PaladinShield::ApplyShieldFromNotify(USkeletalMeshComponent* MeshComp)
 {
+	TryApplyShield(MeshComp);
+}
+
+void UERNGA_Normal_PaladinShield::OnApplyShieldEventReceived(FGameplayEventData Payload)
+{
+	if (!IsApplyShieldEventFromAvatar(Payload))
+	{
+		return;
+	}
+
+	TryApplyShield(GetAvatarMeshFromActorInfo());
+}
+
+bool UERNGA_Normal_PaladinShield::TryApplyShield(USkeletalMeshComponent* MeshComp)
+{
 	AProjectERNCharacter* Caster = Cast<AProjectERNCharacter>(GetAvatarActorFromActorInfo());
 	if (!Caster)
 	{
-		return;
+		return false;
 	}
 
-	// Notify는 클라/서버 양쪽에서 호출될 수 있으므로 실제 GE 적용은 서버에서만 처리
 	if (!Caster->HasAuthority())
 	{
-		return;
+		return false;
 	}
 
-	// 다른 캐릭터의 몽타주 Notify가 잘못 들어오는 것 방지
 	if (MeshComp && MeshComp->GetOwner() != Caster)
 	{
-		return;
+		return false;
 	}
 
-	// 같은 몽타주 안에서 Notify가 여러 번 호출되어도 한 번만 적용
 	if (bShieldAppliedThisActivation)
 	{
-		return;
+		return false;
 	}
 
 	ApplyShieldToAllies(Caster);
 	bShieldAppliedThisActivation = true;
+
+	return true;
+}
+
+bool UERNGA_Normal_PaladinShield::IsApplyShieldEventFromAvatar(const FGameplayEventData& Payload) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return false;
+	}
+
+	const AActor* EventInstigator = Payload.Instigator.Get();
+	const AActor* EventTarget = Payload.Target.Get();
+
+	return (!EventInstigator || EventInstigator == AvatarActor) &&
+		(!EventTarget || EventTarget == AvatarActor);
+}
+
+USkeletalMeshComponent* UERNGA_Normal_PaladinShield::GetAvatarMeshFromActorInfo() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	if (ActorInfo && ActorInfo->SkeletalMeshComponent.IsValid())
+	{
+		return ActorInfo->SkeletalMeshComponent.Get();
+	}
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	return AvatarActor ? AvatarActor->FindComponentByClass<USkeletalMeshComponent>() : nullptr;
 }
 
 void UERNGA_Normal_PaladinShield::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
@@ -63,6 +106,16 @@ void UERNGA_Normal_PaladinShield::ActivateAbility(const FGameplayAbilitySpecHand
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+
+	UAbilityTask_WaitGameplayEvent* ApplyShieldEventTask =
+		UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+			this,
+			TAG_Event_Skill_Normal_PaladinShield_Apply);
+
+	ApplyShieldEventTask->EventReceived.AddDynamic(
+		this,
+		&UERNGA_Normal_PaladinShield::OnApplyShieldEventReceived);
+	ApplyShieldEventTask->ReadyForActivation();
 
 	AProjectERNCharacter* Caster = Cast<AProjectERNCharacter>(GetAvatarActorFromActorInfo());
 	if (!Caster)

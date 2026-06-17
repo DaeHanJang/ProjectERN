@@ -32,7 +32,7 @@ void UERNGA_Ult_CrimsonJudgment::ActivateAbility(const FGameplayAbilitySpecHandl
 	}
 
 	MontageTask->OnCompleted.AddDynamic(this, &UERNGA_Ult_CrimsonJudgment::FinishSkill);
-	MontageTask->OnBlendOut.AddDynamic(this, &UERNGA_Ult_CrimsonJudgment::FinishSkill);
+	// MontageTask->OnBlendOut.AddDynamic(this, &UERNGA_Ult_CrimsonJudgment::FinishSkill);
 	MontageTask->OnInterrupted.AddDynamic(this, &UERNGA_Ult_CrimsonJudgment::FinishSkill);
 	MontageTask->OnCancelled.AddDynamic(this, &UERNGA_Ult_CrimsonJudgment::FinishSkill);
 }

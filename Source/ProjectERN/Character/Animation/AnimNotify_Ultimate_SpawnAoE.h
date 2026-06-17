@@ -6,8 +6,6 @@
 #include "Animation/AnimNotifies/AnimNotify.h"
 #include "AnimNotify_Ultimate_SpawnAoE.generated.h"
 
-class UERNGA_Ult_Sanctuary;
-
 UCLASS()
 class PROJECTERN_API UAnimNotify_Ultimate_SpawnAoE : public UAnimNotify
 {
@@ -22,7 +20,4 @@ public:
 	{
 		return TEXT("Ultimate Spawn AoE");
 	}
-
-private:
-	UERNGA_Ult_Sanctuary* FindActiveSanctuarySkill(AActor* OwnerActor) const;
 };

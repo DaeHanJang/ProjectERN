@@ -24,7 +24,4 @@ public:
 	{
 		return TEXT("Weapon Skill Projectile");
 	}
-
-private:
-	class UERNGA_WeaponSkill_Instant* FindActiveInstantWeaponSkill(AActor* OwnerActor) const;
 };
