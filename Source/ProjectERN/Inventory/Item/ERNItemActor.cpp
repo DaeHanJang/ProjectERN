@@ -73,7 +73,7 @@ AERNItemActor::AERNItemActor()
 	// Ability Info
 	AbilityInfoComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("AbilityInfoComponent"));
 	AbilityInfoComponent->SetupAttachment(GetRootComponent());
-	AbilityInfoComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+	AbilityInfoComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 180.f));
 	static ConstructorHelpers::FClassFinder<UUserWidget> AbilityClass(TEXT("/Game/Blueprint/Widget/Interact/WBP_ItemAbilityInfo"));
 	if (AbilityClass.Succeeded())
 	{
