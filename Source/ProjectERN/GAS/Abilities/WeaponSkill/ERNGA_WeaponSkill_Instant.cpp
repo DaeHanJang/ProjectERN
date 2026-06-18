@@ -51,6 +51,15 @@ void UERNGA_WeaponSkill_Instant::ActivateAbility(
 			this,
 			&UERNGA_WeaponSkill_Instant::OnProjectileEventReceived);
 		ProjectileEventTask->ReadyForActivation();
+
+		AActor* AvatarActor = GetAvatarActorFromActorInfo();
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[WSI-PJ][1 ListenerReady] Owner=%s Role=%s Ability=%s"),
+			*GetNameSafe(AvatarActor),
+			AvatarActor && AvatarActor->HasAuthority() ? TEXT("Server") : TEXT("Client"),
+			*GetNameSafe(this));
 	}
 
 	if (ExplosionData.bUseExplosion)
@@ -135,8 +144,23 @@ void UERNGA_WeaponSkill_Instant::ExplodeFromNotify(USkeletalMeshComponent* MeshC
 
 void UERNGA_WeaponSkill_Instant::OnProjectileEventReceived(FGameplayEventData Payload)
 {
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[WSI-PJ][3 EventReceived] Owner=%s Role=%s Instigator=%s Target=%s"),
+		*GetNameSafe(AvatarActor),
+		AvatarActor && AvatarActor->HasAuthority() ? TEXT("Server") : TEXT("Client"),
+		*GetNameSafe(Payload.Instigator.Get()),
+		*GetNameSafe(Payload.Target.Get()));
+
 	if (!IsEventFromAvatar(Payload))
 	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[WSI-PJ][3 FAIL] Event rejected by IsEventFromAvatar Owner=%s"),
+			*GetNameSafe(AvatarActor));
 		return;
 	}
 
@@ -155,29 +179,61 @@ void UERNGA_WeaponSkill_Instant::OnExplosionEventReceived(FGameplayEventData Pay
 
 bool UERNGA_WeaponSkill_Instant::TryFireProjectile(USkeletalMeshComponent* MeshComp)
 {
-	if (// bProjectileFiredThisActivation ||
-		!ProjectileData.bUseProjectile ||
-		!ProjectileData.ProjectileClass ||
-		!MeshComp)
+	if (!ProjectileData.bUseProjectile)
 	{
+		UE_LOG(LogTemp, Error, TEXT("[WSI-PJ][4 FAIL] bUseProjectile=false"));
+		return false;
+	}
+
+	if (!ProjectileData.ProjectileClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[WSI-PJ][4 FAIL] ProjectileClass=null"));
+		return false;
+	}
+
+	if (!MeshComp)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[WSI-PJ][4 FAIL] MeshComp=null"));
 		return false;
 	}
 
 	AActor* OwnerActor = MeshComp->GetOwner();
-	if (!OwnerActor || !OwnerActor->HasAuthority())
+	if (!OwnerActor)
 	{
+		UE_LOG(LogTemp, Error, TEXT("[WSI-PJ][4 FAIL] OwnerActor=null"));
+		return false;
+	}
+
+	if (!OwnerActor->HasAuthority())
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[WSI-PJ][4 SKIP] No authority Owner=%s"),
+			*GetNameSafe(OwnerActor));
 		return false;
 	}
 
 	UWorld* World = OwnerActor->GetWorld();
 	if (!World)
 	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[WSI-PJ][4 FAIL] World=null Owner=%s"),
+			*GetNameSafe(OwnerActor));
 		return false;
 	}
 
 	FTransform SpawnTransform;
 	if (!GetProjectileSpawnTransform(MeshComp, SpawnTransform))
 	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[WSI-PJ][4 FAIL] SpawnTransform resolution failed Owner=%s Mesh=%s"),
+			*GetNameSafe(OwnerActor),
+			*GetNameSafe(MeshComp));
 		return false;
 	}
 
@@ -195,11 +251,21 @@ bool UERNGA_WeaponSkill_Instant::TryFireProjectile(USkeletalMeshComponent* MeshC
 	SpawnParams.SpawnCollisionHandlingOverride =
 		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	World->SpawnActor<AERNProjectileBase>(
+	AERNProjectileBase* SpawnedProjectile = World->SpawnActor<AERNProjectileBase>(
 		ProjectileData.ProjectileClass,
 		SpawnTransform.GetLocation(),
 		SpawnRotation,
 		SpawnParams);
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("[WSI-PJ][5 Spawn] Result=%s Class=%s Owner=%s Location=%s Rotation=%s"),
+		*GetNameSafe(SpawnedProjectile),
+		*GetNameSafe(ProjectileData.ProjectileClass.Get()),
+		*GetNameSafe(OwnerActor),
+		*SpawnTransform.GetLocation().ToCompactString(),
+		*SpawnRotation.ToCompactString());
 
 	return true;
 }

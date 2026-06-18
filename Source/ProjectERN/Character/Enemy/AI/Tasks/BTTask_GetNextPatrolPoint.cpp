@@ -27,7 +27,7 @@ EBTNodeResult::Type UBTTask_GetNextPatrolPoint::ExecuteTask(UBehaviorTreeCompone
 	// 순찰 포인트 배열이 없으면 실패
 	if (Enemy->PatrolPoints.Num() == 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[%s] No patrol points assigned!"), *Enemy->GetName());
+		//UE_LOG(LogTemp, Warning, TEXT("[%s] No patrol points assigned!"), *Enemy->GetName());
 		return EBTNodeResult::Failed;
 	}
 
@@ -53,8 +53,8 @@ EBTNodeResult::Type UBTTask_GetNextPatrolPoint::ExecuteTask(UBehaviorTreeCompone
 			BlackboardComp->SetValueAsVector(PatrolPointKey, PatrolLocation);
 			BlackboardComp->SetValueAsInt(PatrolIndexKey, NextIndex);
 
-			UE_LOG(LogTemp, Log, TEXT("[%s] Moving to patrol point %d at %s"),
-				*Enemy->GetName(), NextIndex, *PatrolLocation.ToString());
+			//UE_LOG(LogTemp, Log, TEXT("[%s] Moving to patrol point %d at %s"),
+			//	*Enemy->GetName(), NextIndex, *PatrolLocation.ToString());
 
 			return EBTNodeResult::Succeeded;
 		}
