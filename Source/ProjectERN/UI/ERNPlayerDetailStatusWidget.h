@@ -136,6 +136,12 @@ private:
 	FDelegateHandle MaxFlaskChangedDelegateHandle;
 	FDelegateHandle ShieldChangedDelegateHandle;
 
+	// 동기화 검사용 이전 스탯 캐싱 변수
+	float LastObservedMaxHealth = -1.f;
+	float LastObservedAttackPower = -1.f;
+	float LastObservedMaxStamina = -1.f;
+	float LastObservedDefense = -1.f;
+
 	// 개별 어트리뷰트 콜백 함수들
 	void HealthChanged(const FOnAttributeChangeData& Data);
 	void MaxHealthChanged(const FOnAttributeChangeData& Data);

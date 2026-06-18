@@ -26,6 +26,28 @@ void UERNPlayerDetailStatusWidget::NativeTick(const FGeometry& MyGeometry, float
 	{
 		TryInitASC();
 	}
+	else
+	{
+		// 네트워크를 통해 값이 몰래(Silent) 변경되었는지 확인하는 폴링 로직
+		bool bFound = false;
+		float CurrentMaxHealth = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetMaxHealthAttribute(), bFound);
+		float CurrentAttackPower = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetAttackPowerAttribute(), bFound);
+		float CurrentMaxStamina = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetMaxStaminaAttribute(), bFound);
+		float CurrentDefense = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetDefenseAttribute(), bFound);
+
+		if (CurrentMaxHealth != LastObservedMaxHealth || 
+			CurrentAttackPower != LastObservedAttackPower ||
+			CurrentMaxStamina != LastObservedMaxStamina ||
+			CurrentDefense != LastObservedDefense)
+		{
+			LastObservedMaxHealth = CurrentMaxHealth;
+			LastObservedAttackPower = CurrentAttackPower;
+			LastObservedMaxStamina = CurrentMaxStamina;
+			LastObservedDefense = CurrentDefense;
+
+			RefreshAllAttributes();
+		}
+	}
 }
 
 bool UERNPlayerDetailStatusWidget::TryInitASC()
