@@ -10,6 +10,7 @@
 #include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
+#include "Inventory/Components/ERNEquipmentComponent.h"
 
 UERNInventoryComponent::UERNInventoryComponent()
 {
@@ -209,29 +210,27 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 	UGameplayEffect* GE = NewObject<UGameplayEffect>(GetTransientPackage(), NAME_None, RF_Transient);
 	GE->DurationPolicy = EGameplayEffectDurationType::Infinite;
 
-	// 인벤토리 전체를 순회하며 효과 누적
-	for (int32 i = 0; i < Inventory.GetItems().Num(); ++i)
+	auto AddMod = [&](FGameplayAttribute Attribute, float Value)
 	{
-		const FInventoryItemEntry& Entry = Inventory.GetItems()[i];
+		int32 Idx = GE->Modifiers.AddDefaulted();
+		FGameplayModifierInfo& ModInfo = GE->Modifiers[Idx];
+		ModInfo.Attribute = Attribute;
+		ModInfo.ModifierOp = EGameplayModOp::Additive;
+		ModInfo.ModifierMagnitude = FScalableFloat(Value);
+	};
+
+	auto ApplyItemAbility = [&](const FInventoryItemEntry& Entry)
+	{
 		const FItemRuntimeState& ItemState = Entry.GetItemRuntimeState();
-		if (!ItemState.IsValid()) continue;
+		if (!ItemState.IsValid()) return;
 
 		const FERNItemTable* ItemRow = ItemManager->FindItemRow(ItemState.GetItemID());
-		if (!ItemRow || ItemRow->ItemType != EItemType::Equipable) continue;
+		if (!ItemRow || ItemRow->ItemType != EItemType::Equipable) return;
 
 		EItemAbility Ability = ItemState.GetItemAbility();
-		if (Ability == EItemAbility::None) continue;
+		if (Ability == EItemAbility::None) return;
 
 		int32 Weight = static_cast<int32>(ItemRow->Grade) + 1;
-
-		auto AddMod = [&](FGameplayAttribute Attribute, float Value)
-		{
-			int32 Idx = GE->Modifiers.AddDefaulted();
-			FGameplayModifierInfo& ModInfo = GE->Modifiers[Idx];
-			ModInfo.Attribute = Attribute;
-			ModInfo.ModifierOp = EGameplayModOp::Additive;
-			ModInfo.ModifierMagnitude = FScalableFloat(Value);
-		};
 
 		switch (Ability)
 		{
@@ -269,6 +268,18 @@ void UERNInventoryComponent::RecalculateItemAbilities()
 		default:
 			break;
 		}
+	};
+
+	// 인벤토리 전체를 순회하며 효과 누적
+	for (int32 i = 0; i < Inventory.GetItems().Num(); ++i)
+	{
+		ApplyItemAbility(Inventory.GetItems()[i]);
+	}
+
+	// 장비 슬롯 검사 및 효과 누적
+	if (UERNEquipmentComponent* EquipComp = Character->GetEquipmentComponent())
+	{
+		ApplyItemAbility(EquipComp->EquipableSlot);
 	}
 
 	if (GE->Modifiers.Num() > 0)

@@ -9,6 +9,8 @@
 #include "Inventory/Components/ERNEquipmentComponent.h"
 #include "Inventory/Components/ERNInventoryComponent.h"
 #include "Combat/Weapons/ERNWeaponBase.h"
+#include "Inventory/Item/Manager/ItemManagerSubsystem.h"
+#include "Inventory/Item/Data/EquipableItemDataAsset.h"
 
 void UERNPlayerDetailStatusWidget::NativeConstruct()
 {
@@ -501,9 +503,18 @@ float UERNPlayerDetailStatusWidget::GetWeaponDamage() const
 		{
 			if (UERNEquipmentComponent* EquipComp = Character->GetEquipmentComponent())
 			{
-				if (AERNWeaponBase* Weapon = EquipComp->CurrentWeapon)
+				if (EquipComp->EquipableSlot.IsValid())
 				{
-					return Weapon->LightAttackDamage;
+					if (UGameInstance* GI = GetWorld()->GetGameInstance())
+					{
+						if (UItemManagerSubsystem* ItemManager = GI->GetSubsystem<UItemManagerSubsystem>())
+						{
+							if (const UEquipableItemDataAsset* DA = Cast<UEquipableItemDataAsset>(ItemManager->LoadItemDataAssetSync(EquipComp->EquipableSlot.GetItemID(), EItemAssetLoadFlags::Gameplay)))
+							{
+								return DA->LightAttackDamage;
+							}
+						}
+					}
 				}
 			}
 		}
