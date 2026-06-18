@@ -26,6 +26,8 @@ public:
 	// 화면에서 내려갈 때 델리게이트 해제
 	virtual void NativeDestruct() override;
 
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
 	// ASC 초기화 시도 (성공 시 true 반환)
 	UFUNCTION(BlueprintCallable, Category = "Player Status")
 	bool TryInitASC();

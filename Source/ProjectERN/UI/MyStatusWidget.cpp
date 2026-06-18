@@ -44,6 +44,14 @@ void UMyStatusWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
+	if (!CachedPlayerState)
+	{
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			SetTargetPlayerState(PC->GetPlayerState<AERNPlayerState>());
+		}
+	}
+
 	if (CachedPlayerState)
 	{
 		if (!bIsBuffListInitialized)

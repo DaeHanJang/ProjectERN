@@ -16,6 +16,16 @@ void UERNPlayerDetailStatusWidget::NativeConstruct()
 	TryInitASC();
 }
 
+void UERNPlayerDetailStatusWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (!CachedASC.IsValid())
+	{
+		TryInitASC();
+	}
+}
+
 bool UERNPlayerDetailStatusWidget::TryInitASC()
 {
 	if (CachedASC.IsValid()) return true;

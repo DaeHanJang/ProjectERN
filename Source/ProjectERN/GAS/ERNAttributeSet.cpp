@@ -68,6 +68,11 @@ void UERNAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, f
 		// 최대 체력이 0 이하로 내려가는 것을 방지 (최소 10 유지)
 		NewValue = FMath::Max(NewValue, 10.f);
 	}
+	else if (Attribute == GetAttackPowerAttribute())
+	{
+		// 공격력이 음수가 되지 않도록 최소 0 보장
+		NewValue = FMath::Max(NewValue, 0.f);
+	}
 	else if (Attribute == GetManaAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue, 0.f, GetMaxMana());
@@ -175,6 +180,11 @@ void UERNAttributeSet::PreAttributeBaseChange(const FGameplayAttribute& Attribut
 	else if (Attribute == GetMaxHealthAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 10.f);
+	}
+	else if (Attribute == GetAttackPowerAttribute())
+	{
+		// 공격력 기본값 최소 0 보장
+		NewValue = FMath::Max(NewValue, 0.f);
 	}
 }
 
