@@ -7,6 +7,7 @@
 #include "GAS/Abilities/CharacterSkill/ERNGA_SkillBase.h"
 #include "Logging/LogMacros.h"
 #include "GAS/Abilities/WeaponSkill/ERNWeaponSkillTypes.h"
+#include "ActiveGameplayEffectHandle.h"
 #include "ProjectERNCharacter.generated.h"
 
 class UERNLockOnComponent;
@@ -353,6 +354,36 @@ public:
 	// 가한 데미지 기반 자가 회복 (서버 권위). 적 TakeDamage에서 공격자로 호출됨
 	void ApplyLifesteal(float DamageDealt);
 
+	// ===== 계정 영구 버프 (로컬 세이브 → 클라가 서버에 전달해 적용) =====
+public:
+	// 소유 클라: 로컬 세이브의 투자값을 서버로 보내 계정 버프 적용 요청 (스폰/투자/초기화 후 호출)
+	UFUNCTION(BlueprintCallable, Category = "ERN|Account")
+	void RefreshAccountBuffs();
+
+	// 계정 라이프스틸 분율 (표시용)
+	float GetAccountLifestealFraction() const { return AccountLifestealFraction; }
+
+protected:
+	// 서버 → 소유 클라: RefreshAccountBuffs 실행 요청 (스폰 시 서버가 트리거)
+	UFUNCTION(Client, Reliable)
+	void Client_RequestAccountBuffs();
+
+	// 소유 클라 → 서버: 투자 포인트 카운트 전달 (클라 신뢰)
+	UFUNCTION(Server, Reliable)
+	void Server_ApplyAccountBuffs(int32 HpPts, int32 ManaPts, int32 StamPts, int32 DefPts, int32 AttPts, int32 LifePts, int32 GoldPts);
+
+	// 서버: 계정 버프 GE 재적용 + Gold/Lifesteal 필드 설정
+	void ApplyAccountBuffsInternal(int32 HpPts, int32 ManaPts, int32 StamPts, int32 DefPts, int32 AttPts, int32 LifePts, int32 GoldPts);
+
+	// 계정 버프 GE 핸들 (재적용 시 제거용)
+	UPROPERTY(Transient)
+	TArray<struct FActiveGameplayEffectHandle> AccountBuffHandles;
+
+	// 계정 라이프스틸 (아이템 BonusLifestealFraction과 분리 — 리셋 충돌 방지). 표시 위해 복제
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "ERN|Account")
+	float AccountLifestealFraction = 0.f;
+
+public:
 	// 피격 시 카메라 흔들림 (데미지/MaxHealth 비율로 강도 분기)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ERN|CameraShake")
 	TSubclassOf<UCameraShakeBase> TakeDamageShakeClass_Small;
@@ -406,6 +437,11 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_GiveGold(int32 Amount);
+
+	// ===== 치트: 계정 레벨 설정 (콘솔 명령 AccountLevel) =====
+	// 콘솔 명령: AccountLevel N → 계정 레벨을 N으로 설정 (보유 포인트도 N-투자분으로 맞춤). 로컬 세이브
+	UFUNCTION(Exec)
+	void AccountLevel(int32 NewLevel = 10);
 
 	// 시퀀서 이벤트 → 이 노드 호출. 내부에서 서버로 라우팅되어 자기 새 1마리 스폰.
 	// (각 클라가 Get Player Character(0) 로컬 캐릭터에 대해 호출 → 플레이어당 1마리)

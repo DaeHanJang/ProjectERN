@@ -20,7 +20,8 @@ enum class EERNUIType : uint8
 	Minimap		UMETA(DisplayName = "Minimap"),
 	PauseMenu	UMETA(DisplayName = "PauseMenu"),
 	DHRoll      UMETA(DisplayName = "DHRoll"),
-	Status		UMETA(DisplayName = "Status")
+	Status		UMETA(DisplayName = "Status"),
+	AccountStat	UMETA(DisplayName = "AccountStat")
 };
 
 /**

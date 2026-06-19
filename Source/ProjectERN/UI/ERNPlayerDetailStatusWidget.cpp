@@ -567,7 +567,7 @@ float UERNPlayerDetailStatusWidget::GetLifestealFraction() const
 	{
 		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(PC->GetPawn()))
 		{
-			return Character->LifestealFraction + Character->BonusLifestealFraction;
+			return Character->LifestealFraction + Character->BonusLifestealFraction + Character->GetAccountLifestealFraction();
 		}
 	}
 	return 0.0f;

@@ -36,6 +36,10 @@ public:
 	
 	FORCEINLINE float GetGoldWeight() const { return GoldWeight; }
 	FORCEINLINE void AddGoldWeight(const float Amount) { GoldWeight += Amount; }
+
+	// 계정 영구 버프 골드 보너스 (아이템 GoldWeight와 분리 — 인벤 재계산 리셋에 영향 안 받음, 서버 전용)
+	FORCEINLINE float GetAccountGoldWeight() const { return AccountGoldWeight; }
+	FORCEINLINE void SetAccountGoldWeight(const float Amount) { AccountGoldWeight = Amount; }
 	
 	// IAbilitySystemInterface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
@@ -95,6 +99,9 @@ protected:
 	TWeakObjectPtr<AProjectERNCharacter> ShieldInstigator;
 	
 	float GoldWeight = 0.0f;
+
+	// 계정 영구 버프 골드 보너스 (서버에서 계정 버프 적용 시 설정)
+	float AccountGoldWeight = 0.0f;
 
 public:
 	// 실드를 걸어준 시전자 설정 (PaladinShield 적용 시 호출, 서버)

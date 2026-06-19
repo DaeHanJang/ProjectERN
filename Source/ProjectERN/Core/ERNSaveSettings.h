@@ -6,6 +6,19 @@
 #include "GameFramework/SaveGame.h"
 #include "ERNSaveSettings.generated.h"
 
+// 계정 영구 스탯 투자 대상
+UENUM(BlueprintType)
+enum class EAccountStat : uint8
+{
+	Health		UMETA(DisplayName = "Health"),
+	Mana		UMETA(DisplayName = "Mana"),
+	Stamina		UMETA(DisplayName = "Stamina"),
+	Defense		UMETA(DisplayName = "Defense"),
+	Attack		UMETA(DisplayName = "Attack"),
+	Lifesteal	UMETA(DisplayName = "Lifesteal"),
+	Gold		UMETA(DisplayName = "Gold")
+};
+
 UCLASS()
 class PROJECTERN_API UERNSaveSettings : public USaveGame
 {
@@ -37,4 +50,34 @@ public:
 	// 마우스 감도 슬라이더 값 (0.0 ~ 1.0, 0.5 = 기본 1.0배). 실제 배율은 GameInstance에서 매핑
 	UPROPERTY(BlueprintReadWrite, Category = "Input")
 	float MouseSensitivity = 0.5f;
+
+	// ===== 계정 메타 진행도 (최종보스 처치 시 +1, 포인트로 영구 스탯 투자) =====
+	UPROPERTY(BlueprintReadWrite, Category = "Account")
+	int32 AccountLevel = 0;
+
+	// 사용 가능한 미투자 포인트
+	UPROPERTY(BlueprintReadWrite, Category = "Account")
+	int32 AvailablePoints = 0;
+
+	// 스탯별 투자한 포인트 수 (영구 버프 = 이 값 × 포인트당 증가량)
+	UPROPERTY(BlueprintReadWrite, Category = "Account")
+	int32 InvHealth = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Account")
+	int32 InvMana = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Account")
+	int32 InvStamina = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Account")
+	int32 InvDefense = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Account")
+	int32 InvAttack = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Account")
+	int32 InvLifesteal = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Account")
+	int32 InvGold = 0;
 };

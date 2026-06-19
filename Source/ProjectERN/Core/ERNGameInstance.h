@@ -8,6 +8,7 @@
 #include "Character/Player/ERNPlayerState.h"
 #include "Shop/Provider/ERNShopDataProvider.h"
 #include "Enhancement/Provider/ERNUpgradeDataProvider.h"
+#include "Core/ERNSaveSettings.h"
 #include "DLSSLibrary.h"
 #include "ERNGameInstance.generated.h"
 
@@ -120,6 +121,41 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Settings")
 	UERNSaveSettings* CachedSettings = nullptr;
+
+	// ===== 계정 메타 진행도 (설정과 동일 슬롯에 저장) =====
+
+	// 스탯별 최대 투자 포인트 (각 버프당 10까지)
+	static constexpr int32 MaxAccountInvestPerStat = 10;
+
+	UFUNCTION(BlueprintPure, Category = "Account")
+	int32 GetAccountLevel() const;
+
+	UFUNCTION(BlueprintPure, Category = "Account")
+	int32 GetAvailablePoints() const;
+
+	// 스탯별 투자한 포인트 수 조회
+	UFUNCTION(BlueprintPure, Category = "Account")
+	int32 GetInvestedPoints(EAccountStat Stat) const;
+
+	// 최종보스 처치 보상: 계정레벨 +1, 포인트 +1 (로컬 저장)
+	UFUNCTION(BlueprintCallable, Category = "Account")
+	void GrantClearReward();
+
+	// 포인트 1 투자 (성공 시 true, 포인트 부족 시 false)
+	UFUNCTION(BlueprintCallable, Category = "Account")
+	bool InvestAccountPoint(EAccountStat Stat);
+
+	// 포인트 1 회수 (해당 스탯 투자 -1, 포인트 +1). 투자 0이면 false
+	UFUNCTION(BlueprintCallable, Category = "Account")
+	bool UninvestAccountPoint(EAccountStat Stat);
+
+	// 투자한 모든 포인트 환불 (AvailablePoints로 복구)
+	UFUNCTION(BlueprintCallable, Category = "Account")
+	void ResetAccountPoints();
+
+	// 디버그/치트: 계정 레벨을 직접 설정 (보유 포인트 = 레벨 - 투자분, 음수면 0). 로컬 세이브
+	UFUNCTION(BlueprintCallable, Category = "Account")
+	void DebugSetAccountLevel(int32 NewLevel);
 
 	// ===== EasyMode (호스트 전용 게임플레이 옵션) =====
 	// 호스트가 옵션에서 설정. 켜지면 최종 자기장 전원 탈락 시 딱 1회 전원 부활.

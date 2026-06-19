@@ -1704,6 +1704,15 @@ void AERNPlayerController::ShowEndScreen(bool bVictory)
 		return;
 	}
 
+	// 최종보스 처치(승리) 시 계정 보상 +1 (로컬 세이브). EndGame(bEnded)이 런당 1회 멀티캐스트를 보장
+	if (bVictory)
+	{
+		if (UERNGameInstance* GI = Cast<UERNGameInstance>(GetGameInstance()))
+		{
+			GI->GrantClearReward();
+		}
+	}
+
 	// 게임 종료 화면에선 게임플레이 HUD(나침반/파티/미니맵 등) 숨김
 	for (const TObjectPtr<UUserWidget>& HUDWidget : ManagedHUDWidgets)
 	{

@@ -11,6 +11,7 @@
 #include "InputActionValue.h"
 #include "ProjectERN.h"
 #include "AbilitySystemComponent.h"
+#include "GameplayEffect.h"
 #include "EngineUtils.h"
 #include "ERNPlayerController.h"
 #include "ERNPlayerStatusTable.h"
@@ -597,6 +598,9 @@ void AProjectERNCharacter::PossessedBy(AController* NewController)
 		GetWorldTimerManager().SetTimer(DetectionTimerHandle, this, &AProjectERNCharacter::UpdateInteractionDetector,
 		                                0.2f, true, 0.0f);
 	}
+
+	// 계정 영구 버프 적용: 소유 클라에게 로컬 세이브값을 서버로 보내라고 요청 (스폰 시)
+	Client_RequestAccountBuffs();
 }
 
 void AProjectERNCharacter::OnRep_Controller()
@@ -1346,8 +1350,8 @@ void AProjectERNCharacter::ExecuteJumpLaunch()
 void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
 {
 	// 서버 권위에서만, 라이프스틸 비율이 설정된 캐릭터(Warrior BP)만 회복
-	// 기본값(LifestealFraction) + 아이템 보너스(BonusLifestealFraction) 합산
-	const float TotalFraction = LifestealFraction + BonusLifestealFraction;
+	// 기본값(LifestealFraction) + 아이템 보너스(BonusLifestealFraction) + 계정 영구 버프(AccountLifestealFraction) 합산
+	const float TotalFraction = LifestealFraction + BonusLifestealFraction + AccountLifestealFraction;
 	if (!HasAuthority() || DamageDealt <= 0.f || TotalFraction <= 0.f || !AttributeSet)
 	{
 		return;
@@ -1377,6 +1381,108 @@ void AProjectERNCharacter::ApplyLifesteal(float DamageDealt)
 		{
 			PS->TotalLifestealHealed += ActualHealed;
 		}
+	}
+}
+
+// ===== 계정 영구 버프 =====
+
+void AProjectERNCharacter::RefreshAccountBuffs()
+{
+	// 소유 클라(호스트 포함)만 — 로컬 세이브값을 서버로 전달
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	UERNGameInstance* GI = Cast<UERNGameInstance>(GetGameInstance());
+	if (!GI)
+	{
+		return;
+	}
+
+	Server_ApplyAccountBuffs(
+		GI->GetInvestedPoints(EAccountStat::Health),
+		GI->GetInvestedPoints(EAccountStat::Mana),
+		GI->GetInvestedPoints(EAccountStat::Stamina),
+		GI->GetInvestedPoints(EAccountStat::Defense),
+		GI->GetInvestedPoints(EAccountStat::Attack),
+		GI->GetInvestedPoints(EAccountStat::Lifesteal),
+		GI->GetInvestedPoints(EAccountStat::Gold));
+}
+
+void AProjectERNCharacter::Client_RequestAccountBuffs_Implementation()
+{
+	RefreshAccountBuffs();
+}
+
+void AProjectERNCharacter::Server_ApplyAccountBuffs_Implementation(int32 HpPts, int32 ManaPts, int32 StamPts, int32 DefPts, int32 AttPts, int32 LifePts, int32 GoldPts)
+{
+	ApplyAccountBuffsInternal(HpPts, ManaPts, StamPts, DefPts, AttPts, LifePts, GoldPts);
+}
+
+void AProjectERNCharacter::ApplyAccountBuffsInternal(int32 HpPts, int32 ManaPts, int32 StamPts, int32 DefPts, int32 AttPts, int32 LifePts, int32 GoldPts)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return;
+	}
+
+	// 기존 계정 버프 GE 제거 (재적용)
+	for (const FActiveGameplayEffectHandle& Handle : AccountBuffHandles)
+	{
+		ASC->RemoveActiveGameplayEffect(Handle);
+	}
+	AccountBuffHandles.Empty();
+
+	// 비-어트리뷰트 값 (아이템 시스템이 매번 리셋하는 GoldWeight/BonusLifestealFraction과 분리)
+	SetAccountGoldWeight(20.0f * GoldPts);     // 골드 획득 +20/pt
+	AccountLifestealFraction = 0.001f * LifePts; // 라이프스틸 +0.1%/pt
+
+	// 동적 무한 GE 생성 (RecalculateItemAbilities와 동일 패턴)
+	UGameplayEffect* GE = NewObject<UGameplayEffect>(GetTransientPackage(), NAME_None, RF_Transient);
+	GE->DurationPolicy = EGameplayEffectDurationType::Infinite;
+
+	auto AddMod = [&](FGameplayAttribute Attribute, float Value)
+	{
+		if (Value == 0.f)
+		{
+			return;
+		}
+		int32 Idx = GE->Modifiers.AddDefaulted();
+		FGameplayModifierInfo& ModInfo = GE->Modifiers[Idx];
+		ModInfo.Attribute = Attribute;
+		ModInfo.ModifierOp = EGameplayModOp::Additive;
+		ModInfo.ModifierMagnitude = FScalableFloat(Value);
+	};
+
+	AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 20.0f * HpPts);   // 체력 +20/pt
+	AddMod(UERNAttributeSet::GetMaxManaAttribute(), 10.0f * ManaPts);   // 마나 +10/pt
+	AddMod(UERNAttributeSet::GetMaxStaminaAttribute(), 10.0f * StamPts);// 스태미나 +10/pt
+	AddMod(UERNAttributeSet::GetDefenseAttribute(), 2.0f * DefPts);     // 방어력 +2/pt
+	AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 4.0f * AttPts); // 공격력 +4/pt
+
+	if (GE->Modifiers.Num() > 0)
+	{
+		FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+		FActiveGameplayEffectHandle Handle = ASC->ApplyGameplayEffectToSelf(GE, 1.0f, Context);
+		if (Handle.WasSuccessfullyApplied())
+		{
+			AccountBuffHandles.Add(Handle);
+		}
+	}
+
+	// 늘어난 Max에 맞춰 현재값 보정 (버프 즉시 반영)
+	if (UERNAttributeSet* AS = GetAttributeSet())
+	{
+		AS->SetHealth(AS->GetMaxHealth());
+		AS->SetMana(AS->GetMaxMana());
+		AS->SetStamina(AS->GetMaxStamina());
 	}
 }
 
@@ -1492,6 +1598,7 @@ void AProjectERNCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProp
 	DOREPLIFETIME(AProjectERNCharacter, bHeadLightOn);
 	DOREPLIFETIME(AProjectERNCharacter, DownedRespawnEndServerTime);
 	DOREPLIFETIME(AProjectERNCharacter, BonusLifestealFraction);
+	DOREPLIFETIME(AProjectERNCharacter, AccountLifestealFraction);
 }
 
 void AProjectERNCharacter::ToggleLight()
@@ -1558,6 +1665,17 @@ void AProjectERNCharacter::Gold(int32 Amount)
 void AProjectERNCharacter::Server_GiveGold_Implementation(int32 Amount)
 {
 	AddGold(Amount); // 베이스의 서버측 골드 가산
+}
+
+void AProjectERNCharacter::AccountLevel(int32 NewLevel)
+{
+	// 계정 데이터는 로컬 GameInstance(세이브)라 서버 라우팅 없이 로컬에서 바로 설정
+	if (UERNGameInstance* GI = Cast<UERNGameInstance>(GetGameInstance()))
+	{
+		GI->DebugSetAccountLevel(NewLevel);
+		UE_LOG(LogTemp, Warning, TEXT("[Cheat] AccountLevel set to %d (AvailablePoints=%d)"),
+			GI->GetAccountLevel(), GI->GetAvailablePoints());
+	}
 }
 
 void AProjectERNCharacter::SummonRideBird()

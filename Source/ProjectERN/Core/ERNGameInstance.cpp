@@ -607,6 +607,143 @@ void UERNGameInstance::SaveSettings()
 	}
 }
 
+// ===== 계정 메타 진행도 =====
+
+int32 UERNGameInstance::GetAccountLevel() const
+{
+	return CachedSettings ? CachedSettings->AccountLevel : 0;
+}
+
+int32 UERNGameInstance::GetAvailablePoints() const
+{
+	return CachedSettings ? CachedSettings->AvailablePoints : 0;
+}
+
+int32 UERNGameInstance::GetInvestedPoints(EAccountStat Stat) const
+{
+	if (!CachedSettings)
+	{
+		return 0;
+	}
+
+	switch (Stat)
+	{
+	case EAccountStat::Health:    return CachedSettings->InvHealth;
+	case EAccountStat::Mana:      return CachedSettings->InvMana;
+	case EAccountStat::Stamina:   return CachedSettings->InvStamina;
+	case EAccountStat::Defense:   return CachedSettings->InvDefense;
+	case EAccountStat::Attack:    return CachedSettings->InvAttack;
+	case EAccountStat::Lifesteal: return CachedSettings->InvLifesteal;
+	case EAccountStat::Gold:      return CachedSettings->InvGold;
+	default:                      return 0;
+	}
+}
+
+void UERNGameInstance::GrantClearReward()
+{
+	if (!CachedSettings)
+	{
+		return;
+	}
+
+	CachedSettings->AccountLevel++;
+	CachedSettings->AvailablePoints++;
+	SaveSettings();
+}
+
+bool UERNGameInstance::InvestAccountPoint(EAccountStat Stat)
+{
+	if (!CachedSettings || CachedSettings->AvailablePoints <= 0)
+	{
+		return false;
+	}
+
+	// 스탯별 최대 투자 제한 (각 버프당 10까지)
+	if (GetInvestedPoints(Stat) >= MaxAccountInvestPerStat)
+	{
+		return false;
+	}
+
+	switch (Stat)
+	{
+	case EAccountStat::Health:    CachedSettings->InvHealth++;    break;
+	case EAccountStat::Mana:      CachedSettings->InvMana++;      break;
+	case EAccountStat::Stamina:   CachedSettings->InvStamina++;   break;
+	case EAccountStat::Defense:   CachedSettings->InvDefense++;   break;
+	case EAccountStat::Attack:    CachedSettings->InvAttack++;    break;
+	case EAccountStat::Lifesteal: CachedSettings->InvLifesteal++; break;
+	case EAccountStat::Gold:      CachedSettings->InvGold++;      break;
+	default:                      return false;
+	}
+
+	CachedSettings->AvailablePoints--;
+	SaveSettings();
+	return true;
+}
+
+bool UERNGameInstance::UninvestAccountPoint(EAccountStat Stat)
+{
+	if (!CachedSettings)
+	{
+		return false;
+	}
+
+	switch (Stat)
+	{
+	case EAccountStat::Health:    if (CachedSettings->InvHealth <= 0)    return false; CachedSettings->InvHealth--;    break;
+	case EAccountStat::Mana:      if (CachedSettings->InvMana <= 0)      return false; CachedSettings->InvMana--;      break;
+	case EAccountStat::Stamina:   if (CachedSettings->InvStamina <= 0)   return false; CachedSettings->InvStamina--;   break;
+	case EAccountStat::Defense:   if (CachedSettings->InvDefense <= 0)   return false; CachedSettings->InvDefense--;   break;
+	case EAccountStat::Attack:    if (CachedSettings->InvAttack <= 0)    return false; CachedSettings->InvAttack--;    break;
+	case EAccountStat::Lifesteal: if (CachedSettings->InvLifesteal <= 0) return false; CachedSettings->InvLifesteal--; break;
+	case EAccountStat::Gold:      if (CachedSettings->InvGold <= 0)      return false; CachedSettings->InvGold--;      break;
+	default:                      return false;
+	}
+
+	CachedSettings->AvailablePoints++;
+	SaveSettings();
+	return true;
+}
+
+void UERNGameInstance::ResetAccountPoints()
+{
+	if (!CachedSettings)
+	{
+		return;
+	}
+
+	const int32 Spent = CachedSettings->InvHealth + CachedSettings->InvMana + CachedSettings->InvStamina
+		+ CachedSettings->InvDefense + CachedSettings->InvAttack + CachedSettings->InvLifesteal + CachedSettings->InvGold;
+
+	CachedSettings->AvailablePoints += Spent;
+	CachedSettings->InvHealth = 0;
+	CachedSettings->InvMana = 0;
+	CachedSettings->InvStamina = 0;
+	CachedSettings->InvDefense = 0;
+	CachedSettings->InvAttack = 0;
+	CachedSettings->InvLifesteal = 0;
+	CachedSettings->InvGold = 0;
+	SaveSettings();
+}
+
+void UERNGameInstance::DebugSetAccountLevel(int32 NewLevel)
+{
+	if (!CachedSettings)
+	{
+		return;
+	}
+
+	NewLevel = FMath::Max(0, NewLevel);
+	CachedSettings->AccountLevel = NewLevel;
+
+	// 불변식 유지: 계정레벨 == 보유 포인트 + 투자한 포인트 합. 보유 포인트를 레벨-투자분으로 맞춤
+	const int32 Spent = CachedSettings->InvHealth + CachedSettings->InvMana + CachedSettings->InvStamina
+		+ CachedSettings->InvDefense + CachedSettings->InvAttack + CachedSettings->InvLifesteal + CachedSettings->InvGold;
+	CachedSettings->AvailablePoints = FMath::Max(0, NewLevel - Spent);
+
+	SaveSettings();
+}
+
 void UERNGameInstance::LoadAndApplySettings()
 {
 	if (UGameplayStatics::DoesSaveGameExist(ERNSettingsSlotName, 0))
