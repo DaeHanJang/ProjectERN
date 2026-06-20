@@ -258,7 +258,8 @@ public:
 	float VictoryBannerDuration = 7.0f;
 
 	// GameState Multicast가 호출 — 로컬에서 승/패 배너 위젯 생성
-	void ShowEndScreen(bool bVictory);
+	// ClearRewardPoints: 승리 시 계정에 더할 포인트/레벨 (하드모드 3, 일반 1)
+	void ShowEndScreen(bool bVictory, int32 ClearRewardPoints);
 
 	// 승리 연출 순차 진행: 배너 → (시간 경과) Fin → (Space) 결과 위젯
 	void ShowFinScreen();

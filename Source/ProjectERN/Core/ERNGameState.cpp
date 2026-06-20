@@ -545,8 +545,15 @@ void AERNGameState::EndGame(bool bVictory)
 		}
 	}
 
+	// 하드모드 클리어 보상 결정 (서버=호스트 GI 참조): 하드 3, 일반 1
+	int32 ClearRewardPoints = 1;
+	if (const UERNGameInstance* GI = Cast<UERNGameInstance>(GetGameInstance()))
+	{
+		ClearRewardPoints = GI->IsHardModeEnabled() ? 3 : 1;
+	}
+
 	// 전원에게 승/패 배너 표시 (배너 위젯이 일정시간 뒤 전과 위젯으로 전환)
-	Multicast_ShowEndScreen(bVictory);
+	Multicast_ShowEndScreen(bVictory, ClearRewardPoints);
 
 	// 아무도 버튼을 안 누를 경우 대비 — 타임아웃 후 강제 복귀
 	GetWorldTimerManager().SetTimer(ReturnTimeoutHandle, this,
@@ -576,13 +583,13 @@ bool AERNGameState::IsPlayerEliminated(const AProjectERNCharacter* Character) co
 	}
 }
 
-void AERNGameState::Multicast_ShowEndScreen_Implementation(bool bVictory)
+void AERNGameState::Multicast_ShowEndScreen_Implementation(bool bVictory, int32 ClearRewardPoints)
 {
 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
 	{
 		if (AERNPlayerController* ERNPC = Cast<AERNPlayerController>(PC))
 		{
-			ERNPC->ShowEndScreen(bVictory);
+			ERNPC->ShowEndScreen(bVictory, ClearRewardPoints);
 		}
 	}
 }

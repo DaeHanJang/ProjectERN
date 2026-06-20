@@ -177,8 +177,9 @@ protected:
 	bool IsPlayerEliminated(const AProjectERNCharacter* Character) const;
 	
 	// 전원에게 승/패 배너 표시 (배너 위젯이 일정시간 뒤 전과 위젯으로 전환)
+	// ClearRewardPoints: 승리 시 각 클라가 계정에 더할 포인트/레벨 (하드모드 3, 일반 1)
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_ShowEndScreen(bool bVictory);
+	void Multicast_ShowEndScreen(bool bVictory, int32 ClearRewardPoints);
 
 	// 전원(호스트+클라)에게 로딩화면 표시 — 로비 복귀 ServerTravel 직전 호출
 	UFUNCTION(NetMulticast, Reliable)

@@ -1441,8 +1441,8 @@ void AProjectERNCharacter::ApplyAccountBuffsInternal(int32 HpPts, int32 ManaPts,
 	AccountBuffHandles.Empty();
 
 	// 비-어트리뷰트 값 (아이템 시스템이 매번 리셋하는 GoldWeight/BonusLifestealFraction과 분리)
-	SetAccountGoldWeight(20.0f * GoldPts);     // 골드 획득 +20/pt
-	AccountLifestealFraction = 0.001f * LifePts; // 라이프스틸 +0.1%/pt
+	SetAccountGoldWeight(40.0f * GoldPts);     // 골드 획득 +40/pt
+	AccountLifestealFraction = 0.002f * LifePts; // 라이프스틸 +0.2%/pt
 
 	// 동적 무한 GE 생성 (RecalculateItemAbilities와 동일 패턴)
 	UGameplayEffect* GE = NewObject<UGameplayEffect>(GetTransientPackage(), NAME_None, RF_Transient);
@@ -1461,11 +1461,11 @@ void AProjectERNCharacter::ApplyAccountBuffsInternal(int32 HpPts, int32 ManaPts,
 		ModInfo.ModifierMagnitude = FScalableFloat(Value);
 	};
 
-	AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 20.0f * HpPts);   // 체력 +20/pt
-	AddMod(UERNAttributeSet::GetMaxManaAttribute(), 10.0f * ManaPts);   // 마나 +10/pt
-	AddMod(UERNAttributeSet::GetMaxStaminaAttribute(), 10.0f * StamPts);// 스태미나 +10/pt
-	AddMod(UERNAttributeSet::GetDefenseAttribute(), 2.0f * DefPts);     // 방어력 +2/pt
-	AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 4.0f * AttPts); // 공격력 +4/pt
+	AddMod(UERNAttributeSet::GetMaxHealthAttribute(), 40.0f * HpPts);   // 체력 +40/pt
+	AddMod(UERNAttributeSet::GetMaxManaAttribute(), 20.0f * ManaPts);   // 마나 +20/pt
+	AddMod(UERNAttributeSet::GetMaxStaminaAttribute(), 20.0f * StamPts);// 스태미나 +20/pt
+	AddMod(UERNAttributeSet::GetDefenseAttribute(), 4.0f * DefPts);     // 방어력 +4/pt
+	AddMod(UERNAttributeSet::GetAttackPowerAttribute(), 8.0f * AttPts); // 공격력 +8/pt
 
 	if (GE->Modifiers.Num() > 0)
 	{
@@ -2458,9 +2458,22 @@ float AProjectERNCharacter::TakeDamage(float DamageAmount, FDamageEvent const& D
 	{
 		return 0.f;
 	}
-	
-	const float DamageReductionRate = 100 / (100 + GetAttributeSet()->GetDefense()); 
-	const float FinalDamage = DamageAmount * DamageReductionRate;
+
+	// 하드모드: 플레이어가 받는 피해 2.5배 (서버 권위)
+	float IncomingDamage = DamageAmount;
+	if (HasAuthority())
+	{
+		if (const UERNGameInstance* GI = Cast<UERNGameInstance>(GetGameInstance()))
+		{
+			if (GI->IsHardModeEnabled())
+			{
+				IncomingDamage *= 2.5f;
+			}
+		}
+	}
+
+	const float DamageReductionRate = 100 / (100 + GetAttributeSet()->GetDefense());
+	const float FinalDamage = IncomingDamage * DamageReductionRate;
 
 	return Super::TakeDamage(FinalDamage, DamageEvent, EventInstigator, DamageCauser);
 }
@@ -2864,23 +2877,42 @@ void AProjectERNCharacter::EnterDownedState()
 		return;
 	}
 
+	// 솔로 플레이(유효 플레이어 1명)면 리스폰 대기 단축
+	float EffectiveDuration = DownedRespawnCountdownDuration;
+	{
+		int32 ValidPlayers = 0;
+		if (const AGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState() : nullptr)
+		{
+			for (const APlayerState* PS : GS->PlayerArray)
+			{
+				if (IsValid(PS))
+				{
+					++ValidPlayers;
+				}
+			}
+		}
+		if (ValidPlayers <= 1)
+		{
+			EffectiveDuration = SoloDownedRespawnCountdownDuration;
+		}
+	}
+
 	// 카운트 다운 시간이 정해져 있지 않으면 즉시 리스폰 시작
-	if (DownedRespawnCountdownDuration <= 0.f)
+	if (EffectiveDuration <= 0.f)
 	{
 		CompleteDownedCountdown();
 		return;
 	}
 
 	// 서버 기준 리스폰 종료 시간 세팅
-	DownedRespawnEndServerTime =
-		DownedRespawnCountdownDuration > 0.f ? GetSyncedServerWorldTimeSeconds() + DownedRespawnCountdownDuration : 0.f;
+	DownedRespawnEndServerTime = GetSyncedServerWorldTimeSeconds() + EffectiveDuration;
 
 	// 리스폰 카운트다운 시작
 	GetWorldTimerManager().SetTimer(
 		DownedRespawnTimerHandle,
 		this,
 		&AProjectERNCharacter::CompleteDownedCountdown,
-		DownedRespawnCountdownDuration,
+		EffectiveDuration,
 		false);
 }
 
@@ -3208,13 +3240,34 @@ float AProjectERNCharacter::GetDownedRespawnRemainingTime() const
 
 float AProjectERNCharacter::GetDownedRespawnRemainingPercent() const
 {
-	if (DownedRespawnCountdownDuration <= 0.f)
+	// 솔로 플레이면 분모도 솔로 대기 시간으로 (UI 바가 5초 기준으로 정상 표시되도록).
+	// PlayerArray는 복제되므로 클라이언트에서도 동일 판정 가능
+	float TotalDuration = DownedRespawnCountdownDuration;
+	{
+		int32 ValidPlayers = 0;
+		if (const AGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState() : nullptr)
+		{
+			for (const APlayerState* PS : GS->PlayerArray)
+			{
+				if (IsValid(PS))
+				{
+					++ValidPlayers;
+				}
+			}
+		}
+		if (ValidPlayers <= 1)
+		{
+			TotalDuration = SoloDownedRespawnCountdownDuration;
+		}
+	}
+
+	if (TotalDuration <= 0.f)
 	{
 		return 0.f;
 	}
 
 	// 비율 반환
-	return FMath::Clamp(GetDownedRespawnRemainingTime() / DownedRespawnCountdownDuration, 0.f, 1.f);
+	return FMath::Clamp(GetDownedRespawnRemainingTime() / TotalDuration, 0.f, 1.f);
 }
 
 bool AProjectERNCharacter::ShouldShowDownedRespawnCountdown() const

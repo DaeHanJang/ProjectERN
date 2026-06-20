@@ -52,8 +52,9 @@ public:
 	float MouseSensitivity = 0.5f;
 
 	// ===== 계정 메타 진행도 (최종보스 처치 시 +1, 포인트로 영구 스탯 투자) =====
+	// 기본 1부터 시작 (클리어 0회 = 레벨 1). 보유 포인트는 0 (포인트는 클리어로 획득)
 	UPROPERTY(BlueprintReadWrite, Category = "Account")
-	int32 AccountLevel = 0;
+	int32 AccountLevel = 1;
 
 	// 사용 가능한 미투자 포인트
 	UPROPERTY(BlueprintReadWrite, Category = "Account")
@@ -80,4 +81,8 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, Category = "Account")
 	int32 InvGold = 0;
+
+	// 하드모드 ON/OFF (호스트가 계정 위젯 체크박스로 토글, 계정 세이브에 함께 저장)
+	UPROPERTY(BlueprintReadWrite, Category = "Account")
+	bool bHardMode = false;
 };

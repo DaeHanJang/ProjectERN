@@ -1001,6 +1001,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="0.0"))
 	float DownedRespawnCountdownDuration = 30.f;
 
+	// 솔로 플레이(유효 플레이어 1명) 시 리스폰 대기 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="0.0"))
+	float SoloDownedRespawnCountdownDuration = 5.f;
+
 	// 리스폰 위치 주변을 미리 로딩할 반경
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ERN|LifeState|Respawn", meta=(ClampMin="1000.0"))
 	float RespawnPreloadRadius = 20000.f;

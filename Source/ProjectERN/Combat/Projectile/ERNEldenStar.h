@@ -40,6 +40,9 @@ protected:
 	// 현재 위치 기준 가장 가까운 살아있는 적 검색
 	AActor* FindNearestEnemy() const;
 
+	// 자식 투사체용: 검색 반경(RetargetSearchRadius) 내 살아있는 적 중 랜덤 1마리 (없으면 nullptr)
+	AActor* FindRandomEnemyInRange() const;
+
 	// 현재 타겟이 무효/사망이면 새 타겟으로 교체
 	void EnsureValidTarget();
 
@@ -75,10 +78,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "EldenStar")
 	float HomingZOffset = 200.f;
 
-	// 타겟 재검색 반경
+	// 타겟 재검색 반경 (부모 EldenStar 자체 유도용)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "EldenStar",
 		meta = (ClampMin = "0.0"))
 	float RetargetSearchRadius = 10000.f;
+
+	// 자식 투사체가 노릴 적을 모으는 반경 (부모와 별개)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "EldenStar",
+		meta = (ClampMin = "0.0"))
+	float ChildTargetSearchRadius = 2500.f;
 
 	// 타겟 재검색 주기
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "EldenStar",

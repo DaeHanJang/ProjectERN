@@ -1697,19 +1697,19 @@ void AERNPlayerController::Client_ReceiveChat_Implementation(const FString& Send
 	OnReceiveChatMessage(Sender, Message, SenderColor);
 }
 
-void AERNPlayerController::ShowEndScreen(bool bVictory)
+void AERNPlayerController::ShowEndScreen(bool bVictory, int32 ClearRewardPoints)
 {
 	if (!IsLocalPlayerController())
 	{
 		return;
 	}
 
-	// 최종보스 처치(승리) 시 계정 보상 +1 (로컬 세이브). EndGame(bEnded)이 런당 1회 멀티캐스트를 보장
+	// 최종보스 처치(승리) 시 계정 보상 지급 (하드모드 3, 일반 1). EndGame(bEnded)이 런당 1회 멀티캐스트를 보장
 	if (bVictory)
 	{
 		if (UERNGameInstance* GI = Cast<UERNGameInstance>(GetGameInstance()))
 		{
-			GI->GrantClearReward();
+			GI->GrantClearReward(ClearRewardPoints);
 		}
 	}
 

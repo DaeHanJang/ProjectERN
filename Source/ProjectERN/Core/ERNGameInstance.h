@@ -124,8 +124,8 @@ public:
 
 	// ===== 계정 메타 진행도 (설정과 동일 슬롯에 저장) =====
 
-	// 스탯별 최대 투자 포인트 (각 버프당 10까지)
-	static constexpr int32 MaxAccountInvestPerStat = 10;
+	// 스탯별 최대 투자 포인트 (각 버프당 5까지)
+	static constexpr int32 MaxAccountInvestPerStat = 5;
 
 	UFUNCTION(BlueprintPure, Category = "Account")
 	int32 GetAccountLevel() const;
@@ -137,9 +137,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Account")
 	int32 GetInvestedPoints(EAccountStat Stat) const;
 
-	// 최종보스 처치 보상: 계정레벨 +1, 포인트 +1 (로컬 저장)
+	// 최종보스 처치 보상: 계정레벨/포인트 +Amount (로컬 저장). 하드모드 클리어 시 3, 일반 1
 	UFUNCTION(BlueprintCallable, Category = "Account")
-	void GrantClearReward();
+	void GrantClearReward(int32 Amount = 1);
+
+	// 하드모드 ON/OFF (계정 세이브에 저장). 호스트가 설정, 서버 데미지/골드 로직이 참조
+	UFUNCTION(BlueprintCallable, Category = "Account|HardMode")
+	void SetHardModeEnabled(bool bEnabled);
+
+	UFUNCTION(BlueprintPure, Category = "Account|HardMode")
+	bool IsHardModeEnabled() const;
 
 	// 포인트 1 투자 (성공 시 true, 포인트 부족 시 false)
 	UFUNCTION(BlueprintCallable, Category = "Account")

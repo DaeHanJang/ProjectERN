@@ -163,6 +163,34 @@ AActor* AERNEldenStar::FindNearestEnemy() const
 	return Best;
 }
 
+AActor* AERNEldenStar::FindRandomEnemyInRange() const
+{
+	TArray<AActor*> Enemies;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AERNEnemyCharacter::StaticClass(), Enemies);
+
+	TArray<AActor*> InRange;
+	const float RadiusSq = ChildTargetSearchRadius * ChildTargetSearchRadius;
+	const FVector Origin = GetActorLocation();
+
+	for (AActor* E : Enemies)
+	{
+		if (!IsValid(E)) continue;
+
+		AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(E);
+		if (!Enemy || Enemy->IsDead()) continue;
+
+		if (FVector::DistSquared(Origin, E->GetActorLocation()) > RadiusSq) continue;
+
+		InRange.Add(E);
+	}
+
+	if (InRange.Num() == 0)
+	{
+		return nullptr;
+	}
+	return InRange[FMath::RandRange(0, InRange.Num() - 1)];
+}
+
 void AERNEldenStar::OnFireTick()
 {
 	if (!HasAuthority() || !SubProjectileClass) return;
@@ -178,11 +206,17 @@ void AERNEldenStar::OnFireTick()
 	AERNProjectileBase* Sub = GetWorld()->SpawnActor<AERNProjectileBase>(
 		SubProjectileClass, SpawnLoc, SpawnRot, Params);
 
-	if (Sub && HomingTarget.IsValid())
+	// 자식은 주변 범위의 적 중 랜덤 1마리로 유도 (여러 적 분산 타격). 후보 없으면 부모 타겟으로 폴백
+	AActor* ChildTarget = FindRandomEnemyInRange();
+	if (!ChildTarget)
 	{
-		// 자식은 적 중심으로 유도
-		Sub->HomingTarget = HomingTarget;
-		Sub->ApplyHomingSettings(HomingTarget.Get());
+		ChildTarget = HomingTarget.Get();
+	}
+
+	if (Sub && ChildTarget)
+	{
+		Sub->HomingTarget = ChildTarget;
+		Sub->ApplyHomingSettings(ChildTarget);
 	}
 
 	Multicast_PlayFireEffect(SpawnLoc);

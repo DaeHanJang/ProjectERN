@@ -9,6 +9,7 @@
 
 class UTextBlock;
 class UButton;
+class UCheckBox;
 
 /**
  * 계정 영구 스탯 투자 위젯 (로직 + 바인딩만 C++, 외형/레이아웃은 WBP에서 제작).
@@ -54,6 +55,9 @@ protected:
 	UPROPERTY(meta = (BindWidget)) UButton* Btn_Reset;
 	UPROPERTY(meta = (BindWidget)) UButton* Btn_Back;
 
+	// 하드모드 체크박스 (호스트에게만 표시). 없어도 동작하도록 Optional
+	UPROPERTY(meta = (BindWidgetOptional)) UCheckBox* Check_HardMode;
+
 private:
 	// 표시값 갱신
 	void Refresh();
@@ -83,4 +87,7 @@ private:
 	UFUNCTION() void OnMinusGold();
 	UFUNCTION() void OnResetClicked();
 	UFUNCTION() void OnBackClicked();
+
+	// 하드모드 체크박스 토글 (호스트만)
+	UFUNCTION() void OnHardModeChanged(bool bIsChecked);
 };

@@ -639,16 +639,32 @@ int32 UERNGameInstance::GetInvestedPoints(EAccountStat Stat) const
 	}
 }
 
-void UERNGameInstance::GrantClearReward()
+void UERNGameInstance::GrantClearReward(int32 Amount)
 {
 	if (!CachedSettings)
 	{
 		return;
 	}
 
-	CachedSettings->AccountLevel++;
-	CachedSettings->AvailablePoints++;
+	Amount = FMath::Max(0, Amount);
+	CachedSettings->AccountLevel += Amount;
+	CachedSettings->AvailablePoints += Amount;
 	SaveSettings();
+}
+
+void UERNGameInstance::SetHardModeEnabled(bool bEnabled)
+{
+	if (!CachedSettings)
+	{
+		return;
+	}
+	CachedSettings->bHardMode = bEnabled;
+	SaveSettings();
+}
+
+bool UERNGameInstance::IsHardModeEnabled() const
+{
+	return CachedSettings ? CachedSettings->bHardMode : false;
 }
 
 bool UERNGameInstance::InvestAccountPoint(EAccountStat Stat)
@@ -733,13 +749,13 @@ void UERNGameInstance::DebugSetAccountLevel(int32 NewLevel)
 		return;
 	}
 
-	NewLevel = FMath::Max(0, NewLevel);
+	NewLevel = FMath::Max(1, NewLevel);   // 기본 레벨 1
 	CachedSettings->AccountLevel = NewLevel;
 
-	// 불변식 유지: 계정레벨 == 보유 포인트 + 투자한 포인트 합. 보유 포인트를 레벨-투자분으로 맞춤
+	// 불변식 유지: 보유 포인트 + 투자한 포인트 == 레벨 - 1 (레벨 1 = 획득 포인트 0)
 	const int32 Spent = CachedSettings->InvHealth + CachedSettings->InvMana + CachedSettings->InvStamina
 		+ CachedSettings->InvDefense + CachedSettings->InvAttack + CachedSettings->InvLifesteal + CachedSettings->InvGold;
-	CachedSettings->AvailablePoints = FMath::Max(0, NewLevel - Spent);
+	CachedSettings->AvailablePoints = FMath::Max(0, NewLevel - 1 - Spent);
 
 	SaveSettings();
 }

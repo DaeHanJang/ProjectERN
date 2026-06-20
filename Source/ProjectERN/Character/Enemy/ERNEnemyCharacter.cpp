@@ -11,6 +11,7 @@
 #include "Sound/SoundBase.h"
 #include "UI/ERNEnemyHealthBarWidget.h"
 #include "Character/Player/ProjectERNCharacter.h"
+#include "Core/ERNGameInstance.h"
 #include "Character/Player/ERNPlayerController.h"
 #include "Engine/DamageEvents.h"
 #include "MotionWarpingComponent.h"
@@ -272,6 +273,26 @@ float AERNEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 	if (bIsImmortal)
 	{
 		return 0.0f;
+	}
+
+	// 하드모드: 플레이어가 주는 피해 20% 감소 (서버 권위)
+	if (HasAuthority())
+	{
+		if (const UERNGameInstance* GI = Cast<UERNGameInstance>(GetGameInstance()))
+		{
+			if (GI->IsHardModeEnabled())
+			{
+				AProjectERNCharacter* AttackerChar = Cast<AProjectERNCharacter>(DamageCauser);
+				if (!AttackerChar && EventInstigator)
+				{
+					AttackerChar = Cast<AProjectERNCharacter>(EventInstigator->GetPawn());
+				}
+				if (AttackerChar)
+				{
+					DamageAmount *= 0.8f;
+				}
+			}
+		}
 	}
 
 	// 최종 데미지에 ±편차 랜덤 적용 (서버 권한에서만 굴려 체력 변경값이 리플리케이션으로 동기화되도록 함)
@@ -553,7 +574,18 @@ void AERNEnemyCharacter::SpawnGold()
 			continue;
 		}
 		
-		PlayerCharacter->AddGold(RewordGold + PlayerCharacter->GetGoldWeight() + PlayerCharacter->GetAccountGoldWeight());
+		float GoldReward = RewordGold + PlayerCharacter->GetGoldWeight() + PlayerCharacter->GetAccountGoldWeight();
+
+		// 하드모드: 골드 획득 30% 감소
+		if (const UERNGameInstance* GI = Cast<UERNGameInstance>(GetGameInstance()))
+		{
+			if (GI->IsHardModeEnabled())
+			{
+				GoldReward *= 0.7f;
+			}
+		}
+
+		PlayerCharacter->AddGold(GoldReward);
 	}
 }
 
