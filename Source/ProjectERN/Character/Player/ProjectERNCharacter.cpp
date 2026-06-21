@@ -1407,7 +1407,8 @@ void AProjectERNCharacter::RefreshAccountBuffs()
 		GI->GetInvestedPoints(EAccountStat::Defense),
 		GI->GetInvestedPoints(EAccountStat::Attack),
 		GI->GetInvestedPoints(EAccountStat::Lifesteal),
-		GI->GetInvestedPoints(EAccountStat::Gold));
+		GI->GetInvestedPoints(EAccountStat::Gold),
+		GI->GetAccountLevel());
 }
 
 void AProjectERNCharacter::Client_RequestAccountBuffs_Implementation()
@@ -1415,9 +1416,15 @@ void AProjectERNCharacter::Client_RequestAccountBuffs_Implementation()
 	RefreshAccountBuffs();
 }
 
-void AProjectERNCharacter::Server_ApplyAccountBuffs_Implementation(int32 HpPts, int32 ManaPts, int32 StamPts, int32 DefPts, int32 AttPts, int32 LifePts, int32 GoldPts)
+void AProjectERNCharacter::Server_ApplyAccountBuffs_Implementation(int32 HpPts, int32 ManaPts, int32 StamPts, int32 DefPts, int32 AttPts, int32 LifePts, int32 GoldPts, int32 InAccountLevel)
 {
 	ApplyAccountBuffsInternal(HpPts, ManaPts, StamPts, DefPts, AttPts, LifePts, GoldPts);
+
+	// 계정 레벨을 PlayerState에 복제 (게임 시작 시/계정 변경 시 다른 플레이어에게도 표시)
+	if (AERNPlayerState* PS = GetPlayerState<AERNPlayerState>())
+	{
+		PS->AccountLevel = FMath::Max(1, InAccountLevel);
+	}
 }
 
 void AProjectERNCharacter::ApplyAccountBuffsInternal(int32 HpPts, int32 ManaPts, int32 StamPts, int32 DefPts, int32 AttPts, int32 LifePts, int32 GoldPts)
@@ -1675,6 +1682,12 @@ void AProjectERNCharacter::AccountLevel(int32 NewLevel)
 		GI->DebugSetAccountLevel(NewLevel);
 		UE_LOG(LogTemp, Warning, TEXT("[Cheat] AccountLevel set to %d (AvailablePoints=%d)"),
 			GI->GetAccountLevel(), GI->GetAvailablePoints());
+
+		// 변경된 계정레벨을 PlayerState로 동기화 (복제 → 표시 갱신)
+		if (AERNPlayerState* PS = GetPlayerState<AERNPlayerState>())
+		{
+			PS->SetAccountLevel(GI->GetAccountLevel());
+		}
 	}
 }
 

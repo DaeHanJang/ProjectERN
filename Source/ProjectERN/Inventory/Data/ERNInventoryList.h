@@ -85,6 +85,9 @@ public:
 	
 	// Change Item
 	FItemRuntimeState ChangeItem(const int32 SlotIndex, const FItemRuntimeState& NewItemRuntimeState);
+
+	// 드래그 이동/스왑/스택 병합 (같은 아이템이면 병합, 다르면 위치 교환, 빈 칸이면 이동)
+	void MoveItem(const int32 FromSlot, const int32 ToSlot, const int32 MaxStackSize);
 	
 	// Copy Inventory
 	void CopyFrom(const FInventoryList& SourceInventory, const int32 Size);

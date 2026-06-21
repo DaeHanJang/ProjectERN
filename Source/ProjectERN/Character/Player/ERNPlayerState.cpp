@@ -25,6 +25,7 @@ void AERNPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 
 	DOREPLIFETIME(AERNPlayerState, CharacterType);
 	DOREPLIFETIME(AERNPlayerState, PlayerNickname);
+	DOREPLIFETIME(AERNPlayerState, AccountLevel);
 	DOREPLIFETIME(AERNPlayerState, bIsReady);
 
 	DOREPLIFETIME(AERNPlayerState, PlayerNumber);
@@ -56,6 +57,7 @@ void AERNPlayerState::CopyProperties(APlayerState* PlayerState)
 	{
 		NewPS->CharacterType = CharacterType;
 		NewPS->PlayerNickname = PlayerNickname;
+		NewPS->AccountLevel = AccountLevel;
 		// bIsReady는 새 맵에선 의미 없으므로 복사 안 함
 
 		// 런 진행 스냅샷 + 전과 누적도 새 PS로 이전 (Seamless Travel 보존)
@@ -94,6 +96,16 @@ void AERNPlayerState::Server_SetNickname_Implementation(const FString& Nickname)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Invalid nickname: %s"), *Nickname);
 	}
+}
+
+void AERNPlayerState::SetAccountLevel(int32 InLevel)
+{
+	Server_SetAccountLevel(InLevel);
+}
+
+void AERNPlayerState::Server_SetAccountLevel_Implementation(int32 InLevel)
+{
+	AccountLevel = FMath::Max(1, InLevel);	// 서버에서 세팅 → 자동 복제
 }
 
 void AERNPlayerState::Multicast_AddConsumableBuff_Implementation(const FName& ItemID, float Duration)

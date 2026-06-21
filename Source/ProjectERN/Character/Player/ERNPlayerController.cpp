@@ -1710,6 +1710,12 @@ void AERNPlayerController::ShowEndScreen(bool bVictory, int32 ClearRewardPoints)
 		if (UERNGameInstance* GI = Cast<UERNGameInstance>(GetGameInstance()))
 		{
 			GI->GrantClearReward(ClearRewardPoints);
+
+			// 오른 계정레벨을 PlayerState로 재동기화 (복제 → 결과창/모두에게 갱신)
+			if (AERNPlayerState* PS = GetPlayerState<AERNPlayerState>())
+			{
+				PS->SetAccountLevel(GI->GetAccountLevel());
+			}
 		}
 	}
 

@@ -78,6 +78,9 @@ protected:
 	class UTextBlock* Text_Lifesteal;
 
 	UPROPERTY(meta = (BindWidgetOptional))
+	class UTextBlock* Text_GoldBonus;
+
+	UPROPERTY(meta = (BindWidgetOptional))
 	class UProgressBar* PB_Health;
 
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -100,6 +103,7 @@ protected:
 	void UpdateStaminaText(float Current, float Max);
 	void UpdateFlaskText(float Current, float Max);
 	void UpdateLifestealText(float Fraction);
+	void UpdateGoldBonusText(float Bonus);
 
 private:
 	// 캐싱된 ASC
@@ -116,6 +120,9 @@ private:
 
 	// 캐릭터의 라이프스틸 총합(기본 + 아이템 보너스) 반환
 	float GetLifestealFraction() const;
+
+	// 캐릭터의 골드 획득 보너스 총합(아이템 + 계정) 반환
+	float GetGoldAcquisitionBonus() const;
 
 	// 델리게이트 핸들 보관용
 	FDelegateHandle HealthChangedDelegateHandle;
@@ -141,6 +148,9 @@ private:
 	float LastObservedAttackPower = -1.f;
 	float LastObservedMaxStamina = -1.f;
 	float LastObservedDefense = -1.f;
+	// 비어트리뷰트 값(계정/아이템 버프)도 폴링 — 계정 Gold/Lifesteal 투자 시 갱신용
+	float LastObservedGoldBonus = -1.f;
+	float LastObservedLifesteal = -1.f;
 
 	// 개별 어트리뷰트 콜백 함수들
 	void HealthChanged(const FOnAttributeChangeData& Data);

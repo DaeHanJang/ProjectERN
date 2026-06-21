@@ -40,6 +40,10 @@ public:
 	// Remove Item
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
 	void Server_RemoveItem(const int32 SlotIndex, const int32 Count);
+
+	// Move/Swap/Merge Item (드래그 앤 드롭으로 슬롯 간 이동)
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="Inventory")
+	void Server_MoveItem(const int32 FromSlot, const int32 ToSlot);
 	
 	// Copy InventoryComponent
 	UFUNCTION(BlueprintCallable, Category="Inventory")

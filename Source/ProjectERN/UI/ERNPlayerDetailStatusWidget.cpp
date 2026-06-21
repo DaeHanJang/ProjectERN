@@ -35,15 +35,23 @@ void UERNPlayerDetailStatusWidget::NativeTick(const FGeometry& MyGeometry, float
 		float CurrentMaxStamina = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetMaxStaminaAttribute(), bFound);
 		float CurrentDefense = CachedASC->GetGameplayAttributeValue(UERNAttributeSet::GetDefenseAttribute(), bFound);
 
-		if (CurrentMaxHealth != LastObservedMaxHealth || 
+		// 비어트리뷰트(계정/아이템 버프) — 계정 Gold/Lifesteal 투자는 어트리뷰트가 아니라 폴링으로 감지
+		float CurrentGoldBonus = GetGoldAcquisitionBonus();
+		float CurrentLifesteal = GetLifestealFraction();
+
+		if (CurrentMaxHealth != LastObservedMaxHealth ||
 			CurrentAttackPower != LastObservedAttackPower ||
 			CurrentMaxStamina != LastObservedMaxStamina ||
-			CurrentDefense != LastObservedDefense)
+			CurrentDefense != LastObservedDefense ||
+			CurrentGoldBonus != LastObservedGoldBonus ||
+			CurrentLifesteal != LastObservedLifesteal)
 		{
 			LastObservedMaxHealth = CurrentMaxHealth;
 			LastObservedAttackPower = CurrentAttackPower;
 			LastObservedMaxStamina = CurrentMaxStamina;
 			LastObservedDefense = CurrentDefense;
+			LastObservedGoldBonus = CurrentGoldBonus;
+			LastObservedLifesteal = CurrentLifesteal;
 
 			RefreshAllAttributes();
 		}
@@ -193,6 +201,7 @@ void UERNPlayerDetailStatusWidget::RefreshAllAttributes()
 	UpdateAttackPowerText(BaseAttack, BonusAttack);
 
 	UpdateLifestealText(GetLifestealFraction());
+	UpdateGoldBonusText(GetGoldAcquisitionBonus());
 }
 
 void UERNPlayerDetailStatusWidget::HealthChanged(const FOnAttributeChangeData& Data)
@@ -517,6 +526,16 @@ void UERNPlayerDetailStatusWidget::UpdateLifestealText(float Fraction)
 	}
 }
 
+void UERNPlayerDetailStatusWidget::UpdateGoldBonusText(float Bonus)
+{
+	if (Text_GoldBonus)
+	{
+		// 킬당 추가 골드 (아이템 + 계정 보너스 합). 라벨은 WBP에서.
+		Text_GoldBonus->SetText(FText::Format(NSLOCTEXT("Status", "GoldBonusFormat", "+{0}"),
+			FText::AsNumber(FMath::RoundToInt(Bonus))));
+	}
+}
+
 float UERNPlayerDetailStatusWidget::GetWeaponDamage() const
 {
 	if (APlayerController* PC = GetOwningPlayer())
@@ -559,6 +578,8 @@ void UERNPlayerDetailStatusWidget::OnInventorySlotChanged(const FInventoryItemEn
 {
 	// Drain 아이템 추가/제거 시 라이프스틸 갱신
 	UpdateLifestealText(GetLifestealFraction());
+	// Gold 아이템 추가/제거 시 골드 획득 보너스 갱신
+	UpdateGoldBonusText(GetGoldAcquisitionBonus());
 }
 
 float UERNPlayerDetailStatusWidget::GetLifestealFraction() const
@@ -568,6 +589,18 @@ float UERNPlayerDetailStatusWidget::GetLifestealFraction() const
 		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(PC->GetPawn()))
 		{
 			return Character->LifestealFraction + Character->BonusLifestealFraction + Character->GetAccountLifestealFraction();
+		}
+	}
+	return 0.0f;
+}
+
+float UERNPlayerDetailStatusWidget::GetGoldAcquisitionBonus() const
+{
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		if (AProjectERNCharacter* Character = Cast<AProjectERNCharacter>(PC->GetPawn()))
+		{
+			return Character->GetGoldWeight() + Character->GetAccountGoldWeight();
 		}
 	}
 	return 0.0f;

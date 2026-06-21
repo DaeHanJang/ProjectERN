@@ -92,6 +92,10 @@ private:
 	
 	UFUNCTION()
 	void OnSlotDoubleClickedCallback(const int32 Index);
+
+	// 드래그 앤 드롭으로 슬롯 간 아이템 이동/스왑/병합 처리
+	UFUNCTION()
+	void OnSlotDroppedCallback(const int32 FromIndex, const int32 ToIndex);
 	
 	// 시각적 상태(하이라이트, 툴팁) 통합 업데이트
 	void UpdateVisuals();

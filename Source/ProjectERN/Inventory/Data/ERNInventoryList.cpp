@@ -169,11 +169,50 @@ void FInventoryList::RemoveItem(const int32 SlotIndex, const int32 Count, FItemR
 FItemRuntimeState FInventoryList::ChangeItem(const int32 SlotIndex, const FItemRuntimeState& NewItemRuntimeState)
 {
 	FItemRuntimeState OutItemRuntimeState = Items[SlotIndex].GetItemRuntimeState();
-	
+
 	Items[SlotIndex].SetItemRuntimeState(NewItemRuntimeState);
 	MarkItemDirty(Items[SlotIndex]);
-	
+
 	return OutItemRuntimeState;
+}
+
+void FInventoryList::MoveItem(const int32 FromSlot, const int32 ToSlot, const int32 MaxStackSize)
+{
+	if (FromSlot == ToSlot) return;
+	if (!Items.IsValidIndex(FromSlot) || !Items.IsValidIndex(ToSlot)) return;
+
+	FInventoryItemEntry& From = Items[FromSlot];
+	FInventoryItemEntry& To = Items[ToSlot];
+
+	// 같은 아이템 + 스택 가능 → 병합 시도 (대상 슬롯을 가득 채우고 남은 만큼은 출발 슬롯에 잔류)
+	if (To.IsValid() && From.GetItemID() == To.GetItemID() && MaxStackSize > 1)
+	{
+		const int32 Space = MaxStackSize - To.GetQuantity();
+		const int32 Transfer = FMath::Min(Space, From.GetQuantity());
+		if (Transfer > 0)
+		{
+			To.AddQuantity(Transfer);
+			From.AddQuantity(-Transfer);
+			if (From.GetQuantity() <= 0)
+			{
+				From.Init();
+			}
+			MarkItemDirty(From);
+			MarkItemDirty(To);
+			return;
+		}
+		// Transfer == 0 (대상이 이미 가득 참) → 아래 스왑 로직으로 진행
+	}
+
+	// 그 외: 위치 스왑 (빈 칸으로의 이동 포함, 각 엔트리의 SlotIndex는 유지)
+	const FItemRuntimeState FromState = From.GetItemRuntimeState();
+	const FItemRuntimeState ToState = To.GetItemRuntimeState();
+
+	if (ToState.IsValid())   From.SetItemRuntimeState(ToState);   else From.Init();
+	if (FromState.IsValid()) To.SetItemRuntimeState(FromState);   else To.Init();
+
+	MarkItemDirty(From);
+	MarkItemDirty(To);
 }
 
 void FInventoryList::CopyFrom(const FInventoryList& SourceInventory, const int32 Size)

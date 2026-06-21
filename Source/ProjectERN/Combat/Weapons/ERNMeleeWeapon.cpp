@@ -13,6 +13,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Character/Player/ProjectERNCharacter.h"
 #include "GAS/ERNAttributeSet.h"
+#include "Combat/ERNSkillDamageLibrary.h"
 #include "Kismet/GameplayStatics.h"
 
 AERNMeleeWeapon::AERNMeleeWeapon()
@@ -31,6 +32,17 @@ AERNMeleeWeapon::AERNMeleeWeapon()
 	TraceStart->SetupAttachment(HitboxComponent);
 	TraceEnd = CreateDefaultSubobject<USceneComponent>(TEXT("TraceEnd"));
 	TraceEnd->SetupAttachment(HitboxComponent);
+}
+
+void AERNMeleeWeapon::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// 검날 연장 복원 기준점 캐시
+	if (TraceEnd)
+	{
+		DefaultTraceEndRelLocation = TraceEnd->GetRelativeLocation();
+	}
 }
 
 void AERNMeleeWeapon::EnableHitbox()
@@ -78,7 +90,7 @@ void AERNMeleeWeapon::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActo
 	const float DamageToApply = bIsHeavy ? HeavyAttackDamage : LightAttackDamage;
 	const float StaggerPower = bIsHeavy ? HeavyAttackStaggerPower : LightAttackStaggerPower;
 	*/
-	
+
 	float CharacterAttackPower = 0.f;
 	float AttackPowerBonus = 0.f;
 
@@ -90,10 +102,10 @@ void AERNMeleeWeapon::OnHitboxOverlap(UPrimitiveComponent* OverlappedComp, AActo
 		AttackPowerBonus =
 			ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerBonusAttribute());
 	}
-	
+
 	const float DamageToApply = LightAttackDamage + CharacterAttackPower + AttackPowerBonus;
 	const float StaggerPower = LightAttackStaggerPower;
-	
+
 	OtherActor->TakeDamage(DamageToApply, FDamageEvent(), InstigatorController, GetOwner());
 
 	if (AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(OtherActor))
@@ -145,14 +157,16 @@ void AERNMeleeWeapon::BeginAttackTrace()
 	// 트레일은 시각효과이므로 권한과 무관하게 모든 클라이언트에서 켠다.
 	StartTrail();
 
-	if (!HasAuthority())
+	// 판정은 "소유 클라"에서 수행한다. (서버에 복제된 클라-폰 몽타주는 깨지지만, 클라 본인 몽타주는 정상)
+	const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+	if (!OwnerCharacter || !OwnerCharacter->IsLocallyControlled())
 	{
 		return;
 	}
 
-	HitActors.Empty();
-	PreviousTracePoints = GetCurrentTracePoints();
 	bAttackTraceActive = true;
+	// HitActors/이전검선 초기화는 TickAttackTrace의 새-스윙 감지(staleness)에서 처리한다.
+	// (노티가 매 프레임 토글되면 여기서 리셋 시 스윕이 "현재→현재" 길이 0이 되어 안 맞음)
 }
 
 void AERNMeleeWeapon::TickAttackTrace()
@@ -160,19 +174,32 @@ void AERNMeleeWeapon::TickAttackTrace()
 	// 트레일 끝점 갱신은 모든 클라이언트에서 수행한다.
 	UpdateTrail();
 
-	if (!HasAuthority() || !bAttackTraceActive || !GetWorld())
+	// 판정은 "소유 클라"에서만 (서버의 클라-폰 몽타주가 깨져도 클라 본인 몽타주는 정상)
+	const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+	if (!OwnerCharacter || !OwnerCharacter->IsLocallyControlled() || !GetWorld() || !TraceStart || !TraceEnd)
 	{
 		return;
 	}
 
-	const TArray<FVector> CurrentTracePoints =
-		GetCurrentTracePoints();
+	const FVector CurrentStart = TraceStart->GetComponentLocation();
+	const FVector CurrentEnd = TraceEnd->GetComponentLocation();
 
-	if (PreviousTracePoints.Num() != CurrentTracePoints.Num())
+	// 직전 틱이 오래 전이면 새 스윙 → 기준점/HitActors 초기화 후 이번 프레임은 스윕 생략.
+	// (노티 Begin/End가 매 프레임 토글돼도 이전검선을 여기서만 관리해 스윕 길이를 보존)
+	const float Now = GetWorld()->GetTimeSeconds();
+	if (Now - LastTraceTickTime > 0.1f)
 	{
-		PreviousTracePoints = CurrentTracePoints;
+		HitActors.Empty();
+		PreviousTraceStart = CurrentStart;
+		PreviousTraceEnd = CurrentEnd;
+		LastTraceTickTime = Now;
 		return;
 	}
+	LastTraceTickTime = Now;
+
+	// 이전/현재 검선을 동일한 현재 count로 샘플 → 점 개수 항상 일치 (크기 불일치 SKIP 불필요)
+	const TArray<FVector> PreviousTracePoints = SampleBladePoints(PreviousTraceStart, PreviousTraceEnd);
+	const TArray<FVector> CurrentTracePoints = SampleBladePoints(CurrentStart, CurrentEnd);
 
 	FCollisionObjectQueryParams ObjectQuery;
 	ObjectQuery.AddObjectTypesToQuery(ECC_Pawn);
@@ -183,6 +210,9 @@ void AERNMeleeWeapon::TickAttackTrace()
 
 	QueryParams.AddIgnoredActor(this);
 	QueryParams.AddIgnoredActor(GetOwner());
+
+	// 검날 연장 중에는 별도 반경 사용 (NotifyState에서 전달받은 값)
+	const float EffectiveRadius = bBladeExtending ? BladeExtendRadius : TraceRadius;
 
 	for (int32 Index = 0;
 		 Index < CurrentTracePoints.Num();
@@ -203,7 +233,7 @@ void AERNMeleeWeapon::TickAttackTrace()
 				CurrentPoint,
 				FQuat::Identity,
 				ObjectQuery,
-				FCollisionShape::MakeSphere(TraceRadius),
+				FCollisionShape::MakeSphere(EffectiveRadius),
 				QueryParams);
 		
 		// 디버그용
@@ -227,7 +257,7 @@ void AERNMeleeWeapon::TickAttackTrace()
 			DrawDebugSphere(
 				GetWorld(),
 				CurrentPoint,
-				TraceRadius,
+				EffectiveRadius,
 				12,
 				TraceColor,
 				false,
@@ -258,7 +288,8 @@ void AERNMeleeWeapon::TickAttackTrace()
 		}
 	}
 
-	PreviousTracePoints = CurrentTracePoints;
+	PreviousTraceStart = CurrentStart;
+	PreviousTraceEnd = CurrentEnd;
 }
 
 void AERNMeleeWeapon::EndAttackTrace()
@@ -266,34 +297,85 @@ void AERNMeleeWeapon::EndAttackTrace()
 	// 트레일은 모든 클라이언트에서 끈다.
 	StopTrail();
 
-	// 판정은 서버에서만 처리한다.
-	if (!HasAuthority())
+	// 판정은 소유 클라에서 처리한다.
+	const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+	if (!OwnerCharacter || !OwnerCharacter->IsLocallyControlled())
 	{
 		return;
 	}
 
 	bAttackTraceActive = false;
 
-	// 다음 공격이 이전 프레임 위치를 이어받지 않도록 초기화한다.
-	PreviousTracePoints.Empty();
+	// HitActors 초기화는 다음 스윙의 staleness 감지에서 처리한다.
+	// (노티가 매 프레임 토글되면 여기서 매 프레임 비워 같은 적을 중복 타격하게 됨)
+}
 
-	// 다음 공격에서는 같은 적을 다시 타격할 수 있어야 한다.
-	HitActors.Empty();
+void AERNMeleeWeapon::BeginBladeExtend(float Multiplier, float GrowDuration, float ExtendRadius)
+{
+	BladeTargetMultiplier = Multiplier;
+	BladeGrowDuration = GrowDuration;
+	BladeExtendRadius = ExtendRadius;
+	BladeElapsed = 0.f;
+	bBladeExtending = true;
+
+	// 즉시 모드(GrowDuration <= 0)는 바로 목표 배수, 점진 모드는 1배에서 시작
+	ApplyBladeMultiplier(GrowDuration > 0.f ? 1.f : Multiplier);
+}
+
+void AERNMeleeWeapon::TickBladeExtend(float DeltaTime)
+{
+	// 즉시 모드이거나 성장 중이 아니면 아무것도 안 함 (이미 목표값 적용됨)
+	if (!bBladeExtending || BladeGrowDuration <= 0.f)
+	{
+		return;
+	}
+
+	BladeElapsed += DeltaTime;
+	const float Alpha = FMath::Clamp(BladeElapsed / BladeGrowDuration, 0.f, 1.f);
+	ApplyBladeMultiplier(FMath::Lerp(1.f, BladeTargetMultiplier, Alpha));
+}
+
+void AERNMeleeWeapon::EndBladeExtend()
+{
+	bBladeExtending = false;
+	BladeTargetMultiplier = 1.f;	// 점 개수 원복
+
+	// 기본 길이로 복원
+	if (TraceEnd)
+	{
+		TraceEnd->SetRelativeLocation(DefaultTraceEndRelLocation);
+	}
+}
+
+void AERNMeleeWeapon::ApplyBladeMultiplier(float Multiplier)
+{
+	if (!TraceStart || !TraceEnd)
+	{
+		return;
+	}
+
+	// TraceStart는 고정, TraceEnd만 Start→기본End 방향으로 Multiplier배 밀어냄
+	const FVector StartRel = TraceStart->GetRelativeLocation();
+	const FVector NewEndRel = StartRel + (DefaultTraceEndRelLocation - StartRel) * Multiplier;
+	TraceEnd->SetRelativeLocation(NewEndRel);
 }
 
 TArray<FVector> AERNMeleeWeapon::GetCurrentTracePoints() const
 {
-	TArray<FVector> Points;
-
 	if (!TraceStart || !TraceEnd)
 	{
-		return Points;
+		return TArray<FVector>();
 	}
 
-	const FVector Start = TraceStart->GetComponentLocation();
-	const FVector End = TraceEnd->GetComponentLocation();
+	return SampleBladePoints(TraceStart->GetComponentLocation(), TraceEnd->GetComponentLocation());
+}
 
-	const int32 Count = FMath::Max(TraceSampleCount, 2);
+TArray<FVector> AERNMeleeWeapon::SampleBladePoints(const FVector& Start, const FVector& End) const
+{
+	TArray<FVector> Points;
+
+	// 검날 연장 시 점 개수도 배수만큼 늘려 점 간격(=빈틈)을 평소와 동일하게 유지
+	const int32 Count = FMath::Max(2, FMath::CeilToInt(TraceSampleCount * BladeTargetMultiplier));
 	Points.Reserve(Count);
 
 	for (int32 Index = 0; Index < Count; ++Index)
@@ -308,103 +390,91 @@ TArray<FVector> AERNMeleeWeapon::GetCurrentTracePoints() const
 
 void AERNMeleeWeapon::HandleTraceHit(const FHitResult& HitResult)
 {
-	// 대미지 판정은 서버에서만 확정한다.
-	if (!HasAuthority())
-	{
-		return;
-	}
-
+	// 이 함수는 이제 "소유 클라"에서 호출된다 (TickAttackTrace가 소유 클라 게이트).
+	// 적중만 확정하고 실제 데미지는 서버 RPC로 위임한다.
 	AActor* HitActor = HitResult.GetActor();
 	if (!IsValid(HitActor))
 	{
 		return;
 	}
-	
-	// 무기 소유자 자신과 이미 적중한 대상은 제외한다.
+
+	// 무기 소유자 자신과 이미 이번 스윙에 적중한 대상은 제외 (클라에서 중복 방지)
 	if (HitActor == GetOwner() || HitActors.Contains(HitActor))
 	{
 		return;
 	}
-	
+
+	HitActors.Add(HitActor);
+
+	// 서버에 적중 보고 → 서버가 적/부활 판정 후 데미지 적용. override 여부는 클라 자신의 상태 기준.
+	Server_ApplyMeleeHit(HitActor, bUseBladeDamageOverride);
+}
+
+void AERNMeleeWeapon::Server_ApplyMeleeHit_Implementation(AActor* Target, bool bOverride)
+{
+	if (!IsValid(Target) || Target == GetOwner())
+	{
+		return;
+	}
+
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
 	if (!OwnerCharacter)
 	{
 		return;
 	}
-	
+
 	AController* InstigatorController = OwnerCharacter->GetController();
-	
-	// 부활 공격 적용
-	if (AProjectERNCharacter::TryApplyReviveHit(HitActor, InstigatorController))
-	{
-		HitActors.Add(HitActor);
-		return;
-	}
-	
-	// 현재 일반 공격은 적 캐릭터만 타격한다.
-	AERNEnemyCharacter* Enemy = Cast<AERNEnemyCharacter>(HitActor);
-	if (!Enemy)
-	{
-		return;
-	}
-	
-	// 같은 공격 유효 구간에서는 대상 하나당 한 번만 대미지를 준다.
-	HitActors.Add(HitActor);
 
-	UAbilitySystemComponent* ASC =UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerCharacter);
+	// 평소엔 무기 기본 스펙(0 + AP*1 + APBonus + Weapon*1), 연장 스테이트면 NotifyState가 세팅한 오버라이드 스펙
+	const FERNSkillDamageData DefaultData(
+		/*BaseDamage*/ 0.f,
+		/*AttackPowerScale*/ 1.f,
+		/*WeaponDamageScale*/ 1.f,
+		/*StaggerPower*/ LightAttackStaggerPower);
+	const FERNSkillDamageData& DataToUse = bOverride ? BladeDamageOverride : DefaultData;
 
-	float CharacterAttackPower = 0.f;
-	float AttackPowerBonus = 0.f;
-
-	if (ASC)
-	{
-		CharacterAttackPower =ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerAttribute());
-
-		AttackPowerBonus = ASC->GetNumericAttribute(UERNAttributeSet::GetAttackPowerBonusAttribute());
-	}
-
-	const float DamageToApply = LightAttackDamage + CharacterAttackPower + AttackPowerBonus;
-
-	const float StaggerPower = LightAttackStaggerPower;
-
-	HitActor->TakeDamage(
-		DamageToApply,
-		FDamageEvent(),
+	// 데미지/부활/적 판정/경직을 라이브러리로 통합 처리
+	const EERNSkillHitResult Result = UERNSkillDamageLibrary::ApplySkillHit(
+		Target,
+		GetOwner(),
 		InstigatorController,
-		OwnerCharacter);
+		DataToUse,
+		OwnerCharacter->GetActorLocation());
 
-	// 공격자(무기 소유자) 위치를 HitOrigin으로 전달 → 적이 4방향 경직
-	Enemy->TryApplyStagger(StaggerPower, OwnerCharacter->GetActorLocation());
-
-	// Sweep 결과의 ImpactPoint를 사용하므로 기존 Overlap 방식보다
-	// 실제 검 궤적에 가까운 위치에 이펙트를 재생할 수 있다.
-	if (HitEffect)
+	// 적 타격(Damage)일 때만 히트 이펙트/카메라 셰이크 (부활 히트 제외)
+	if (Result == EERNSkillHitResult::Damage)
 	{
-		const FVector ImpactPoint = FVector(HitResult.ImpactPoint);
-		const FVector ImpactNormal = FVector(HitResult.ImpactNormal);
-
-		const FVector EffectLocation = ImpactPoint.IsNearlyZero() ? HitActor->GetActorLocation() : ImpactPoint;
-		const FRotator EffectRotation = ImpactNormal.IsNearlyZero() ? OwnerCharacter->GetActorRotation() : ImpactNormal.Rotation();
-
-		Multicast_PlayHitEffect(EffectLocation, EffectRotation);
-	}
-
-	// 공격을 성공시킨 플레이어에게만 타격 확인 흔들림을 적용한다.
-	if (HitConfirmShakeClass)
-	{
-		AERNPlayerController* PlayerController =
-			Cast<AERNPlayerController>(OwnerCharacter->GetController());
-
-		if (PlayerController)
+		if (HitEffect)
 		{
-			PlayerController->Client_PlayCameraShake(HitConfirmShakeClass, HitConfirmShakeScale);
+			Multicast_PlayHitEffect(Target->GetActorLocation(), OwnerCharacter->GetActorRotation());
+		}
+
+		if (HitConfirmShakeClass)
+		{
+			if (AERNPlayerController* PlayerController = Cast<AERNPlayerController>(OwnerCharacter->GetController()))
+			{
+				PlayerController->Client_PlayCameraShake(HitConfirmShakeClass, HitConfirmShakeScale);
+			}
 		}
 	}
 }
 
+void AERNMeleeWeapon::BeginBladeDamageOverride(const FERNSkillDamageData& Data)
+{
+	BladeDamageOverride = Data;
+	bUseBladeDamageOverride = true;
+}
+
+void AERNMeleeWeapon::EndBladeDamageOverride()
+{
+	bUseBladeDamageOverride = false;
+}
+
 void AERNMeleeWeapon::StartTrail()
 {
-	if (!TrailEffect || !TraceStart)
+	// 연장 구간이면 오버라이드 트레일, 아니면 기본 트레일 사용
+	UNiagaraSystem* SystemToUse = ActiveTrailOverride ? ActiveTrailOverride.Get() : TrailEffect.Get();
+	if (!SystemToUse || !TraceStart)
 	{
 		return;
 	}
@@ -413,7 +483,7 @@ void AERNMeleeWeapon::StartTrail()
 	if (!TrailComp)
 	{
 		TrailComp = UNiagaraFunctionLibrary::SpawnSystemAttached(
-			TrailEffect,
+			SystemToUse,
 			TraceStart,
 			NAME_None,
 			FVector::ZeroVector,
@@ -422,10 +492,52 @@ void AERNMeleeWeapon::StartTrail()
 			false /*bAutoDestroy*/,
 			false /*bAutoActivate*/);
 	}
+	else if (TrailComp->GetAsset() != SystemToUse)
+	{
+		// 재사용 중인 컴포넌트의 에셋을 교체
+		TrailComp->SetAsset(SystemToUse);
+	}
 
 	if (TrailComp)
 	{
 		TrailComp->Activate(true /*bReset*/);
+		bTrailRunning = true;
+	}
+}
+
+void AERNMeleeWeapon::BeginBladeTrailSwap(UNiagaraSystem* NewTrail)
+{
+	ActiveTrailOverride = NewTrail;	// nullptr이면 기본 트레일 유지
+
+	// 트레일이 진행 중이면 즉시 교체 반영 (노티 시작 순서와 무관하게 동작)
+	if (bTrailRunning)
+	{
+		StartTrail();
+	}
+}
+
+void AERNMeleeWeapon::EndBladeTrailSwap()
+{
+	ActiveTrailOverride = nullptr;
+
+	// MeleeTrace가 아직 진행 중일 때만 기본 트레일로 즉시 복귀.
+	// 이미 꺼진 상태면(StopTrail 호출됨) 절대 다시 켜지 않는다 (잔류 입자 IsActive 오판 방지).
+	if (bTrailRunning)
+	{
+		StartTrail();
+	}
+}
+
+void AERNMeleeWeapon::Multicast_SetBladeTrail_Implementation(UNiagaraSystem* Trail)
+{
+	// 서버가 쏜 교체를 모든 클라(시뮬프록시 포함)에서 동일하게 적용
+	if (Trail)
+	{
+		BeginBladeTrailSwap(Trail);
+	}
+	else
+	{
+		EndBladeTrailSwap();
 	}
 }
 
@@ -440,6 +552,8 @@ void AERNMeleeWeapon::UpdateTrail()
 
 void AERNMeleeWeapon::StopTrail()
 {
+	bTrailRunning = false;	// 논리적으로 꺼짐 (재활성 판단 기준)
+
 	if (TrailComp)
 	{
 		// Deactivate

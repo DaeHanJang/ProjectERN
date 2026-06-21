@@ -44,6 +44,10 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Player Info")
 	FString PlayerNickname;
 
+	// 계정레벨 (각 플레이어 고유, 복제 → 다른 플레이어 칸도 각자 값으로 표시)
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Player Info")
+	int32 AccountLevel = 1;
+
 	// 준비 상태 (로비용)
 	UPROPERTY(ReplicatedUsing=OnRep_IsReady, BlueprintReadOnly, Category = "Player Info")
 	bool bIsReady;
@@ -55,6 +59,10 @@ public:
 	// 블루프린트에서 닉네임 설정 (자동으로 서버 RPC 호출)
 	UFUNCTION(BlueprintCallable, Category = "Player Info")
 	void SetNickname(const FString& Nickname);
+
+	// 블루프린트에서 계정레벨 설정 (소유 클라가 GI 값을 올림, 자동으로 서버 RPC 호출)
+	UFUNCTION(BlueprintCallable, Category = "Player Info")
+	void SetAccountLevel(int32 InLevel);
 
 	// 소모품 버프 부여 이벤트 (UI 연동용)
 	UPROPERTY(BlueprintAssignable, Category = "Buff UI")
@@ -74,6 +82,10 @@ public:
 	// 서버에 닉네임 설정 요청
 	UFUNCTION(Server, Reliable)
 	void Server_SetNickname(const FString& Nickname);
+
+	// 서버에 계정레벨 설정 요청
+	UFUNCTION(Server, Reliable)
+	void Server_SetAccountLevel(int32 InLevel);
 
 	// 서버에 준비 상태 설정 요청
 	UFUNCTION(Server, Reliable)

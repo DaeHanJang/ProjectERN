@@ -170,6 +170,47 @@ void UERNInventoryComponent::Server_RemoveItem_Implementation(const int32 SlotIn
 	UE_LOG(LogTemp, Warning, TEXT("CurrentItem: %s, Quantity: %d"), *Inventory.GetItems()[SlotIndex].GetItemID().ToString(), Inventory.GetItemQuantity(SlotIndex));
 }
 
+void UERNInventoryComponent::Server_MoveItem_Implementation(const int32 FromSlot, const int32 ToSlot)
+{
+	if (FromSlot == ToSlot)
+	{
+		return;
+	}
+	if (!Inventory.GetItems().IsValidIndex(FromSlot) || !Inventory.GetItems().IsValidIndex(ToSlot))
+	{
+		return;
+	}
+
+	// 빈 칸을 끌어온 경우 무시
+	const FInventoryItemEntry& FromEntry = Inventory.GetItems()[FromSlot];
+	if (!FromEntry.IsValid())
+	{
+		return;
+	}
+
+	// 스택 병합용 MaxStackSize 조회 (출발 아이템 기준 - 병합은 동일 아이템일 때만 일어남)
+	int32 MaxStackSize = 1;
+	const UItemManagerSubsystem* ItemManager = GetItemManager();
+	if (ItemManager)
+	{
+		const FERNItemTable* ItemTable = ItemManager->FindItemRow(FromEntry.GetItemID());
+		if (ItemTable)
+		{
+			MaxStackSize = ItemTable->MaxStackSize;
+		}
+	}
+
+	Inventory.MoveItem(FromSlot, ToSlot, MaxStackSize);
+
+	// 위치만 바뀌고 아이템 구성은 동일하므로 어빌리티 재계산 불필요
+
+	// 리슨 서버(호스트) UI 갱신용 (원격 클라는 FastArray PostReplicatedChange로 자동 갱신)
+	OnInventorySlotChanged.Broadcast(Inventory.GetItems()[FromSlot]);
+	OnInventorySlotChanged.Broadcast(Inventory.GetItems()[ToSlot]);
+
+	Inventory.LogInventory();
+}
+
 void UERNInventoryComponent::RecalculateItemAbilities()
 {
 	if (!GetOwner()->HasAuthority())

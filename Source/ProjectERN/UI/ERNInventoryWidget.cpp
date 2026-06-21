@@ -128,6 +128,7 @@ void UERNInventoryWidget::CreateSlot(const int32 MaxSlotSize, const int32 Column
 			SlotWidgets[i]->OnSlotHovered.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotHoveredCallback);
 			SlotWidgets[i]->OnSlotUnhovered.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotUnhoveredCallback);
 			SlotWidgets[i]->OnSlotDoubleClicked.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotDoubleClickedCallback);
+			SlotWidgets[i]->OnSlotDropped.AddUniqueDynamic(this, &UERNInventoryWidget::OnSlotDroppedCallback);
 		}
 	}
 	
@@ -827,6 +828,14 @@ void UERNInventoryWidget::OnSlotDoubleClickedCallback(const int32 Index)
 			// EquipmentComponent->Server_UnequipWeaponToInventory();
 			UE_LOG(LogTemp, Warning, TEXT("Unequip Weapon to Inventory on Double Click - Needs Backend Support"));
 		}
+	}
+}
+
+void UERNInventoryWidget::OnSlotDroppedCallback(const int32 FromIndex, const int32 ToIndex)
+{
+	if (UERNInventoryComponent* InventoryComponent = GetInventoryComponent())
+	{
+		InventoryComponent->Server_MoveItem(FromIndex, ToIndex);
 	}
 }
 

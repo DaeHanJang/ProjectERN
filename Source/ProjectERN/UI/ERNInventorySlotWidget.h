@@ -10,11 +10,13 @@
 class UERNInventoryWidget;
 class UTextBlock;
 class UImage;
+class UDragDropOperation;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotClicked, const int32, Index);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotHovered, const int32, Index);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotUnhovered, const int32, Index);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotDoubleClicked, const int32, Index);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnSlotDropped, const int32, FromIndex, const int32, ToIndex);
 
 /**
  * 
@@ -51,6 +53,8 @@ protected:
 	virtual FReply NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
+	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	
 public:
 	// Click Event
@@ -65,7 +69,11 @@ public:
 	
 	UPROPERTY(Transient)
 	FOnSlotDoubleClicked OnSlotDoubleClicked;
-	
+
+	// 드래그한 슬롯을 이 슬롯에 드롭했을 때 (FromIndex → ToIndex)
+	UPROPERTY(Transient)
+	FOnSlotDropped OnSlotDropped;
+
 private:
 	// Slot Image
 	UPROPERTY(meta=(BindWidget))

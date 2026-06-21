@@ -3,6 +3,8 @@
 #include "UI/ERNInventorySlotWidget.h"
 
 #include "ERNInventoryWidget.h"
+#include "UI/ERNInventoryDragDropOperation.h"
+#include "Blueprint/DragDropOperation.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 
@@ -18,11 +20,61 @@ FReply UERNInventorySlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeome
 	{
 		// 슬롯 클릭 이벤트 브로드캐스트
 		OnSlotClicked.Broadcast(SlotIndex);
-		
-		return FReply::Handled();
+
+		// 마우스를 끌면 드래그 감지 시작 (짧은 클릭은 그대로 클릭으로 처리)
+		return FReply::Handled().DetectDrag(TakeWidget(), EKeys::LeftMouseButton);
 	}
-	
+
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+void UERNInventorySlotWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
+{
+	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
+
+	// 빈 슬롯은 드래그하지 않음
+	if (!ItemImage || ItemImage->GetVisibility() == ESlateVisibility::Hidden)
+	{
+		return;
+	}
+
+	UERNInventoryDragDropOperation* Operation = NewObject<UERNInventoryDragDropOperation>();
+	Operation->SourceSlotIndex = SlotIndex;
+	Operation->Pivot = EDragPivot::CenterCenter; // 아이콘이 커서 중앙에 따라오도록
+
+	// 실제 슬롯 아이콘이 화면에 그려진 크기 (없으면 슬롯 전체 크기로 폴백)
+	FVector2D IconSize = ItemImage->GetCachedGeometry().GetLocalSize();
+	if (IconSize.X <= 1.f || IconSize.Y <= 1.f)
+	{
+		IconSize = InGeometry.GetLocalSize();
+	}
+
+	// 현재 아이콘 브러시를 복제하고 ImageSize를 실제 크기로 지정
+	FSlateBrush DragBrush = ItemImage->GetBrush();
+	DragBrush.ImageSize = IconSize;
+
+	UImage* DragVisual = NewObject<UImage>(this);
+	DragVisual->SetBrush(DragBrush);
+	Operation->DefaultDragVisual = DragVisual;
+
+	OutOperation = Operation;
+}
+
+bool UERNInventorySlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+{
+	UERNInventoryDragDropOperation* Operation = Cast<UERNInventoryDragDropOperation>(InOperation);
+	if (!Operation)
+	{
+		return false;
+	}
+
+	if (Operation->SourceSlotIndex != SlotIndex)
+	{
+		// 이동/스왑/병합 처리는 상위 인벤토리 위젯이 담당
+		OnSlotDropped.Broadcast(Operation->SourceSlotIndex, SlotIndex);
+	}
+
+	return true;
 }
 
 FReply UERNInventorySlotWidget::NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)

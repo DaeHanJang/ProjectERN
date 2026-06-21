@@ -368,9 +368,9 @@ protected:
 	UFUNCTION(Client, Reliable)
 	void Client_RequestAccountBuffs();
 
-	// 소유 클라 → 서버: 투자 포인트 카운트 전달 (클라 신뢰)
+	// 소유 클라 → 서버: 투자 포인트 카운트 + 계정 레벨 전달 (클라 신뢰)
 	UFUNCTION(Server, Reliable)
-	void Server_ApplyAccountBuffs(int32 HpPts, int32 ManaPts, int32 StamPts, int32 DefPts, int32 AttPts, int32 LifePts, int32 GoldPts);
+	void Server_ApplyAccountBuffs(int32 HpPts, int32 ManaPts, int32 StamPts, int32 DefPts, int32 AttPts, int32 LifePts, int32 GoldPts, int32 InAccountLevel);
 
 	// 서버: 계정 버프 GE 재적용 + Gold/Lifesteal 필드 설정
 	void ApplyAccountBuffsInternal(int32 HpPts, int32 ManaPts, int32 StamPts, int32 DefPts, int32 AttPts, int32 LifePts, int32 GoldPts);
