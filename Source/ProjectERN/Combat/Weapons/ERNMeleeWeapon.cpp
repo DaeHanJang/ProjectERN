@@ -305,6 +305,7 @@ void AERNMeleeWeapon::EndAttackTrace()
 	}
 
 	bAttackTraceActive = false;
+	LastTraceTickTime = 0.f;
 
 	// HitActors 초기화는 다음 스윙의 staleness 감지에서 처리한다.
 	// (노티가 매 프레임 토글되면 여기서 매 프레임 비워 같은 적을 중복 타격하게 됨)
