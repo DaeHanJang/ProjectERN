@@ -1,108 +1,141 @@
-# ProjectERN
+# ⚔️ ProjectERN (Ashen Oath)
 
-언리얼 엔진 기반 3인 협동 멀티플레이 액션 RPG 프로젝트
+> **프로젝트명**: Ashen Oath
+>
+> **장르**: 3인 협동 소울라이크 ARPG
+>
+> **개발 인원**: 5인
+>
+> **개발 기간**: 2026.04 ~ 2026.06 (8주)
+>
+> **개발 환경**: C++, Unreal Engine 5.7
+>
+> **레퍼런스**: Elden Ring: Nightreign
 
-## 프로젝트 소개
+<br>
 
-**Gameplay Ability System을 활용한 액션 롤플레잉 게임(ARPG)**
+## 📖 프로젝트 소개
 
-장비 파밍과 협동 전투를 통해 보스를 공략하는 멀티플레이 ARPG입니다.
-탐험과 장비 강화 등 다양한 요소를 활용해 지역 지배 보스를 협동 플레이로 처치하는 것이 핵심 게임플레이입니다.
-배틀로얄식 자기장(밤의비) 수축으로 점차 좁아지는 전장에서 보스전을 치르게됩니다.
+**ProjectERN(Ashen Oath)**은 **Elden Ring: Nightreign**을 레퍼런스로 제작한 3인 협동 소울라이크 액션 RPG입니다.
 
-### 레퍼런스
-[엘든링 밤의 통치자](https://www.youtube.com/watch?v=39pGwdt4B7c)
+플레이어는 제한된 시간 동안 월드를 탐험하며 장비와 아이템을 획득하고, 성장한 뒤 보스를 공략하는 게임 루프를 기반으로 합니다. 또한 **검은비(자기장) 시스템**과 **인스턴스 던전**을 추가하여 협동 플레이 중심의 새로운 게임 경험을 구현했습니다.
 
----
+저는 프로젝트에서 **Gameplay Programmer**를 담당하여 플레이어와 관련된 Gameplay 시스템 및 아이템 시스템을 개발했습니다.
 
-## 핵심 기능
+<br>
 
-### 멀티플레이어
-- 리플리케이션 및 RPC 기반 네트워크 시스템
-- 리슨 서버(Listen Server) 기반 호스트-클라이언트 구조
-- Steam 세션(OnlineSubsystem) 기반 호스팅/참가 지원 (LAN/Steam 전환)
-- 최대 3인 협동 플레이 지원
+## 👨‍👨‍👧‍👦 담당 역할
 
-### 캐릭터 시스템
-- 3종 플레이어 캐릭터 (전사/마법사/서포터)
-- 각 클라이언트별 캐릭터 선택 시스템
-- Gameplay Ability System 기반 어빌리티 (점프, 구르기, 스프린트, 공격 콤보, 스킬 등)
+| 이름 | 담당 기능 |
+|------|-----------|
+| **유지원 (팀장)** | AI 시스템, 네트워크 시스템 |
+| **백원석** | 플레이어 시스템, 전투 시스템 |
+| **장대한** | Lock-On 시스템, Interaction 시스템, Inventory 시스템, Equipment 시스템, ItemManagerSubsystem, Consumable Item, PSO Prewarm |
+| **강리한** | 상점 시스템, 강화 시스템 |
+| **김현진** | 월드 제작, 레벨 디자인 |
 
-### 전투 시스템
-- Gameplay Ability System(GAS) 활용
-- 게임플레이 태그 기반 상태 제어 및 버프/디버프 시스템
-- 캐릭터 고유 스킬 및 궁극기 (직업별)
-- 무기별 스킬 시스템 (검/지팡이/창, 버프·채널링·즉발 타입)
-- 다양한 투사체 시스템 (유도, 관통, 충격파 등)
-- 경직(Stagger) 시스템: 경직력 vs 저항력 비교
-- 슈퍼아머/무적 프레임 태그 기반 면역
-- 모션 워핑 기반 돌진/이동 공격
-- 락온 시스템
+<br>
 
-### 보스 AI 시스템
-- 비헤이비어 트리 기반 AI 패턴
-- EQS(Environment Query System)
-- 어그로 시스템 (시야 누적 + 데미지 비례)
-- 페이즈 시스템 (체력 기반 BT 전환, 슈퍼아머)
-- 플레이어와의 방향 및 거리 기반 공격 선택
-- 모션워핑
+## 🛠 기술 스택
 
-### 일반 몬스터 AI
-- 피격 어그로 시스템
-- 동적 시야각 전환 (90° ↔ 180°)
+<p>
+<img src="https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=cplusplus&logoColor=white"/>
+<img src="https://img.shields.io/badge/Unreal_Engine_5.7-313131?style=for-the-badge&logo=unrealengine&logoColor=white"/>
+</p>
 
-### 인벤토리 & 장비 시스템
-- 장비 파밍 및 강화 시스템
-- 재화를 소모한 장비 강화
-- 장비 어빌리티 기반 스탯 보너스
+<br>
 
-### 소비 아이템 시스템
-- 회복 성배병(Flask) 및 마시는/투척 소비 아이템
-- 퀵슬롯 연동 사용
+## ⭐ 담당 구현
 
-### 상점 시스템
-- 화톳불(NightLordGrace) 상호작용
-- 아이템 구매/판매
+### 🟠 Gameplay System
 
-### 자기장(밤의비) 시스템
-- 단계별 자기장 수축
-- 서버 시간 기반 중심·반지름 계산 및 리플리케이션
-- 자기장 외부 지속 데미지, 면역 부여, 안전지대 안내
-- 미니맵 자기장 범위 표시
+Gameplay Framework를 기반으로 플레이어 시스템을 컴포넌트 단위로 분리하여 유지보수성과 확장성을 고려한 구조를 설계했습니다.
 
-### 다운 & 부활 시스템 (협동)
-- 기절(Downed) 상태 진입 및 팀원의 살리기(Revive) 상호작용
-- 부활 게이지 및 사망 페널티 누적(Penalty Stacks)
+#### 주요 기능
 
-### 오픈월드 시스템
-- 월드 파티션을 활용한 스트리밍 레벨 구현
-- 데이터 드리븐 기반의 에셋 데이터 활용
-- 낮/밤 사이클(Day-Night Cycle) 환경 연출
-- 미니맵 & 나침반 (플레이어/구조물/목표 마커, 자기장 표시)
-
-### 인스턴스 던전 & 포탈
-- 보스 포탈 / 인스턴스 포탈을 통한 공간 전환
-- 보스 컷신 트리거 연동
-
-### UI / HUD
-- HP/MP/스태미나 상태바, 파티원 상태 표시
-- 스킬 쿨다운 패널, 퀵슬롯, 버프 아이콘
-- 보스/적 체력바, 데미지 텍스트, 레벨업·강화 위젯
-
-### 보상 & 성장 시스템
-- 몬스터 처치 시 재화 및 장비 획득
-- 재화를 소모하는 레벨업 시스템
-
-### 컷신
-- 보스 등장 시퀀스
-- 인트로 및 엔딩 시퀀스
+- Lock-On System
+- Interaction System
+- Inventory System
+- Equipment System
+- ItemManagerSubsystem
+- Consumable Item
+- PSO Prewarm
 
 ---
 
-## 개발 환경
+### 🟠 Lock-On & Interaction
 
-- **엔진**: Unreal Engine 5.7
-- **IDE**: Visual Studio 2022, Rider
-- **버전 관리**: Git
-- **언어**: C++
-- **주요 플러그인**: Gameplay Ability System / OnlineSubsystem(Steam)
+플레이어의 조작 경험을 향상시키기 위한 Lock-On 및 Interaction 시스템을 구현했습니다.
+
+#### Lock-On
+
+- Detection Sphere 기반 대상 탐색
+- Dot Product를 이용한 시야각 판별
+- Line Trace 기반 장애물 검사
+- Lock-On State 관리
+- Lost Grace Time 적용
+
+#### Interaction
+
+- Interaction Sphere 기반 상호작용 감지
+- Interface 기반 상호작용 시스템 설계
+- Local / Server 실행 분리
+- 확장 가능한 구조 설계
+
+---
+
+### 🟠 Inventory & Equipment
+
+멀티플레이 환경을 고려한 서버 권한 기반 인벤토리 및 장비 시스템을 구현했습니다.
+
+#### 주요 기능
+
+- FastArraySerializer 기반 Delta Replication
+- Delegate 기반 UI 갱신
+- 서버 권한 장비 관리
+- Sync / Async Asset Loading
+
+---
+
+### 🟠 Item System
+
+Data Driven 구조를 기반으로 아이템 관리 시스템을 구현했습니다.
+
+#### 주요 기능
+
+- ItemManagerSubsystem
+- DataTable + DataAsset 기반 관리
+- Soft Reference 기반 리소스 관리
+- Consumable Item 구현
+
+---
+
+### 🟠 Optimization
+
+게임 플레이 중 발생하는 렌더링 지연을 줄이기 위해 PSO Prewarm을 적용했습니다.
+
+#### 주요 기능
+
+- PSO Prewarm
+- Shader Warm-up
+- 최초 렌더링 Hitch 감소
+
+<br>
+
+## 📌 프로젝트 목표
+
+- Gameplay Framework 기반 플레이어 시스템 설계
+- 컴포넌트 기반 Gameplay 아키텍처 구축
+- 서버 권한 기반 멀티플레이 시스템 구현
+- Data Driven 아이템 시스템 설계
+- 유지보수와 확장이 용이한 구조 설계
+- Unreal Engine Gameplay Programming 역량 강화
+
+<br>
+
+## 🔗 Links
+
+- 🎥 [Play Video](플레이 영상 링크)
+- 🎥 [Technical Video](기술 영상 링크)
+- 📄 [Portfolio](포트폴리오 링크)
+- 📚 [Notion](https://tree-limpet-ff9.notion.site/ProjectERN-d235690eaca682e89f8901a9293d08be)
