@@ -47,55 +47,57 @@
 
 ## ⭐ 담당 구현
 
-### 🟠 Gameplay System
+### 🟠 Lock-On System
 
-Gameplay Framework를 기반으로 플레이어 시스템을 컴포넌트 단위로 분리하여 유지보수성과 확장성을 고려한 구조를 설계했습니다.
+Detection Sphere와 Dot Product를 이용하여 록온 대상을 탐색하고,
+Line Trace를 통해 최종 대상을 선택하는 컴포넌트 기반 록온 시스템을 구현했습니다.
 
 #### 주요 기능
 
-- Lock-On System
-- Interaction System
-- Inventory System
-- Equipment System
-- ItemManagerSubsystem
-- Consumable Item
-- PSO Prewarm
-
----
-
-### 🟠 Lock-On & Interaction
-
-플레이어의 조작 경험을 향상시키기 위한 Lock-On 및 Interaction 시스템을 구현했습니다.
-
-#### Lock-On
-
 - Detection Sphere 기반 대상 탐색
-- Dot Product를 이용한 시야각 판별
+- Dot Product 기반 시야각 판별
 - Line Trace 기반 장애물 검사
 - Lock-On State 관리
 - Lost Grace Time 적용
 
-#### Interaction
+### 🟠 Interaction System
 
-- Interaction Sphere 기반 상호작용 감지
-- Interface 기반 상호작용 시스템 설계
-- Local / Server 실행 분리
-- 확장 가능한 구조 설계
-
----
-
-### 🟠 Inventory & Equipment
-
-멀티플레이 환경을 고려한 서버 권한 기반 인벤토리 및 장비 시스템을 구현했습니다.
+플레이어 중심의 Interaction Sphere와 IInteractable 인터페이스를 활용하여
+확장 가능한 상호작용 시스템을 구현했습니다.
 
 #### 주요 기능
 
+- Interaction Sphere 기반 상호작용 감지
+- IInteractable Interface 설계
+- Execution Policy(Local / Server) 기반 실행 분기
+- 감지와 실행을 분리한 구조 설계
+
+### 🟠 PSO Prewarm
+
+필드 진입 시 아이템을 사전 렌더링하여 최초 생성 시 발생하는
+Shader Compilation Hitch를 완화했습니다.
+
+#### 주요 기능
+
+- PostLoadMap 이후 Prewarm 실행
+- 아이템 사전 렌더링
+- 최초 렌더링 Hitch 감소
+
+### 🟠 Inventory & Equipment
+
+멀티플레이 환경을 고려하여 서버 권한 기반 인벤토리 및 장착 시스템을 구현했습니다.
+
+#### Inventory
+
 - FastArraySerializer 기반 Delta Replication
 - Delegate 기반 UI 갱신
-- 서버 권한 장비 관리
-- Sync / Async Asset Loading
+- 서버 권한 인벤토리 관리
 
----
+#### Equipment
+
+- 서버 권한 장착 처리
+- Sync / Async Loading 전략 적용
+- 장착 상태 관리
 
 ### 🟠 Item System
 
@@ -107,18 +109,6 @@ Data Driven 구조를 기반으로 아이템 관리 시스템을 구현했습니
 - DataTable + DataAsset 기반 관리
 - Soft Reference 기반 리소스 관리
 - Consumable Item 구현
-
----
-
-### 🟠 Optimization
-
-게임 플레이 중 발생하는 렌더링 지연을 줄이기 위해 PSO Prewarm을 적용했습니다.
-
-#### 주요 기능
-
-- PSO Prewarm
-- Shader Warm-up
-- 최초 렌더링 Hitch 감소
 
 <br>
 
