@@ -47,7 +47,7 @@
 
 ## ⭐ 담당 구현
 
-### 🟠 Lock-On System
+### 🟠 [Lock-On System](https://github.com/DaeHanJang/ProjectERN/blob/main/Source/ProjectERN/Components/ERNLockOnComponent.cpp)
 
 Detection Sphere와 Dot Product를 이용하여 록온 대상을 탐색하고,
 Line Trace를 통해 최종 대상을 선택하는 컴포넌트 기반 록온 시스템을 구현했습니다.
