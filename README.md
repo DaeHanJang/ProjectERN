@@ -127,6 +127,6 @@ Data Driven 구조를 기반으로 아이템 관리 시스템을 구현했습니
 ## 🔗 Links
 
 - 🎥 [Play Video](https://www.youtube.com/watch?v=9clhEwnciS4)
-- 🎥 [Technical Video](https://www.youtube.com/watch?v=p1MiR54VmDU)
+- 🎥 [Technical Video](https://youtu.be/7vt_ZvKAM10)
 - 📄 [Portfolio](https://drive.google.com/file/d/1KmhRwLhF0O5aue9g8mAH8zCzrUTTcX9o/view?usp=sharing)
 - 📚 [Notion](https://tree-limpet-ff9.notion.site/ProjectERN-d235690eaca682e89f8901a9293d08be)
