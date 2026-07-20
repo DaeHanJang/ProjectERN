@@ -11,13 +11,13 @@
 > **개발 환경**: C++, Unreal Engine 5.7
 >
 > **레퍼런스**: Elden Ring: Nightreign
-<img width="491" height="313" alt="Image" src="https://github.com/user-attachments/assets/67fc31d6-55ab-48d9-b69f-abda25e0c3d8" />
+<img width="491" height="313" alt="Image" src="https://github.com/user-attachments/assets/67fc31d6-55ab-48d9-b69f-abda25e0c3d8"/>
 
 <br>
 
 ## 📖 프로젝트 소개
 
-__ProjectERN(AshenOath)__은 Elden Ring: Nightreign을 레퍼런스로 제작한 3인 협동 소울라이크 액션 RPG입니다.
+**ProjectERN (Ashen Oath)** 은 Elden Ring: Nightreign을 레퍼런스로 제작한 3인 협동 소울라이크 액션 RPG입니다.
 
 플레이어는 제한된 시간 동안 월드를 탐험하며 장비와 아이템을 획득하고, 성장한 뒤 보스를 공략하는 게임 루프를 기반으로 합니다. 또한 검은비(자기장) 시스템과 인스턴스 던전을 추가하여 협동 플레이 중심의 새로운 게임 경험을 구현했습니다.
 
